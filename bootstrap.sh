@@ -220,7 +220,7 @@ main() {
     echo
     local choice
     while true; do
-        read -pr "Select mode [1-2]: " choice
+        read -p "Select mode [1-2]: " choice
         case "$choice" in
             1) mode="deploy"; break ;;
             2) mode="node"; break ;;
