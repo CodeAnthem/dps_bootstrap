@@ -36,6 +36,10 @@ if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib
         exit 1
     fi
     
+    # Make script executable
+    chmod +x /tmp/dps_bootstrap/bootstrap.sh
+    chmod +x /tmp/dps_bootstrap/lib/*.sh
+    
     # Re-execute from the proper location
     echo "✅ Repository cloned, re-executing from proper location..."
     cd /tmp/dps_bootstrap

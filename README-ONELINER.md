@@ -3,16 +3,17 @@
 ## Recommended One-liner (with error handling)
 
 ```bash
-# Download and verify, then execute
+# Download, verify, then execute
 curl -fsSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/bootstrap.sh -o /tmp/bootstrap_temp.sh && \
+chmod +x /tmp/bootstrap_temp.sh && \
 bash -n /tmp/bootstrap_temp.sh && \
-bash /tmp/bootstrap_temp.sh
+/tmp/bootstrap_temp.sh
 ```
 
-## Alternative: Direct execution (less safe)
+## Alternative: Direct execution
 
 ```bash
-# Direct execution (original approach)
+# Direct execution (permissions handled internally)
 curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/bootstrap.sh | bash
 ```
 
@@ -32,8 +33,11 @@ tail -n 5 bootstrap.sh
 # 4. Syntax check
 bash -n bootstrap.sh
 
-# 5. Execute if all looks good
-bash bootstrap.sh
+# 5. Make executable
+chmod +x bootstrap.sh
+
+# 6. Execute if all looks good
+./bootstrap.sh
 ```
 
 ## Flags explanation:
