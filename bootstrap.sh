@@ -238,6 +238,7 @@ main() {
     setup_runtime
     
     # Select deployment mode
+    echo "get mode:..."
     local mode
     mode=$(select_mode)
     
