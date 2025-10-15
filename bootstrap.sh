@@ -218,15 +218,43 @@ main() {
     echo "  1) Deploy VM    - Management and deployment hub"
     echo "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
     echo
+    
+    # Default to Deploy VM if input doesn't work
+    local mode="deploy"
     local choice
-    while true; do
-        read -p "Select mode [1-2]: " choice
-        case "$choice" in
-            1) mode="deploy"; break ;;
-            2) mode="node"; break ;;
-            *) echo "Please select 1 or 2." ;;
-        esac
-    done
+    
+    # Try to read input with timeout (with fallback for systems without -t support)
+    if read -t 1 -p "" 2>/dev/null; then
+        # Timeout option works
+        read -t 30 -p "Select mode [1-2, default=1]: " choice || { 
+            echo
+            echo "No input received, defaulting to Deploy VM"
+            choice="1"
+        }
+    else
+        # Timeout option doesn't work, use standard read
+        echo "Select mode [1-2, default=1]: " 
+        read choice
+        if [[ -z "$choice" ]]; then
+            echo "No input received, defaulting to Deploy VM"
+            choice="1"
+        fi
+    fi
+    
+    case "$choice" in
+        1|"")
+            mode="deploy"
+            echo "Selected: Deploy VM"
+            ;;
+        2)
+            mode="node"
+            echo "Selected: Managed Node"
+            ;;
+        *)
+            echo "Invalid selection '$choice', defaulting to Deploy VM"
+            ;;
+    esac
+    
     log "Selected mode: $mode"
     
     # Run appropriate workflow

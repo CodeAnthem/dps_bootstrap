@@ -34,14 +34,43 @@ cleanup() {
 prompt_yes_no() {
     local prompt="$1"
     local response
-    while true; do
-        read -p "$prompt [y/N]: " response
-        case "$response" in
-            [Yy]|[Yy][Ee][Ss]) return 0 ;;
-            [Nn]|[Nn][Oo]|"") return 1 ;;
-            *) echo "Please answer yes or no." ;;
-        esac
-    done
+    local default_no="${2:-true}"
+    
+    # Try with timeout first
+    if read -t 1 -p "" 2>/dev/null; then
+        # Timeout option works
+        read -t 30 -p "$prompt [y/N]: " response || {
+            echo
+            if [[ "$default_no" == "true" ]]; then
+                echo "No input received, assuming 'no'"
+                return 1
+            else
+                echo "No input received, assuming 'yes'"
+                return 0
+            fi
+        }
+    else
+        # Fallback to standard read
+        echo "$prompt [y/N]: "
+        read response
+        if [[ -z "$response" ]]; then
+            if [[ "$default_no" == "true" ]]; then
+                echo "No input received, assuming 'no'"
+                return 1
+            else
+                echo "No input received, assuming 'yes'"
+                return 0
+            fi
+        fi
+    fi
+    
+    case "$response" in
+        [Yy]|[Yy][Ee][Ss]) return 0 ;;
+        [Nn]|[Nn][Oo]|"") return 1 ;;
+        *) 
+            echo "Invalid response, assuming 'no'"
+            return 1 ;;
+    esac
 }
 
 prompt_password() {
@@ -64,16 +93,47 @@ prompt_password() {
 
 prompt_github_token() {
     local token
-    while true; do
-        read -s -p "Enter GitHub token: " token
+    local attempts=0
+    local max_attempts=3
+    
+    # Try with timeout first
+    if read -t 1 -p "" 2>/dev/null; then
+        # Timeout option works
+        while [[ $attempts -lt $max_attempts ]]; do
+            read -t 60 -s -p "Enter GitHub token (or press Enter to use anonymous access): " token || {
+                echo
+                echo "No input received, using anonymous access"
+                return 0
+            }
+            echo
+            
+            if [[ -n "$token" ]]; then
+                echo "Token received (hidden for security)"
+                return 0
+            else
+                echo "Using anonymous access (limited functionality)"
+                return 0
+            fi
+            
+            ((attempts++))
+        done
+    else
+        # Fallback to standard read
+        echo "Enter GitHub token (or press Enter to use anonymous access): "
+        read -s token
         echo
+        
         if [[ -n "$token" ]]; then
-            echo "$token"
-            return 0
+            echo "Token received (hidden for security)"
         else
-            echo "GitHub token cannot be empty. Please try again."
+            echo "Using anonymous access (limited functionality)"
         fi
-    done
+        
+        return 0
+    fi
+    
+    echo "Maximum attempts reached, using anonymous access"
+    return 0
 }
 
 # =============================================================================
@@ -128,7 +188,18 @@ show_configuration_preview() {
     echo "==============================================================================="
     echo
     
-    prompt_yes_no "Proceed with this configuration?" || error "Configuration not confirmed. Exiting."
+    # Auto-confirm after timeout if needed
+    if prompt_yes_no "Proceed with this configuration?" true; then
+        echo "Configuration confirmed!"
+    else
+        # Give one more chance with a longer timeout
+        echo "Let's try again..."
+        if prompt_yes_no "Proceed with this configuration? (last chance)" false; then
+            echo "Configuration confirmed!"
+        else
+            error "Configuration not confirmed. Exiting."
+        fi
+    fi
 }
 
 show_deploy_config() {
