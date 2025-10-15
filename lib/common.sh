@@ -7,12 +7,63 @@
 # LOGGING FUNCTIONS
 # =============================================================================
 
-# Logging functions (one-liners with printf for performance)
-log() { printf -v t '%(%Y-%m-%d %H:%M:%S)T' -1; echo "[$t] [INFO] $*" >&2; }
-error() { printf -v t '%(%Y-%m-%d %H:%M:%S)T' -1; echo "[$t] [ERROR] $*" >&2; exit 1; }
-warning() { printf -v t '%(%Y-%m-%d %H:%M:%S)T' -1; echo "[$t] [WARN] $*" >&2; }
-success() { printf -v t '%(%Y-%m-%d %H:%M:%S)T' -1; echo "[$t] [SUCCESS] $*" >&2; }
-debug() { [[ "${DPS_DEBUG:-}" == "1" ]] && { printf -v t '%(%Y-%m-%d %H:%M:%S)T' -1; echo "[$t] [DEBUG] $*" >&2; }; }
+log() {
+    printf "🔄 %s\n" "$1"
+}
+
+error() {
+    printf "❌ %s\n" "$1" >&2
+    exit 1
+}
+
+success() {
+    printf "✅ %s\n" "$1"
+}
+
+debug() {
+    if [[ "${DEBUG:-}" == "1" ]]; then
+        printf "🐛 %s\n" "$1" >&2
+    fi
+}
+
+# Visual separators
+section_header() {
+    local title="$1"
+    printf "\n"
+    printf "╭─────────────────────────────────────────────────────────────────────────────╮\n"
+    printf "│ %-75s │\n" "$title"
+    printf "╰─────────────────────────────────────────────────────────────────────────────╯\n"
+}
+
+step_start() {
+    local step="$1"
+    printf "\n🚀 %s...\n" "$step"
+}
+
+step_complete() {
+    local step="$1"
+    printf "✅ %s completed\n" "$step"
+}
+
+# Progress spinner
+show_spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+# Clear to new section (like clear but keeps history)
+new_section() {
+    printf "\033[2J\033[H"
+}
 
 # =============================================================================
 # CLEANUP FUNCTIONS
@@ -168,13 +219,10 @@ with_nix_shell() {
 show_configuration_preview() {
     local mode="$1"
     
-    echo
-    echo "==============================================================================="
-    echo "                           CONFIGURATION PREVIEW"
-    echo "==============================================================================="
-    echo
-    echo "Mode: $mode"
-    echo
+    new_section
+    section_header "Configuration Preview"
+    
+    printf "📋 Mode: %s\n\n" "$mode"
     
     if [[ "$mode" == "deploy" ]]; then
         show_deploy_config
@@ -182,12 +230,13 @@ show_configuration_preview() {
         show_node_config
     fi
     
-    echo "==============================================================================="
+    echo
+    printf "╰─────────────────────────────────────────────────────────────────────────────╯\n"
     echo
     
     # Auto-confirm after timeout if needed
     if prompt_yes_no "Proceed with this configuration?" true; then
-        echo "Configuration confirmed!"
+        success "Configuration confirmed!"
     else
         error "Configuration not confirmed. Exiting."
     fi

@@ -101,11 +101,13 @@ setup_node_defaults() {
 # DEPLOY VM WORKFLOW
 # =============================================================================
 deploy_vm_workflow() {
-    log "Starting Deploy VM workflow"
+    section_header "Deploy VM Installation Workflow"
     
     # Setup defaults and validate
+    step_start "Setting up configuration"
     setup_deploy_defaults
     validate_deploy_config
+    step_complete "Configuration setup"
     
     # Show configuration and get confirmation
     show_configuration_preview "deploy"
@@ -114,29 +116,45 @@ deploy_vm_workflow() {
     local github_token
     github_token=$(prompt_github_token)
     
+    new_section
+    section_header "System Installation"
+    
     # Setup encryption if enabled
+    step_start "Setting up disk encryption"
     setup_encryption "$DPS_ENCRYPTION"
+    step_complete "Disk encryption setup"
     
     # Partition and mount disk
+    step_start "Partitioning and mounting disk"
     partition_disk "$DPS_ENCRYPTION"
     mount_filesystems "$DPS_ENCRYPTION"
+    step_complete "Disk partitioning and mounting"
     
     # Generate hardware config
+    step_start "Generating hardware configuration"
     generate_hardware_config "$DPS_HOSTNAME"
+    step_complete "Hardware configuration generation"
     
     # Create Deploy VM configuration
+    step_start "Creating Deploy VM configuration"
     create_deploy_vm_config "$DPS_HOSTNAME" "$DPS_ENCRYPTION"
+    step_complete "Deploy VM configuration creation"
     
     # Install NixOS (no flake needed for Deploy VM)
+    step_start "Installing NixOS system"
     install_deploy_vm "$DPS_HOSTNAME"
+    step_complete "NixOS system installation"
     
+    new_section
+    section_header "Installation Complete!"
     success "Deploy VM installation completed successfully!"
     echo
-    echo "Next steps:"
-    echo "1. Reboot the system"
-    echo "2. Clone your private repository with write access"
-    echo "3. Set up SOPS keys and SSH keys for cluster management"
-    echo "4. Use deployment tools to create managed nodes"
+    printf "📋 Next steps:\n"
+    printf "   1️⃣  Reboot the system\n"
+    printf "   2️⃣  Clone your private repository with write access\n"
+    printf "   3️⃣  Set up SOPS keys and SSH keys for cluster management\n"
+    printf "   4️⃣  Use deployment tools to create managed nodes\n"
+    echo
 }
 
 

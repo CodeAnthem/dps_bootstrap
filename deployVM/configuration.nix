@@ -147,9 +147,6 @@
 
   # Security hardening
   security = {
-    # Disable root login
-    sudo.wheelNeedsPassword = false;
-    
     # Enable fail2ban
     fail2ban = {
       enable = true;
