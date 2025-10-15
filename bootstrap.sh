@@ -10,7 +10,7 @@
 # =============================================================================
 # SCRIPT METADATA
 # =============================================================================
-readonly SCRIPT_VERSION="3.0.0"
+readonly SCRIPT_VERSION="3.0.1"
 readonly SCRIPT_NAME="DPS Bootstrap"
 
 # =============================================================================
@@ -23,7 +23,7 @@ EXPECTED_PATH="/tmp/dps_bootstrap/bootstrap.sh"
 
 # Check if we're running from the expected location or need to clone
 if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib" ]]; then
-    echo "=== DPS Bootstrap Repository Setup ==="
+    echo "=== DPS Bootstrap ($SCRIPT_VERSION) Repository Setup ==="
     echo "Cloning bootstrap repository to /tmp/dps_bootstrap..."
     
     # Remove existing directory if it exists
