@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Bootstrap - NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2024-10-15 | Modified: 2025-10-15
+# Date:          Created: 2025-10-12 | Modified: 2025-10-16
 # Description:   Automated NixOS deployment system with Deploy VM and managed node architecture
 # Feature:       Interactive mode selection, helper libraries, embedded workflows
 # ==================================================================================================
@@ -64,6 +64,8 @@ source "$SCRIPT_DIR/lib/network-setup.sh"
 # shellcheck source=lib/nix-setup.sh
 source "$SCRIPT_DIR/lib/nix-setup.sh"
 
+# Setup cleanup trap
+trap cleanup EXIT
 
 # =============================================================================
 # MODE SELECTION
@@ -234,7 +236,6 @@ main() {
     
     # Setup runtime environment
     setup_runtime
-    setup_cleanup
     
     # Select deployment mode
     local mode

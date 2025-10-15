@@ -25,10 +25,6 @@ cleanup() {
     fi
 }
 
-# Set up cleanup trap
-setup_cleanup() {
-    trap cleanup EXIT
-}
 
 # =============================================================================
 # USER INPUT FUNCTIONS
