@@ -221,7 +221,6 @@ managed_node_workflow() {
 main() {
     echo
     echo "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
-    echo
     
     # Check if running as root
     if [[ $EUID -ne 0 ]]; then
