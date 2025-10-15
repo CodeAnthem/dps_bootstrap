@@ -26,6 +26,8 @@ debug() {
     fi
 }
 
+console() { echo "$1" >&2; }
+
 # Visual separators
 section_header() {
     local title="$1"
@@ -76,6 +78,63 @@ cleanup() {
     fi
 }
 
+
+# =============================================================================
+# MODE SELECTION FUNCTIONS
+# =============================================================================
+
+select_mode() {
+    # Select deployment mode
+    console "Choose deployment mode:"
+    console "  1) Deploy VM    - Management and deployment hub"
+    console "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
+    console
+    
+    # Default to Deploy VM if input doesn't work
+    local mode="deploy"
+    local choice
+    
+    # Read from terminal directly to avoid stdin pollution from piped script
+    if [[ -t 0 ]]; then
+        # We have a real terminal
+        read -p "Select mode [1-2, default=1]: " choice
+    else
+        # No terminal (piped script), try to read from /dev/tty
+        if [[ -c /dev/tty ]]; then
+            console "Select mode [1-2, default=1]: "
+            read choice < /dev/tty || {
+                console "No input received, defaulting to Deploy VM"
+                choice="1"
+            }
+        else
+            # No TTY available, default to Deploy VM
+            console "No interactive terminal available, defaulting to Deploy VM"
+            choice="1"
+        fi
+    fi
+
+    # Handle empty input
+    if [[ -z "$choice" ]]; then
+        choice="1"
+    fi
+    
+    case "$choice" in
+        1|"")
+            mode="deploy"
+            console "Selected: Deploy VM"
+            ;;
+        2)
+            mode="node"
+            console "Selected: Managed Node"
+            ;;
+        *)
+            console "Invalid selection '$choice', abort!"
+            exit 1
+            ;;
+    esac
+
+    echo "$mode"
+}
 
 # =============================================================================
 # USER INPUT FUNCTIONS

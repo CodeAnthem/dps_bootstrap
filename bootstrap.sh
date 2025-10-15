@@ -232,57 +232,7 @@ main() {
     setup_runtime
     
     # Select deployment mode
-    echo
-    echo "Choose deployment mode:"
-    echo "  1) Deploy VM    - Management and deployment hub"
-    echo "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
-    echo
-    
-    # Default to Deploy VM if input doesn't work
-    local mode="deploy"
-    local choice
-    
-    # Read from terminal directly to avoid stdin pollution from piped script
-    if [[ -t 0 ]]; then
-        # We have a real terminal
-        read -p "Select mode [1-2, default=1]: " choice
-    else
-        # No terminal (piped script), try to read from /dev/tty
-        if [[ -c /dev/tty ]]; then
-            echo "Select mode [1-2, default=1]: "
-            read choice < /dev/tty || {
-                echo "No input received, defaulting to Deploy VM"
-                choice="1"
-            }
-        else
-            # No TTY available, default to Deploy VM
-            echo "No interactive terminal available, defaulting to Deploy VM"
-            choice="1"
-        fi
-    fi
-    
-    # Handle empty input
-    if [[ -z "$choice" ]]; then
-        choice="1"
-    fi
-    
-    case "$choice" in
-        1|"")
-            mode="deploy"
-            echo "Selected: Deploy VM"
-            ;;
-        2)
-            mode="node"
-            echo "Selected: Managed Node"
-            ;;
-        *)
-            echo "Invalid selection '$choice', defaulting to Deploy VM"
-            ;;
-    esac
-    
-    log "Selected mode: $mode"
-    
-    # Run appropriate workflow
+    local mode; mode=$(select_mode)
     case "$mode" in
         "deploy")
             deploy_vm_workflow
