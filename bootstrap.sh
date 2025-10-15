@@ -214,17 +214,13 @@ main() {
     
     # Select deployment mode
     echo
-    echo "==============================================================================="
-    echo "                    DPS Bootstrap - Mode Selection"
-    echo "==============================================================================="
-    echo
     echo "Choose deployment mode:"
     echo "  1) Deploy VM    - Management and deployment hub"
     echo "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
     echo
     local choice
     while true; do
-        read -p "Select mode [1-2]: " choice
+        read -pr "Select mode [1-2]: " choice
         case "$choice" in
             1) mode="deploy"; break ;;
             2) mode="node"; break ;;
