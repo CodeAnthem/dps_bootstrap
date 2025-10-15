@@ -67,31 +67,6 @@ source "$SCRIPT_DIR/lib/nix-setup.sh"
 # Setup cleanup trap
 trap cleanup EXIT
 
-# =============================================================================
-# MODE SELECTION
-# =============================================================================
-select_mode() {
-    echo
-    echo "==============================================================================="
-    echo "                    DPS Bootstrap - Mode Selection"
-    echo "==============================================================================="
-    echo
-    echo "Choose deployment mode:"
-    echo "  1) Deploy VM    - Management and deployment hub"
-    echo "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
-    echo
-    
-    local choice
-    while true; do
-        read -p "Select mode [1-2]: " choice
-        case "$choice" in
-            1) echo "deploy"; return 0 ;;
-            2) echo "node"; return 0 ;;
-            *) echo "Please select 1 or 2." ;;
-        esac
-    done
-}
-
 
 # =============================================================================
 # CONFIGURATION SETUP
@@ -238,10 +213,24 @@ main() {
     setup_runtime
     
     # Select deployment mode
-    echo "get mode:..."
-    local mode
-    mode=$(select_mode)
-    
+    echo
+    echo "==============================================================================="
+    echo "                    DPS Bootstrap - Mode Selection"
+    echo "==============================================================================="
+    echo
+    echo "Choose deployment mode:"
+    echo "  1) Deploy VM    - Management and deployment hub"
+    echo "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
+    echo
+    local choice
+    while true; do
+        read -p "Select mode [1-2]: " choice
+        case "$choice" in
+            1) mode="deploy"; break ;;
+            2) mode="node"; break ;;
+            *) echo "Please select 1 or 2." ;;
+        esac
+    done
     log "Selected mode: $mode"
     
     # Run appropriate workflow
