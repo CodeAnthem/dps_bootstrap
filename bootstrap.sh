@@ -7,8 +7,6 @@
 # Feature:       Interactive mode selection, helper libraries, embedded workflows
 # ==================================================================================================
 
-set -euo pipefail
-
 # =============================================================================
 # SCRIPT METADATA
 # =============================================================================
@@ -19,28 +17,47 @@ readonly SCRIPT_NAME="DPS Bootstrap"
 # BOOTSTRAP REPOSITORY SETUP
 # =============================================================================
 
-# If running from one-liner, clone bootstrap repo to /tmp
-if [[ "${BASH_SOURCE[0]}" == "/dev/stdin" ]] || [[ "${BASH_SOURCE[0]}" =~ ^/dev/fd/ ]]; then
-    BOOTSTRAP_DIR="/tmp/dps_bootstrap_$$"
-    echo "One-liner detected, cloning bootstrap repository to $BOOTSTRAP_DIR"
-    git clone https://github.com/codeAnthem/dps_bootstrap.git "$BOOTSTRAP_DIR"
-    cd "$BOOTSTRAP_DIR"
+# Determine if we need to clone the repository
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
+EXPECTED_PATH="/tmp/dps_bootstrap/bootstrap.sh"
+
+# Check if we're running from the expected location or need to clone
+if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib" ]]; then
+    echo "=== DPS Bootstrap Repository Setup ==="
+    echo "Cloning bootstrap repository to /tmp/dps_bootstrap..."
+    
+    # Remove existing directory if it exists
+    rm -rf /tmp/dps_bootstrap
+    
+    # Clone repository
+    if ! git clone https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap; then
+        echo "❌ Failed to clone bootstrap repository"
+        echo "Please check your internet connection and try again"
+        exit 1
+    fi
+    
+    # Re-execute from the proper location
+    echo "✅ Repository cloned, re-executing from proper location..."
+    cd /tmp/dps_bootstrap
     exec ./bootstrap.sh "$@"
 fi
+
+# Now we can safely set strict mode since we're in the right location
+set -euo pipefail
 
 # Get script directory for sourcing libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source helper libraries
-# shellcheck source=./lib/common.sh
+# shellcheck source=lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
-# shellcheck source=./lib/validation.sh
+# shellcheck source=lib/validation.sh
 source "$SCRIPT_DIR/lib/validation.sh"
-# shellcheck source=./lib/disk-setup.sh
+# shellcheck source=lib/disk-setup.sh
 source "$SCRIPT_DIR/lib/disk-setup.sh"
-# shellcheck source=./lib/network-setup.sh
+# shellcheck source=lib/network-setup.sh
 source "$SCRIPT_DIR/lib/network-setup.sh"
-# shellcheck source=./lib/nix-setup.sh
+# shellcheck source=lib/nix-setup.sh
 source "$SCRIPT_DIR/lib/nix-setup.sh"
 
 
