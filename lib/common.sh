@@ -34,32 +34,33 @@ cleanup() {
 prompt_yes_no() {
     local prompt="$1"
     local response
-    local default_no="${2:-true}"
+    local default_yes="${2:-false}"
     
-    # Try with timeout first
-    if read -t 1 -p "" 2>/dev/null; then
-        # Timeout option works
-        read -t 30 -p "$prompt [y/N]: " response || {
-            echo
-            if [[ "$default_no" == "true" ]]; then
-                echo "No input received, assuming 'no'"
-                return 1
-            else
-                echo "No input received, assuming 'yes'"
-                return 0
-            fi
-        }
+    # Read from terminal directly to avoid stdin pollution
+    if [[ -t 0 ]]; then
+        # We have a real terminal
+        read -p "$prompt [y/N]: " response
     else
-        # Fallback to standard read
-        echo "$prompt [y/N]: "
-        read response
-        if [[ -z "$response" ]]; then
-            if [[ "$default_no" == "true" ]]; then
-                echo "No input received, assuming 'no'"
-                return 1
-            else
-                echo "No input received, assuming 'yes'"
+        # No terminal (piped script), try to read from /dev/tty
+        if [[ -c /dev/tty ]]; then
+            echo "$prompt [y/N]: "
+            read response < /dev/tty || {
+                if [[ "$default_yes" == "true" ]]; then
+                    echo "No input received, assuming 'yes'"
+                    return 0
+                else
+                    echo "No input received, assuming 'no'"
+                    return 1
+                fi
+            }
+        else
+            # No TTY available, use default
+            if [[ "$default_yes" == "true" ]]; then
+                echo "No interactive terminal available, assuming 'yes'"
                 return 0
+            else
+                echo "No interactive terminal available, assuming 'no'"
+                return 1
             fi
         fi
     fi
@@ -68,7 +69,7 @@ prompt_yes_no() {
         [Yy]|[Yy][Ee][Ss]) return 0 ;;
         [Nn]|[Nn][Oo]|"") return 1 ;;
         *) 
-            echo "Invalid response, assuming 'no'"
+            echo "Invalid response '$response', assuming 'no'"
             return 1 ;;
     esac
 }
@@ -93,46 +94,35 @@ prompt_password() {
 
 prompt_github_token() {
     local token
-    local attempts=0
-    local max_attempts=3
     
-    # Try with timeout first
-    if read -t 1 -p "" 2>/dev/null; then
-        # Timeout option works
-        while [[ $attempts -lt $max_attempts ]]; do
-            read -t 60 -s -p "Enter GitHub token (or press Enter to use anonymous access): " token || {
-                echo
+    # Read from terminal directly to avoid stdin pollution
+    if [[ -t 0 ]]; then
+        # We have a real terminal
+        read -s -p "Enter GitHub token (or press Enter to use anonymous access): " token
+        echo
+    else
+        # No terminal (piped script), try to read from /dev/tty
+        if [[ -c /dev/tty ]]; then
+            echo "Enter GitHub token (or press Enter to use anonymous access): "
+            read -s token < /dev/tty || {
                 echo "No input received, using anonymous access"
-                return 0
+                token=""
             }
             echo
-            
-            if [[ -n "$token" ]]; then
-                echo "Token received (hidden for security)"
-                return 0
-            else
-                echo "Using anonymous access (limited functionality)"
-                return 0
-            fi
-            
-            ((attempts++))
-        done
-    else
-        # Fallback to standard read
-        echo "Enter GitHub token (or press Enter to use anonymous access): "
-        read -s token
-        echo
-        
-        if [[ -n "$token" ]]; then
-            echo "Token received (hidden for security)"
         else
-            echo "Using anonymous access (limited functionality)"
+            # No TTY available, use anonymous access
+            echo "No interactive terminal available, using anonymous access"
+            token=""
         fi
-        
-        return 0
     fi
     
-    echo "Maximum attempts reached, using anonymous access"
+    if [[ -n "$token" ]]; then
+        echo "Token received (hidden for security)"
+    else
+        echo "Using anonymous access (limited functionality)"
+    fi
+    
+    echo "$token"
     return 0
 }
 
@@ -192,13 +182,7 @@ show_configuration_preview() {
     if prompt_yes_no "Proceed with this configuration?" true; then
         echo "Configuration confirmed!"
     else
-        # Give one more chance with a longer timeout
-        echo "Let's try again..."
-        if prompt_yes_no "Proceed with this configuration? (last chance)" false; then
-            echo "Configuration confirmed!"
-        else
-            error "Configuration not confirmed. Exiting."
-        fi
+        error "Configuration not confirmed. Exiting."
     fi
 }
 

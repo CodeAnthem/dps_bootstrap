@@ -223,22 +223,28 @@ main() {
     local mode="deploy"
     local choice
     
-    # Try to read input with timeout (with fallback for systems without -t support)
-    if read -t 1 -p "" 2>/dev/null; then
-        # Timeout option works
-        read -t 30 -p "Select mode [1-2, default=1]: " choice || { 
-            echo
-            echo "No input received, defaulting to Deploy VM"
-            choice="1"
-        }
+    # Read from terminal directly to avoid stdin pollution from piped script
+    if [[ -t 0 ]]; then
+        # We have a real terminal
+        read -p "Select mode [1-2, default=1]: " choice
     else
-        # Timeout option doesn't work, use standard read
-        echo "Select mode [1-2, default=1]: " 
-        read choice
-        if [[ -z "$choice" ]]; then
-            echo "No input received, defaulting to Deploy VM"
+        # No terminal (piped script), try to read from /dev/tty
+        if [[ -c /dev/tty ]]; then
+            echo "Select mode [1-2, default=1]: "
+            read choice < /dev/tty || {
+                echo "No input received, defaulting to Deploy VM"
+                choice="1"
+            }
+        else
+            # No TTY available, default to Deploy VM
+            echo "No interactive terminal available, defaulting to Deploy VM"
             choice="1"
         fi
+    fi
+    
+    # Handle empty input
+    if [[ -z "$choice" ]]; then
+        choice="1"
     fi
     
     case "$choice" in
