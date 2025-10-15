@@ -12,19 +12,27 @@ clone_repository() {
     local target_path="$2"
     local github_token="$3"
     
-    log "Cloning repository: $repo_url to $target_path"
+    log "Cloning repository to $target_path"
     
-    # Setup git credentials
-    git config --global credential.helper store
-    echo "https://token:${github_token}@github.com" > ~/.git-credentials
+    # Setup git credentials if token provided
+    if [[ -n "$github_token" ]]; then
+        git config --global credential.helper store
+        echo "https://token:${github_token}@github.com" > ~/.git-credentials
+    fi
     
-    # Clone repository
-    mkdir -p "$target_path"
-    git clone "$repo_url" "$target_path"
+    # Clone repository quietly
+    mkdir -p "$(dirname "$target_path")"
+    if git clone --quiet "$repo_url" "$target_path" 2>/dev/null; then
+        success "Repository cloned successfully"
+    else
+        error "Failed to clone repository: $repo_url"
+    fi
     
     # Cleanup credentials
-    rm -f ~/.git-credentials
-    git config --global --unset credential.helper
+    if [[ -n "$github_token" ]]; then
+        rm -f ~/.git-credentials
+        git config --global --unset credential.helper
+    fi
 }
 
 # =============================================================================

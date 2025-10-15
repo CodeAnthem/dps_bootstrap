@@ -95,12 +95,12 @@ prompt_password() {
 prompt_github_token() {
     local token
     
-    echo
-    echo "=== GitHub Token Required ==="
-    echo "A GitHub token is needed to clone your private NixOS flake repository."
-    echo "You can create one at: https://github.com/settings/tokens"
-    echo "Required permissions: repo (full repository access)"
-    echo
+    echo >&2
+    echo "=== GitHub Token Required ===" >&2
+    echo "A GitHub token is needed to clone your private NixOS flake repository." >&2
+    echo "You can create one at: https://github.com/settings/tokens" >&2
+    echo "Required permissions: repo (full repository access)" >&2
+    echo >&2
     
     # Read from terminal directly to avoid stdin pollution
     if [[ -t 0 ]]; then
@@ -110,27 +110,27 @@ prompt_github_token() {
     else
         # No terminal (piped script), try to read from /dev/tty
         if [[ -c /dev/tty ]]; then
-            echo "Enter GitHub token (or press Enter to skip): "
+            echo "Enter GitHub token (or press Enter to skip): " >&2
             read -s token < /dev/tty || {
-                echo "No input received, skipping token"
+                echo "No input received, skipping token" >&2
                 token=""
             }
-            echo
+            echo >&2
         else
             # No TTY available, skip token
-            echo "No interactive terminal available, skipping token"
+            echo "No interactive terminal available, skipping token" >&2
             token=""
         fi
     fi
     
     if [[ -n "$token" ]]; then
-        echo "✅ Token received (hidden for security)"
+        echo "✅ Token received (hidden for security)" >&2
     else
-        echo "⚠️  No token provided - you'll need to set up repository access manually"
+        echo "⚠️  No token provided - you'll need to set up repository access manually" >&2
     fi
     
-    echo "$token"
-    return 0
+    # ONLY return the token, send messages to stderr
+    printf '%s' "$token"
 }
 
 # =============================================================================

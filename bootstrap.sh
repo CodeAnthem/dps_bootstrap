@@ -10,7 +10,7 @@
 # =============================================================================
 # SCRIPT METADATA
 # =============================================================================
-readonly SCRIPT_VERSION="3.0.2"
+readonly SCRIPT_VERSION="3.0.3"
 readonly SCRIPT_NAME="DPS Bootstrap"
 
 # =============================================================================
@@ -30,7 +30,9 @@ if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib
     rm -rf /tmp/dps_bootstrap
     
     # Clone repository
-    if ! git clone https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap; then
+    if git clone --quiet https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap 2>/dev/null; then
+        echo "✅ Repository cloned successfully"
+    else
         echo "❌ Failed to clone bootstrap repository"
         echo "Please check your internet connection and try again"
         exit 1
