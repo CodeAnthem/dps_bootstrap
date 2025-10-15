@@ -95,31 +95,38 @@ prompt_password() {
 prompt_github_token() {
     local token
     
+    echo
+    echo "=== GitHub Token Required ==="
+    echo "A GitHub token is needed to clone your private NixOS flake repository."
+    echo "You can create one at: https://github.com/settings/tokens"
+    echo "Required permissions: repo (full repository access)"
+    echo
+    
     # Read from terminal directly to avoid stdin pollution
     if [[ -t 0 ]]; then
         # We have a real terminal
-        read -s -p "Enter GitHub token (or press Enter to use anonymous access): " token
+        read -s -p "Enter GitHub token (or press Enter to skip): " token
         echo
     else
         # No terminal (piped script), try to read from /dev/tty
         if [[ -c /dev/tty ]]; then
-            echo "Enter GitHub token (or press Enter to use anonymous access): "
+            echo "Enter GitHub token (or press Enter to skip): "
             read -s token < /dev/tty || {
-                echo "No input received, using anonymous access"
+                echo "No input received, skipping token"
                 token=""
             }
             echo
         else
-            # No TTY available, use anonymous access
-            echo "No interactive terminal available, using anonymous access"
+            # No TTY available, skip token
+            echo "No interactive terminal available, skipping token"
             token=""
         fi
     fi
     
     if [[ -n "$token" ]]; then
-        echo "Token received (hidden for security)"
+        echo "✅ Token received (hidden for security)"
     else
-        echo "Using anonymous access (limited functionality)"
+        echo "⚠️  No token provided - you'll need to set up repository access manually"
     fi
     
     echo "$token"
