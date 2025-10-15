@@ -1,10 +1,10 @@
 # DPS Bootstrap
 
-**Digital Paradise Swarm - Bootstrap Script** - Automated NixOS deployment and configuration system for cluster nodes.
+**Public Script to kick start your NixOS cluster** - Automated NixOS deployment and configuration system for cluster nodes.
 
 ## Purpose
 
-The DPS Bootstrap script is a comprehensive automation tool that transforms a bare NixOS ISO into a fully configured cluster node. It handles disk partitioning, encryption setup, NixOS installation, and flake-based configuration deployment in a single execution.
+The DPS Bootstrap script is a comprehensive automation tool that transforms a bare NixOS Live ISO into a fully configured cluster node. It handles disk partitioning, encryption setup, NixOS installation, and flake-based configuration deployment in a single execution.
 
 **What it does:**
 - Partitions and formats target disk (with optional LUKS encryption)
@@ -21,18 +21,6 @@ The DPS Bootstrap script is a comprehensive automation tool that transforms a ba
 - **Network Access**: Internet connection for package downloads and repository cloning
 - **Root Access**: Script must run as root user
 - **Target Disk**: Available disk for installation (will be completely wiped)
-
-### Repository Requirements
-Your flake repository must contain:
-- **`flake.nix`**: Main flake with optional hardware input and default nixosConfiguration
-- **`templates/` directory**: Role-based configuration templates
-  - `tooling.nix` - Management and tooling services
-  - `gateway.nix` - Network gateway and routing
-  - `worker.nix` - Standard compute worker
-  - `gpu-worker.nix` - GPU-accelerated worker
-- **`modules/` directory**: Shared NixOS modules
-- **`scripts/` directory**: Management and deployment scripts
-- **`secrets/` directory**: SOPS encrypted secrets
 
 ### GitHub Access
 - **Personal Access Token**: Required for private repository access
@@ -58,21 +46,21 @@ export DPS_DISK_ENCRYPTION_ENABLED="y"
 export DPS_NETWORK_GATEWAY="192.168.0.1"
 
 # Run bootstrap
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/bootstrap.sh | bash
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/bootstrap.sh | bash
 ```
 
 ### Method 2: Configuration File
 
 ```bash
 # Download and customize config
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/config-example.sh > my-config.sh
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/config-example.sh > my-config.sh
 
 # Edit my-config.sh with your values
 nano my-config.sh
 
 # Load configuration and run
 source my-config.sh
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/bootstrap.sh | bash
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/bootstrap.sh | bash
 ```
 
 ## Features
@@ -106,7 +94,7 @@ curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/bootstr
 The bootstrap script expects your flake repository to follow this structure:
 
 ```
-dps_swarm/                          # Git repository (cloned to /etc/nixos-flake/)
+yourRepo/                          # Git repository (cloned to /etc/nixos-flake/)
 ├── flake.nix                       # Main flake with optional hardware input
 ├── templates/                      # Role-based VM templates
 │   ├── tooling.nix                 # Management VM with deployment tools
