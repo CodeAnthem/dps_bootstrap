@@ -43,7 +43,7 @@ if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib
     # Re-execute from the proper location
     echo "✅ Repository cloned, re-executing from proper location..."
     cd /tmp/dps_bootstrap
-    exec ./bootstrap.sh "$@"
+    exec $EXPECTED_PATH "$@"
 fi
 
 # Now we can safely set strict mode since we're in the right location
