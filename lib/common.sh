@@ -7,26 +7,13 @@
 # LOGGING FUNCTIONS
 # =============================================================================
 
-log() {
-    printf "🔄 %s\n" "$1"
-}
-
-error() {
-    printf "❌ %s\n" "$1" >&2
-    exit 1
-}
-
-success() {
-    printf "✅ %s\n" "$1"
-}
-
-debug() {
-    if [[ "${DEBUG:-}" == "1" ]]; then
-        printf "🐛 %s\n" "$1" >&2
-    fi
-}
-
 console() { echo "$1" >&2; }
+logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "$1" "$2" >&2; }
+
+log() { logDate "🔄" "$1"; }
+error() { logDate "❌" "$1"; exit 1; }
+success() { logDate "✅" "$1"; }
+debug() { if [[ "${DEBUG:-}" == "1" ]]; then logDate "🐛" "$1"; fi; }
 
 # Visual separators
 section_header() {
