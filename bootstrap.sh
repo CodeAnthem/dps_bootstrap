@@ -24,16 +24,16 @@ EXPECTED_PATH="/tmp/dps_bootstrap/bootstrap.sh"
 # Check if we're running from the expected location or need to clone
 if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib" ]]; then
     echo "=== DPS Bootstrap ($SCRIPT_VERSION) Repository Setup ==="
-    echo "Cloning bootstrap repository to /tmp/dps_bootstrap..."
+    echo -e "Cloning bootstrap repository to /tmp/dps_bootstrap "
     
     # Remove existing directory if it exists
     rm -rf /tmp/dps_bootstrap
     
     # Clone repository
     if git clone --quiet https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap 2>/dev/null; then
-        echo "✅ Repository cloned successfully"
+        echo "✅"
     else
-        echo "❌ Failed to clone bootstrap repository"
+        echo "❌"
         echo "Please check your internet connection and try again"
         exit 1
     fi
