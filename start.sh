@@ -18,6 +18,7 @@ readonly REPO_PATH="/tmp/${REPO_NAME}"
 readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"
 readonly REPO_TARGET_SCRIPT="main.sh"
 
+
 # =============================================================================
 # SETUP REPOSITORY
 # =============================================================================
@@ -39,10 +40,10 @@ pullRepo() {
         echo "   - Fetch origin"
         echo "   - Reset to latest commit"
         echo "   - Clean repository (remove all untracked files)"
-        read -p " Press enter to continue or CTRL+C to exit..." -r
-        if [[ $REPLY != "" ]]; then exit 1; fi
+        read -rn1 -p " Press enter to continue or anything else to exit: " REPLY
+        if [[ $REPLY != "" ]]; then echo " -> Aborted!" >&2; exit 1; fi
         if git -C $REPO_PATH fetch origin --quiet \
-        && git -C $REPO_PATH reset --hard origin/$(git -C $REPO_PATH rev-parse --abbrev-ref HEAD) --quiet \
+        && git -C $REPO_PATH reset --hard origin/"$(git -C $REPO_PATH rev-parse --abbrev-ref HEAD)" --quiet \
         && git -C $REPO_PATH clean -fdx --quiet
         then
             printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully reset repository" >&2;
@@ -52,6 +53,7 @@ pullRepo() {
         fi
     fi
 }
+
 
 # =============================================================================
 # MAIN
