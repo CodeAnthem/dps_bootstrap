@@ -35,8 +35,21 @@ pullRepo() {
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully pulled repository" >&2;
     else
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "start.sh | Failed to pull repository" >&2;
-        echo " -> Please check your internet connection and try again"
-        exit 1
+        echo " To avoid unintentional manipulation of the repository, please confirm the following actions by pressing enter:"
+        echo "   - Fetch origin"
+        echo "   - Reset to latest commit"
+        echo "   - Clean repository (remove all untracked files)"
+        read -p " Press enter to continue or CTRL+C to exit..." -r
+        if [[ $REPLY != "" ]]; then exit 1; fi
+        if git -C $REPO_PATH fetch origin \
+        && git -C $REPO_PATH reset --hard origin/$(git -C $REPO_PATH rev-parse --abbrev-ref HEAD) \
+        && git -C $REPO_PATH clean -fdx
+        then
+            printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully reset repository" >&2;
+        else
+            printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "start.sh | Failed to reset repository" >&2;
+            exit 1
+        fi
     fi
 }
 
