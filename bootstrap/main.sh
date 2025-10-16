@@ -7,6 +7,8 @@
 # Feature:       Interactive mode selection, helper libraries, embedded workflows
 # ==================================================================================================
 
+set -euo pipefail
+
 # =============================================================================
 # SCRIPT METADATA
 # =============================================================================
@@ -14,41 +16,8 @@ readonly SCRIPT_VERSION="3.0.6"
 readonly SCRIPT_NAME="DPS Bootstrap"
 
 # =============================================================================
-# BOOTSTRAP REPOSITORY SETUP
+# IMPORT LIBRARIES
 # =============================================================================
-
-# Determine if we need to clone the repository
-SCRIPT_SOURCE="${BASH_SOURCE[0]:-}"
-EXPECTED_PATH="/tmp/dps_bootstrap/bootstrap.sh"
-
-# Check if we're running from the expected location or need to clone
-if [[ "$SCRIPT_SOURCE" != "$EXPECTED_PATH" ]] || [[ ! -d "/tmp/dps_bootstrap/lib" ]]; then
-    echo "=== DPS Bootstrap ($SCRIPT_VERSION) Repository Setup ==="
-    echo -n "  Cloning bootstrap repository to /tmp/dps_bootstrap "
-    
-    # Remove existing directory if it exists
-    rm -rf /tmp/dps_bootstrap
-    
-    # Clone repository
-    if git clone --quiet https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap 2>/dev/null; then
-        echo "✅"
-    else
-        echo "❌"
-        echo "Please check your internet connection and try again"
-        exit 1
-    fi
-    
-    # Make script executable
-    chmod +x /tmp/dps_bootstrap/bootstrap.sh
-    chmod +x /tmp/dps_bootstrap/lib/*.sh
-    
-    # Re-execute from the proper location
-    cd /tmp/dps_bootstrap
-    exec $EXPECTED_PATH "$@"
-fi
-
-# Now we can safely set strict mode since we're in the right location
-set -euo pipefail
 
 # Get script directory for sourcing libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -68,7 +37,8 @@ source "$SCRIPT_DIR/lib/nix-setup.sh"
 # Setup cleanup trap
 trap cleanup EXIT
 
-
+echo "started main.sh - exit"
+exit 0
 # =============================================================================
 # CONFIGURATION SETUP
 # =============================================================================
