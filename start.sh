@@ -41,9 +41,9 @@ pullRepo() {
         echo "   - Clean repository (remove all untracked files)"
         read -p " Press enter to continue or CTRL+C to exit..." -r
         if [[ $REPLY != "" ]]; then exit 1; fi
-        if git -C $REPO_PATH fetch origin \
-        && git -C $REPO_PATH reset --hard origin/$(git -C $REPO_PATH rev-parse --abbrev-ref HEAD) \
-        && git -C $REPO_PATH clean -fdx
+        if git -C $REPO_PATH fetch origin --quiet \
+        && git -C $REPO_PATH reset --hard origin/$(git -C $REPO_PATH rev-parse --abbrev-ref HEAD) --quiet \
+        && git -C $REPO_PATH clean -fdx --quiet
         then
             printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully reset repository" >&2;
         else
