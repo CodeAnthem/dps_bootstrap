@@ -35,10 +35,16 @@ pullRepo() {
     if git -C "$REPO_PATH" pull --quiet 2>/dev/null; then
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully pulled repository" >&2
     else
+        # If pull fails, attempt to reset to remote
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "⚠️" "start.sh | Pull failed, attempting hard reset" >&2
-        git -C "$REPO_PATH" fetch origin --quiet
-        git -C "$REPO_PATH" reset --hard origin/"$(git -C "$REPO_PATH" rev-parse --abbrev-ref HEAD)" --quiet
-        printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Repository reset to remote" >&2
+        if git -C "$REPO_PATH" fetch origin --quiet \
+        && git -C "$REPO_PATH" reset --hard origin/"$(git -C "$REPO_PATH" rev-parse --abbrev-ref HEAD)" --quiet
+        then
+            printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully reset repository" >&2;
+        else
+            printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "start.sh | Failed to reset repository" >&2;
+            exit 1
+        fi
     fi
 }
 
@@ -50,7 +56,12 @@ checkUntrackedFiles() {
     untracked=$(git -C "$REPO_PATH" ls-files --others --exclude-standard)
     if [[ -n "$untracked" ]]; then
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "⚠️" "start.sh | Untracked files detected (potential security risk)" >&2
-        echo "$untracked" >&2
+        # List all untracked files:
+        for f in $(git -C "$REPO_PATH" ls-files --others --exclude-standard); do
+            echo " - (untracked) ${REPO_PATH}/${f}" >&2
+        done
+
+        # Prompt user to delete untracked files
         read -rp " Delete untracked files to ensure repo purity? [Y/N]: " answer
         case "${answer^^}" in
             Y)
