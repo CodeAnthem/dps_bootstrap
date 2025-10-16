@@ -54,74 +54,10 @@ new_section() {
     printf "\033[2J\033[H"
 }
 
-# =============================================================================
-# CLEANUP FUNCTIONS
-# =============================================================================
-
-cleanup() {
-    if [[ -d "${RUNTIME_DIR:-}" ]]; then
-        log "Cleaning up runtime directory: $RUNTIME_DIR"
-        rm -rf "$RUNTIME_DIR"
-    fi
-}
 
 
-# =============================================================================
-# MODE SELECTION FUNCTIONS
-# =============================================================================
 
-select_mode() {
-    # Select deployment mode
-    console "Choose deployment mode:"
-    console "  1) Deploy VM    - Management and deployment hub"
-    console "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
-    console
-    
-    # Default to Deploy VM if input doesn't work
-    local mode="deploy"
-    local choice
-    
-    # Read from terminal directly to avoid stdin pollution from piped script
-    if [[ -t 0 ]]; then
-        # We have a real terminal
-        read -p "Select mode [1-2, default=1]: " choice
-    else
-        # No terminal (piped script), try to read from /dev/tty
-        if [[ -c /dev/tty ]]; then
-            console "Select mode [1-2, default=1]: "
-            read choice < /dev/tty || {
-                console "No input received, defaulting to Deploy VM"
-                choice="1"
-            }
-        else
-            # No TTY available, default to Deploy VM
-            console "No interactive terminal available, defaulting to Deploy VM"
-            choice="1"
-        fi
-    fi
 
-    # Handle empty input
-    if [[ -z "$choice" ]]; then
-        choice="1"
-    fi
-    
-    case "$choice" in
-        1|"")
-            mode="deploy"
-            console "Selected: Deploy VM"
-            ;;
-        2)
-            mode="node"
-            console "Selected: Managed Node"
-            ;;
-        *)
-            console "Invalid selection '$choice', abort!"
-            exit 1
-            ;;
-    esac
-
-    echo "$mode"
-}
 
 # =============================================================================
 # USER INPUT FUNCTIONS
@@ -230,22 +166,6 @@ prompt_github_token() {
     printf '%s' "$token"
 }
 
-# =============================================================================
-# RUNTIME SETUP
-# =============================================================================
-
-setup_runtime() {
-    # Runtime directory with printf for performance
-    printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
-    readonly RUNTIME_ID="dps_${timestamp}_$$"
-    readonly RUNTIME_DIR="/tmp/${RUNTIME_ID}"
-    
-    # Create runtime directory
-    mkdir -p "$RUNTIME_DIR"
-    chmod 700 "$RUNTIME_DIR"
-    
-    log "Runtime directory: $RUNTIME_DIR"
-}
 
 # =============================================================================
 # NIX SHELL WRAPPER
