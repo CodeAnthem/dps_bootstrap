@@ -27,17 +27,16 @@ cloneRepo() {
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "Successfully cloned repository" >&2;
     else
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "Failed to clone repository" >&2;
-        echo "Please check your internet connection and try again"
+        echo " -> Please check your internet connection and try again"
         exit 1
     fi
 }
 pullRepo() {
-    if git pull --quiet $REPO_URL $REPO_PATH 2>/dev/null; then
+    if git -C $REPO_PATH pull --quiet 2>/dev/null; then
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "Successfully pulled repository" >&2;
     else
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "Failed to pull repository" >&2;
-        echo "Please check your internet connection and try again"
-        echo "Command: 'git pull --quiet $REPO_URL $REPO_PATH'"
+        echo " -> Please check your internet connection and try again"
         exit 1
     fi
 }
