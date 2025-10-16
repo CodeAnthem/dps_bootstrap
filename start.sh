@@ -4,7 +4,7 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-12 | Modified: 2025-10-16
 # Description:   One-liner to start DPS Bootstrap script by downloading repo to /tmp
-# Feature:       Simple Git repo downloader and executor
+# Feature:       Clone or reset repository, check for untracked files, execute target script
 # ==================================================================================================
 
 set -euo pipefail
@@ -31,20 +31,15 @@ cloneRepo() {
     fi
 }
 
-pullRepo() {
-    if git -C "$REPO_PATH" pull --quiet 2>/dev/null; then
-        printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully pulled repository" >&2
+resetRepo() {
+    # We use fetch and reset instead of pull to avoid any potential conflicts
+    if git -C "$REPO_PATH" fetch origin --quiet \
+    && git -C "$REPO_PATH" reset --hard origin/"$(git -C "$REPO_PATH" rev-parse --abbrev-ref HEAD)" --quiet
+    then
+        printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully reset repository" >&2;
     else
-        # If pull fails, attempt to reset to remote
-        printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "⚠️ " "start.sh | Pull failed, attempting hard reset" >&2
-        if git -C "$REPO_PATH" fetch origin --quiet \
-        && git -C "$REPO_PATH" reset --hard origin/"$(git -C "$REPO_PATH" rev-parse --abbrev-ref HEAD)" --quiet
-        then
-            printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | Successfully reset repository" >&2;
-        else
-            printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "start.sh | Failed to reset repository" >&2;
-            exit 1
-        fi
+        printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "start.sh | Failed to reset repository" >&2;
+        exit 1
     fi
 }
 
@@ -78,13 +73,12 @@ checkUntrackedFiles() {
 # =============================================================================
 # MAIN
 # =============================================================================
-if [[ -d "$REPO_PATH" ]]; then
-    pullRepo
-else
-    cloneRepo
-fi
+# Clone or reset repository
+if [[ -d "$REPO_PATH" ]]; then resetRepo; else cloneRepo; fi
 
+# Check for untracked files
 checkUntrackedFiles
 
+# Execute target script
 printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | starting ${REPO_TARGET_SCRIPT} script" >&2
 exec "${REPO_PATH_BOOTSTRAPPER}/${REPO_TARGET_SCRIPT}" "$@"
