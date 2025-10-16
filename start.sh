@@ -37,6 +37,7 @@ pullRepo() {
     else
         printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "❌" "Failed to pull repository" >&2;
         echo "Please check your internet connection and try again"
+        echo "Command: 'git pull --quiet $REPO_URL $REPO_PATH'"
         exit 1
     fi
 }

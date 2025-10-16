@@ -136,7 +136,7 @@ Your private NixOS flake repository must have:
 passwd
 
 # Run interactive bootstrap - script will ask for mode selection
-curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/bootstrap.sh | bash
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/main.sh | bash
 ```
 
 The script will:
