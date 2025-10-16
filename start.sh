@@ -16,7 +16,7 @@ readonly REPO_URL="https://github.com/codeAnthem/dps_bootstrap.git"
 readonly REPO_NAME="dps_bootstrap"
 readonly REPO_PATH="/tmp/${REPO_NAME}"
 readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"
-readonly REPO_TARGET_SCRIPT="${REPO_PATH_BOOTSTRAPPER}/main.sh"
+readonly REPO_TARGET_SCRIPT="main.sh"
 
 # =============================================================================
 # SETUP REPOSITORY
@@ -46,9 +46,8 @@ pullRepo() {
 # Check if repo already exists
 if [[ -d "$REPO_PATH" ]]; then pullRepo; else cloneRepo; fi
 
-# Make script executable
-chmod +x $REPO_PATH_BOOTSTRAPPER/*.sh
-
 # Start bootstrap script
-cd $REPO_PATH_BOOTSTRAPPER
-exec $REPO_TARGET_SCRIPT "$@"
+# cd $REPO_PATH_BOOTSTRAPPER
+# chmod +x $REPO_TARGET_SCRIPT
+printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | starting ${REPO_TARGET_SCRIPT} script" >&2;
+exec ${REPO_PATH_BOOTSTRAPPER}/${REPO_TARGET_SCRIPT} "$@"
