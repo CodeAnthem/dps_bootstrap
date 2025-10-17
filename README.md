@@ -11,50 +11,63 @@
 
 ## 🚀 Quick Start
 
+1. Prepare the target machine
+- Live boot from **Minimal NixOS ISO** from https://nixos.org/download/
 
-Download and boot from **Minimal NixOS ISO**
-https://nixos.org/download/
+2. (optional) Set user password to allow SSH login
+- `passwd`
+- Login via SSH client
 
-### One-liner Installation (Recommended)
-
+3. **Recommended**: Run the one-liner
 ```bash
-# Boot from NixOS ISO, set root password, then run:
 curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
 ```
 
-The script will:
-1. **Download** the latest repository to `/tmp/dps_bootstrap/`
-2. **Verify** repository integrity and handle untracked files
-3. **Launch** the interactive bootstrap selector
-4. **Guide** you through Deploy VM or Managed Node setup
-
-### Alternative: Manual Installation
-
+3. **Manual**: Clone and run the main script
 ```bash
-# 1. Download and verify
-curl -fsSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh -o /tmp/bootstrap_temp.sh
-chmod +x /tmp/bootstrap_temp.sh
-bash -n /tmp/bootstrap_temp.sh
-
-# 2. Execute if verification passes
-/tmp/bootstrap_temp.sh
+# 1. Clone Repo
+git clone https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap
+cd /tmp/dps_bootstrap
+# 2. Execute Main Script
+sudo bash bootstrap/main.sh
 ```
 
-## 🏗️ What This System Does
+## 📚 What is the script workflow?
 
-**DPS Bootstrap** creates two types of NixOS systems:
+### start.sh (Quicks Start one-liner script) will:
+1. **Download** this repository to `/tmp/dps_bootstrap/`
+2. **Verify Purity** it will force reset the repository to the latest commit
+3. **Avoid manipulation** checks and warns about (potential unwanted) untracked files
+4. **Launch** the interactive bootstrap selector 
+
+### bootstrap/main.sh (Main bootstrap script) will:
+1. **Source** all library scripts
+2. **Check** root privileges
+3. **Create** runtime directory (where secrets are temporarily stored)$
+4. **Setup** Cleanup Trap  to purge runtime files
+5. **Grab** bootstrap mode files
+6. **Menu** Prompt to select the bootstrap action
+7. **Execute** the selected bootstrap action
+8. **Cleanup** runtime directory
+
+___
+
+## Bootstraper Modes:
 
 ### 🎯 Deploy VM (Management Hub)
 - **Purpose**: Central management and deployment system
 - **Access**: Write access to your private NixOS flake repository
 - **Features**: SOPS key management, SSH orchestration, cluster deployment tools
 - **Security**: Encrypted by default, stateless and recoverable
+-> Read More: [deployVM.md](bootstrap/README_deployVM.md)
 
 ### 🔧 Managed Nodes (Infrastructure)
 - **Purpose**: Any NixOS configuration from your private flake
 - **Access**: Read-only access to your private repository
 - **Types**: Servers, workstations, IoT devices, containers, custom systems
 - **Updates**: Automated configuration pulls and system updates
+-> Read More: [managedNode.md](bootstrap/README_managedNode.md)
+
 
 ## 🎨 System Architecture
 
@@ -93,10 +106,7 @@ This system can deploy **any NixOS configuration**:
 
 ## 📚 Documentation
 
-- **[PLAN.md](PLAN.md)** - Detailed project architecture and background information
 - **[bootstrap/README.md](bootstrap/README.md)** - Bootstrap script documentation
-- **[bootstrap/README_deployVM.md](bootstrap/README_deployVM.md)** - Deploy VM setup guide
-- **[bootstrap/README_deployNode.md](bootstrap/README_deployNode.md)** - Managed Node setup guide
 - **[deployVM/README.md](deployVM/README.md)** - Deploy VM NixOS configuration details
 
 ## ⚙️ Configuration
