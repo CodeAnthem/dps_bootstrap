@@ -20,9 +20,6 @@ readonly SCRIPT_NAME="NixOS Bootstrapper | DPS Project"
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR="${currentPath}"
 
-new_section
-section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
-
 # =============================================================================
 # IMPORT LIBRARIES
 # =============================================================================
@@ -36,6 +33,13 @@ for file in "$LIB_DIR"/*.sh; do
     # shellcheck disable=SC1090
     if ! source "$file"; then echo >&2 " [Error] Failed to source: $file"; fi
 done
+
+
+# =============================================================================
+# START MESSAGE
+# =============================================================================
+new_section
+section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 
 
 # =============================================================================
