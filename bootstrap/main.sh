@@ -38,6 +38,7 @@ done
 # =============================================================================
 # START MESSAGE
 # =============================================================================
+clear
 new_section
 section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 
@@ -125,7 +126,7 @@ discover_actions() {
             local description
             description=$(head -n 10 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null || echo "No description available")
             
-            ((action_count++))
+            ((++action_count))
             ACTIONS[$action_count]="$action_name"
             ACTION_DESCRIPTIONS[$action_count]="$description"
             

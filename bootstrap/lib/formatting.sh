@@ -14,7 +14,7 @@
 console() { echo "${1:-}" >&2; }
 logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "$1" "$2" >&2; }
 
-log() { logDate "🔄" "$1"; }
+log() { logDate "" "$1"; }
 error() { logDate "❌" "$1"; exit 1; }
 success() { logDate "✅" "$1"; }
 debug() { if [[ "${DEBUG:-}" == "1" ]]; then logDate "🐛" "$1"; fi; }
