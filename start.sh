@@ -81,4 +81,4 @@ checkUntrackedFiles
 
 # Execute target script
 printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "✅" "start.sh | starting ${REPO_TARGET_SCRIPT} script" >&2
-exec "${REPO_PATH_BOOTSTRAPPER}/${REPO_TARGET_SCRIPT}" "$@"
+exec bash "${REPO_PATH_BOOTSTRAPPER}/${REPO_TARGET_SCRIPT}" "$@"
