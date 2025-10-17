@@ -8,6 +8,57 @@
 
 
 **Automated NixOS deployment system** - Transform any NixOS Live ISO into a Deploy VM management hub or managed infrastructure node with a single command.
+All settings can be customized through environment variables or interactive prompts.
+
+## 🛡️ Security Features
+
+- **🔐 Secure Tokens**: Interactive GitHub token input (never stored)
+- **🔑 Encryption**: LUKS full-disk encryption with multiple key methods
+- **🚫 Access Control**: Deploy VM (write) vs Managed Nodes (read-only)
+- **🧹 Cleanup**: Automatic credential and temporary file cleanup
+- **🔍 Integrity**: Repository verification and untracked file detection
+
+## 🎨 System Architecture
+
+This repository provides **generic deployment tooling** that works with **any private NixOS flake repository**:
+
+```
+┌─────────────────┐    ┌──────────────────────┐
+│  dps_bootstrap  │    │  your-private-repo   │
+│   (this repo)   │    │   (your NixOS configs)│
+│                 │    │                      │
+│ • Bootstrap     │────▶│ • Flake configs     │
+│ • Deploy VM     │    │ • Node templates    │
+│ • Tooling       │    │ • Secrets (SOPS)    │
+│ • Libraries     │    │ • Custom modules    │
+└─────────────────┘    └──────────────────────┘
+```
+
+## 📋 Prerequisites
+
+- **NixOS ISO**: Official NixOS installation media
+- **Network**: Internet connection for downloads
+- **Disk**: Available storage device (will be wiped)
+- **Repository**: Private NixOS flake repository (optional for Deploy VM)
+- **Token**: GitHub Personal Access Token for private repo access
+
+## 🔧 Use Cases
+
+This system can deploy **any NixOS configuration**:
+
+- **🖥️ Server Infrastructure**: Web servers, databases, monitoring
+- **🐳 Container Platforms**: Docker Swarm, Kubernetes, standalone containers
+- **💻 Development**: Workstations, CI/CD runners, build systems
+- **🌐 IoT & Edge**: Raspberry Pi clusters, edge computing nodes
+- **🏢 Enterprise**: Managed workstations, centralized configuration
+- **🎯 Custom Solutions**: Any NixOS system you can define
+
+
+
+
+
+
+
 
 ## 🚀 Quick Start
 
@@ -69,40 +120,7 @@ ___
 -> Read More: [managedNode.md](bootstrap/README_managedNode.md)
 
 
-## 🎨 System Architecture
 
-This repository provides **generic deployment tooling** that works with **any private NixOS flake repository**:
-
-```
-┌─────────────────┐    ┌──────────────────────┐
-│  dps_bootstrap  │    │  your-private-repo   │
-│   (this repo)   │    │   (your NixOS configs)│
-│                 │    │                      │
-│ • Bootstrap     │────▶│ • Flake configs     │
-│ • Deploy VM     │    │ • Node templates    │
-│ • Tooling       │    │ • Secrets (SOPS)    │
-│ • Libraries     │    │ • Custom modules    │
-└─────────────────┘    └──────────────────────┘
-```
-
-## 📋 Prerequisites
-
-- **NixOS ISO**: Official NixOS installation media
-- **Network**: Internet connection for downloads
-- **Disk**: Available storage device (will be wiped)
-- **Repository**: Private NixOS flake repository (optional for Deploy VM)
-- **Token**: GitHub Personal Access Token for private repo access
-
-## 🔧 Use Cases
-
-This system can deploy **any NixOS configuration**:
-
-- **🖥️ Server Infrastructure**: Web servers, databases, monitoring
-- **🐳 Container Platforms**: Docker Swarm, Kubernetes, standalone containers
-- **💻 Development**: Workstations, CI/CD runners, build systems
-- **🌐 IoT & Edge**: Raspberry Pi clusters, edge computing nodes
-- **🏢 Enterprise**: Managed workstations, centralized configuration
-- **🎯 Custom Solutions**: Any NixOS system you can define
 
 ## 📚 Documentation
 
@@ -123,15 +141,7 @@ The system uses **smart defaults** with optional customization:
 - **Networking**: Static IP required
 - **Role**: Configurable (worker/gateway/gpu-worker/custom)
 
-All settings can be customized through environment variables or interactive prompts.
 
-## 🛡️ Security Features
-
-- **🔐 Secure Tokens**: Interactive GitHub token input (never stored)
-- **🔑 Encryption**: LUKS full-disk encryption with multiple key methods
-- **🚫 Access Control**: Deploy VM (write) vs Managed Nodes (read-only)
-- **🧹 Cleanup**: Automatic credential and temporary file cleanup
-- **🔍 Integrity**: Repository verification and untracked file detection
 
 ## 🆘 Support
 
