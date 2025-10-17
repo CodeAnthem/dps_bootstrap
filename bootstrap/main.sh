@@ -227,10 +227,8 @@ execute_action() {
 # =============================================================================
 # MAIN WORKFLOW
 # =============================================================================
-section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 
 # Discover available actions
-echo "Discovering available actions..."
 discover_actions
 
 # Select action
