@@ -1,8 +1,16 @@
 # DPS Bootstrap - NixOS Deployment System
 
+**WARNING** ⚠️  - __This system is in active development and is not yet ready for production use.__
+**WARNING** ⚠️  - __This system is in active development and is not yet ready for production use.__
+**WARNING** ⚠️  - __This system is in active development and is not yet ready for production use.__
+
 **Automated NixOS deployment system** - Transform any NixOS Live ISO into a Deploy VM management hub or managed infrastructure node with a single command.
 
 ## 🚀 Quick Start
+
+
+Download and boot from **Minimal NixOS ISO**
+https://nixos.org/download/
 
 ### One-liner Installation (Recommended)
 
