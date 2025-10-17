@@ -20,7 +20,8 @@ readonly SCRIPT_NAME="NixOS Bootstrapper | DPS Project"
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR="${currentPath}"
 
-echo "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
+new_section
+section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 
 # =============================================================================
 # IMPORT LIBRARIES
