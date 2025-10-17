@@ -40,6 +40,8 @@ done
 # =============================================================================
 # Root privilege check with sudo fallback
 if [[ $EUID -ne 0 ]]; then
+    new_section
+    section_header "Root Privilege Required"
     echo "This script requires root privileges."
     echo "Attempting to restart with sudo..."
     exec sudo bash "${BASH_SOURCE[0]}" "$@"
@@ -85,13 +87,6 @@ cleanup() {
 
 # Setup cleanup trap
 trap cleanup EXIT
-
-
-# =============================================================================
-# WELCOME
-# =============================================================================
-echo
-echo "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 
 
 # =============================================================================
@@ -222,13 +217,18 @@ execute_action() {
 # =============================================================================
 # MAIN WORKFLOW
 # =============================================================================
+section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
+
 # Discover available actions
+echo "Discovering available actions..."
 discover_actions
 
 # Select action
+echo "Selecting action..."
 selected_action=$(select_action)
 
 # Execute selected action
+echo "Executing action..."
 execute_action "$selected_action"
 
 # =============================================================================
