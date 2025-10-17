@@ -20,6 +20,8 @@ readonly SCRIPT_NAME="NixOS Bootstrapper | DPS Project"
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR="${currentPath}"
 
+echo "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
+
 # =============================================================================
 # IMPORT LIBRARIES
 # =============================================================================
@@ -45,6 +47,8 @@ if [[ $EUID -ne 0 ]]; then
     echo "This script requires root privileges."
     echo "Attempting to restart with sudo..."
     exec sudo bash "${BASH_SOURCE[0]}" "$@"
+else
+    success "Root privileges confirmed"
 fi
 
 
