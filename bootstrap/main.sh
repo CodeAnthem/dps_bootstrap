@@ -3,8 +3,8 @@
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-12 | Modified: 2025-10-16
-# Description:   Entry point selector for DPS Bootstrap - routes to Deploy VM or Managed Node setup
-# Feature:       Mode selection, library management, root validation, cleanup handling
+# Description:   Entry point selector for DPS Bootstrap - dynamically discovers and executes actions
+# Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
 # shellcheck disable=SC2162
 set -euo pipefail
@@ -95,54 +95,141 @@ echo "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 
 
 # =============================================================================
-# MODE SELECTION FUNCTIONS
+# ACTION DISCOVERY
 # =============================================================================
-# Select deployment mode
-console "Choose deployment mode:"
-console "  1) Deploy VM    - Management and deployment hub"
-console "  2) Managed Node - Infrastructure node (server, workstation, etc.)"
-console
+# Discover available actions from actions/ folder
+readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
+declare -A ACTIONS
+declare -A ACTION_DESCRIPTIONS
 
-# Read from terminal directly to avoid stdin pollution from piped script
-if [[ -t 0 ]]; then
-    # We have a real terminal
-    read -p "Select mode [1-2, default=1]: " choice
-else
-    # No terminal (piped script), try to read from /dev/tty
-    if [[ -c /dev/tty ]]; then
-        console "Select mode [1-2, default=1]: "
-        read choice < /dev/tty || {
-            console "No input received, defaulting to Deploy VM"
-            choice="1"
-        }
-    else
-        # No TTY available, default to Deploy VM
-        console "No interactive terminal available, defaulting to Deploy VM"
-        choice="1"
+discover_actions() {
+    local action_count=0
+    
+    if [[ ! -d "$ACTIONS_DIR" ]]; then
+        error "Actions directory not found: $ACTIONS_DIR"
     fi
-fi
+    
+    for action_dir in "$ACTIONS_DIR"/*/; do
+        [[ -d "$action_dir" ]] || continue
+        
+        local action_name
+        action_name=$(basename "$action_dir")
+        local setup_script="${action_dir}setup.sh"
+        
+        if [[ -f "$setup_script" ]]; then
+            # Parse description from header (first 10 lines only, no sourcing)
+            local description
+            description=$(head -n 10 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null || echo "No description available")
+            
+            ((action_count++))
+            ACTIONS[$action_count]="$action_name"
+            ACTION_DESCRIPTIONS[$action_count]="$description"
+            
+            debug "Discovered action: $action_name - $description"
+        else
+            debug "Skipping $action_name: no setup.sh found"
+        fi
+    done
+    
+    if [[ $action_count -eq 0 ]]; then
+        error "No valid actions found in $ACTIONS_DIR"
+    fi
+    
+    log "Discovered $action_count available actions"
+}
 
-# Handle empty input
-if [[ -z "$choice" ]]; then
-    choice="1"
-fi
+# =============================================================================
+# ACTION SELECTION
+# =============================================================================
+select_action() {
+    console "Choose bootstrap action:"
+    
+    # Display available actions
+    for i in "${!ACTIONS[@]}"; do
+        console "  $i) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
+    done
+    console
+    
+    local choice
+    local default_choice="1"
+    
+    # Read from terminal directly to avoid stdin pollution from piped script
+    if [[ -t 0 ]]; then
+        # We have a real terminal
+        read -p "Select action [1-${#ACTIONS[@]}, default=$default_choice]: " choice
+    else
+        # No terminal (piped script), try to read from /dev/tty
+        if [[ -c /dev/tty ]]; then
+            console "Select action [1-${#ACTIONS[@]}, default=$default_choice]: "
+            read choice < /dev/tty || {
+                console "No input received, defaulting to action $default_choice"
+                choice="$default_choice"
+            }
+        else
+            # No TTY available, default to first action
+            console "No interactive terminal available, defaulting to action $default_choice"
+            choice="$default_choice"
+        fi
+    fi
+    
+    # Handle empty input
+    if [[ -z "$choice" ]]; then
+        choice="$default_choice"
+    fi
+    
+    # Validate choice
+    if [[ ! "${ACTIONS[$choice]:-}" ]]; then
+        error "Invalid selection '$choice'. Please choose 1-${#ACTIONS[@]}"
+    fi
+    
+    echo "$choice"
+}
 
-case "$choice" in
-    1|"")
-        log "Selected mode: Deploy VM"
-        # source "${SCRIPT_DIR}/setup_deploy_vm.sh"
-        # deploy_vm_workflow
-        ;;
-    2)
-        log "Selected mode: Managed Node"
-        # source "${SCRIPT_DIR}/setup_managed_node.sh"
-        # managed_node_workflow
-        ;;
-    *)
-        console "Invalid selection '$choice', abort!"
-        exit 1
-        ;;
-esac
+# =============================================================================
+# ACTION EXECUTION
+# =============================================================================
+execute_action() {
+    local action_number="$1"
+    local action_name="${ACTIONS[$action_number]}"
+    local setup_script="${ACTIONS_DIR}/${action_name}/setup.sh"
+    
+    log "Selected action: $action_name"
+    
+    # Source the setup script
+    if [[ -f "$setup_script" ]]; then
+        # shellcheck disable=SC1090
+        if ! source "$setup_script"; then
+            error "Failed to source setup script: $setup_script"
+        fi
+    else
+        error "Setup script not found: $setup_script"
+    fi
+    
+    # Check if setup function exists
+    if ! declare -f setup >/dev/null; then
+        error "Setup function not found in $setup_script"
+    fi
+    
+    # Execute the setup function
+    log "Executing $action_name setup..."
+    if ! setup; then
+        error "Action setup failed for: $action_name"
+    fi
+    
+    success "Action completed successfully: $action_name"
+}
+
+# =============================================================================
+# MAIN WORKFLOW
+# =============================================================================
+# Discover available actions
+discover_actions
+
+# Select action
+selected_action=$(select_action)
+
+# Execute selected action
+execute_action "$selected_action"
 
 # =============================================================================
 # END

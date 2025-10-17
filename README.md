@@ -1,64 +1,89 @@
 # DPS Bootstrap - NixOS Deployment System
 
-**WARNING** ⚠️  - __This system is in active development and is not yet ready for production use.__
+> **⚠️ WARNING** - This system is in active development and is not yet ready for production use.
+> 
+> **⚠️ WARNING** - This system is in active development and is not yet ready for production use.
+> 
+> **⚠️ WARNING** - This system is in active development and is not yet ready for production use.
 
-**WARNING** ⚠️  - __This system is in active development and is not yet ready for production use.__
+**Automated NixOS deployment system** that transforms any NixOS Live ISO into fully configured systems with a single command. This bootstrapper provides a fast, secure, and customizable way to deploy NixOS infrastructure.
 
-**WARNING** ⚠️  - __This system is in active development and is not yet ready for production use.__
+## 🎯 Project Purpose
 
+DPS Bootstrap solves the complexity of NixOS deployment by providing:
 
-**Automated NixOS deployment system** - Transform any NixOS Live ISO into a Deploy VM management hub or managed infrastructure node with a single command.
-All settings can be customized through environment variables or interactive prompts.
+- **🚀 Rapid Deployment**: Transform bare NixOS ISO to configured system in minutes
+- **🔒 Security-First**: Built-in encryption, secure token handling, and access controls
+- **🎛️ Flexibility**: Works with any private NixOS flake repository
+- **🏗️ Infrastructure Ready**: Deploy management hubs and infrastructure nodes
+- **⚙️ Customizable**: Environment variables and interactive configuration
 
-## 🛡️ Security Features
+## 🌟 Bootstrapper Benefits
 
-- **🔐 Secure Tokens**: Interactive GitHub token input (never stored)
-- **🔑 Encryption**: LUKS full-disk encryption with multiple key methods
-- **🚫 Access Control**: Deploy VM (write) vs Managed Nodes (read-only)
-- **🧹 Cleanup**: Automatic credential and temporary file cleanup
-- **🔍 Integrity**: Repository verification and untracked file detection
+### 📦 Quick NixOS Installation
+- **One-liner deployment** from any NixOS Live ISO
+- **Interactive configuration** with smart defaults
+- **Automated partitioning** with optional LUKS encryption
+- **Hardware detection** and configuration generation
+- **Flake integration** with pure architecture support
 
-## 🎨 System Architecture
+### 🛡️ Security Features
+- **LUKS full-disk encryption** with multiple key generation methods
+- **Interactive GitHub token input** (never stored or logged)
+- **Automatic credential cleanup** after operations
+- **Repository integrity verification** and untracked file detection
+- **SSH key generation** and secure distribution
 
-This repository provides **generic deployment tooling** that works with **any private NixOS flake repository**:
+### 🔧 Deploy VM Management Hub
 
+The Deploy VM provides centralized infrastructure management:
+
+- **🔑 SOPS Integration**: Centralized secret management for entire infrastructure
+- **📡 SSH Orchestration**: Automated key distribution and node access
+- **🚀 Mass Deployment**: Deploy multiple nodes from templates
+- **📊 Monitoring Integration**: Built-in system monitoring and logging
+- **🔄 Update Management**: Coordinate updates across infrastructure
+- **💾 Backup Systems**: Automated backup of keys and configurations
+
+## 📋 Private Repository Requirements
+
+Your private NixOS flake repository must include:
+
+```nix
+# flake.nix - Required structure
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Optional hardware input for pure flake architecture
+    hardware = { url = "path:/dev/null"; flake = false; };
+  };
+
+  outputs = { nixpkgs, hardware, ... }: {
+    nixosConfigurations.default = nixpkgs.lib.nixosSystem {
+      modules = [
+        # Hardware configuration override
+        (if hardware != null then hardware else {})
+        # Your system configuration
+        ./configuration.nix
+      ];
+    };
+  };
+}
 ```
-┌─────────────────┐    ┌──────────────────────┐
-│  dps_bootstrap  │    │  your-private-repo   │
-│   (this repo)   │    │   (your NixOS configs)│
-│                 │    │                      │
-│ • Bootstrap     │────▶│ • Flake configs     │
-│ • Deploy VM     │    │ • Node templates    │
-│ • Tooling       │    │ • Secrets (SOPS)    │
-│ • Libraries     │    │ • Custom modules    │
-└─────────────────┘    └──────────────────────┘
-```
+
+**Required Components**:
+- **flake.nix**: Pure flake with hardware input support
+- **configuration.nix**: Base system configuration
+- **templates/**: Role-based configurations (optional)
+- **secrets/**: SOPS encrypted secrets (optional)
 
 ## 📋 Prerequisites
 
 - **NixOS ISO**: Official NixOS installation media
 - **Network**: Internet connection for downloads
-- **Disk**: Available storage device (will be wiped)
-- **Repository**: Private NixOS flake repository (optional for Deploy VM)
-- **Token**: GitHub Personal Access Token for private repo access
-
-## 🔧 Use Cases
-
-This system can deploy **any NixOS configuration**:
-
-- **🖥️ Server Infrastructure**: Web servers, databases, monitoring
-- **🐳 Container Platforms**: Docker Swarm, Kubernetes, standalone containers
-- **💻 Development**: Workstations, CI/CD runners, build systems
-- **🌐 IoT & Edge**: Raspberry Pi clusters, edge computing nodes
-- **🏢 Enterprise**: Managed workstations, centralized configuration
-- **🎯 Custom Solutions**: Any NixOS system you can define
-
-
-
-
-
-
-
+- **Target Disk**: Available storage device (will be completely wiped)
+- **Private Repository**: NixOS flake repository (optional for Deploy VM setup)
+- **GitHub Token**: Personal Access Token for private repository access
 
 ## 🚀 Quick Start
 
