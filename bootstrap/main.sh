@@ -163,8 +163,8 @@ select_action() {
     
     # Loop until valid choice is made
     while true; do
-        printf "Select action [0-$max_choice]: "
-        read -rn1 choice < /dev/tty
+        # printf "Select action [0-$max_choice]: "
+        read -rn1 -p "Select action [0-$max_choice]: " choice < /dev/tty
         echo  # Add newline after single character input
         
         # Handle empty input (Enter key)
