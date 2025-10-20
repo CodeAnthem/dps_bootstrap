@@ -79,6 +79,7 @@ validate_deploy_config() {
 # MAIN SETUP FUNCTION
 # =============================================================================
 setup() {
+    set -x
     local action_name="$1"
     
     # Initialize configuration
