@@ -3,10 +3,13 @@
 # DPS Project - Bootstrap NixOS - Custom Configuration Module
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-20 | Modified: 2025-10-20
-# Description:   Generic/custom configuration handling for any key-value pairs
-# Feature:       Option validation, environment variable override, interactive configuration
+# Description:   Generic custom configuration module for action-specific settings
+# Feature:       Flexible key-value configuration, environment variable override
 # Author:        DPS Project
 # ==================================================================================================
+
+# Disable nounset for this module - associative arrays don't work well with set -u
+set +u
 
 # =============================================================================
 # CUSTOM CONFIGURATION STORAGE
