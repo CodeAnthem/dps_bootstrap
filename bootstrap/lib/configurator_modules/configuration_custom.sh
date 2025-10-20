@@ -43,14 +43,14 @@ custom_config_init() {
         # Store the configuration
         local value_key="${action_name}__${key}__value"
         local options_key="${action_name}__${key}__options"
-        CUSTOM_CONFIG["$value_key"]="$default_value"
-        CUSTOM_CONFIG["$options_key"]="$options"
+        CUSTOM_CONFIG[$value_key]="$default_value"
+        CUSTOM_CONFIG[$options_key]="$options"
         
         # Check if environment variable exists and override (with DPS_ prefix)
         local env_var_name="DPS_${key}"
         if [[ -n "${!env_var_name:-}" ]]; then
             local env_value="${!env_var_name}"
-            CUSTOM_CONFIG["$value_key"]="$env_value"
+            CUSTOM_CONFIG[$value_key]="$env_value"
             debug "Custom config override from environment: $env_var_name=$env_value"
         fi
     done
@@ -64,7 +64,7 @@ custom_config_get() {
     local action_name="$1"
     local key="$2"
     local get_key="${action_name}__${key}__value"
-    echo "${CUSTOM_CONFIG["$get_key"]:-}"
+    echo "${CUSTOM_CONFIG[$get_key]:-}"
 }
 
 # Get custom configuration options
@@ -73,7 +73,7 @@ custom_config_get_options() {
     local action_name="$1"
     local key="$2"
     local options_key="${action_name}__${key}__options"
-    echo "${CUSTOM_CONFIG["$options_key"]:-}"
+    echo "${CUSTOM_CONFIG[$options_key]:-}"
 }
 
 # Set custom configuration value
@@ -83,7 +83,7 @@ custom_config_set() {
     local key="$2"
     local value="$3"
     local set_key="${action_name}__${key}__value"
-    CUSTOM_CONFIG["$set_key"]="$value"
+    CUSTOM_CONFIG[$set_key]="$value"
 }
 
 # Get all custom configuration keys for an action

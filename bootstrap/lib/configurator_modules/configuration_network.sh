@@ -56,14 +56,14 @@ network_config_init() {
         # Store the configuration
         local value_key="${action_name}__${key}__value"
         local options_key="${action_name}__${key}__options"
-        NETWORK_CONFIG["$value_key"]="$default_value"
-        NETWORK_CONFIG["$options_key"]="$options"
+        NETWORK_CONFIG[$value_key]="$default_value"
+        NETWORK_CONFIG[$options_key]="$options"
         
         # Check if environment variable exists and override (with DPS_ prefix)
         local env_var_name="DPS_${key}"
         if [[ -n "${!env_var_name:-}" ]]; then
             local env_value="${!env_var_name}"
-            NETWORK_CONFIG["$value_key"]="$env_value"
+            NETWORK_CONFIG[$value_key]="$env_value"
             debug "Network config override from environment: $env_var_name=$env_value"
         fi
     done
@@ -77,7 +77,7 @@ network_config_get() {
     local action_name="$1"
     local key="$2"
     local get_key="${action_name}__${key}__value"
-    echo "${NETWORK_CONFIG["$get_key"]:-}"
+    echo "${NETWORK_CONFIG[$get_key]:-}"
 }
 
 # Set network configuration value
@@ -87,7 +87,7 @@ network_config_set() {
     local key="$2"
     local value="$3"
     local set_key="${action_name}__${key}__value"
-    NETWORK_CONFIG["$set_key"]="$value"
+    NETWORK_CONFIG[$set_key]="$value"
     
     # Clear dependent fields when method changes
     if [[ "$key" == "NETWORK_METHOD" ]]; then

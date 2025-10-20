@@ -51,14 +51,14 @@ disk_config_init() {
         # Store the configuration
         local value_key="${action_name}__${key}__value"
         local options_key="${action_name}__${key}__options"
-        DISK_CONFIG["$value_key"]="$default_value"
-        DISK_CONFIG["$options_key"]="$options"
+        DISK_CONFIG[$value_key]="$default_value"
+        DISK_CONFIG[$options_key]="$options"
         
         # Check if environment variable exists and override (with DPS_ prefix)
         local env_var_name="DPS_${key}"
         if [[ -n "${!env_var_name:-}" ]]; then
             local env_value="${!env_var_name}"
-            DISK_CONFIG["$value_key"]="$env_value"
+            DISK_CONFIG[$value_key]="$env_value"
             debug "Disk config override from environment: $env_var_name=$env_value"
         fi
     done
@@ -72,7 +72,7 @@ disk_config_get() {
     local action_name="$1"
     local key="$2"
     local get_key="${action_name}__${key}__value"
-    echo "${DISK_CONFIG["$get_key"]:-}"
+    echo "${DISK_CONFIG[$get_key]:-}"
 }
 
 # Set disk configuration value
@@ -82,7 +82,7 @@ disk_config_set() {
     local key="$2"
     local value="$3"
     local set_key="${action_name}__${key}__value"
-    DISK_CONFIG["$set_key"]="$value"
+    DISK_CONFIG[$set_key]="$value"
 }
 
 # Get all disk configuration keys
