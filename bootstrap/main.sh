@@ -150,7 +150,7 @@ select_action() {
     
     # Display available actions
     for i in "${!ACTIONS[@]}"; do
-        console "$(( ${#ACTIONS[@]} - i + 1 )))$) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
+        console "  $i) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
     done
     console
     
