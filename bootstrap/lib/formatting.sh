@@ -30,16 +30,16 @@ draw_title() {
     border=$(printf '─%.0s' $(seq 1 "$inner_length"))
 
     # Clear screen and print box
-    printf "╭%s╮\n" "$border"
-    printf "│%-*s│\n" "$inner_length" "$title"
-    printf "╰%s╯\n" "$border"
+    printf "╭%s╮\n" "$border" >&2
+    printf "│%-*s│\n" "$inner_length" "$title" >&2
+    printf "╰%s╯\n" "$border" >&2
 }
 
 
 section_header() { draw_title "$1" 50; }
 
 section_title() {
-    printf "\033[2J\033[H"
+    new_section
     draw_title "$1" 100
 }
 
@@ -69,6 +69,4 @@ show_spinner() {
 }
 
 # Clear to new section (like clear but keeps history)
-new_section() {
-    printf "\033[2J\033[H"
-}
+new_section() { printf "\033[2J\033[H" >&2; }
