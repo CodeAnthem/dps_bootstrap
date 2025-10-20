@@ -34,12 +34,14 @@ disk_config_init() {
     # Define disk configuration with defaults
     local disk_configs=(
         "DISK_TARGET:/dev/sda"
-        "ENCRYPTION:y|n"
-        "ENCRYPTION_KEY_METHOD:auto|manual"
+        "ENCRYPTION:auto|none|manual"
+        "ENCRYPTION_KEY_METHOD:urandom|openssl"
         "ENCRYPTION_KEY_LENGTH:512"
-        "ENCRYPTION_PASSPHRASE:auto|manual|none"
+        "ENCRYPTION_PASSPHRASE:auto|none|manual"
+        "ENCRYPTION_PASSPHRASE_METHOD:urandom|openssl"
         "ENCRYPTION_PASSPHRASE_LENGTH:32"
         "PARTITION_SCHEME:auto|manual"
+        "PARTITION_CONFIG_PATH:"
         "SWAP_SIZE:8G"
         "ROOT_SIZE:*"
     )
@@ -128,11 +130,18 @@ list_available_disks() {
 }
 
 # Validate disk size format
-# Usage: validate_disk_size "8G"
+# Usage: validate_disk_size "8G" [allow_remaining]
 validate_disk_size() {
     local size="$1"
-    # Require suffix (G, M, T) or "remaining" or "*" for remaining space
-    [[ "$size" =~ ^[0-9]+[GMT]$ || "$size" == "remaining" || "$size" == "*" ]]
+    local allow_remaining="${2:-false}"
+    
+    if [[ "$allow_remaining" == "true" ]]; then
+        # Allow remaining space markers for root partition
+        [[ "$size" =~ ^[0-9]+[GMT]$ || "$size" == "remaining" || "$size" == "*" ]]
+    else
+        # Only allow specific sizes (for swap)
+        [[ "$size" =~ ^[0-9]+[GMT]$ ]]
+    fi
 }
 
 # =============================================================================
@@ -149,9 +158,18 @@ disk_config_display() {
     
     local encryption
     encryption=$(disk_config_get "$action_name" "ENCRYPTION")
-    if [[ "$encryption" == "y" ]]; then
-        console "  KEY_METHOD: $(disk_config_get "$action_name" "ENCRYPTION_KEY_METHOD")"
-        console "  PASSPHRASE: $(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE")"
+    if [[ "$encryption" == "auto" || "$encryption" == "manual" ]]; then
+        if [[ "$encryption" == "auto" ]]; then
+            console "  KEY_GEN_METHOD: $(disk_config_get "$action_name" "ENCRYPTION_KEY_METHOD")"
+            console "  KEY_LENGTH: $(disk_config_get "$action_name" "ENCRYPTION_KEY_LENGTH")"
+        fi
+        local passphrase
+        passphrase=$(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE")
+        console "  PASSPHRASE: $passphrase"
+        if [[ "$passphrase" == "auto" ]]; then
+            console "  PASS_GEN_METHOD: $(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE_METHOD")"
+            console "  PASS_LENGTH: $(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE_LENGTH")"
+        fi
     fi
     
     console "  PARTITION_SCHEME: $(disk_config_get "$action_name" "PARTITION_SCHEME")"
@@ -163,6 +181,8 @@ disk_config_display() {
         root_size=$(disk_config_get "$action_name" "ROOT_SIZE")
         console "  SWAP_SIZE: $(disk_config_get "$action_name" "SWAP_SIZE")"
         console "  ROOT_SIZE: $root_size (remaining disk space)"
+    elif [[ "$scheme" == "manual" ]]; then
+        console "  NIXOS_CONFIG_PATH: $(disk_config_get "$action_name" "PARTITION_CONFIG_PATH")"
     fi
 }
 
@@ -202,8 +222,13 @@ disk_config_interactive() {
             fi
             
             if [[ -b "$new_disk" ]]; then
-                disk_config_set "$action_name" "DISK_TARGET" "$new_disk"
-                console "    -> Updated: DISK_TARGET = $new_disk"
+                if [[ "$new_disk" != "$disk_target" ]]; then
+                    disk_config_set "$action_name" "DISK_TARGET" "$new_disk"
+                    console "    -> Updated: DISK_TARGET = $new_disk"
+                    disk_target="$new_disk"
+                else
+                    console "    -> Unchanged"
+                fi
                 break
             else
                 console "    Error: Disk '$new_disk' does not exist or is not a block device"
@@ -221,12 +246,11 @@ disk_config_interactive() {
     local encryption
     encryption=$(disk_config_get "$action_name" "ENCRYPTION")
     while true; do
-        printf "  %-20s [%s] (y/n): " "ENCRYPTION" "$encryption"
+        printf "  %-20s [%s] (auto/none/manual): " "ENCRYPTION" "$encryption"
         read -r new_encryption < /dev/tty
         
         if [[ -n "$new_encryption" ]]; then
-            if [[ "$new_encryption" =~ ^[ynYN]$ ]]; then
-                new_encryption="${new_encryption,,}"
+            if [[ "$new_encryption" =~ ^(auto|none|manual)$ ]]; then
                 if [[ "$new_encryption" != "$encryption" ]]; then
                     disk_config_set "$action_name" "ENCRYPTION" "$new_encryption"
                     console "    -> Updated: ENCRYPTION = $new_encryption"
@@ -236,7 +260,7 @@ disk_config_interactive() {
                 fi
                 break
             else
-                console "    Error: Invalid encryption setting. Use 'y' or 'n'"
+                console "    Error: Invalid encryption. Use 'auto' (generate), 'none' (disabled), or 'manual' (provide key)"
                 continue
             fi
         elif [[ -n "$encryption" ]]; then
@@ -247,61 +271,118 @@ disk_config_interactive() {
         fi
     done
     
-    # Encryption settings (only if encryption is enabled)
-    if [[ "$encryption" == "y" ]]; then
+    # Encryption key settings (only if auto or manual encryption)
+    if [[ "$encryption" == "auto" || "$encryption" == "manual" ]]; then
         console ""
-        console "Encryption Settings:"
+        console "Encryption Key Settings:"
         
-        # Key method
-        local key_method
-        key_method=$(disk_config_get "$action_name" "ENCRYPTION_KEY_METHOD")
-        while true; do
-            printf "  %-20s [%s] (auto/manual): " "KEY_METHOD" "$key_method"
-            read -r new_key_method < /dev/tty
+        # Key generation method (only for auto)
+        if [[ "$encryption" == "auto" ]]; then
+            local key_method
+            key_method=$(disk_config_get "$action_name" "ENCRYPTION_KEY_METHOD")
+            while true; do
+                printf "  %-20s [%s] (urandom/openssl): " "KEY_GEN_METHOD" "$key_method"
+                read -r new_key_method < /dev/tty
+                
+                if [[ -n "$new_key_method" ]]; then
+                    if [[ "$new_key_method" =~ ^(urandom|openssl)$ ]]; then
+                        if [[ "$new_key_method" != "$key_method" ]]; then
+                            disk_config_set "$action_name" "ENCRYPTION_KEY_METHOD" "$new_key_method"
+                            console "    -> Updated: KEY_GEN_METHOD = $new_key_method"
+                        else
+                            console "    -> Unchanged"
+                        fi
+                        break
+                    else
+                        console "    Error: Invalid method. Use 'urandom' or 'openssl'"
+                        continue
+                    fi
+                elif [[ -n "$key_method" ]]; then
+                    break
+                fi
+            done
             
-            if [[ -n "$new_key_method" ]]; then
-                if [[ "$new_key_method" =~ ^(auto|manual)$ ]]; then
-                    if [[ "$new_key_method" != "$key_method" ]]; then
-                        disk_config_set "$action_name" "ENCRYPTION_KEY_METHOD" "$new_key_method"
-                        console "    -> Updated: KEY_METHOD = $new_key_method"
-                        key_method="$new_key_method"
+            # Key length
+            local key_length
+            key_length=$(disk_config_get "$action_name" "ENCRYPTION_KEY_LENGTH")
+            printf "  %-20s [%s]: " "KEY_LENGTH" "$key_length"
+            read -r new_key_length < /dev/tty
+            if [[ -n "$new_key_length" && "$new_key_length" =~ ^[0-9]+$ ]]; then
+                if [[ "$new_key_length" != "$key_length" ]]; then
+                    disk_config_set "$action_name" "ENCRYPTION_KEY_LENGTH" "$new_key_length"
+                    console "    -> Updated: KEY_LENGTH = $new_key_length"
+                else
+                    console "    -> Unchanged"
+                fi
+            fi
+        fi
+        
+        # Passphrase
+        local passphrase
+        passphrase=$(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE")
+        while true; do
+            printf "  %-20s [%s] (auto/none/manual): " "PASSPHRASE" "$passphrase"
+            read -r new_passphrase < /dev/tty
+            
+            if [[ -n "$new_passphrase" ]]; then
+                if [[ "$new_passphrase" =~ ^(auto|none|manual)$ ]]; then
+                    if [[ "$new_passphrase" != "$passphrase" ]]; then
+                        disk_config_set "$action_name" "ENCRYPTION_PASSPHRASE" "$new_passphrase"
+                        console "    -> Updated: PASSPHRASE = $new_passphrase"
+                        passphrase="$new_passphrase"
                     else
                         console "    -> Unchanged"
                     fi
                     break
                 else
-                    console "    Error: Invalid key method. Use 'auto' or 'manual'"
+                    console "    Error: Invalid passphrase. Use 'auto' (generate), 'none' (no passphrase), or 'manual' (provide)"
                     continue
                 fi
-            elif [[ -n "$key_method" ]]; then
+            elif [[ -n "$passphrase" ]]; then
                 break
             fi
         done
         
-        # Passphrase method
-        local passphrase_method
-        passphrase_method=$(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE")
-        while true; do
-            printf "  %-20s [%s] (auto/manual/none): " "PASSPHRASE" "$passphrase_method"
-            read -r new_passphrase_method < /dev/tty
-            
-            if [[ -n "$new_passphrase_method" ]]; then
-                if [[ "$new_passphrase_method" =~ ^(auto|manual|none)$ ]]; then
-                    if [[ "$new_passphrase_method" != "$passphrase_method" ]]; then
-                        disk_config_set "$action_name" "ENCRYPTION_PASSPHRASE" "$new_passphrase_method"
-                        console "    -> Updated: PASSPHRASE = $new_passphrase_method"
+        # Passphrase generation settings (only if auto)
+        if [[ "$passphrase" == "auto" ]]; then
+            local passphrase_method
+            passphrase_method=$(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE_METHOD")
+            while true; do
+                printf "  %-20s [%s] (urandom/openssl): " "PASS_GEN_METHOD" "$passphrase_method"
+                read -r new_passphrase_method < /dev/tty
+                
+                if [[ -n "$new_passphrase_method" ]]; then
+                    if [[ "$new_passphrase_method" =~ ^(urandom|openssl)$ ]]; then
+                        if [[ "$new_passphrase_method" != "$passphrase_method" ]]; then
+                            disk_config_set "$action_name" "ENCRYPTION_PASSPHRASE_METHOD" "$new_passphrase_method"
+                            console "    -> Updated: PASS_GEN_METHOD = $new_passphrase_method"
+                        else
+                            console "    -> Unchanged"
+                        fi
+                        break
                     else
-                        console "    -> Unchanged"
+                        console "    Error: Invalid method. Use 'urandom' or 'openssl'"
+                        continue
                     fi
+                elif [[ -n "$passphrase_method" ]]; then
                     break
-                else
-                    console "    Error: Invalid passphrase method. Use 'auto', 'manual', or 'none'"
-                    continue
                 fi
-            elif [[ -n "$passphrase_method" ]]; then
-                break
+            done
+            
+            # Passphrase length
+            local passphrase_length
+            passphrase_length=$(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE_LENGTH")
+            printf "  %-20s [%s]: " "PASS_LENGTH" "$passphrase_length"
+            read -r new_passphrase_length < /dev/tty
+            if [[ -n "$new_passphrase_length" && "$new_passphrase_length" =~ ^[0-9]+$ ]]; then
+                if [[ "$new_passphrase_length" != "$passphrase_length" ]]; then
+                    disk_config_set "$action_name" "ENCRYPTION_PASSPHRASE_LENGTH" "$new_passphrase_length"
+                    console "    -> Updated: PASS_LENGTH = $new_passphrase_length"
+                else
+                    console "    -> Unchanged"
+                fi
             fi
-        done
+        fi
         console ""
     fi
     
@@ -329,6 +410,28 @@ disk_config_interactive() {
             continue
         fi
     done
+    
+    # Manual partition configuration (only if manual scheme)
+    if [[ "$scheme" == "manual" ]]; then
+        console ""
+        console "For manual partitioning, provide a NixOS disko configuration file path."
+        console "See: https://github.com/nix-community/disko"
+        
+        # NixOS config path
+        local nixos_config_path
+        nixos_config_path=$(disk_config_get "$action_name" "PARTITION_CONFIG_PATH")
+        printf "  %-20s [%s]: " "NIXOS_CONFIG_PATH" "$nixos_config_path"
+        read -r new_nixos_config_path < /dev/tty
+        if [[ -n "$new_nixos_config_path" ]]; then
+            if [[ "$new_nixos_config_path" != "$nixos_config_path" ]]; then
+                disk_config_set "$action_name" "PARTITION_CONFIG_PATH" "$new_nixos_config_path"
+                console "    -> Updated: NIXOS_CONFIG_PATH = $new_nixos_config_path"
+            else
+                console "    -> Unchanged"
+            fi
+        fi
+        console ""
+    fi
     
     # Auto partition configuration (only if auto scheme)
     if [[ "$scheme" == "auto" ]]; then
