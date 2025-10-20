@@ -31,7 +31,7 @@ draw_title() {
 
     # Clear screen and print box
     printf "╭%s╮\n" "$border"
-    printf "│ %-*s │\n" "$inner_length" "$title"
+    printf "│%-*s│\n" "$inner_length" "$title"
     printf "╰%s╯\n" "$border"
 }
 
