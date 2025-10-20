@@ -13,9 +13,7 @@ set -euo pipefail
 # =============================================================================
 # ACTION METADATA
 # =============================================================================
-readonly ACTION_NAME="deployVM"
-readonly ACTION_VERSION="1.0.0"
-readonly ACTION_DESCRIPTION="Deploy VM management hub setup with deployment tools and infrastructure management"
+# readonly ACTION_VERSION="1.0.0"
 
 # =============================================================================
 # ACTION CONFIGURATION
@@ -27,7 +25,8 @@ init_deploy_config() {
     
     # Initialize configuration with custom settings only
     # Network and disk settings are handled by their respective modules
-    config_init "$ACTION_NAME" \
+    # Action name is auto-detected from directory
+    config_init \
         "ADMIN_USER:admin" \
         "SSH_PORT:22" \
         "TIMEZONE:UTC"
@@ -37,12 +36,11 @@ init_deploy_config() {
 
 # Validate Deploy VM specific configuration
 validate_deploy_config() {
-    local action_name="$ACTION_NAME"
     local validation_errors=0
     
     # Validate admin user
     local admin_user
-    admin_user=$(config_get_value "$action_name" "ADMIN_USER")
+    admin_user=$(config_get_value "ADMIN_USER")
     if [[ -z "$admin_user" ]]; then
         error "Admin user is required"
         ((validation_errors++))
@@ -53,15 +51,15 @@ validate_deploy_config() {
     
     # Validate SSH port
     local ssh_port
-    ssh_port=$(config_get_value "$action_name" "SSH_PORT")
-    if [[ -n "$ssh_port" ]] && ! [[ "$ssh_port" =~ ^[0-9]+$ ]] || ((ssh_port < 1 || ssh_port > 65535)); then
+    ssh_port=$(config_get_value "SSH_PORT")
+    if [[ -n "$ssh_port" ]] && { ! [[ "$ssh_port" =~ ^[0-9]+$ ]] || ((ssh_port < 1 || ssh_port > 65535)); }; then
         error "Invalid SSH port: $ssh_port (must be 1-65535)"
         ((validation_errors++))
     fi
     
     # Deploy VM specific validation: encryption should be enabled for security
     local encryption
-    encryption=$(config_get_value "$action_name" "ENCRYPTION")
+    encryption=$(config_get_value "ENCRYPTION")
     if [[ "$encryption" != "y" ]]; then
         console "Warning: Deploy VM should use encryption for security (recommended: y)"
     fi
@@ -83,7 +81,7 @@ setup() {
     init_deploy_config
     
     # Run configuration workflow (display -> interactive -> validate)
-    if ! config_workflow "$ACTION_NAME"; then
+    if ! config_workflow; then
         error "Configuration workflow failed"
         return 1
     fi
@@ -97,11 +95,11 @@ setup() {
     # Show final configuration summary
     console ""
     console "=== Deploy VM Configuration Summary ==="
-    console "Hostname: $(config_get_value "$ACTION_NAME" "HOSTNAME")"
-    console "Network: $(config_get_value "$ACTION_NAME" "NETWORK_METHOD")"
-    console "Disk: $(config_get_value "$ACTION_NAME" "DISK_TARGET")"
-    console "Encryption: $(config_get_value "$ACTION_NAME" "ENCRYPTION")"
-    console "Admin User: $(config_get_value "$ACTION_NAME" "ADMIN_USER")"
+    console "Hostname: $(config_get_value "HOSTNAME")"
+    console "Network: $(config_get_value "NETWORK_METHOD")"
+    console "Disk: $(config_get_value "DISK_TARGET")"
+    console "Encryption: $(config_get_value "ENCRYPTION")"
+    console "Admin User: $(config_get_value "ADMIN_USER")"
     console "====================================="
     console ""
     

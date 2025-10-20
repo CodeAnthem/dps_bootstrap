@@ -37,6 +37,9 @@ network_config_init() {
         "NETWORK_DNS_SECONDARY:1.0.0.1"
     )
     
+    # Fix hostname default to use action name
+    network_configs[0]="HOSTNAME:${action_name}-01"
+    
     # Initialize each network configuration
     for config_pair in "${network_configs[@]}"; do
         local key="${config_pair%%:*}"
