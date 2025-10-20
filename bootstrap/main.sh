@@ -165,7 +165,7 @@ select_action() {
     # Loop until valid choice is made
     while true; do
         # printf "Select action [0-$max_choice]: "
-        read -rsn1 -p "Select action [$validOptions]: " choice < /dev/tty
+        read -rsn1 -p "Select action: " choice < /dev/tty
         echo  # Add newline after single character input
         
         # Handle empty input (Enter key)
@@ -179,13 +179,7 @@ select_action() {
             console "Operation aborted by user"
             exit 0
         fi
-        
-        # Validate numeric choice
-        if [[ ! "$choice" =~ ^[0-9]+$ ]]; then
-            console "Invalid input '$choice'. Please enter a number ($validOptions)"
-            continue
-        fi
-        
+                
         # Validate choice exists
         if [[ "${ACTIONS[$choice]:-}" ]]; then
             echo "$choice"
