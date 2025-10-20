@@ -166,7 +166,7 @@ select_action() {
     # Loop until valid choice is made
     while true; do
         # printf "Select action [0-$max_choice]: "
-        read -rsn1 -p "   -> Select action: " choice < /dev/tty
+        read -rsn1 -p "     -> Select action: " choice < /dev/tty
         
         # Handle empty input (Enter key)
         if [[ -z "$choice" ]]; then
