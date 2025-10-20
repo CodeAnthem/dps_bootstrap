@@ -23,7 +23,7 @@ disk_config_init() {
     
     # Clear existing disk config for this action
     for key in $(disk_config_get_keys "$action_name" 2>/dev/null || true); do
-        local clear_key="${action_name}:${key}"
+        local clear_key="${action_name}__${key}"
         unset "DISK_CONFIG[$clear_key]"
     done
     
@@ -49,8 +49,8 @@ disk_config_init() {
         fi
         
         # Store the configuration
-        local value_key="${action_name}:${key}:value"
-        local options_key="${action_name}:${key}:options"
+        local value_key="${action_name}__${key}__value"
+        local options_key="${action_name}__${key}__options"
         DISK_CONFIG["$value_key"]="$default_value"
         DISK_CONFIG["$options_key"]="$options"
         
@@ -71,7 +71,7 @@ disk_config_init() {
 disk_config_get() {
     local action_name="$1"
     local key="$2"
-    local get_key="${action_name}:${key}:value"
+    local get_key="${action_name}__${key}__value"
     echo "${DISK_CONFIG["$get_key"]:-}"
 }
 
@@ -81,7 +81,7 @@ disk_config_set() {
     local action_name="$1"
     local key="$2"
     local value="$3"
-    local set_key="${action_name}:${key}:value"
+    local set_key="${action_name}__${key}__value"
     DISK_CONFIG["$set_key"]="$value"
 }
 
@@ -89,12 +89,12 @@ disk_config_set() {
 # Usage: disk_config_get_keys "actionName"
 disk_config_get_keys() {
     local action_name="$1"
-    local prefix="${action_name}:"
+    local prefix="${action_name}__"
     
     for key in "${!DISK_CONFIG[@]}"; do
-        if [[ "$key" == "$prefix"*":value" ]]; then
+        if [[ "$key" == "$prefix"*"__value" ]]; then
             local clean_key="${key#$prefix}"
-            echo "${clean_key%:value}"
+            echo "${clean_key%__value}"
         fi
     done
 }

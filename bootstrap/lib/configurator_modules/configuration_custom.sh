@@ -24,7 +24,7 @@ custom_config_init() {
     
     # Clear existing custom config for this action
     for key in $(custom_config_get_keys "$action_name" 2>/dev/null || true); do
-        local clear_key="${action_name}:${key}"
+        local clear_key="${action_name}__${key}"
         unset "CUSTOM_CONFIG[$clear_key]"
     done
     
@@ -41,8 +41,8 @@ custom_config_init() {
         fi
         
         # Store the configuration
-        local value_key="${action_name}:${key}:value"
-        local options_key="${action_name}:${key}:options"
+        local value_key="${action_name}__${key}__value"
+        local options_key="${action_name}__${key}__options"
         CUSTOM_CONFIG["$value_key"]="$default_value"
         CUSTOM_CONFIG["$options_key"]="$options"
         
@@ -63,7 +63,7 @@ custom_config_init() {
 custom_config_get() {
     local action_name="$1"
     local key="$2"
-    local get_key="${action_name}:${key}:value"
+    local get_key="${action_name}__${key}__value"
     echo "${CUSTOM_CONFIG["$get_key"]:-}"
 }
 
@@ -72,7 +72,7 @@ custom_config_get() {
 custom_config_get_options() {
     local action_name="$1"
     local key="$2"
-    local options_key="${action_name}:${key}:options"
+    local options_key="${action_name}__${key}__options"
     echo "${CUSTOM_CONFIG["$options_key"]:-}"
 }
 
@@ -82,7 +82,7 @@ custom_config_set() {
     local action_name="$1"
     local key="$2"
     local value="$3"
-    local set_key="${action_name}:${key}:value"
+    local set_key="${action_name}__${key}__value"
     CUSTOM_CONFIG["$set_key"]="$value"
 }
 
@@ -90,12 +90,12 @@ custom_config_set() {
 # Usage: custom_config_get_keys "actionName"
 custom_config_get_keys() {
     local action_name="$1"
-    local prefix="${action_name}:"
+    local prefix="${action_name}__"
     
     for key in "${!CUSTOM_CONFIG[@]}"; do
-        if [[ "$key" == "$prefix"*":value" ]]; then
+        if [[ "$key" == "$prefix"*"__value" ]]; then
             local clean_key="${key#$prefix}"
-            echo "${clean_key%:value}"
+            echo "${clean_key%__value}"
         fi
     done
 }
