@@ -24,7 +24,8 @@ get_action_name() {
 }
 
 # Source configuration modules
-readonly CONFIGURATOR_MODULES_DIR="${SCRIPT_DIR}/lib/configurator_modules"
+CONFIGURATOR_MODULES_DIR="$(dirname "${BASH_SOURCE[0]}")/configurator_modules"
+readonly CONFIGURATOR_MODULES_DIR
 
 # Load configuration modules
 source_config_module() {
