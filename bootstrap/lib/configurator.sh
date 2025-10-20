@@ -14,14 +14,6 @@
 # Module status tracking
 declare -A CONFIG_MODULES_ENABLED
 
-# Auto-detect action name from script path
-# Usage: get_action_name
-get_action_name() {
-    local script_path="${BASH_SOURCE[1]}"  # Get caller's script path
-    local action_dir
-    action_dir=$(dirname "$script_path")
-    basename "$action_dir"
-}
 
 # Source configuration modules
 CONFIGURATOR_MODULES_DIR="$(dirname "${BASH_SOURCE[0]}")/configurator_modules"
@@ -56,18 +48,10 @@ config_enable_modules() {
 # CONFIGURATION INITIALIZATION
 # =============================================================================
 # Initialize all enabled modules for an action
-# Usage: config_init ["actionName"] ["custom_config_pairs..."]
-# If actionName is omitted, it will be auto-detected from the calling script's directory
+# Usage: config_init "actionName" ["custom_config_pairs..."]
 config_init() {
-    local action_name=""
-    
-    # Auto-detect action name if not provided or if first arg looks like config pair
-    if [[ $# -eq 0 || "$1" == *":"* ]]; then
-        action_name=$(get_action_name)
-    else
-        action_name="$1"
-        shift
-    fi
+    local action_name="$1"
+    shift
     
     # Initialize network module if enabled
     if [[ "${CONFIG_MODULES_ENABLED[network]:-}" == "true" ]]; then
@@ -91,9 +75,9 @@ config_init() {
 # CONFIGURATION DISPLAY
 # =============================================================================
 # Display all enabled module configurations
-# Usage: config_display ["actionName"]
+# Usage: config_display "actionName"
 config_display() {
-    local action_name="${1:-$(get_action_name)}"
+    local action_name="$1"
     
     new_section
     section_header "Confirm the configuration"
@@ -121,9 +105,9 @@ config_display() {
 # CONFIGURATION INTERACTIVE
 # =============================================================================
 # Interactive configuration for all enabled modules
-# Usage: config_interactive ["actionName"]
+# Usage: config_interactive "actionName"
 config_interactive() {
-    local action_name="${1:-$(get_action_name)}"
+    local action_name="$1"
     
     new_section
     section_header "Interactive Configuration"
@@ -153,9 +137,9 @@ config_interactive() {
 # CONFIGURATION VALIDATION
 # =============================================================================
 # Validate all enabled module configurations
-# Usage: config_validate ["actionName"]
+# Usage: config_validate "actionName"
 config_validate() {
-    local action_name="${1:-$(get_action_name)}"
+    local action_name="$1"
     local validation_errors=0
     
     # Validate network configuration if enabled
@@ -192,9 +176,9 @@ config_validate() {
 # CONFIGURATION WORKFLOW
 # =============================================================================
 # Complete configuration workflow with iterative editing
-# Usage: config_workflow ["actionName"]
+# Usage: config_workflow "actionName"
 config_workflow() {
-    local action_name="${1:-$(get_action_name)}"
+    local action_name="$1"
     
     # Check if DPS_AUTO_CONFIRM is set to skip interactive configuration
     if [[ "${DPS_AUTO_CONFIRM:-}" == "true" ]]; then
@@ -243,18 +227,10 @@ config_workflow() {
 # CONFIGURATION GETTERS
 # =============================================================================
 # Get configuration value from any enabled module
-# Usage: config_get_value ["actionName"] "KEY"
-# If only one argument provided, it's treated as KEY and action name is auto-detected
+# Usage: config_get_value "actionName" "KEY"
 config_get_value() {
-    local action_name key
-    
-    if [[ $# -eq 1 ]]; then
-        action_name=$(get_action_name)
-        key="$1"
-    else
-        action_name="$1"
-        key="$2"
-    fi
+    local action_name="$1"
+    local key="$2"
     local value=""
     
     # Try network module first

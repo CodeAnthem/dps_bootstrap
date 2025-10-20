@@ -224,7 +224,7 @@ execute_action() {
     # Execute the setup function
     log "Executing $action_name setup..."
     section_title "Action: $action_name"
-    if ! setup; then
+    if ! setup "$action_name"; then
         error "Action setup failed for: $action_name"
     fi
     
