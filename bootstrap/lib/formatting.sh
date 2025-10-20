@@ -43,16 +43,6 @@ section_title() {
     draw_title " === $1 === " 100
 }
 
-step_start() {
-    local step="$1"
-    printf "\n🚀 %s...\n" "$step"
-}
-
-step_complete() {
-    local step="$1"
-    printf "✅ %s completed\n" "$step"
-}
-
 # Progress spinner
 show_spinner() {
     local pid=$1
