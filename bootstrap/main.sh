@@ -156,7 +156,6 @@ select_action() {
     for i in "${sorted_keys[@]}"; do
         console "  $i) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
     done
-    console
     
     local choice validOptions max_choice
     max_choice="${#ACTIONS[@]}"
@@ -176,14 +175,15 @@ select_action() {
         # Check for abort option
         if [[ "$choice" == "0" ]]; then
             console "Operation aborted by user"
-            exit 0
+            break
         fi
                 
         # Validate choice exists
         if [[ "${ACTIONS[$choice]:-}" ]]; then
+        console "Proceeding.."
             break
         else
-            console "Invalid selection '$choice'. Valid options: ($validOptions)"
+            console "Invalid selection '$choice' - Valid options: ($validOptions)"
             continue
         fi
     done
@@ -235,6 +235,7 @@ discover_actions
 
 # Select action
 selected_action=$(select_action)
+if ((selected_action == 0)); then exit 0; fi
 
 # Execute selected action
 echo "Executing action..."
