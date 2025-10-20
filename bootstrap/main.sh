@@ -49,8 +49,8 @@ section_header "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 if [[ $EUID -ne 0 ]]; then
     new_section
     section_header "Root Privilege Required"
-    echo "This script requires root privileges."
-    echo "Attempting to restart with sudo..."
+    echo " This script requires root privileges."
+    echo " -> Attempting to restart with sudo..."
     exec sudo bash "${BASH_SOURCE[0]}" "$@"
 else
     success "Root privileges confirmed"
