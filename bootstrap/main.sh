@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2025-10-16
+# Date:          Created: 2025-10-12 | Modified: 2025-10-20
 # Description:   Entry point selector for DPS Bootstrap - dynamically discovers and executes actions
 # Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="3.0.6"
+readonly SCRIPT_VERSION="3.0.7"
 readonly SCRIPT_NAME="NixOS Bootstrapper | DPS Project"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -182,16 +182,17 @@ select_action() {
                 
         # Validate choice exists
         if [[ "${ACTIONS[$choice]:-}" ]]; then
-        console "Proceeding.."
+            console "${ACTIONS[$choice]}"
             break
-        else
-            console "Invalid selection '$choice' - Valid options: ($validOptions)"
-            continue
         fi
+
+        # Invalid selection
+        console "Invalid selection '$choice' - Valid options: ($validOptions)"
+        continue
     done
 
-    # Return selected action number
-    if ((choice == 0)); then exit 1; fi
+    # Handle valid selection
+    if ((choice == 0)); then exit 1; fi # Abort
     echo "$choice"
 }
 
@@ -202,15 +203,15 @@ execute_action() {
     local action_number="$1"
     local action_name="${ACTIONS[$action_number]}"
     local setup_script="${ACTIONS_DIR}/${action_name}/setup.sh"
-    
-    log "Selected action: $action_name"
-    
+        
     # Source the setup script
     if [[ -f "$setup_script" ]]; then
         # shellcheck disable=SC1090
         if ! source "$setup_script"; then
             error "Failed to source setup script: $setup_script"
+            exit 2
         fi
+        success "Setup script sourced successfully"
     else
         error "Setup script not found: $setup_script"
     fi
@@ -239,9 +240,7 @@ discover_actions
 # Select action
 selected_action=$(select_action)
 
-
 # Execute selected action
-echo "Executing action..."
 execute_action "$selected_action"
 
 # =============================================================================
