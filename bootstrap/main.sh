@@ -81,8 +81,10 @@ cleanup() {
 
     if [[ $exit_code -eq 0 ]]; then
         log "Script completed successfully"
+    elif [[ $exit_code -eq 1 ]]; then
+        log "Script aborted by user"
     else
-        log "Script aborted with exit code: $exit_code"
+        log "Script failed with exit code: $exit_code"
     fi
 
     if [[ -d "${RUNTIME_DIR:-}" ]]; then
@@ -235,7 +237,7 @@ discover_actions
 
 # Select action
 selected_action=$(select_action)
-if ((selected_action == 0)); then exit 0; fi
+if ((selected_action == 0)); then exit 1; fi
 
 # Execute selected action
 echo "Executing action..."
