@@ -36,11 +36,11 @@ draw_title() {
 }
 
 
-section_header() { draw_title "$1" 50; }
+section_header() { draw_title "  $1" 50; }
 
 section_title() {
     new_section
-    draw_title "$1" 100
+    draw_title " === $1 === " 100
 }
 
 step_start() {

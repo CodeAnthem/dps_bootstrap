@@ -38,7 +38,7 @@ done
 # =============================================================================
 # START MESSAGE
 # =============================================================================
-section_title "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 
 # =============================================================================
@@ -150,7 +150,7 @@ select_action() {
     
     # Display available actions
     for i in "${!ACTIONS[@]}"; do
-        console "  $i) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
+        console "$(( ${#ACTIONS[@]} - i + 1 )))$) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
     done
     console
     
