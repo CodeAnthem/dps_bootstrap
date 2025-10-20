@@ -176,7 +176,7 @@ select_action() {
         
         # Check for abort option
         if [[ "$choice" == "0" ]]; then
-            console "Operation aborted by user"
+            console "Operation aborted"
             break
         fi
                 
@@ -191,6 +191,7 @@ select_action() {
     done
 
     # Return selected action number
+    if ((choice == 0)); then exit 1; fi
     echo "$choice"
 }
 
@@ -237,7 +238,7 @@ discover_actions
 
 # Select action
 selected_action=$(select_action)
-if ((selected_action == 0)); then exit 1; fi
+
 
 # Execute selected action
 echo "Executing action..."
