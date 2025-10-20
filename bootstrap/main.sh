@@ -166,7 +166,6 @@ select_action() {
     while true; do
         # printf "Select action [0-$max_choice]: "
         read -rsn1 -p "Select action: " choice < /dev/tty
-        echo  # Add newline after single character input
         
         # Handle empty input (Enter key)
         if [[ -z "$choice" ]]; then
@@ -182,13 +181,15 @@ select_action() {
                 
         # Validate choice exists
         if [[ "${ACTIONS[$choice]:-}" ]]; then
-            echo "$choice"
-            return 0
+            break
         else
-            console "Invalid selection '$choice'. Please choose $validOptions"
+            console "Invalid selection '$choice'. Valid options: ($validOptions)"
             continue
         fi
     done
+
+    # Return selected action number
+    echo "$choice"
 }
 
 # =============================================================================
