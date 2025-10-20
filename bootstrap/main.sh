@@ -24,6 +24,7 @@ readonly SCRIPT_DIR="${currentPath}"
 # IMPORT LIBRARIES
 # =============================================================================
 readonly LIB_DIR="${SCRIPT_DIR}/lib"
+
 # Load all .sh files from $LIB_DIR
 for file in "$LIB_DIR"/*.sh; do
     # Skip if no matches
@@ -33,6 +34,19 @@ for file in "$LIB_DIR"/*.sh; do
     # shellcheck disable=SC1090
     if ! source "$file"; then echo >&2 " [Error] Failed to source: $file"; fi
 done
+
+# Load configuration modules (they self-register)
+readonly CONFIG_MODULES_DIR="${LIB_DIR}/config_modules"
+if [[ -d "$CONFIG_MODULES_DIR" ]]; then
+    for module in "$CONFIG_MODULES_DIR"/*.sh; do
+        # Skip if no matches
+        [[ -e "$module" ]] || continue
+        
+        # Try to source, catch errors
+        # shellcheck disable=SC1090
+        if ! source "$module"; then echo >&2 " [Error] Failed to source: $module"; fi
+    done
+fi
 
 
 # =============================================================================
