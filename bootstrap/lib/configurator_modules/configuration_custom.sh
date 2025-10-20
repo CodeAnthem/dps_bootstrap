@@ -14,7 +14,8 @@ set +u
 # =============================================================================
 # CUSTOM CONFIGURATION STORAGE
 # =============================================================================
-declare -A CUSTOM_CONFIG
+# Declare as global to ensure persistence across function calls
+declare -gA CUSTOM_CONFIG 2>/dev/null || true
 
 # =============================================================================
 # CUSTOM CONFIGURATION FUNCTIONS

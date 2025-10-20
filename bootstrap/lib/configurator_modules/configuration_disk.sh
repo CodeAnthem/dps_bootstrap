@@ -14,7 +14,8 @@ set +u
 # =============================================================================
 # DISK CONFIGURATION STORAGE
 # =============================================================================
-declare -A DISK_CONFIG
+# Declare as global to ensure persistence across function calls
+declare -gA DISK_CONFIG 2>/dev/null || true
 
 # =============================================================================
 # DISK CONFIGURATION FUNCTIONS
