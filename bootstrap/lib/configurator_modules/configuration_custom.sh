@@ -49,8 +49,9 @@ custom_config_init() {
         # Check if environment variable exists and override (with DPS_ prefix)
         local env_var_name="DPS_${key}"
         if [[ -n "${!env_var_name:-}" ]]; then
-            CUSTOM_CONFIG["$value_key"]="${!env_var_name}"
-            debug "Custom config override from environment: $env_var_name=${!env_var_name}"
+            local env_value="${!env_var_name}"
+            CUSTOM_CONFIG["$value_key"]="$env_value"
+            debug "Custom config override from environment: $env_var_name=$env_value"
         fi
     done
     
