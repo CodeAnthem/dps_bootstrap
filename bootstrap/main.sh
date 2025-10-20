@@ -148,45 +148,52 @@ select_action() {
     new_section
     section_header "Choose bootstrap action"
     
-    # Display available actions
-    for i in "${!ACTIONS[@]}"; do
+    # Display available actions in correct order (sorted by key)
+    local sorted_keys
+    IFS=$'\n' sorted_keys=($(printf '%s\n' "${!ACTIONS[@]}" | sort -n))
+    
+    console "  0) Abort - Exit the script"
+    for i in "${sorted_keys[@]}"; do
         console "  $i) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
     done
     console
     
     local choice
-    local default_choice="1"
+    local max_choice="${#ACTIONS[@]}"
     
-    # Read from terminal directly to avoid stdin pollution from piped script
-    if [[ -t 0 ]]; then
-        # We have a real terminal
-        read -p "Select action [1-${#ACTIONS[@]}, default=$default_choice]: " choice
-    else
-        # No terminal (piped script), try to read from /dev/tty
-        if [[ -c /dev/tty ]]; then
-            console "Select action [1-${#ACTIONS[@]}, default=$default_choice]: "
-            read choice < /dev/tty || {
-                console "No input received, defaulting to action $default_choice"
-                choice="$default_choice"
-            }
-        else
-            # No TTY available, default to first action
-            console "No interactive terminal available, defaulting to action $default_choice"
-            choice="$default_choice"
+    # Loop until valid choice is made
+    while true; do
+        printf "Select action [0-$max_choice]: "
+        read -rn1 choice < /dev/tty
+        echo  # Add newline after single character input
+        
+        # Handle empty input (Enter key)
+        if [[ -z "$choice" ]]; then
+            console "Please select a valid option (0-$max_choice)"
+            continue
         fi
-    fi
-    
-    # Handle empty input
-    if [[ -z "$choice" ]]; then
-        choice="$default_choice"
-    fi
-    
-    # Validate choice
-    if [[ ! "${ACTIONS[$choice]:-}" ]]; then
-        error "Invalid selection '$choice'. Please choose 1-${#ACTIONS[@]}"
-    fi
-    
-    echo "$choice"
+        
+        # Check for abort option
+        if [[ "$choice" == "0" ]]; then
+            console "Operation aborted by user"
+            exit 0
+        fi
+        
+        # Validate numeric choice
+        if [[ ! "$choice" =~ ^[0-9]+$ ]]; then
+            console "Invalid input '$choice'. Please enter a number (0-$max_choice)"
+            continue
+        fi
+        
+        # Validate choice exists
+        if [[ "${ACTIONS[$choice]:-}" ]]; then
+            echo "$choice"
+            return 0
+        else
+            console "Invalid selection '$choice'. Please choose 0-$max_choice"
+            continue
+        fi
+    done
 }
 
 # =============================================================================
