@@ -35,9 +35,7 @@ setup_deploy_defaults() {
 # =============================================================================
 # MAIN SETUP FUNCTION
 # =============================================================================
-setup() {
-    section_header "Deploy VM Setup"
-    
+setup() {    
     # Setup configuration defaults
     step_start "Setting up Deploy VM configuration"
     setup_deploy_defaults
