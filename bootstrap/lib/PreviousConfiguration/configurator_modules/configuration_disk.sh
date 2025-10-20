@@ -36,14 +36,13 @@ disk_config_init() {
         "DISK_TARGET:/dev/sda"
         "ENCRYPTION:auto|none|manual"
         "ENCRYPTION_KEY_METHOD:urandom|openssl"
-        "ENCRYPTION_KEY_LENGTH:512"
+        "ENCRYPTION_KEY_LENGTH:32"
         "ENCRYPTION_PASSPHRASE:auto|none|manual"
         "ENCRYPTION_PASSPHRASE_METHOD:urandom|openssl"
         "ENCRYPTION_PASSPHRASE_LENGTH:32"
         "PARTITION_SCHEME:auto|manual"
         "PARTITION_CONFIG_PATH:"
         "SWAP_SIZE:8G"
-        "ROOT_SIZE:*"
     )
     
     # Initialize each disk configuration
@@ -144,6 +143,21 @@ validate_disk_size() {
     fi
 }
 
+# Convert size string to bytes
+# Usage: convert_size_to_bytes "8G"
+convert_size_to_bytes() {
+    local size="$1"
+    local num="${size%?}"
+    local unit="${size: -1}"
+    
+    case "$unit" in
+        G) echo $((num * 1024 * 1024 * 1024)) ;;
+        M) echo $((num * 1024 * 1024)) ;;
+        T) echo $((num * 1024 * 1024 * 1024 * 1024)) ;;
+        *) echo "0" ;;
+    esac
+}
+
 # =============================================================================
 # DISK CONFIGURATION DISPLAY
 # =============================================================================
@@ -177,10 +191,8 @@ disk_config_display() {
     local scheme
     scheme=$(disk_config_get "$action_name" "PARTITION_SCHEME")
     if [[ "$scheme" == "auto" ]]; then
-        local root_size
-        root_size=$(disk_config_get "$action_name" "ROOT_SIZE")
         console "  SWAP_SIZE: $(disk_config_get "$action_name" "SWAP_SIZE")"
-        console "  ROOT_SIZE: $root_size (remaining disk space)"
+        console "  ROOT_SIZE: remaining disk space"
     elif [[ "$scheme" == "manual" ]]; then
         console "  NIXOS_CONFIG_PATH: $(disk_config_get "$action_name" "PARTITION_CONFIG_PATH")"
     fi
@@ -437,13 +449,34 @@ disk_config_interactive() {
     if [[ "$scheme" == "auto" ]]; then
         # Swap size
         local swap_size
+        local disk_target
+        disk_target=$(disk_config_get "$action_name" "DISK_TARGET")
         swap_size=$(disk_config_get "$action_name" "SWAP_SIZE")
+        
         while true; do
             printf "  %-20s [%s]: " "SWAP_SIZE" "$swap_size"
             read -r new_swap < /dev/tty
             
             if [[ -n "$new_swap" ]]; then
                 if validate_disk_size "$new_swap"; then
+                    # Check if swap is > 20% of disk size
+                    local disk_size_bytes
+                    disk_size_bytes=$(lsblk -b -d -o SIZE -n "$disk_target" 2>/dev/null || echo "0")
+                    local swap_bytes
+                    swap_bytes=$(convert_size_to_bytes "$new_swap")
+                    
+                    if [[ "$disk_size_bytes" -gt 0 && "$swap_bytes" -gt 0 ]]; then
+                        local percent=$((swap_bytes * 100 / disk_size_bytes))
+                        if [[ "$percent" -gt 20 ]]; then
+                            console "    Warning: Swap size is ${percent}% of disk (> 20%). This is unusually large."
+                            printf "    Continue anyway? [y/N]: "
+                            read -r confirm < /dev/tty
+                            if [[ ! "$confirm" =~ ^[yY]$ ]]; then
+                                continue
+                            fi
+                        fi
+                    fi
+                    
                     if [[ "$new_swap" != "$swap_size" ]]; then
                         disk_config_set "$action_name" "SWAP_SIZE" "$new_swap"
                         console "    -> Updated: SWAP_SIZE = $new_swap"
@@ -453,7 +486,7 @@ disk_config_interactive() {
                     fi
                     break
                 else
-                    console "    Error: Invalid size format. Use '8G', '512M', '1T' (suffix required), or '*' for remaining"
+                    console "    Error: Invalid size format. Use '8G', '512M', '1T' (suffix required)"
                     continue
                 fi
             elif [[ -n "$swap_size" ]]; then
@@ -463,10 +496,6 @@ disk_config_interactive() {
                 continue
             fi
         done
-        
-        # Root size - auto-set to remaining space for auto partitioning
-        # Don't prompt user, just set it automatically
-        disk_config_set "$action_name" "ROOT_SIZE" "*"
     fi
 }
 

@@ -22,15 +22,10 @@ set -euo pipefail
 init_deploy_config() {
     local action_name="$1"
     
-    # Enable configuration modules
-    config_enable_modules "network" "disk" "custom"
-    
-    # Initialize configuration with custom settings only
-    # Network and disk settings are handled by their respective modules
-    config_init "$action_name" \
-        "ADMIN_USER:admin" \
-        "SSH_PORT:22" \
-        "TIMEZONE:UTC"
+    # Initialize all modules with their default configurations
+    config_init "$action_name" "network"
+    config_init "$action_name" "disk"
+    config_init "$action_name" "custom"
     
     success "Deploy VM configuration initialized"
 }
@@ -38,37 +33,12 @@ init_deploy_config() {
 # Validate Deploy VM specific configuration
 validate_deploy_config() {
     local action_name="$1"
-    local validation_errors=0
-    
-    # Validate admin user
-    local admin_user
-    admin_user=$(config_get_value "$action_name" "ADMIN_USER")
-    if [[ -z "$admin_user" ]]; then
-        error "Admin user is required"
-        ((validation_errors++))
-    elif [[ ! "$admin_user" =~ ^[a-z][a-z0-9_-]*$ ]]; then
-        error "Invalid admin user format: $admin_user (must start with letter, lowercase only)"
-        ((validation_errors++))
-    fi
-    
-    # Validate SSH port
-    local ssh_port
-    ssh_port=$(config_get_value "$action_name" "SSH_PORT")
-    if [[ -n "$ssh_port" ]] && { ! [[ "$ssh_port" =~ ^[0-9]+$ ]] || ((ssh_port < 1 || ssh_port > 65535)); }; then
-        error "Invalid SSH port: $ssh_port (must be 1-65535)"
-        ((validation_errors++))
-    fi
     
     # Deploy VM specific validation: encryption should be enabled for security
     local encryption
-    encryption=$(config_get_value "$action_name" "ENCRYPTION")
-    if [[ "$encryption" != "y" ]]; then
-        console "Warning: Deploy VM should use encryption for security (recommended: y)"
-    fi
-    
-    if [[ $validation_errors -gt 0 ]]; then
-        error "Deploy VM configuration validation failed: $validation_errors errors"
-        return 1
+    encryption=$(config_get "$action_name" "disk" "ENCRYPTION")
+    if [[ "$encryption" == "none" ]]; then
+        console "Warning: Deploy VM should use encryption for security (recommended: auto or manual)"
     fi
     
     success "Deploy VM configuration validation passed"
@@ -85,7 +55,7 @@ setup() {
     init_deploy_config "$action_name"
     
     # Run configuration workflow (display -> interactive -> validate)
-    if ! config_workflow "$action_name"; then
+    if ! config_workflow "$action_name" "network" "disk" "custom"; then
         error "Configuration workflow failed"
         return 1
     fi
@@ -99,11 +69,11 @@ setup() {
     # Show final configuration summary
     console ""
     console "=== Deploy VM Configuration Summary ==="
-    console "Hostname: $(config_get_value "$action_name" "HOSTNAME")"
-    console "Network: $(config_get_value "$action_name" "NETWORK_METHOD")"
-    console "Disk: $(config_get_value "$action_name" "DISK_TARGET")"
-    console "Encryption: $(config_get_value "$action_name" "ENCRYPTION")"
-    console "Admin User: $(config_get_value "$action_name" "ADMIN_USER")"
+    console "Hostname: $(config_get "$action_name" "network" "HOSTNAME")"
+    console "Network: $(config_get "$action_name" "network" "NETWORK_METHOD")"
+    console "Disk: $(config_get "$action_name" "disk" "DISK_TARGET")"
+    console "Encryption: $(config_get "$action_name" "disk" "ENCRYPTION")"
+    console "Admin User: $(config_get "$action_name" "custom" "ADMIN_USER")"
     console "====================================="
     console ""
     
