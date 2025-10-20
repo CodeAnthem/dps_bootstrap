@@ -62,6 +62,9 @@ network_config_init() {
         NETWORK_CONFIG[$value_key]="$default_value"
         NETWORK_CONFIG[$options_key]="$options"
         
+        # Temporary debug - remove after testing
+        echo "[DEBUG] Stored: $value_key = ${NETWORK_CONFIG[$value_key]}" >&2
+        
         # Check if environment variable exists and override (with DPS_ prefix)
         local env_var_name="DPS_${key}"
         if [[ -n "${!env_var_name:-}" ]]; then
@@ -72,6 +75,10 @@ network_config_init() {
     done
     
     debug "Network configuration initialized for action: $action_name"
+    # Debug: show what was stored
+    for stored_key in "${!NETWORK_CONFIG[@]}"; do
+        debug "  Stored: $stored_key = ${NETWORK_CONFIG[$stored_key]}"
+    done
 }
 
 # Get network configuration value
@@ -80,6 +87,10 @@ network_config_get() {
     local action_name="$1"
     local key="$2"
     local get_key="${action_name}__${key}__value"
+    
+    # Temporary debug - remove after testing
+    echo "[DEBUG] Get: action=$action_name key=$key lookup_key=$get_key value=${NETWORK_CONFIG[$get_key]:-EMPTY}" >&2
+    
     echo "${NETWORK_CONFIG[$get_key]:-}"
 }
 
