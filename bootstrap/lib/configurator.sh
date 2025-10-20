@@ -109,8 +109,8 @@ config_display() {
     done
     
     # Display configuration table
-    printf "%-${max_key_length}s | %s\n" "Configuration Key" "Current Value"
-    printf "%*s-+-%s\n" "$max_key_length" "" "$(printf '%*s' 50 '' | tr ' ' '-')"
+    # printf "%-${max_key_length}s | %s\n" "Configuration Key" "Current Value"
+    # printf "%*s-+-%s\n" "$max_key_length" "" "$(printf '%*s' 50 '' | tr ' ' '-')"
     
     for key in "${keys[@]}"; do
         local value
