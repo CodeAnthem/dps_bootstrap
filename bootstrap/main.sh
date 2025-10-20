@@ -146,7 +146,8 @@ discover_actions() {
 # ACTION SELECTION
 # =============================================================================
 select_action() {
-    console "Choose bootstrap action:"
+    new_section
+    section_header "Choose bootstrap action"
     
     # Display available actions
     for i in "${!ACTIONS[@]}"; do
@@ -231,7 +232,6 @@ execute_action() {
 discover_actions
 
 # Select action
-echo "Selecting action..."
 selected_action=$(select_action)
 
 # Execute selected action
