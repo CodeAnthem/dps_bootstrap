@@ -1,210 +1,168 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Bootstrap NixOS - Configuration Management Library
+# DPS Project - Bootstrap NixOS - Configuration Management Orchestrator
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-20 | Modified: 2025-10-20
-# Description:   Smart configuration management for all bootstrap actions
-# Feature:       Dynamic config arrays, environment variable override, interactive configuration
+# Description:   Main configuration orchestrator with module hooks and workflow management
+# Feature:       Module loading, configuration workflow, validation hooks, iterative configuration
 # Author:        DPS Project
 # ==================================================================================================
 
 # =============================================================================
-# GLOBAL CONFIGURATION STORAGE
+# CONFIGURATION MODULES
 # =============================================================================
-# Global associative array to store all action configurations
-declare -A CONFIG_STORE
+# Module status tracking
+declare -A CONFIG_MODULES_ENABLED
+
+# Source configuration modules
+readonly CONFIGURATOR_MODULES_DIR="${SCRIPT_DIR}/lib/configurator_modules"
+
+# Load configuration modules
+source_config_module() {
+    local module_name="$1"
+    local module_path="${CONFIGURATOR_MODULES_DIR}/configuration_${module_name}.sh"
+    
+    if [[ -f "$module_path" ]]; then
+        # shellcheck disable=SC1090
+        source "$module_path"
+        debug "Configuration module loaded: $module_name"
+    else
+        error "Configuration module not found: $module_path"
+        return 1
+    fi
+}
+
+# Enable configuration modules
+# Usage: config_enable_modules "network" "disk" "custom"
+config_enable_modules() {
+    for module in "$@"; do
+        source_config_module "$module"
+        CONFIG_MODULES_ENABLED["$module"]=true
+        debug "Configuration module enabled: $module"
+    done
+}
 
 # =============================================================================
 # CONFIGURATION INITIALIZATION
 # =============================================================================
-# Initialize configuration for an action
-# Usage: config_init "actionName" "KEY1:default_value1" "KEY2:" "KEY3:default_value3"
+# Initialize all enabled modules for an action
+# Usage: config_init "actionName" ["custom_config_pairs..."]
 config_init() {
     local action_name="$1"
     shift
     
-    # Clear any existing configuration for this action
-    for key in $(config_get_keys "$action_name" 2>/dev/null || true); do
-        unset "CONFIG_STORE[${action_name}:${key}]"
-    done
+    # Initialize network module if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[network]:-}" == "true" ]]; then
+        network_config_init "$action_name"
+    fi
     
-    # Initialize configuration with provided key-value pairs
-    for config_pair in "$@"; do
-        local key="${config_pair%%:*}"
-        local default_value="${config_pair#*:}"
-        
-        # Store the default value
-        CONFIG_STORE["${action_name}:${key}"]="$default_value"
-        
-        # Check if environment variable exists and override
-        local env_var_name="$key"
-        if [[ -n "${!env_var_name:-}" ]]; then
-            CONFIG_STORE["${action_name}:${key}"]="${!env_var_name}"
-            debug "Config override from environment: $key=${!env_var_name}"
-        fi
-    done
+    # Initialize disk module if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[disk]:-}" == "true" ]]; then
+        disk_config_init "$action_name"
+    fi
     
-    log "Configuration initialized for action: $action_name"
-}
-
-# =============================================================================
-# CONFIGURATION GETTERS/SETTERS
-# =============================================================================
-# Get configuration value
-# Usage: config_get "actionName" "KEY"
-config_get() {
-    local action_name="$1"
-    local key="$2"
-    echo "${CONFIG_STORE["${action_name}:${key}"]:-}"
-}
-
-# Set configuration value
-# Usage: config_set "actionName" "KEY" "value"
-config_set() {
-    local action_name="$1"
-    local key="$2"
-    local value="$3"
-    CONFIG_STORE["${action_name}:${key}"]="$value"
-}
-
-# Get all configuration keys for an action
-# Usage: config_get_keys "actionName"
-config_get_keys() {
-    local action_name="$1"
-    local prefix="${action_name}:"
+    # Initialize custom module if enabled and has config pairs
+    if [[ "${CONFIG_MODULES_ENABLED[custom]:-}" == "true" && $# -gt 0 ]]; then
+        custom_config_init "$action_name" "$@"
+    fi
     
-    for key in "${!CONFIG_STORE[@]}"; do
-        if [[ "$key" == "$prefix"* ]]; then
-            echo "${key#$prefix}"
-        fi
-    done
+    success "Configuration initialized for action: $action_name"
 }
 
 # =============================================================================
 # CONFIGURATION DISPLAY
 # =============================================================================
-# Display configuration in a nice tabbed table
+# Display all enabled module configurations
 # Usage: config_display "actionName"
 config_display() {
     local action_name="$1"
-    local keys
-    
-    # Get all keys for this action
-    mapfile -t keys < <(config_get_keys "$action_name" | sort)
-    
-    if [[ ${#keys[@]} -eq 0 ]]; then
-        console "No configuration found for action: $action_name"
-        return 1
-    fi
     
     new_section
-    section_header "Configuration for $action_name"
+    section_header "Confirm the configuration"
     
-    # Calculate maximum key length for alignment
-    local max_key_length=0
-    for key in "${keys[@]}"; do
-        if [[ ${#key} -gt $max_key_length ]]; then
-            max_key_length=${#key}
-        fi
-    done
+    # Display network configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[network]:-}" == "true" ]]; then
+        network_config_display "$action_name"
+        console ""
+    fi
     
-    # Display configuration table
-    # printf "%-${max_key_length}s | %s\n" "Configuration Key" "Current Value"
-    # printf "%*s-+-%s\n" "$max_key_length" "" "$(printf '%*s' 50 '' | tr ' ' '-')"
+    # Display disk configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[disk]:-}" == "true" ]]; then
+        disk_config_display "$action_name"
+        console ""
+    fi
     
-    for key in "${keys[@]}"; do
-        local value
-        value=$(config_get "$action_name" "$key")
-        
-        # Show empty values as "(required)"
-        if [[ -z "$value" ]]; then
-            value="(required)"
-        fi
-        
-        printf "%-${max_key_length}s | %s\n" "$key" "$value"
-    done
-    
-    console ""
+    # Display custom configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[custom]:-}" == "true" ]]; then
+        custom_config_display "$action_name"
+        console ""
+    fi
 }
 
 # =============================================================================
-# INTERACTIVE CONFIGURATION
+# CONFIGURATION INTERACTIVE
 # =============================================================================
-# Interactive configuration review and editing
+# Interactive configuration for all enabled modules
 # Usage: config_interactive "actionName"
 config_interactive() {
     local action_name="$1"
-    local keys
-    
-    # Get all keys for this action
-    mapfile -t keys < <(config_get_keys "$action_name" | sort)
-    
-    if [[ ${#keys[@]} -eq 0 ]]; then
-        error "No configuration found for action: $action_name"
-        return 1
-    fi
     
     new_section
-    section_header "Interactive Configuration for $action_name"
+    section_header "Interactive Configuration"
     
     console "Review and modify configuration values:"
     console "Press ENTER to keep current value, or type new value"
-    console ""
     
-    for key in "${keys[@]}"; do
-        local current_value
-        current_value=$(config_get "$action_name" "$key")
-        
-        # Show current value or "(required)" if empty
-        local display_value="$current_value"
-        if [[ -z "$current_value" ]]; then
-            display_value="(required)"
-        fi
-        
-        # Prompt for new value
-        local new_value
-        printf "%-20s [%s]: " "$key" "$display_value"
-        read -r new_value < /dev/tty
-        
-        # If user entered something, update the value
-        if [[ -n "$new_value" ]]; then
-            config_set "$action_name" "$key" "$new_value"
-            console "  -> Updated: $key = $new_value"
-        elif [[ -z "$current_value" ]]; then
-            # Required field left empty
-            error "Required field '$key' cannot be empty"
-            return 1
-        fi
-    done
+    # Interactive network configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[network]:-}" == "true" ]]; then
+        network_config_interactive "$action_name"
+    fi
     
-    success "Configuration review completed"
+    # Interactive disk configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[disk]:-}" == "true" ]]; then
+        disk_config_interactive "$action_name"
+    fi
+    
+    # Interactive custom configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[custom]:-}" == "true" ]]; then
+        custom_config_interactive "$action_name"
+    fi
+    
+    success "Interactive configuration completed"
 }
 
 # =============================================================================
 # CONFIGURATION VALIDATION
 # =============================================================================
-# Validate all required fields are set
+# Validate all enabled module configurations
 # Usage: config_validate "actionName"
 config_validate() {
     local action_name="$1"
-    local keys
     local validation_errors=0
     
-    # Get all keys for this action
-    mapfile -t keys < <(config_get_keys "$action_name")
-    
-    for key in "${keys[@]}"; do
-        local value
-        value=$(config_get "$action_name" "$key")
-        
-        if [[ -z "$value" ]]; then
-            error "Required configuration missing: $key"
+    # Validate network configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[network]:-}" == "true" ]]; then
+        if ! network_config_validate "$action_name"; then
             ((validation_errors++))
         fi
-    done
+    fi
+    
+    # Validate disk configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[disk]:-}" == "true" ]]; then
+        if ! disk_config_validate "$action_name"; then
+            ((validation_errors++))
+        fi
+    fi
+    
+    # Validate custom configuration if enabled
+    if [[ "${CONFIG_MODULES_ENABLED[custom]:-}" == "true" ]]; then
+        if ! custom_config_validate "$action_name"; then
+            ((validation_errors++))
+        fi
+    fi
     
     if [[ $validation_errors -gt 0 ]]; then
-        error "Configuration validation failed: $validation_errors missing values"
+        error "Configuration validation failed: $validation_errors module(s) have errors"
         return 1
     fi
     
@@ -213,32 +171,106 @@ config_validate() {
 }
 
 # =============================================================================
-# CONFIGURATION EXPORT
+# CONFIGURATION WORKFLOW
 # =============================================================================
-# Export all configuration values as environment variables
-# Usage: config_export "actionName"
-config_export() {
+# Complete configuration workflow with iterative editing
+# Usage: config_workflow "actionName"
+config_workflow() {
     local action_name="$1"
-    local keys
     
-    # Get all keys for this action
-    mapfile -t keys < <(config_get_keys "$action_name")
+    # Check if DPS_AUTO_CONFIRM is set to skip interactive configuration
+    if [[ "${DPS_AUTO_CONFIRM:-}" == "true" ]]; then
+        log "Auto-confirm enabled, skipping interactive configuration"
+        return config_validate "$action_name"
+    fi
     
-    for key in "${keys[@]}"; do
-        local value
-        value=$(config_get "$action_name" "$key")
+    while true; do
+        # Display current configuration
+        config_display "$action_name"
         
-        if [[ -n "$value" ]]; then
-            export "$key"="$value"
-            debug "Exported: $key=$value"
+        # Ask if user wants to modify configuration
+        local modify_config
+        printf "Do you want to modify the configuration? [y/N]: "
+        read -rn1 modify_config < /dev/tty
+        echo  # Add newline
+        
+        if [[ "${modify_config,,}" == "y" ]]; then
+            # Interactive configuration editing
+            config_interactive "$action_name"
+            
+            # Validate after changes
+            if config_validate "$action_name"; then
+                # Show updated configuration and ask again
+                continue
+            else
+                console "Configuration has validation errors. Please fix them."
+                continue
+            fi
+        else
+            # User doesn't want to modify, validate current config
+            if config_validate "$action_name"; then
+                break
+            else
+                console "Current configuration has validation errors."
+                console "You must fix these errors before proceeding."
+                continue
+            fi
         fi
     done
     
-    log "Configuration exported as environment variables"
+    success "Configuration workflow completed for $action_name"
 }
 
 # =============================================================================
-# VALIDATION HELPER FUNCTIONS
+# CONFIGURATION GETTERS
+# =============================================================================
+# Get configuration value from any enabled module
+# Usage: config_get_value "actionName" "KEY"
+config_get_value() {
+    local action_name="$1"
+    local key="$2"
+    local value=""
+    
+    # Try network module first
+    if [[ "${CONFIG_MODULES_ENABLED[network]:-}" == "true" ]]; then
+        value=$(network_config_get_value "$action_name" "$key" 2>/dev/null || true)
+        if [[ -n "$value" ]]; then
+            echo "$value"
+            return 0
+        fi
+    fi
+    
+    # Try disk module
+    if [[ "${CONFIG_MODULES_ENABLED[disk]:-}" == "true" ]]; then
+        value=$(disk_config_get_value "$action_name" "$key" 2>/dev/null || true)
+        if [[ -n "$value" ]]; then
+            echo "$value"
+            return 0
+        fi
+    fi
+    
+    # Try custom module
+    if [[ "${CONFIG_MODULES_ENABLED[custom]:-}" == "true" ]]; then
+        value=$(custom_config_get_value "$action_name" "$key" 2>/dev/null || true)
+        if [[ -n "$value" ]]; then
+            echo "$value"
+            return 0
+        fi
+    fi
+    
+    # Key not found in any module
+    return 1
+}
+
+# Get DPS variable name for any key
+# Usage: config_get_var_name "KEY"
+config_get_var_name() {
+    local key="$1"
+    echo "DPS_${key}"
+}
+
+# =============================================================================
+# VALIDATION HELPER FUNCTIONS (shared across modules)
 # =============================================================================
 # Validate IP address format
 # Usage: validate_ip_address "192.168.1.1"
@@ -285,39 +317,4 @@ validate_yes_no() {
     local normalized="${input,,}"  # Convert to lowercase
     
     [[ "$normalized" =~ ^(y|yes|n|no)$ ]]
-}
-
-# =============================================================================
-# CONFIGURATION WORKFLOW
-# =============================================================================
-# Complete configuration workflow: display -> interactive -> validate -> export
-# Usage: config_workflow "actionName"
-config_workflow() {
-    local action_name="$1"
-    
-    # Display current configuration
-    config_display "$action_name"
-    
-    # Ask if user wants to modify configuration
-    local modify_config
-    printf "Do you want to modify the configuration? [y/N]: "
-    read -rn1 modify_config < /dev/tty
-    echo  # Add newline
-    
-    if [[ "${modify_config,,}" == "y" ]]; then
-        config_interactive "$action_name"
-        echo
-        config_display "$action_name"
-    fi
-    
-    # Validate configuration
-    if ! config_validate "$action_name"; then
-        error "Configuration validation failed"
-        return 1
-    fi
-    
-    # Export configuration
-    config_export "$action_name"
-    
-    success "Configuration workflow completed for $action_name"
 }

@@ -22,17 +22,15 @@ readonly ACTION_DESCRIPTION="Deploy VM management hub setup with deployment tool
 # =============================================================================
 # Initialize Deploy VM configuration
 init_deploy_config() {
-    # Initialize configuration with key:default_value pairs
+    # Enable configuration modules
+    config_enable_modules "network" "disk" "custom"
+    
+    # Initialize configuration with custom settings only
+    # Network and disk settings are handled by their respective modules
     config_init "$ACTION_NAME" \
-        "DPS_HOSTNAME:deploy-01" \
-        "DPS_NETWORK_METHOD:dhcp" \
-        "DPS_NETWORK_GATEWAY:192.168.1.1" \
-        "DPS_ENCRYPTION:y" \
-        "DPS_DISK_TARGET:/dev/sda" \
-        "DPS_ADMIN_USER:admin" \
-        "DPS_IP_ADDRESS:" \
-        "DPS_NETWORK_DNS_PRIMARY:1.1.1.1" \
-        "DPS_NETWORK_DNS_SECONDARY:1.0.0.1"
+        "ADMIN_USER:admin" \
+        "SSH_PORT:22" \
+        "TIMEZONE:UTC"
     
     success "Deploy VM configuration initialized"
 }
@@ -42,46 +40,30 @@ validate_deploy_config() {
     local action_name="$ACTION_NAME"
     local validation_errors=0
     
-    # Validate hostname
-    local hostname
-    hostname=$(config_get "$action_name" "DPS_HOSTNAME")
-    if [[ -n "$hostname" ]] && ! validate_hostname "$hostname"; then
-        error "Invalid hostname format: $hostname"
+    # Validate admin user
+    local admin_user
+    admin_user=$(config_get_value "$action_name" "ADMIN_USER")
+    if [[ -z "$admin_user" ]]; then
+        error "Admin user is required"
+        ((validation_errors++))
+    elif [[ ! "$admin_user" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+        error "Invalid admin user format: $admin_user (must start with letter, lowercase only)"
         ((validation_errors++))
     fi
     
-    # Validate disk target exists
-    local disk_target
-    disk_target=$(config_get "$action_name" "DPS_DISK_TARGET")
-    if [[ -n "$disk_target" ]] && ! validate_disk_path "$disk_target"; then
-        error "Disk target does not exist: $disk_target"
+    # Validate SSH port
+    local ssh_port
+    ssh_port=$(config_get_value "$action_name" "SSH_PORT")
+    if [[ -n "$ssh_port" ]] && ! [[ "$ssh_port" =~ ^[0-9]+$ ]] || ((ssh_port < 1 || ssh_port > 65535)); then
+        error "Invalid SSH port: $ssh_port (must be 1-65535)"
         ((validation_errors++))
     fi
     
-    # Validate encryption setting
+    # Deploy VM specific validation: encryption should be enabled for security
     local encryption
-    encryption=$(config_get "$action_name" "DPS_ENCRYPTION")
-    if [[ -n "$encryption" ]] && ! validate_yes_no "$encryption"; then
-        error "Invalid encryption setting: $encryption (must be y/yes/n/no)"
-        ((validation_errors++))
-    fi
-    
-    # Validate IP address if static networking
-    local network_method ip_address
-    network_method=$(config_get "$action_name" "DPS_NETWORK_METHOD")
-    ip_address=$(config_get "$action_name" "DPS_IP_ADDRESS")
-    
-    if [[ "$network_method" == "static" ]] && [[ -n "$ip_address" ]] && ! validate_ip_address "$ip_address"; then
-        error "Invalid IP address format: $ip_address"
-        ((validation_errors++))
-    fi
-    
-    # Validate gateway IP
-    local gateway
-    gateway=$(config_get "$action_name" "DPS_NETWORK_GATEWAY")
-    if [[ -n "$gateway" ]] && ! validate_ip_address "$gateway"; then
-        error "Invalid gateway IP address: $gateway"
-        ((validation_errors++))
+    encryption=$(config_get_value "$action_name" "ENCRYPTION")
+    if [[ "$encryption" != "y" ]]; then
+        console "Warning: Deploy VM should use encryption for security (recommended: y)"
     fi
     
     if [[ $validation_errors -gt 0 ]]; then
@@ -100,7 +82,7 @@ setup() {
     # Initialize configuration
     init_deploy_config
     
-    # Run configuration workflow (display -> interactive -> validate -> export)
+    # Run configuration workflow (display -> interactive -> validate)
     if ! config_workflow "$ACTION_NAME"; then
         error "Configuration workflow failed"
         return 1
@@ -111,6 +93,17 @@ setup() {
         error "Deploy VM specific validation failed"
         return 1
     fi
+    
+    # Show final configuration summary
+    console ""
+    console "=== Deploy VM Configuration Summary ==="
+    console "Hostname: $(config_get_value "$ACTION_NAME" "HOSTNAME")"
+    console "Network: $(config_get_value "$ACTION_NAME" "NETWORK_METHOD")"
+    console "Disk: $(config_get_value "$ACTION_NAME" "DISK_TARGET")"
+    console "Encryption: $(config_get_value "$ACTION_NAME" "ENCRYPTION")"
+    console "Admin User: $(config_get_value "$ACTION_NAME" "ADMIN_USER")"
+    console "====================================="
+    console ""
     
     # TODO: Implement Deploy VM installation workflow
     # This is a template - actual implementation will include:
