@@ -24,7 +24,8 @@ custom_config_init() {
     
     # Clear existing custom config for this action
     for key in $(custom_config_get_keys "$action_name" 2>/dev/null || true); do
-        unset "CUSTOM_CONFIG[${action_name}:${key}]"
+        local clear_key="${action_name}:${key}"
+        unset "CUSTOM_CONFIG[$clear_key]"
     done
     
     # Initialize configuration with provided key-value pairs
@@ -40,13 +41,15 @@ custom_config_init() {
         fi
         
         # Store the configuration
-        CUSTOM_CONFIG["${action_name}:${key}:value"]="$default_value"
-        CUSTOM_CONFIG["${action_name}:${key}:options"]="$options"
+        local value_key="${action_name}:${key}:value"
+        local options_key="${action_name}:${key}:options"
+        CUSTOM_CONFIG["$value_key"]="$default_value"
+        CUSTOM_CONFIG["$options_key"]="$options"
         
         # Check if environment variable exists and override (with DPS_ prefix)
         local env_var_name="DPS_${key}"
         if [[ -n "${!env_var_name:-}" ]]; then
-            CUSTOM_CONFIG["${action_name}:${key}:value"]="${!env_var_name}"
+            CUSTOM_CONFIG["$value_key"]="${!env_var_name}"
             debug "Custom config override from environment: $env_var_name=${!env_var_name}"
         fi
     done
@@ -59,7 +62,8 @@ custom_config_init() {
 custom_config_get() {
     local action_name="$1"
     local key="$2"
-    echo "${CUSTOM_CONFIG["${action_name}:${key}:value"]:-}"
+    local get_key="${action_name}:${key}:value"
+    echo "${CUSTOM_CONFIG["$get_key"]:-}"
 }
 
 # Get custom configuration options
@@ -67,7 +71,8 @@ custom_config_get() {
 custom_config_get_options() {
     local action_name="$1"
     local key="$2"
-    echo "${CUSTOM_CONFIG["${action_name}:${key}:options"]:-}"
+    local options_key="${action_name}:${key}:options"
+    echo "${CUSTOM_CONFIG["$options_key"]:-}"
 }
 
 # Set custom configuration value
@@ -76,7 +81,8 @@ custom_config_set() {
     local action_name="$1"
     local key="$2"
     local value="$3"
-    CUSTOM_CONFIG["${action_name}:${key}:value"]="$value"
+    local set_key="${action_name}:${key}:value"
+    CUSTOM_CONFIG["$set_key"]="$value"
 }
 
 # Get all custom configuration keys for an action
