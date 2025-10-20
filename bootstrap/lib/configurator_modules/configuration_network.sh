@@ -29,7 +29,7 @@ network_config_init() {
     
     # Define network configuration with defaults
     local network_configs=(
-        "HOSTNAME:${action_name}-01"
+        "HOSTNAME:"
         "NETWORK_METHOD:dhcp|static"
         "IP_ADDRESS:"
         "NETWORK_MASK:255.255.255.0"
