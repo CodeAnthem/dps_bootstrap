@@ -35,9 +35,13 @@ disk_config_init() {
     local disk_configs=(
         "DISK_TARGET:/dev/sda"
         "ENCRYPTION:y|n"
+        "ENCRYPTION_KEY_METHOD:auto|manual"
+        "ENCRYPTION_KEY_LENGTH:512"
+        "ENCRYPTION_PASSPHRASE:auto|manual|none"
+        "ENCRYPTION_PASSPHRASE_LENGTH:32"
         "PARTITION_SCHEME:auto|manual"
         "SWAP_SIZE:8G"
-        "ROOT_SIZE:remaining"
+        "ROOT_SIZE:*"
     )
     
     # Initialize each disk configuration
@@ -127,7 +131,8 @@ list_available_disks() {
 # Usage: validate_disk_size "8G"
 validate_disk_size() {
     local size="$1"
-    [[ "$size" =~ ^[0-9]+[KMGT]?$ || "$size" == "remaining" ]]
+    # Require suffix (G, M, T) or "remaining" or "*" for remaining space
+    [[ "$size" =~ ^[0-9]+[GMT]$ || "$size" == "remaining" || "$size" == "*" ]]
 }
 
 # =============================================================================
@@ -141,13 +146,23 @@ disk_config_display() {
     console "Disk Configuration:"
     console "  DISK_TARGET: $(disk_config_get "$action_name" "DISK_TARGET")"
     console "  ENCRYPTION: $(disk_config_get "$action_name" "ENCRYPTION")"
+    
+    local encryption
+    encryption=$(disk_config_get "$action_name" "ENCRYPTION")
+    if [[ "$encryption" == "y" ]]; then
+        console "  KEY_METHOD: $(disk_config_get "$action_name" "ENCRYPTION_KEY_METHOD")"
+        console "  PASSPHRASE: $(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE")"
+    fi
+    
     console "  PARTITION_SCHEME: $(disk_config_get "$action_name" "PARTITION_SCHEME")"
     
     local scheme
     scheme=$(disk_config_get "$action_name" "PARTITION_SCHEME")
     if [[ "$scheme" == "auto" ]]; then
+        local root_size
+        root_size=$(disk_config_get "$action_name" "ROOT_SIZE")
         console "  SWAP_SIZE: $(disk_config_get "$action_name" "SWAP_SIZE")"
-        console "  ROOT_SIZE: $(disk_config_get "$action_name" "ROOT_SIZE")"
+        console "  ROOT_SIZE: $root_size (remaining disk space)"
     fi
 }
 
@@ -211,8 +226,14 @@ disk_config_interactive() {
         
         if [[ -n "$new_encryption" ]]; then
             if [[ "$new_encryption" =~ ^[ynYN]$ ]]; then
-                disk_config_set "$action_name" "ENCRYPTION" "${new_encryption,,}"
-                console "    -> Updated: ENCRYPTION = ${new_encryption,,}"
+                new_encryption="${new_encryption,,}"
+                if [[ "$new_encryption" != "$encryption" ]]; then
+                    disk_config_set "$action_name" "ENCRYPTION" "$new_encryption"
+                    console "    -> Updated: ENCRYPTION = $new_encryption"
+                    encryption="$new_encryption"
+                else
+                    console "    -> Unchanged"
+                fi
                 break
             else
                 console "    Error: Invalid encryption setting. Use 'y' or 'n'"
@@ -225,6 +246,64 @@ disk_config_interactive() {
             continue
         fi
     done
+    
+    # Encryption settings (only if encryption is enabled)
+    if [[ "$encryption" == "y" ]]; then
+        console ""
+        console "Encryption Settings:"
+        
+        # Key method
+        local key_method
+        key_method=$(disk_config_get "$action_name" "ENCRYPTION_KEY_METHOD")
+        while true; do
+            printf "  %-20s [%s] (auto/manual): " "KEY_METHOD" "$key_method"
+            read -r new_key_method < /dev/tty
+            
+            if [[ -n "$new_key_method" ]]; then
+                if [[ "$new_key_method" =~ ^(auto|manual)$ ]]; then
+                    if [[ "$new_key_method" != "$key_method" ]]; then
+                        disk_config_set "$action_name" "ENCRYPTION_KEY_METHOD" "$new_key_method"
+                        console "    -> Updated: KEY_METHOD = $new_key_method"
+                        key_method="$new_key_method"
+                    else
+                        console "    -> Unchanged"
+                    fi
+                    break
+                else
+                    console "    Error: Invalid key method. Use 'auto' or 'manual'"
+                    continue
+                fi
+            elif [[ -n "$key_method" ]]; then
+                break
+            fi
+        done
+        
+        # Passphrase method
+        local passphrase_method
+        passphrase_method=$(disk_config_get "$action_name" "ENCRYPTION_PASSPHRASE")
+        while true; do
+            printf "  %-20s [%s] (auto/manual/none): " "PASSPHRASE" "$passphrase_method"
+            read -r new_passphrase_method < /dev/tty
+            
+            if [[ -n "$new_passphrase_method" ]]; then
+                if [[ "$new_passphrase_method" =~ ^(auto|manual|none)$ ]]; then
+                    if [[ "$new_passphrase_method" != "$passphrase_method" ]]; then
+                        disk_config_set "$action_name" "ENCRYPTION_PASSPHRASE" "$new_passphrase_method"
+                        console "    -> Updated: PASSPHRASE = $new_passphrase_method"
+                    else
+                        console "    -> Unchanged"
+                    fi
+                    break
+                else
+                    console "    Error: Invalid passphrase method. Use 'auto', 'manual', or 'none'"
+                    continue
+                fi
+            elif [[ -n "$passphrase_method" ]]; then
+                break
+            fi
+        done
+        console ""
+    fi
     
     # Partition scheme configuration
     local scheme
@@ -262,11 +341,16 @@ disk_config_interactive() {
             
             if [[ -n "$new_swap" ]]; then
                 if validate_disk_size "$new_swap"; then
-                    disk_config_set "$action_name" "SWAP_SIZE" "$new_swap"
-                    console "    -> Updated: SWAP_SIZE = $new_swap"
+                    if [[ "$new_swap" != "$swap_size" ]]; then
+                        disk_config_set "$action_name" "SWAP_SIZE" "$new_swap"
+                        console "    -> Updated: SWAP_SIZE = $new_swap"
+                        swap_size="$new_swap"
+                    else
+                        console "    -> Unchanged"
+                    fi
                     break
                 else
-                    console "    Error: Invalid size format. Use format like '8G', '512M', or 'remaining'"
+                    console "    Error: Invalid size format. Use '8G', '512M', '1T' (suffix required), or '*' for remaining"
                     continue
                 fi
             elif [[ -n "$swap_size" ]]; then
@@ -277,15 +361,9 @@ disk_config_interactive() {
             fi
         done
         
-        # Root size
-        local root_size
-        root_size=$(disk_config_get "$action_name" "ROOT_SIZE")
-        printf "  %-20s [%s]: " "ROOT_SIZE" "$root_size"
-        read -r new_root < /dev/tty
-        if [[ -n "$new_root" ]] && validate_disk_size "$new_root"; then
-            disk_config_set "$action_name" "ROOT_SIZE" "$new_root"
-            console "    -> Updated: ROOT_SIZE = $new_root"
-        fi
+        # Root size - auto-set to remaining space for auto partitioning
+        # Don't prompt user, just set it automatically
+        disk_config_set "$action_name" "ROOT_SIZE" "*"
     fi
 }
 
