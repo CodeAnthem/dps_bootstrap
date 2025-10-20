@@ -158,18 +158,19 @@ select_action() {
     done
     console
     
-    local choice
-    local max_choice="${#ACTIONS[@]}"
+    local choice validOptions max_choice
+    max_choice="${#ACTIONS[@]}"
+    validOptions="0 $(seq -s ' ' 1 "$max_choice")"
     
     # Loop until valid choice is made
     while true; do
         # printf "Select action [0-$max_choice]: "
-        read -rsn1 -p "Select action [0-$max_choice]: " choice < /dev/tty
+        read -rsn1 -p "Select action [$validOptions]: " choice < /dev/tty
         echo  # Add newline after single character input
         
         # Handle empty input (Enter key)
         if [[ -z "$choice" ]]; then
-            console "Please select a valid option (0-$max_choice)"
+            console "Please select a valid option ($validOptions)"
             continue
         fi
         
@@ -181,7 +182,7 @@ select_action() {
         
         # Validate numeric choice
         if [[ ! "$choice" =~ ^[0-9]+$ ]]; then
-            console " <- Invalid input '$choice'. Please enter a number (0-$max_choice)"
+            console "Invalid input '$choice'. Please enter a number ($validOptions)"
             continue
         fi
         
@@ -190,7 +191,7 @@ select_action() {
             echo "$choice"
             return 0
         else
-            console "Invalid selection '$choice'. Please choose 0-$max_choice"
+            console "Invalid selection '$choice'. Please choose $validOptions"
             continue
         fi
     done
