@@ -217,7 +217,7 @@ config_workflow() {
     local modules=("$@")
     
     # Display all configurations
-    print_box "Confirm the configuration"
+    section_header "Confirm the configuration"
     for module in "${modules[@]}"; do
         config_display "$action" "$module"
         console ""
@@ -230,7 +230,7 @@ config_workflow() {
         
         case "${response,,}" in
             y|yes)
-                print_box "Interactive Configuration"
+                section_header "Interactive Configuration"
                 console "Review and modify configuration values:"
                 console "Press ENTER to keep current value, or type new value"
                 console ""
@@ -257,7 +257,7 @@ config_workflow() {
                 success "Configuration validation passed"
                 
                 # Show updated configuration
-                print_box "Confirm the configuration"
+                section_header "Confirm the configuration"
                 for module in "${modules[@]}"; do
                     config_display "$action" "$module"
                     console ""

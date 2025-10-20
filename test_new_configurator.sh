@@ -25,7 +25,7 @@ source bootstrap/lib/ui.sh 2>/dev/null || {
     success() { echo -e "${GREEN}✅ $*${NC}"; }
     error() { echo -e "${RED}❌ $*${NC}"; }
     debug() { [[ "${DEBUG:-0}" == "1" ]] && echo -e "${YELLOW}[DEBUG] $*${NC}"; }
-    print_box() { echo "=== $* ==="; }
+    section_header() { echo "=== $* ==="; }
 }
 
 # Source validators
