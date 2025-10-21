@@ -9,8 +9,8 @@
 # =============================================================================
 # GLOBAL STATE
 # =============================================================================
-# Current module context (set during init)
-declare -g MODULE_CONTEXT=""
+# Current module context (set during init) - exported for subshells
+declare -gx MODULE_CONTEXT=""
 
 # Field metadata registry: module__field__attribute → value
 declare -gA FIELD_REGISTRY 2>/dev/null || true
@@ -429,7 +429,8 @@ config_menu() {
         
         # Get selection
         printf "Select category (0-$i): "
-        read -r selection < /dev/tty
+        read -r -n 1 selection < /dev/tty
+        echo  # Newline after single-char input
         
         if [[ "$selection" == "0" ]]; then
             # Validate before confirming
@@ -507,7 +508,8 @@ config_workflow() {
     # Ask if user wants to modify anything
     while true; do
         printf "Do you want to modify any settings? [y/n]: "
-        read -r response < /dev/tty
+        read -r -n 1 response < /dev/tty
+        echo  # Newline after single-char input
         
         case "${response,,}" in
             y|yes)
