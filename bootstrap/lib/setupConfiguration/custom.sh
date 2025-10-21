@@ -13,27 +13,19 @@ custom_init_callback() {
     
     field_declare ADMIN_USER \
         display="Admin Username" \
-        required=false \
         default="admin" \
-        validator=validate_username \
-        error="Invalid username (lowercase, numbers, hyphens only)"
+        validator=validate_username
     
     field_declare SSH_PORT \
         display="SSH Port" \
-        required=false \
         default="22" \
         type=number \
-        min=1 \
-        max=65535 \
-        validator=validate_port \
-        error="Invalid port (1-65535)"
+        validator=validate_port
     
     field_declare TIMEZONE \
         display="Timezone" \
-        required=false \
         default="UTC" \
-        validator=validate_timezone \
-        error="Invalid timezone"
+        validator=validate_timezone
 }
 
 # =============================================================================
@@ -54,9 +46,4 @@ custom_validate_extra() {
     return 0
 }
 
-# =============================================================================
-# MODULE REGISTRATION
-# =============================================================================
-config_register_module "custom" \
-    "custom_init_callback" \
-    "custom_get_active_fields"
+# No registration needed - modules are loaded via config_use_module()

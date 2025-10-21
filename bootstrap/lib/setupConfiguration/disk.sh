@@ -32,30 +32,25 @@ disk_init_callback() {
         display="Target Disk" \
         required=true \
         default="/dev/sda" \
-        validator=validate_disk_path \
-        error="Invalid disk or disk does not exist"
+        validator=validate_disk_path
     
     field_declare ENCRYPTION \
         display="Enable Encryption" \
         required=true \
         default=y \
-        type=bool \
-        validator=validate_yes_no
+        type=bool
     
     field_declare PARTITION_SCHEME \
         display="Partition Scheme" \
         required=true \
         default=auto \
         type=choice \
-        options="auto|manual" \
-        validator=validate_choice
+        options="auto|manual"
     
     field_declare SWAP_SIZE \
         display="Swap Size" \
-        required=false \
         default="8G" \
-        validator=validate_disk_size \
-        error="Invalid size format (use: 8G, 512M, etc)"
+        validator=validate_disk_size
 }
 
 # =============================================================================
@@ -83,9 +78,4 @@ disk_validate_extra() {
     return 0
 }
 
-# =============================================================================
-# MODULE REGISTRATION
-# =============================================================================
-config_register_module "disk" \
-    "disk_init_callback" \
-    "disk_get_active_fields"
+# No registration needed - modules are loaded via config_use_module()

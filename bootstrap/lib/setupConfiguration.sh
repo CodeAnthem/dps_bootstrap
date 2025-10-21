@@ -110,7 +110,8 @@ config_apply_env_overrides() {
     
     # Iterate over all fields in this module
     for key in "${!FIELD_REGISTRY[@]}"; do
-        if [[ "$key" =~ ^${module}__([^_]+)__display$ ]]; then
+        # Match pattern: module__FIELD_NAME__display (field name can contain underscores)
+        if [[ "$key" =~ ^${module}__(.+)__display$ ]]; then
             local field_name="${BASH_REMATCH[1]}"
             local env_var="DPS_${field_name}"
             
@@ -135,6 +136,7 @@ field_validate() {
     local value=$(config_get "$module" "$field")
     local required=$(field_get "$module" "$field" "required")
     local validator=$(field_get "$module" "$field" "validator")
+    local type=$(field_get "$module" "$field" "type")
     local display=$(field_get "$module" "$field" "display")
     
     # Check if required and empty
@@ -143,17 +145,26 @@ field_validate() {
         return 1
     fi
     
+    # Auto-detect validator based on type if not specified
+    if [[ -z "$validator" ]]; then
+        case "$type" in
+            choice) validator="validate_choice" ;;
+            number) validator="validate_number" ;;
+            bool) validator="validate_yes_no" ;;
+        esac
+    fi
+    
     # Run validator if value present and validator exists
     if [[ -n "$value" && -n "$validator" ]]; then
         # Special case: validate_choice needs options as second argument
         if [[ "$validator" == "validate_choice" ]]; then
             local options=$(field_get "$module" "$field" "options")
             if ! $validator "$value" "$options"; then
-                validation_error "Invalid $display: $value"
+                validation_error "Invalid $display: $value (valid options: $options)"
                 return 1
             fi
         else
-            # Standard validator with single argument
+            # Standard validator - error message comes from validator
             if ! $validator "$value"; then
                 validation_error "Invalid $display: $value"
                 return 1
@@ -175,13 +186,19 @@ field_prompt() {
     local required=$(field_get "$module" "$field" "required")
     local type=$(field_get "$module" "$field" "type")
     local display=$(field_get "$module" "$field" "display")
-    local error_msg=$(field_get "$module" "$field" "error")
     local options=$(field_get "$module" "$field" "options")
-    local min=$(field_get "$module" "$field" "min")
-    local max=$(field_get "$module" "$field" "max")
     
     local req_flag="optional"
     [[ "$required" == "true" ]] && req_flag="required"
+    
+    # Auto-detect validator based on type if not specified
+    if [[ -z "$validator" ]]; then
+        case "$type" in
+            choice) validator="validate_choice" ;;
+            number) validator="validate_port" ;;  # Default number validator
+            bool) validator="validate_yes_no" ;;
+        esac
+    fi
     
     local new_value
     
@@ -193,12 +210,10 @@ field_prompt() {
         bool)
             new_value=$(prompt_bool "$display" "$current")
             ;;
-        number)
-            new_value=$(prompt_number "$display" "$current" "$min" "$max" "$req_flag")
-            ;;
         *)
-            # Default: validated text input
-            new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag" "$error_msg")
+            # Default: validated text input (works for text and number types)
+            # Validators handle their own constraints (no need for min/max)
+            new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag")
             ;;
     esac
     
@@ -297,46 +312,53 @@ module_display() {
 }
 
 # =============================================================================
-# MODULE REGISTRATION & INITIALIZATION
+# MODULE LOADING & INITIALIZATION
 # =============================================================================
 
-# Register a configuration module
-# Usage: config_register_module "module" "init_callback" "get_active_fields_callback"
-config_register_module() {
-    local module_name="$1"
-    local init_callback="$2"
-    local get_fields_callback="$3"
+# Load and use a configuration module
+# Usage: config_use_module "network"
+config_use_module() {
+    local module="$1"
+    local module_file
     
-    MODULE_REGISTRY["${module_name}__init"]="$init_callback"
-    MODULE_REGISTRY["${module_name}__get_fields"]="$get_fields_callback"
-    MODULE_REGISTRY["${module_name}__registered"]="true"
+    # Try to find module file
+    if [[ -f "${SCRIPT_DIR}/lib/setupConfiguration/${module}.sh" ]]; then
+        module_file="${SCRIPT_DIR}/lib/setupConfiguration/${module}.sh"
+    elif [[ -f "$(dirname "${BASH_SOURCE[0]}")/setupConfiguration/${module}.sh" ]]; then
+        module_file="$(dirname "${BASH_SOURCE[0]}")/setupConfiguration/${module}.sh"
+    else
+        error "Configuration module not found: $module"
+        return 1
+    fi
     
-    debug "Module registered: $module_name"
+    # Source the module if not already loaded
+    if [[ "${MODULE_REGISTRY[${module}__loaded]:-false}" != "true" ]]; then
+        # shellcheck disable=SC1090
+        source "$module_file"
+        MODULE_REGISTRY["${module}__loaded"]="true"
+        debug "Module loaded: $module"
+    fi
+    
+    # Initialize the module
+    config_init_module "$module"
 }
 
-# Check if module is registered
-# Usage: config_module_exists "module"
-config_module_exists() {
-    local module_name="$1"
-    [[ "${MODULE_REGISTRY[${module_name}__registered]:-false}" == "true" ]]
-}
-
-# Initialize a module
+# Initialize a module (called by config_use_module or directly)
 # Usage: config_init_module "module"
 config_init_module() {
     local module="$1"
     
-    if ! config_module_exists "$module"; then
-        error "Module not registered: $module"
-        return 1
-    fi
-    
     # Set module context
     MODULE_CONTEXT="$module"
     
-    # Call module's init callback
-    local init_callback="${MODULE_REGISTRY[${module}__init]}"
-    $init_callback
+    # Call module's init callback if it exists
+    local init_callback="${module}_init_callback"
+    if type "$init_callback" &>/dev/null; then
+        $init_callback
+    else
+        # No init callback - that's okay for inline field declarations
+        debug "No init callback for module: $module"
+    fi
     
     # Apply DPS_* environment variable overrides
     config_apply_env_overrides "$module"

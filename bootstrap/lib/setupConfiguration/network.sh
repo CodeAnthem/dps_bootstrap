@@ -14,52 +14,36 @@ network_init_callback() {
     field_declare HOSTNAME \
         display="Hostname" \
         required=true \
-        default="" \
-        validator=validate_hostname \
-        error="Invalid hostname format"
+        validator=validate_hostname
     
     field_declare NETWORK_METHOD \
         display="Network Method" \
         required=true \
         default=dhcp \
         type=choice \
-        options="dhcp|static" \
-        validator=validate_choice
+        options="dhcp|static"
     
     field_declare IP_ADDRESS \
         display="IP Address" \
-        required=false \
-        default="" \
-        validator=validate_ip \
-        error="Invalid IP address"
+        validator=validate_ip
     
     field_declare NETWORK_MASK \
         display="Network Mask" \
-        required=false \
-        default="" \
-        validator=validate_netmask \
-        error="Invalid netmask"
+        validator=validate_netmask
     
     field_declare NETWORK_GATEWAY \
         display="Gateway" \
-        required=false \
-        default="" \
-        validator=validate_ip \
-        error="Invalid gateway IP"
+        validator=validate_ip
     
     field_declare NETWORK_DNS_PRIMARY \
         display="Primary DNS" \
-        required=false \
         default="1.1.1.1" \
-        validator=validate_ip \
-        error="Invalid DNS IP"
+        validator=validate_ip
     
     field_declare NETWORK_DNS_SECONDARY \
         display="Secondary DNS" \
-        required=false \
         default="1.0.0.1" \
-        validator=validate_ip \
-        error="Invalid DNS IP"
+        validator=validate_ip
 }
 
 # =============================================================================
@@ -106,9 +90,4 @@ network_validate_extra() {
     return 0
 }
 
-# =============================================================================
-# MODULE REGISTRATION
-# =============================================================================
-config_register_module "network" \
-    "network_init_callback" \
-    "network_get_active_fields"
+# No registration needed - modules are loaded via config_use_module()

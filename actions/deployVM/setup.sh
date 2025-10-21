@@ -20,10 +20,10 @@ set -euo pipefail
 # =============================================================================
 # Initialize Deploy VM configuration
 init_deploy_config() {
-    # Initialize all modules
-    config_init_module "network"
-    config_init_module "disk"
-    config_init_module "custom"
+    # Load and initialize modules (auto-sources the .sh files)
+    config_use_module "network"
+    config_use_module "disk"
+    config_use_module "custom"
     
     success "Deploy VM configuration initialized"
 }
