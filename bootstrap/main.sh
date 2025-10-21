@@ -42,7 +42,7 @@ source_lib_recursive() {
         # Source the file
         # shellcheck disable=SC1090
         if ! source "$file"; then 
-            echo >&2 " [Error] Failed to source: $file"
+            error "Failed to source: $file"
         fi
     done
     
