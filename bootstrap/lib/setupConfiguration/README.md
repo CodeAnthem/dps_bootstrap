@@ -1,387 +1,266 @@
-# Configuration Modules - Developer Guide
+# Configuration System
 
-## Overview
-
-The new configuration system uses a **callback-based architecture** where modules only implement domain-specific logic, while the core engine handles all CRUD operations.
+Unified configuration management with module-based architecture, automatic environment variable overrides, and smart validation-first workflow.
 
 ---
 
-## Quick Start: Creating a New Module
+## Features
 
-### 1. Create Module File
+- **Module-based** - Reusable config modules (network, disk, custom)
+- **Environment overrides** - `DPS_*` vars automatically applied
+- **Smart validation** - Only prompts for missing/invalid fields
+- **Category menu** - Interactive editing by category with live preview
+- **DPS_* scanning** - Any registered config key can be overridden via env vars
 
-```bash
-touch bootstrap/lib/config_modules/mymodule.sh
+---
+
+## How It Works
+
+### Architecture
+
+```
+setupConfiguration.sh          # Core engine
+├─ Module Registry             # Stores module callbacks
+├─ Config Storage (CONFIG_DATA)# Single source of truth
+├─ Key Registry (CONFIG_KEYS)  # Tracks all keys for env scanning
+└─ Workflow Functions          # Orchestrates the flow
+
+setupConfiguration/            # Config modules
+├─ network.sh                  # Network config
+├─ disk.sh                     # Disk config
+└─ custom.sh                   # Custom vars
 ```
 
-### 2. Module Template
+### Workflow
+
+```
+1. Action calls config_init() per module
+2. Modules register keys → CONFIG_KEYS
+3. config_workflow() called
+4. Scans for DPS_* env vars → applies overrides
+5. Validates all modules
+6. IF errors → Fix only broken fields
+7. Show config summary
+8. User chooses: confirm or edit by category
+9. Category menu: pick what to change, see live preview
+10. Done → proceed
+```
+
+---
+
+## API
+
+### Core Functions
+
+```bash
+# Initialize module with defaults
+config_init "action" "module"
+
+# Run complete workflow (validate → fix errors → menu → confirm)
+config_workflow "action" "module1" "module2" ...
+
+# Get/Set config values
+config_set "action" "module" "key" "value"
+config_get "action" "module" "key"
+
+# Register custom variables (bypasses modules)
+config_register_vars "action" "VAR1:default" "VAR2:default2"
+config_get_var "action" "VAR1"
+```
+
+### Module Registration
+
+```bash
+# Register a module (5 callbacks)
+config_register_module "mymodule" \
+    "init_callback" \
+    "display_callback" \
+    "interactive_callback" \
+    "validate_callback" \
+    "fix_errors_callback"  # Optional - falls back to interactive
+```
+
+### Callbacks
+
+#### `init_callback(action, module, config_pairs...)`
+Sets defaults, stores in CONFIG_DATA via `config_set()`.
+
+#### `display_callback(action, module)`
+Displays current config to user.
+
+#### `interactive_callback(action, module)`
+Prompts for ALL fields. Used when user selects category in menu.
+
+#### `validate_callback(action, module)` → `error_count`
+Validates config, returns number of errors (NOT boolean).
+
+#### `fix_errors_callback(action, module)`
+Prompts ONLY for invalid/missing fields. Much faster than interactive.
+
+---
+
+## Creating a Module
 
 ```bash
 #!/usr/bin/env bash
-# Module: mymodule
-# Description: What this module does
+# lib/setupConfiguration/mymodule.sh
 
-# =============================================================================
-# INITIALIZATION CALLBACK
-# =============================================================================
+# Init - set defaults
 mymodule_init_callback() {
     local action="$1"
     local module="$2"
-    shift 2
-    local config_pairs=("$@")
     
-    # Define defaults
-    local defaults=(
-        "FIELD1:default_value"
-        "FIELD2:value|option1|option2"  # With options
-        "FIELD3:"  # Empty default
-    )
-    
-    # Use provided config or defaults
-    if [[ ${#config_pairs[@]} -eq 0 ]]; then
-        config_pairs=("${defaults[@]}")
-    fi
-    
-    # Parse and store
-    for config_pair in "${config_pairs[@]}"; do
-        local key="${config_pair%%:*}"
-        local value_with_options="${config_pair#*:}"
-        local default_value="${value_with_options%%|*}"
-        local options="${value_with_options#*|}"
-        
-        # Store value
-        config_set "$action" "$module" "$key" "$default_value"
-        
-        # Store options metadata (if any)
-        if [[ "$options" != "$value_with_options" ]]; then
-            config_set_meta "$action" "$module" "$key" "options" "$options"
-        fi
-        
-        # Environment variable override (DPS_FIELD1 format)
-        local env_var="DPS_${key}"
-        if [[ -n "${!env_var:-}" ]]; then
-            config_set "$action" "$module" "$key" "${!env_var}"
-        fi
-    done
+    config_set "$action" "$module" "SETTING1" "default"
+    config_set "$action" "$module" "SETTING2" "value"
 }
 
-# =============================================================================
-# DISPLAY CALLBACK
-# =============================================================================
+# Display - show config
 mymodule_display_callback() {
     local action="$1"
     local module="$2"
     
-    console "My Module Configuration:"
-    console "  FIELD1: $(config_get "$action" "$module" "FIELD1")"
-    console "  FIELD2: $(config_get "$action" "$module" "FIELD2")"
-    console "  FIELD3: $(config_get "$action" "$module" "FIELD3")"
+    console "My Module:"
+    console "  SETTING1: $(config_get "$action" "$module" "SETTING1")"
+    console "  SETTING2: $(config_get "$action" "$module" "SETTING2")"
 }
 
-# =============================================================================
-# INTERACTIVE CALLBACK
-# =============================================================================
+# Interactive - prompt for ALL fields
 mymodule_interactive_callback() {
     local action="$1"
     local module="$2"
     
     console "My Module Configuration:"
+    console ""
     
-    # Field 1
-    local field1
-    field1=$(config_get "$action" "$module" "FIELD1")
-    while true; do
-        printf "  %-20s [%s]: " "FIELD1" "$field1"
-        read -r new_value < /dev/tty
-        
-        if [[ -n "$new_value" ]]; then
-            # Add validation here
-            if validate_something "$new_value"; then
-                if [[ "$new_value" != "$field1" ]]; then
-                    config_set "$action" "$module" "FIELD1" "$new_value"
-                    console "    -> Updated: FIELD1 = $new_value"
-                    field1="$new_value"
-                else
-                    console "    -> Unchanged"
-                fi
-                break
-            else
-                console "    Error: Invalid value"
-                continue
-            fi
-        elif [[ -n "$field1" ]]; then
-            break
-        else
-            console "    Error: Field is required"
-            continue
-        fi
-    done
+    local setting1=$(config_get "$action" "$module" "SETTING1")
+    local new=$(prompt_validated "SETTING1" "$setting1" "validate_something" "required")
+    update_if_changed "$action" "$module" "SETTING1" "$setting1" "$new"
     
     console ""
 }
 
-# =============================================================================
-# VALIDATION CALLBACK
-# =============================================================================
+# Validate - return error count
 mymodule_validate_callback() {
     local action="$1"
     local module="$2"
     local validation_errors=0
     
-    # Validate field1
-    local field1
-    field1=$(config_get "$action" "$module" "FIELD1")
-    if [[ -z "$field1" ]]; then
-        error "FIELD1 is required"
+    local setting1=$(config_get "$action" "$module" "SETTING1")
+    if [[ -z "$setting1" ]]; then
+        validation_error "SETTING1 is required"
         ((validation_errors++))
     fi
-    
-    # More validation...
     
     return "$validation_errors"
 }
 
-# =============================================================================
-# REGISTRATION (MUST BE AT END)
-# =============================================================================
+# Fix errors - ONLY prompt for broken fields
+mymodule_fix_errors_callback() {
+    local action="$1"
+    local module="$2"
+    
+    console "My Module Configuration:"
+    console ""
+    
+    local setting1=$(config_get "$action" "$module" "SETTING1")
+    if [[ -z "$setting1" ]] || ! validate_something "$setting1"; then
+        local new=$(prompt_validated "SETTING1" "$setting1" "validate_something" "required")
+        update_if_changed "$action" "$module" "SETTING1" "$setting1" "$new"
+    fi
+    
+    console ""
+}
+
+# Register
 config_register_module "mymodule" \
     "mymodule_init_callback" \
     "mymodule_display_callback" \
     "mymodule_interactive_callback" \
-    "mymodule_validate_callback"
+    "mymodule_validate_callback" \
+    "mymodule_fix_errors_callback"
 ```
 
-### 3. Use in Action
+---
+
+## Usage in Actions
 
 ```bash
-# In your action's setup.sh:
+#!/usr/bin/env bash
+# actions/myaction/setup.sh
 
 setup() {
-    local action_name="deployVM"
+    local action_name="$1"
     
     # Initialize modules
     config_init "$action_name" "network"
     config_init "$action_name" "disk"
-    config_init "$action_name" "mymodule"  # <-- Your new module
     
-    # Run workflow (handles display, interactive, validate)
-    config_workflow "$action_name" "network" "disk" "mymodule"
+    # Or register custom vars
+    config_register_vars "$action_name" \
+        "API_KEY:" \
+        "ENDPOINT:https://api.example.com"
     
-    # Get values
-    local myvalue
-    myvalue=$(config_get "$action_name" "mymodule" "FIELD1")
+    # Run workflow (auto-applies DPS_* env vars)
+    config_workflow "$action_name" "network" "disk"
     
-    echo "Field1 value: $myvalue"
+    # Access config
+    local hostname=$(config_get "$action_name" "network" "HOSTNAME")
+    local api_key=$(config_get_var "$action_name" "API_KEY")
+    
+    # Deploy...
 }
 ```
 
 ---
 
-## Core API Reference
+## Environment Variables
 
-### Configuration Storage
-
-```bash
-# Set a value
-config_set "action" "module" "key" "value"
-
-# Get a value
-value=$(config_get "action" "module" "key")
-
-# Set metadata (options, validation rules, etc.)
-config_set_meta "action" "module" "key" "meta_type" "value"
-
-# Get metadata
-value=$(config_get_meta "action" "module" "key" "meta_type")
-
-# Get all keys for a module
-mapfile -t keys < <(config_get_keys "action" "module")
-
-# Clear all config for action+module
-config_clear "action" "module"
-```
-
-### Module Lifecycle
+Any registered config key can be overridden:
 
 ```bash
-# Register a module (called by module itself)
-config_register_module "module_name" \
-    "init_callback" \
-    "display_callback" \
-    "interactive_callback" \
-    "validate_callback"
+export DPS_HOSTNAME=myserver
+export DPS_ADMIN_USER=admin
+export DPS_DISK_TARGET=/dev/nvme0n1
+export DPS_API_KEY=secret123  # Even custom vars!
 
-# Initialize a module (called by action)
-config_init "action" "module" ["key:value" ...]
-
-# Display configuration
-config_display "action" "module"
-
-# Interactive editing
-config_interactive "action" "module"
-
-# Validate configuration
-config_validate "action" "module"
-```
-
-### Workflow
-
-```bash
-# Complete workflow (recommended)
-config_workflow "action" "module1" "module2" "module3"
-
-# This handles:
-# 1. Display all modules
-# 2. Ask for modifications
-# 3. Interactive editing (if yes)
-# 4. Validation
-# 5. Repeat until confirmed
+./start.sh
+# All applied automatically, no prompts
 ```
 
 ---
 
-## Validation Functions (validators.sh)
+## Input Helpers
 
-Available validators:
+Located in `../inputHelpers.sh`:
 
 ```bash
-validate_ip "192.168.1.1"                    # IPv4 address
-validate_netmask "255.255.255.0"             # Network mask or CIDR
-validate_hostname "server-01"                # Hostname format
-validate_disk_path "/dev/sda"                # Block device exists
-validate_disk_size "8G" [allow_remaining]    # Size format
-validate_yes_no "y"                          # Yes/no input
-validate_port "22"                           # Port number 1-65535
-validate_timezone "UTC"                      # Timezone
-validate_username "admin"                    # Linux username
-validate_file_path "/path/to/file"           # File exists
-validate_choice "dhcp" "dhcp|static"         # Choice from options
-convert_size_to_bytes "8G"                   # Convert to bytes
+# Validated input
+new=$(prompt_validated "LABEL" "$current" "validate_func" "required|optional" "Error msg")
+
+# Boolean y/n
+enabled=$(prompt_bool "ENABLE" "$current")
+
+# Choice from options
+method=$(prompt_choice "METHOD" "$current" "opt1|opt2|opt3")
+
+# Number with range
+port=$(prompt_number "PORT" "$current" 1 65535 "required")
+
+# Update only if changed
+update_if_changed "$action" "$module" "KEY" "$old" "$new"
 ```
 
 ---
 
-## Best Practices
+## Key Points
 
-### 1. Always Validate Input
-```bash
-if [[ -n "$new_value" ]]; then
-    if validate_something "$new_value"; then
-        # OK to set
-    else
-        console "    Error: Invalid value"
-        continue
-    fi
-fi
-```
-
-### 2. Show "Unchanged" When Appropriate
-```bash
-if [[ "$new_value" != "$old_value" ]]; then
-    config_set "$action" "$module" "KEY" "$new_value"
-    console "    -> Updated: KEY = $new_value"
-else
-    console "    -> Unchanged"
-fi
-```
-
-### 3. Use Options Metadata
-```bash
-# In init callback:
-config_set_meta "$action" "$module" "METHOD" "options" "dhcp|static"
-
-# In interactive callback:
-local options
-options=$(config_get_meta "$action" "$module" "METHOD" "options")
-printf "  METHOD [%s] (%s): " "$current" "$options"
-```
-
-### 4. Break on Empty Input if Field Has Default
-```bash
-if [[ -n "$new_value" ]]; then
-    # Process new value
-elif [[ -n "$current_value" ]]; then
-    break  # Keep current value
-else
-    console "    Error: Field is required"
-    continue
-fi
-```
-
-### 5. Conditional Fields
-```bash
-local method
-method=$(config_get "$action" "$module" "METHOD")
-
-if [[ "$method" == "static" ]]; then
-    # Show static IP fields
-fi
-```
+- **fix_errors_callback is optional** - falls back to full interactive if missing
+- **Validation must return error count** - not boolean
+- **Use validation_error() not error()** - error() exits script
+- **Keys auto-registered** - every config_set() registers key for env scanning
+- **DPS_* vars applied automatically** - in config_workflow() before validation
+- **Category menu validates before exit** - can't leave with errors
 
 ---
 
-## Examples
-
-See existing modules for complete examples:
-- `network.sh` - IP configuration, conditional fields
-- `disk.sh` - Complex nested settings, helpers
-- `custom.sh` - Simple key-value pairs
-
----
-
-## Troubleshooting
-
-### Module Not Found
-**Error**: `Module not registered: mymodule`
-
-**Fix**: Ensure `config_register_module` is called at module load
-
-### Values Not Persisting
-**Issue**: Values disappear after setting
-
-**Fix**: Use `config_set()` not `config_set_meta()`
-
-### Validation Not Running
-**Issue**: Invalid values accepted
-
-**Fix**: Check validation callback returns error count, not boolean
-
----
-
-## Migration from Old System
-
-### Old Module Function → New Callback
-
-| Old | New |
-|-----|-----|
-| `mymodule_config_init()` | `mymodule_init_callback()` |
-| `mymodule_config_display()` | `mymodule_display_callback()` |
-| `mymodule_config_interactive()` | `mymodule_interactive_callback()` |
-| `mymodule_config_validate()` | `mymodule_validate_callback()` |
-| `mymodule_config_get()` | `config_get("action", "mymodule", "key")` |
-| `mymodule_config_set()` | `config_set("action", "mymodule", "key", "val")` |
-
-### Old Array → New API
-
-```bash
-# Old
-declare -A MYMODULE_CONFIG
-MYMODULE_CONFIG["deployVM__KEY"]="value"
-echo "${MYMODULE_CONFIG[deployVM__KEY]}"
-
-# New
-config_set "deployVM" "mymodule" "KEY" "value"
-echo "$(config_get "deployVM" "mymodule" "KEY")"
-```
-
----
-
-## Summary
-
-**To create a new module:**
-1. Copy template above
-2. Implement 4 callbacks
-3. Register module at end
-4. Add to action's workflow
-
-**That's it!** No CRUD code needed - the engine handles everything.
+**WIP**: This system is under active development.

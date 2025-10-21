@@ -282,6 +282,65 @@ network_interactive_callback() {
 }
 
 # =============================================================================
+# FIX ERRORS CALLBACK (only prompt for invalid/missing fields)
+# =============================================================================
+network_fix_errors_callback() {
+    local action="$1"
+    local module="$2"
+    
+    console "Network Configuration:"
+    console ""
+    
+    # Fix hostname if invalid or missing
+    local hostname
+    hostname=$(config_get "$action" "$module" "HOSTNAME")
+    if [[ -z "$hostname" ]] || ! validate_hostname "$hostname"; then
+        local new_hostname
+        new_hostname=$(prompt_validated "HOSTNAME" "$hostname" "validate_hostname" "required" "Invalid hostname format")
+        update_if_changed "$action" "$module" "HOSTNAME" "$hostname" "$new_hostname"
+    fi
+    
+    # Fix network method if invalid or missing
+    local method
+    method=$(config_get "$action" "$module" "NETWORK_METHOD")
+    if [[ -z "$method" ]]; then
+        local new_method
+        new_method=$(prompt_choice "NETWORK_METHOD" "$method" "dhcp|static")
+        update_if_changed "$action" "$module" "NETWORK_METHOD" "$method" "$new_method"
+        method="$new_method"
+    fi
+    
+    # Fix static network config if method is static
+    if [[ "$method" == "static" ]]; then
+        local ip
+        ip=$(config_get "$action" "$module" "IP_ADDRESS")
+        if [[ -z "$ip" ]] || ! validate_ip "$ip"; then
+            local new_ip
+            new_ip=$(prompt_validated "IP_ADDRESS" "$ip" "validate_ip" "required" "Invalid IP address")
+            update_if_changed "$action" "$module" "IP_ADDRESS" "$ip" "$new_ip"
+        fi
+        
+        local mask
+        mask=$(config_get "$action" "$module" "NETWORK_MASK")
+        if [[ -z "$mask" ]] || ! validate_netmask "$mask"; then
+            local new_mask
+            new_mask=$(prompt_validated "NETWORK_MASK" "$mask" "validate_netmask" "required" "Invalid netmask")
+            update_if_changed "$action" "$module" "NETWORK_MASK" "$mask" "$new_mask"
+        fi
+        
+        local gateway
+        gateway=$(config_get "$action" "$module" "NETWORK_GATEWAY")
+        if [[ -z "$gateway" ]] || ! validate_ip "$gateway"; then
+            local new_gateway
+            new_gateway=$(prompt_validated "NETWORK_GATEWAY" "$gateway" "validate_ip" "required" "Invalid gateway IP")
+            update_if_changed "$action" "$module" "NETWORK_GATEWAY" "$gateway" "$new_gateway"
+        fi
+    fi
+    
+    console ""
+}
+
+# =============================================================================
 # MODULE VALIDATION CALLBACK
 # =============================================================================
 network_validate_callback() {
@@ -352,4 +411,5 @@ config_register_module "network" \
     "network_init_callback" \
     "network_display_callback" \
     "network_interactive_callback" \
-    "network_validate_callback"
+    "network_validate_callback" \
+    "network_fix_errors_callback"

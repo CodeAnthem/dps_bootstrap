@@ -140,6 +140,37 @@ custom_interactive_callback() {
 }
 
 # =============================================================================
+# FIX ERRORS CALLBACK (only prompt for invalid/missing fields)
+# =============================================================================
+custom_fix_errors_callback() {
+    local action="$1"
+    local module="$2"
+    
+    console "Custom Configuration:"
+    console ""
+    
+    # Fix admin user if invalid (optional field)
+    local admin_user
+    admin_user=$(config_get "$action" "$module" "ADMIN_USER")
+    if [[ -n "$admin_user" ]] && ! validate_username "$admin_user"; then
+        local new_user
+        new_user=$(prompt_validated "ADMIN_USER" "$admin_user" "validate_username" "optional" "Invalid username (lowercase, numbers, hyphens only)")
+        update_if_changed "$action" "$module" "ADMIN_USER" "$admin_user" "$new_user"
+    fi
+    
+    # Fix SSH port if invalid (optional field)
+    local ssh_port
+    ssh_port=$(config_get "$action" "$module" "SSH_PORT")
+    if [[ -n "$ssh_port" ]] && ! validate_port "$ssh_port"; then
+        local new_port
+        new_port=$(prompt_number "SSH_PORT" "$ssh_port" 1 65535 "optional")
+        update_if_changed "$action" "$module" "SSH_PORT" "$ssh_port" "$new_port"
+    fi
+    
+    console ""
+}
+
+# =============================================================================
 # MODULE VALIDATION CALLBACK
 # =============================================================================
 custom_validate_callback() {
@@ -174,4 +205,5 @@ config_register_module "custom" \
     "custom_init_callback" \
     "custom_display_callback" \
     "custom_interactive_callback" \
-    "custom_validate_callback"
+    "custom_validate_callback" \
+    "custom_fix_errors_callback"

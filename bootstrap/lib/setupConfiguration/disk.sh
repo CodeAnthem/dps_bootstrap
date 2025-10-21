@@ -385,6 +385,61 @@ disk_interactive_callback() {
 }
 
 # =============================================================================
+# FIX ERRORS CALLBACK (only prompt for invalid/missing fields)
+# =============================================================================
+disk_fix_errors_callback() {
+    local action="$1"
+    local module="$2"
+    
+    console "Disk Configuration:"
+    console ""
+    
+    # Fix disk target if invalid or missing
+    local disk_target
+    disk_target=$(config_get "$action" "$module" "DISK_TARGET")
+    if [[ -z "$disk_target" ]] || ! validate_disk_path "$disk_target"; then
+        console "Available disks:"
+        list_available_disks
+        console ""
+        local new_disk
+        new_disk=$(prompt_validated "DISK_TARGET" "$disk_target" "validate_disk_path" "required" "Invalid disk or does not exist")
+        update_if_changed "$action" "$module" "DISK_TARGET" "$disk_target" "$new_disk"
+    fi
+    
+    # Fix encryption if invalid or missing
+    local encryption
+    encryption=$(config_get "$action" "$module" "ENCRYPTION")
+    if [[ -z "$encryption" ]] || ! validate_yes_no "$encryption"; then
+        local new_encryption
+        new_encryption=$(prompt_bool "ENCRYPTION" "$encryption")
+        update_if_changed "$action" "$module" "ENCRYPTION" "$encryption" "$new_encryption"
+    fi
+    
+    # Fix partition scheme if invalid or missing
+    local scheme
+    scheme=$(config_get "$action" "$module" "PARTITION_SCHEME")
+    if [[ -z "$scheme" ]]; then
+        local new_scheme
+        new_scheme=$(prompt_choice "PARTITION_SCHEME" "$scheme" "auto|manual")
+        update_if_changed "$action" "$module" "PARTITION_SCHEME" "$scheme" "$new_scheme"
+        scheme="$new_scheme"
+    fi
+    
+    # Fix swap size if auto partitioning and invalid
+    if [[ "$scheme" == "auto" ]]; then
+        local swap_size
+        swap_size=$(config_get "$action" "$module" "SWAP_SIZE")
+        if [[ -z "$swap_size" ]] || ! validate_disk_size "$swap_size"; then
+            local new_swap
+            new_swap=$(prompt_validated "SWAP_SIZE" "$swap_size" "validate_disk_size" "required" "Invalid size format (use: 8G, 512M, etc)")
+            update_if_changed "$action" "$module" "SWAP_SIZE" "$swap_size" "$new_swap"
+        fi
+    fi
+    
+    console ""
+}
+
+# =============================================================================
 # MODULE VALIDATION CALLBACK
 # =============================================================================
 disk_validate_callback() {
@@ -446,4 +501,5 @@ config_register_module "disk" \
     "disk_init_callback" \
     "disk_display_callback" \
     "disk_interactive_callback" \
-    "disk_validate_callback"
+    "disk_validate_callback" \
+    "disk_fix_errors_callback"
