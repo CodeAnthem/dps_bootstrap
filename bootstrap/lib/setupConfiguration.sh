@@ -138,6 +138,10 @@ config_clear() {
 config_apply_env_overrides() {
     local action="$1"
     
+    debug "Scanning for DPS_* environment variable overrides..."
+    local key_count=${#CONFIG_KEYS[@]}
+    debug "Registered keys count: $key_count"
+    
     # Scan all registered config keys
     for config_key in "${!CONFIG_KEYS[@]}"; do
         # Extract action, module, key from config_key
@@ -146,10 +150,12 @@ config_apply_env_overrides() {
             local key="${BASH_REMATCH[2]}"
             local env_var="DPS_${key}"
             
+            debug "Checking for $env_var (from $config_key)"
+            
             # Check if environment variable exists
             if [[ -n "${!env_var:-}" ]]; then
                 config_set "$action" "$module" "$key" "${!env_var}"
-                debug "Environment override applied: $env_var=${!env_var} -> $module.$key"
+                log "Environment override: $env_var=${!env_var} -> $module.$key"
             fi
         fi
     done
@@ -243,6 +249,9 @@ config_workflow() {
     local action="$1"
     shift
     local modules=("$@")
+    
+    # Apply environment variable overrides FIRST
+    config_apply_env_overrides "$action"
     
     # Validate all modules BEFORE first display
     local validation_errors=0
