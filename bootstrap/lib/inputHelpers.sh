@@ -131,8 +131,14 @@ prompt_disk() {
     local current_value="$2"
     
     # Show available disks
+    console ""
+    console "Available disks:"
     local available_disks
-    mapfile -t available_disks < <(list_available_disks) >&2
+    mapfile -t available_disks < <(list_available_disks)
+    for i in "${!available_disks[@]}"; do
+        console "  $((i+1))) ${available_disks[i]}"
+    done
+    console ""
     
     while true; do
         printf "  %-20s [%s]: " "$label" "$current_value" >&2
@@ -144,7 +150,7 @@ prompt_disk() {
                 echo "$current_value"
                 return 0
             else
-                console "    Error: $label is required" >&2
+                console "    Error: $label is required"
                 continue
             fi
         fi
@@ -160,7 +166,7 @@ prompt_disk() {
             echo "$new_value"
             return 0
         else
-            console "    Error: Disk '$new_value' does not exist or is not a block device" >&2
+            console "    Error: Disk '$new_value' does not exist or is not a block device"
             continue
         fi
     done

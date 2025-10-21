@@ -39,14 +39,21 @@ validate_username() {
 validate_timezone() {
     local tz="$1"
     
-    # Check if timezone exists
-    [[ -f "/usr/share/zoneinfo/$tz" ]] && return 0
+    # Empty not allowed
+    [[ -z "$tz" ]] && return 1
     
-    # Common timezone abbreviations
-    case "$tz" in
-        UTC|GMT|EST|PST|MST|CST) return 0 ;;
-        *) return 1 ;;
-    esac
+    # Check if timezone file exists (if zoneinfo is available)
+    if [[ -d "/usr/share/zoneinfo" ]]; then
+        [[ -f "/usr/share/zoneinfo/$tz" ]] && return 0
+    fi
+    
+    # Valid format: Region/City or just abbreviations
+    # Accept: UTC, GMT, Region/City, Region/SubRegion/City
+    if [[ "$tz" =~ ^[A-Z][A-Za-z_]+(/[A-Za-z_]+)+$ ]] || [[ "$tz" =~ ^(UTC|GMT|EST|PST|MST|CST|CET|EET|WET)$ ]]; then
+        return 0
+    fi
+    
+    return 1
 }
 
 # =============================================================================
