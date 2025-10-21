@@ -17,6 +17,9 @@ declare -gA CONFIG_DATA 2>/dev/null || true
 # Module registry: stores module metadata and callbacks
 declare -gA MODULE_REGISTRY 2>/dev/null || true
 
+# Registered configuration keys (for env var scanning)
+declare -gA CONFIG_KEYS 2>/dev/null || true
+
 # =============================================================================
 # MODULE REGISTRATION
 # =============================================================================
@@ -57,6 +60,9 @@ config_set() {
     local value="$4"
     
     CONFIG_DATA["${action}__${module}__${key}"]="$value"
+    
+    # Register key for env var scanning
+    CONFIG_KEYS["${action}__${module}__${key}"]="true"
 }
 
 # Get configuration value
@@ -127,6 +133,28 @@ config_clear() {
 # =============================================================================
 # MODULE LIFECYCLE
 # =============================================================================
+# Scan and apply all DPS_* environment variables
+# Usage: config_apply_env_overrides "action"
+config_apply_env_overrides() {
+    local action="$1"
+    
+    # Scan all registered config keys
+    for config_key in "${!CONFIG_KEYS[@]}"; do
+        # Extract action, module, key from config_key
+        if [[ "$config_key" =~ ^${action}__([^_]+)__(.+)$ ]]; then
+            local module="${BASH_REMATCH[1]}"
+            local key="${BASH_REMATCH[2]}"
+            local env_var="DPS_${key}"
+            
+            # Check if environment variable exists
+            if [[ -n "${!env_var:-}" ]]; then
+                config_set "$action" "$module" "$key" "${!env_var}"
+                debug "Environment override applied: $env_var=${!env_var} -> $module.$key"
+            fi
+        fi
+    done
+}
+
 # Initialize a module for an action
 # Usage: config_init "action" "module" ["key:value" "key2:value|options" ...]
 config_init() {
@@ -216,6 +244,46 @@ config_workflow() {
     shift
     local modules=("$@")
     
+    # Validate all modules BEFORE first display
+    local validation_errors=0
+    for module in "${modules[@]}"; do
+        if ! config_validate "$action" "$module"; then
+            ((validation_errors++))
+        fi
+    done
+    
+    # If validation fails, force interactive mode
+    if [[ "$validation_errors" -gt 0 ]]; then
+        console ""
+        console "⚠️  Configuration has $validation_errors error(s). Interactive mode required."
+        console ""
+        
+        section_header "Interactive Configuration"
+        console "Review and modify configuration values:"
+        console "Press ENTER to keep current value, or type new value"
+        console ""
+        
+        for module in "${modules[@]}"; do
+            config_interactive "$action" "$module"
+        done
+        
+        success "Interactive configuration completed"
+        
+        # Re-validate after interactive mode
+        validation_errors=0
+        for module in "${modules[@]}"; do
+            if ! config_validate "$action" "$module"; then
+                ((validation_errors++))
+            fi
+        done
+        
+        if [[ "$validation_errors" -gt 0 ]]; then
+            error "Configuration validation still has $validation_errors error(s)"
+        fi
+        
+        success "Configuration validation passed"
+    fi
+    
     # Display all configurations
     section_header "Confirm the configuration"
     for module in "${modules[@]}"; do
@@ -292,4 +360,41 @@ config_init_all() {
         
         config_init "$action" "$module" "${config_pairs[@]}"
     done
+    
+    # Apply environment variable overrides for ALL registered keys
+    config_apply_env_overrides "$action"
+}
+
+# =============================================================================
+# DYNAMIC CONFIGURATION (FOR SETUP SCRIPTS)
+# =============================================================================
+# Register custom variables for an action (bypasses module system)
+# Usage: config_register_vars "action" "VAR1:default1" "VAR2:default2" ...
+config_register_vars() {
+    local action="$1"
+    shift
+    local module="custom"
+    
+    for var_spec in "$@"; do
+        local key="${var_spec%%:*}"
+        local default_value="${var_spec#*:}"
+        
+        # Set default value
+        config_set "$action" "$module" "$key" "$default_value"
+        
+        # Check for environment variable override
+        local env_var="DPS_${key}"
+        if [[ -n "${!env_var:-}" ]]; then
+            config_set "$action" "$module" "$key" "${!env_var}"
+            debug "Custom var override: $env_var=${!env_var}"
+        fi
+    done
+}
+
+# Get custom variable value
+# Usage: config_get_var "action" "VAR_NAME"
+config_get_var() {
+    local action="$1"
+    local key="$2"
+    config_get "$action" "custom" "$key"
 }
