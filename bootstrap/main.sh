@@ -107,6 +107,7 @@ log "Runtime directory: $RUNTIME_DIR"
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
+    console
 
     if [[ $exit_code -eq 0 ]]; then
         log "Script completed successfully"
