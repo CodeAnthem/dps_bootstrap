@@ -1,266 +1,138 @@
-# Configuration System
+# Configuration System v2.0
 
-Unified configuration management with module-based architecture, automatic environment variable overrides, and smart validation-first workflow.
-
----
-
-## Features
-
-- **Module-based** - Reusable config modules (network, disk, custom)
-- **Environment overrides** - `DPS_*` vars automatically applied
-- **Smart validation** - Only prompts for missing/invalid fields
-- **Category menu** - Interactive editing by category with live preview
-- **DPS_* scanning** - Any registered config key can be overridden via env vars
+Generic field-based configuration with declarative metadata.
 
 ---
 
-## How It Works
+## Code Reduction
 
-### Architecture
+- **network.sh**: 416 lines → 110 lines (73% reduction)
+- **disk.sh**: 506 lines → 87 lines (83% reduction)
+- **custom.sh**: 210 lines → 60 lines (71% reduction)
+- **Total**: ~1132 lines → ~257 lines (77% reduction)
 
+---
+
+## Usage
+
+### Declare Fields
+
+```bash
+network_init_callback() {
+    # MODULE_CONTEXT is set automatically
+    
+    field_declare HOSTNAME \
+        display="Hostname" \
+        required=true \
+        validator=validate_hostname \
+        error="Invalid hostname"
+    
+    field_declare NETWORK_METHOD \
+        display="Network Method" \
+        type=choice \
+        options="dhcp|static" \
+        default=dhcp
+}
 ```
-setupConfiguration.sh          # Core engine
-├─ Module Registry             # Stores module callbacks
-├─ Config Storage (CONFIG_DATA)# Single source of truth
-├─ Key Registry (CONFIG_KEYS)  # Tracks all keys for env scanning
-└─ Workflow Functions          # Orchestrates the flow
 
-setupConfiguration/            # Config modules
-├─ network.sh                  # Network config
-├─ disk.sh                     # Disk config
-└─ custom.sh                   # Custom vars
+### Active Fields Logic
+
+```bash
+network_get_active_fields() {
+    local method=$(config_get "NETWORK_METHOD")
+    
+    echo "HOSTNAME NETWORK_METHOD"
+    [[ "$method" == "static" ]] && echo "IP_ADDRESS NETWORK_MASK"
+}
 ```
 
-### Workflow
+### Cross-Field Validation
 
+```bash
+network_validate_extra() {
+    # Optional: validate relationships between fields
+    return 0
+}
 ```
-1. Action calls config_init() per module
-2. Modules register keys → CONFIG_KEYS
-3. config_workflow() called
-4. Scans for DPS_* env vars → applies overrides
-5. Validates all modules
-6. IF errors → Fix only broken fields
-7. Show config summary
-8. User chooses: confirm or edit by category
-9. Category menu: pick what to change, see live preview
-10. Done → proceed
+
+### Register Module
+
+```bash
+config_register_module "network" \
+    "network_init_callback" \
+    "network_get_active_fields"
 ```
+
+---
+
+## Field Attributes
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `display` | Yes | Label shown to user |
+| `required` | No | true/false (default: false) |
+| `default` | No | Default value |
+| `validator` | No | Function name from inputValidation/ |
+| `error` | No | Error message |
+| `type` | No | choice, bool, number, or text (default) |
+| `options` | No | For choice type: "opt1\|opt2\|opt3" |
+| `min`/`max` | No | For number type |
+
+---
+
+## Workflow
+
+1. Action calls `config_init_module("module")`
+2. Module's init callback declares fields
+3. DPS_* env vars applied automatically
+4. `config_workflow("module1", "module2")` orchestrates:
+   - Validate all fields
+   - Fix only broken fields
+   - Show summary
+   - Category menu if user wants changes
 
 ---
 
 ## API
 
-### Core Functions
-
 ```bash
-# Initialize module with defaults
-config_init "action" "module"
+# Initialize
+config_init_module "network"
 
-# Run complete workflow (validate → fix errors → menu → confirm)
-config_workflow "action" "module1" "module2" ...
+# Workflow
+config_workflow "network" "disk" "custom"
 
-# Get/Set config values
-config_set "action" "module" "key" "value"
-config_get "action" "module" "key"
+# Get/Set values
+config_get "network" "HOSTNAME"
+config_set "network" "HOSTNAME" "myserver"
 
-# Register custom variables (bypasses modules)
-config_register_vars "action" "VAR1:default" "VAR2:default2"
-config_get_var "action" "VAR1"
-```
-
-### Module Registration
-
-```bash
-# Register a module (5 callbacks)
-config_register_module "mymodule" \
-    "init_callback" \
-    "display_callback" \
-    "interactive_callback" \
-    "validate_callback" \
-    "fix_errors_callback"  # Optional - falls back to interactive
-```
-
-### Callbacks
-
-#### `init_callback(action, module, config_pairs...)`
-Sets defaults, stores in CONFIG_DATA via `config_set()`.
-
-#### `display_callback(action, module)`
-Displays current config to user.
-
-#### `interactive_callback(action, module)`
-Prompts for ALL fields. Used when user selects category in menu.
-
-#### `validate_callback(action, module)` → `error_count`
-Validates config, returns number of errors (NOT boolean).
-
-#### `fix_errors_callback(action, module)`
-Prompts ONLY for invalid/missing fields. Much faster than interactive.
-
----
-
-## Creating a Module
-
-```bash
-#!/usr/bin/env bash
-# lib/setupConfiguration/mymodule.sh
-
-# Init - set defaults
-mymodule_init_callback() {
-    local action="$1"
-    local module="$2"
-    
-    config_set "$action" "$module" "SETTING1" "default"
-    config_set "$action" "$module" "SETTING2" "value"
-}
-
-# Display - show config
-mymodule_display_callback() {
-    local action="$1"
-    local module="$2"
-    
-    console "My Module:"
-    console "  SETTING1: $(config_get "$action" "$module" "SETTING1")"
-    console "  SETTING2: $(config_get "$action" "$module" "SETTING2")"
-}
-
-# Interactive - prompt for ALL fields
-mymodule_interactive_callback() {
-    local action="$1"
-    local module="$2"
-    
-    console "My Module Configuration:"
-    console ""
-    
-    local setting1=$(config_get "$action" "$module" "SETTING1")
-    local new=$(prompt_validated "SETTING1" "$setting1" "validate_something" "required")
-    update_if_changed "$action" "$module" "SETTING1" "$setting1" "$new"
-    
-    console ""
-}
-
-# Validate - return error count
-mymodule_validate_callback() {
-    local action="$1"
-    local module="$2"
-    local validation_errors=0
-    
-    local setting1=$(config_get "$action" "$module" "SETTING1")
-    if [[ -z "$setting1" ]]; then
-        validation_error "SETTING1 is required"
-        ((validation_errors++))
-    fi
-    
-    return "$validation_errors"
-}
-
-# Fix errors - ONLY prompt for broken fields
-mymodule_fix_errors_callback() {
-    local action="$1"
-    local module="$2"
-    
-    console "My Module Configuration:"
-    console ""
-    
-    local setting1=$(config_get "$action" "$module" "SETTING1")
-    if [[ -z "$setting1" ]] || ! validate_something "$setting1"; then
-        local new=$(prompt_validated "SETTING1" "$setting1" "validate_something" "required")
-        update_if_changed "$action" "$module" "SETTING1" "$setting1" "$new"
-    fi
-    
-    console ""
-}
-
-# Register
-config_register_module "mymodule" \
-    "mymodule_init_callback" \
-    "mymodule_display_callback" \
-    "mymodule_interactive_callback" \
-    "mymodule_validate_callback" \
-    "mymodule_fix_errors_callback"
+# Or use MODULE_CONTEXT
+MODULE_CONTEXT="network"
+config_get "HOSTNAME"
 ```
 
 ---
 
-## Usage in Actions
+## Generic Operations
 
-```bash
-#!/usr/bin/env bash
-# actions/myaction/setup.sh
+All these work automatically via field metadata:
 
-setup() {
-    local action_name="$1"
-    
-    # Initialize modules
-    config_init "$action_name" "network"
-    config_init "$action_name" "disk"
-    
-    # Or register custom vars
-    config_register_vars "$action_name" \
-        "API_KEY:" \
-        "ENDPOINT:https://api.example.com"
-    
-    # Run workflow (auto-applies DPS_* env vars)
-    config_workflow "$action_name" "network" "disk"
-    
-    # Access config
-    local hostname=$(config_get "$action_name" "network" "HOSTNAME")
-    local api_key=$(config_get_var "$action_name" "API_KEY")
-    
-    # Deploy...
-}
-```
+- **Validation**: `module_validate "network"` - iterates active fields
+- **Prompting**: `module_prompt_errors "network"` - only failed fields
+- **Display**: `module_display "network"` - shows active fields
 
 ---
 
 ## Environment Variables
 
-Any registered config key can be overridden:
+Any field can be overridden:
 
 ```bash
 export DPS_HOSTNAME=myserver
 export DPS_ADMIN_USER=admin
-export DPS_DISK_TARGET=/dev/nvme0n1
-export DPS_API_KEY=secret123  # Even custom vars!
-
-./start.sh
-# All applied automatically, no prompts
+# Applied automatically during config_init_module
 ```
 
 ---
 
-## Input Helpers
-
-Located in `../inputHelpers.sh`:
-
-```bash
-# Validated input
-new=$(prompt_validated "LABEL" "$current" "validate_func" "required|optional" "Error msg")
-
-# Boolean y/n
-enabled=$(prompt_bool "ENABLE" "$current")
-
-# Choice from options
-method=$(prompt_choice "METHOD" "$current" "opt1|opt2|opt3")
-
-# Number with range
-port=$(prompt_number "PORT" "$current" 1 65535 "required")
-
-# Update only if changed
-update_if_changed "$action" "$module" "KEY" "$old" "$new"
-```
-
----
-
-## Key Points
-
-- **fix_errors_callback is optional** - falls back to full interactive if missing
-- **Validation must return error count** - not boolean
-- **Use validation_error() not error()** - error() exits script
-- **Keys auto-registered** - every config_set() registers key for env scanning
-- **DPS_* vars applied automatically** - in config_workflow() before validation
-- **Category menu validates before exit** - can't leave with errors
-
----
-
-**WIP**: This system is under active development.
+**No more 200-line interactive callbacks!**

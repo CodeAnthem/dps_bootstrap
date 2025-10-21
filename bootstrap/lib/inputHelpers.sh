@@ -183,16 +183,15 @@ prompt_number() {
 # =============================================================================
 
 # Update config value if changed
-# Usage: update_if_changed "action" "module" "key" "old_value" "new_value"
+# Usage: update_if_changed "module" "key" "old_value" "new_value"
 update_if_changed() {
-    local action="$1"
-    local module="$2"
-    local key="$3"
-    local old_value="$4"
-    local new_value="$5"
+    local module="$1"
+    local key="$2"
+    local old_value="$3"
+    local new_value="$4"
     
     if [[ "$new_value" != "$old_value" ]]; then
-        config_set "$action" "$module" "$key" "$new_value"
+        config_set "$module" "$key" "$new_value"
         console "    -> Updated: $key = $new_value"
         return 0
     else

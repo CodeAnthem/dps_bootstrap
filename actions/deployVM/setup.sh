@@ -20,25 +20,21 @@ set -euo pipefail
 # =============================================================================
 # Initialize Deploy VM configuration
 init_deploy_config() {
-    local action_name="$1"
-    
-    # Initialize all modules with their default configurations
-    config_init "$action_name" "network"
-    config_init "$action_name" "disk"
-    config_init "$action_name" "custom"
+    # Initialize all modules
+    config_init_module "network"
+    config_init_module "disk"
+    config_init_module "custom"
     
     success "Deploy VM configuration initialized"
 }
 
 # Validate Deploy VM specific configuration
 validate_deploy_config() {
-    local action_name="$1"
-    
     # Deploy VM specific validation: encryption should be enabled for security
     local encryption
-    encryption=$(config_get "$action_name" "disk" "ENCRYPTION")
+    encryption=$(config_get "disk" "ENCRYPTION")
     if [[ "$encryption" == "n" ]]; then
-        console "Warning: Deploy VM should use encryption for security (recommended: y)"
+        warn "Deploy VM should use encryption for security (recommended: y)"
     fi
     
     success "Deploy VM configuration validation passed"
@@ -49,19 +45,17 @@ validate_deploy_config() {
 # MAIN SETUP FUNCTION
 # =============================================================================
 setup() {
-    local action_name="$1"
-    
     # Initialize configuration
-    init_deploy_config "$action_name"
+    init_deploy_config
     
     # Run configuration workflow (display -> interactive -> validate)
-    if ! config_workflow "$action_name" "network" "disk" "custom"; then
+    if ! config_workflow "network" "disk" "custom"; then
         error "Configuration workflow failed"
         return 1
     fi
     
     # Additional Deploy VM specific validation
-    if ! validate_deploy_config "$action_name"; then
+    if ! validate_deploy_config; then
         error "Deploy VM specific validation failed"
         return 1
     fi
@@ -69,11 +63,11 @@ setup() {
     # Show final configuration summary
     console ""
     console "=== Deploy VM Configuration Summary ==="
-    console "Hostname: $(config_get "$action_name" "network" "HOSTNAME")"
-    console "Network: $(config_get "$action_name" "network" "NETWORK_METHOD")"
-    console "Disk: $(config_get "$action_name" "disk" "DISK_TARGET")"
-    console "Encryption: $(config_get "$action_name" "disk" "ENCRYPTION")"
-    console "Admin User: $(config_get "$action_name" "custom" "ADMIN_USER")"
+    console "Hostname: $(config_get "network" "HOSTNAME")"
+    console "Network: $(config_get "network" "NETWORK_METHOD")"
+    console "Disk: $(config_get "disk" "DISK_TARGET")"
+    console "Encryption: $(config_get "disk" "ENCRYPTION")"
+    console "Admin User: $(config_get "custom" "ADMIN_USER")"
     console "====================================="
     console ""
     

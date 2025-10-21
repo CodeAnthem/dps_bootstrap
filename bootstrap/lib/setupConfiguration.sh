@@ -1,255 +1,346 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# File:          configurator.sh
-# Description:   Generic configuration engine with module callback system
-# Author:        DPS Project
+# DPS Project - Bootstrap NixOS Configuration System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Description:   Generic configuration system with field-based metadata
+# Architecture:  Module declares fields → Generic validation/prompting → Smart workflow
 # ==================================================================================================
-
-# Disable nounset for associative arrays
-set +u
 
 # =============================================================================
 # GLOBAL STATE
 # =============================================================================
-# Single global configuration storage for all modules
+# Current module context (set during init)
+declare -g MODULE_CONTEXT=""
+
+# Field metadata registry: module__field__attribute → value
+declare -gA FIELD_REGISTRY 2>/dev/null || true
+
+# Configuration data storage: module__field → value
 declare -gA CONFIG_DATA 2>/dev/null || true
 
-# Module registry: stores module metadata and callbacks
+# Module registry: stores module callbacks
 declare -gA MODULE_REGISTRY 2>/dev/null || true
 
-# Registered configuration keys (for env var scanning)
-declare -gA CONFIG_KEYS 2>/dev/null || true
+# =============================================================================
+# FIELD METADATA MANAGEMENT
+# =============================================================================
+
+# Declare a field with metadata (uses MODULE_CONTEXT)
+# Usage: field_declare HOSTNAME display="Hostname" required=true validator=validate_hostname
+field_declare() {
+    local field_name="$1"
+    shift
+    local module="${MODULE_CONTEXT}"
+    
+    if [[ -z "$module" ]]; then
+        error "field_declare called without MODULE_CONTEXT set"
+        return 1
+    fi
+    
+    # Parse key=value attributes
+    for attr in "$@"; do
+        local key="${attr%%=*}"
+        local value="${attr#*=}"
+        FIELD_REGISTRY["${module}__${field_name}__${key}"]="$value"
+    done
+    
+    # Set default value if provided
+    local default="${FIELD_REGISTRY[${module}__${field_name}__default]:-}"
+    config_set "$module" "$field_name" "$default"
+    
+    debug "Field declared: $module.$field_name"
+}
+
+# Get field metadata attribute
+# Usage: field_get "module" "field" "attribute"
+field_get() {
+    local module="$1"
+    local field="$2"
+    local attribute="$3"
+    
+    echo "${FIELD_REGISTRY[${module}__${field}__${attribute}]:-}"
+}
+
+# Check if field exists
+# Usage: field_exists "module" "field"
+field_exists() {
+    local module="$1"
+    local field="$2"
+    
+    [[ -n "${FIELD_REGISTRY[${module}__${field}__display]:-}" ]]
+}
 
 # =============================================================================
-# MODULE REGISTRATION
+# CONFIG DATA STORAGE
 # =============================================================================
+
+# Set configuration value
+# Usage: config_set "module" "field" "value"
+config_set() {
+    local module="$1"
+    local key="$2"
+    local value="$3"
+    
+    CONFIG_DATA["${module}__${key}"]="$value"
+    debug "Config set: $module.$key = $value"
+}
+
+# Get configuration value
+# Usage: config_get "module" "field" OR config_get "field" (uses MODULE_CONTEXT)
+config_get() {
+    if [[ $# -eq 1 ]]; then
+        # Single arg: use MODULE_CONTEXT
+        local module="${MODULE_CONTEXT}"
+        local key="$1"
+    else
+        # Two args: explicit module
+        local module="$1"
+        local key="$2"
+    fi
+    
+    echo "${CONFIG_DATA[${module}__${key}]:-}"
+}
+
+# Apply DPS_* environment variable overrides for a module
+# Usage: config_apply_env_overrides "module"
+config_apply_env_overrides() {
+    local module="$1"
+    
+    debug "Scanning for DPS_* environment variable overrides for module: $module"
+    
+    # Iterate over all fields in this module
+    for key in "${!FIELD_REGISTRY[@]}"; do
+        if [[ "$key" =~ ^${module}__([^_]+)__display$ ]]; then
+            local field_name="${BASH_REMATCH[1]}"
+            local env_var="DPS_${field_name}"
+            
+            if [[ -n "${!env_var:-}" ]]; then
+                config_set "$module" "$field_name" "${!env_var}"
+                log "Environment override: $env_var=${!env_var} -> $module.$field_name"
+            fi
+        fi
+    done
+}
+
+# =============================================================================
+# GENERIC FIELD OPERATIONS
+# =============================================================================
+
+# Validate one field
+# Usage: field_validate "module" "field"
+field_validate() {
+    local module="$1"
+    local field="$2"
+    
+    local value=$(config_get "$module" "$field")
+    local required=$(field_get "$module" "$field" "required")
+    local validator=$(field_get "$module" "$field" "validator")
+    local display=$(field_get "$module" "$field" "display")
+    
+    # Check if required and empty
+    if [[ "$required" == "true" && -z "$value" ]]; then
+        validation_error "$display is required"
+        return 1
+    fi
+    
+    # Run validator if value present and validator exists
+    if [[ -n "$value" && -n "$validator" ]]; then
+        if ! $validator "$value"; then
+            validation_error "Invalid $display: $value"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
+
+# Prompt for one field (uses inputHelpers.sh functions)
+# Usage: field_prompt "module" "field"
+field_prompt() {
+    local module="$1"
+    local field="$2"
+    
+    local current=$(config_get "$module" "$field")
+    local validator=$(field_get "$module" "$field" "validator")
+    local required=$(field_get "$module" "$field" "required")
+    local type=$(field_get "$module" "$field" "type")
+    local display=$(field_get "$module" "$field" "display")
+    local error_msg=$(field_get "$module" "$field" "error")
+    local options=$(field_get "$module" "$field" "options")
+    local min=$(field_get "$module" "$field" "min")
+    local max=$(field_get "$module" "$field" "max")
+    
+    local req_flag="optional"
+    [[ "$required" == "true" ]] && req_flag="required"
+    
+    local new_value
+    
+    # Use appropriate prompt from inputHelpers.sh based on type
+    case "$type" in
+        choice)
+            new_value=$(prompt_choice "$display" "$current" "$options")
+            ;;
+        bool)
+            new_value=$(prompt_bool "$display" "$current")
+            ;;
+        number)
+            new_value=$(prompt_number "$display" "$current" "$min" "$max" "$req_flag")
+            ;;
+        *)
+            # Default: validated text input
+            new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag" "$error_msg")
+            ;;
+    esac
+    
+    # Update if changed
+    if [[ "$new_value" != "$current" ]]; then
+        config_set "$module" "$field" "$new_value"
+        console "    -> Updated: $field = $new_value"
+    fi
+}
+
+# =============================================================================
+# MODULE-LEVEL OPERATIONS
+# =============================================================================
+
+# Validate all active fields in a module
+# Usage: module_validate "module"
+module_validate() {
+    local module="$1"
+    local get_fields="${module}_get_active_fields"
+    local validation_errors=0
+    
+    # Check if get_active_fields function exists
+    if ! type "$get_fields" &>/dev/null; then
+        error "Module $module must implement ${get_fields}()"
+        return 1
+    fi
+    
+    # Validate each active field
+    for field in $($get_fields); do
+        if ! field_validate "$module" "$field"; then
+            ((validation_errors++))
+        fi
+    done
+    
+    # Call module's extra validation if exists (for cross-field validation)
+    local extra_validate="${module}_validate_extra"
+    if type "$extra_validate" &>/dev/null; then
+        if ! $extra_validate; then
+            ((validation_errors++))
+        fi
+    fi
+    
+    return "$validation_errors"
+}
+
+# Prompt only for fields that failed validation
+# Usage: module_prompt_errors "module"
+module_prompt_errors() {
+    local module="$1"
+    local get_fields="${module}_get_active_fields"
+    
+    console "$(echo ${module^} | tr '_' ' ') Configuration:"
+    console ""
+    
+    # Only prompt for fields that fail validation
+    for field in $($get_fields); do
+        if ! field_validate "$module" "$field"; then
+            field_prompt "$module" "$field"
+        fi
+    done
+    
+    console ""
+}
+
+# Prompt for all active fields in a module (full interactive)
+# Usage: module_prompt_all "module"
+module_prompt_all() {
+    local module="$1"
+    local get_fields="${module}_get_active_fields"
+    
+    console "$(echo ${module^} | tr '_' ' ') Configuration:"
+    console ""
+    
+    # Prompt for all active fields
+    for field in $($get_fields); do
+        field_prompt "$module" "$field"
+    done
+    
+    console ""
+}
+
+# Display module configuration
+# Usage: module_display "module"
+module_display() {
+    local module="$1"
+    local get_fields="${module}_get_active_fields"
+    
+    console "$(echo ${module^} | tr '_' ' ') Configuration:"
+    
+    # Display each active field
+    for field in $($get_fields); do
+        local display=$(field_get "$module" "$field" "display")
+        local value=$(config_get "$module" "$field")
+        console "  $display: $value"
+    done
+}
+
+# =============================================================================
+# MODULE REGISTRATION & INITIALIZATION
+# =============================================================================
+
 # Register a configuration module
-# Usage: config_register_module "network" "init_cb" "display_cb" "interactive_cb" "validate_cb" ["fix_errors_cb"]
+# Usage: config_register_module "module" "init_callback" "get_active_fields_callback"
 config_register_module() {
     local module_name="$1"
     local init_callback="$2"
-    local display_callback="$3"
-    local interactive_callback="$4"
-    local validate_callback="$5"
-    local fix_errors_callback="${6:-}"
+    local get_fields_callback="$3"
     
     MODULE_REGISTRY["${module_name}__init"]="$init_callback"
-    MODULE_REGISTRY["${module_name}__display"]="$display_callback"
-    MODULE_REGISTRY["${module_name}__interactive"]="$interactive_callback"
-    MODULE_REGISTRY["${module_name}__validate"]="$validate_callback"
-    MODULE_REGISTRY["${module_name}__fix_errors"]="$fix_errors_callback"
+    MODULE_REGISTRY["${module_name}__get_fields"]="$get_fields_callback"
     MODULE_REGISTRY["${module_name}__registered"]="true"
     
     debug "Module registered: $module_name"
 }
 
 # Check if module is registered
-# Usage: config_module_exists "network"
+# Usage: config_module_exists "module"
 config_module_exists() {
     local module_name="$1"
     [[ "${MODULE_REGISTRY[${module_name}__registered]:-false}" == "true" ]]
 }
 
-# =============================================================================
-# CONFIGURATION DATA STORAGE (CRUD OPERATIONS)
-# =============================================================================
-# Set configuration value
-# Usage: config_set "action" "module" "key" "value"
-config_set() {
-    local action="$1"
-    local module="$2"
-    local key="$3"
-    local value="$4"
-    
-    CONFIG_DATA["${action}__${module}__${key}"]="$value"
-    
-    # Register key for env var scanning
-    CONFIG_KEYS["${action}__${module}__${key}"]="true"
-}
-
-# Get configuration value
-# Usage: config_get "action" "module" "key"
-config_get() {
-    local action="$1"
-    local module="$2"
-    local key="$3"
-    
-    echo "${CONFIG_DATA[${action}__${module}__${key}]:-}"
-}
-
-# Set configuration metadata (options, validation rules, etc.)
-# Usage: config_set_meta "action" "module" "key" "metadata_type" "value"
-config_set_meta() {
-    local action="$1"
-    local module="$2"
-    local key="$3"
-    local meta_type="$4"
-    local value="$5"
-    
-    CONFIG_DATA["${action}__${module}__${key}__meta__${meta_type}"]="$value"
-}
-
-# Get configuration metadata
-# Usage: config_get_meta "action" "module" "key" "metadata_type"
-config_get_meta() {
-    local action="$1"
-    local module="$2"
-    local key="$3"
-    local meta_type="$4"
-    
-    echo "${CONFIG_DATA[${action}__${module}__${key}__meta__${meta_type}]:-}"
-}
-
-# Get all keys for a module
-# Usage: config_get_keys "action" "module"
-config_get_keys() {
-    local action="$1"
-    local module="$2"
-    local prefix="${action}__${module}__"
-    
-    local keys=()
-    for key in "${!CONFIG_DATA[@]}"; do
-        if [[ "$key" == ${prefix}* && "$key" != *"__meta__"* ]]; then
-            local clean_key="${key#$prefix}"
-            keys+=("$clean_key")
-        fi
-    done
-    
-    printf '%s\n' "${keys[@]}" | sort -u
-}
-
-# Clear all configuration for an action+module
-# Usage: config_clear "action" "module"
-config_clear() {
-    local action="$1"
-    local module="$2"
-    local prefix="${action}__${module}__"
-    
-    for key in "${!CONFIG_DATA[@]}"; do
-        if [[ "$key" == ${prefix}* ]]; then
-            unset "CONFIG_DATA[$key]"
-        fi
-    done
-}
-
-# =============================================================================
-# MODULE LIFECYCLE
-# =============================================================================
-# Scan and apply all DPS_* environment variables
-# Usage: config_apply_env_overrides "action"
-config_apply_env_overrides() {
-    local action="$1"
-    
-    debug "Scanning for DPS_* environment variable overrides..."
-    local key_count=${#CONFIG_KEYS[@]}
-    debug "Registered keys count: $key_count"
-    
-    # Scan all registered config keys
-    for config_key in "${!CONFIG_KEYS[@]}"; do
-        # Extract action, module, key from config_key
-        if [[ "$config_key" =~ ^${action}__([^_]+)__(.+)$ ]]; then
-            local module="${BASH_REMATCH[1]}"
-            local key="${BASH_REMATCH[2]}"
-            local env_var="DPS_${key}"
-            
-            debug "Checking for $env_var (from $config_key)"
-            
-            # Check if environment variable exists
-            if [[ -n "${!env_var:-}" ]]; then
-                config_set "$action" "$module" "$key" "${!env_var}"
-                log "Environment override: $env_var=${!env_var} -> $module.$key"
-            fi
-        fi
-    done
-}
-
-# Initialize a module for an action
-# Usage: config_init "action" "module" ["key:value" "key2:value|options" ...]
-config_init() {
-    local action="$1"
-    local module="$2"
-    shift 2
-    local config_pairs=("$@")
+# Initialize a module
+# Usage: config_init_module "module"
+config_init_module() {
+    local module="$1"
     
     if ! config_module_exists "$module"; then
         error "Module not registered: $module"
         return 1
     fi
     
-    # Clear existing configuration
-    config_clear "$action" "$module"
+    # Set module context
+    MODULE_CONTEXT="$module"
     
     # Call module's init callback
     local init_callback="${MODULE_REGISTRY[${module}__init]}"
-    if [[ -n "$init_callback" ]] && type "$init_callback" &>/dev/null; then
-        "$init_callback" "$action" "$module" "${config_pairs[@]}"
-    fi
+    $init_callback
+    
+    # Apply DPS_* environment variable overrides
+    config_apply_env_overrides "$module"
     
     success "Configuration initialized for module: $module"
 }
 
-# Display module configuration
-# Usage: config_display "action" "module"
-config_display() {
-    local action="$1"
-    local module="$2"
-    
-    if ! config_module_exists "$module"; then
-        error "Module not registered: $module"
-        return 1
-    fi
-    
-    local display_callback="${MODULE_REGISTRY[${module}__display]}"
-    if [[ -n "$display_callback" ]] && type "$display_callback" &>/dev/null; then
-        "$display_callback" "$action" "$module"
-    fi
-}
-
-# Interactive configuration editing
-# Usage: config_interactive "action" "module"
-config_interactive() {
-    local action="$1"
-    local module="$2"
-    
-    if ! config_module_exists "$module"; then
-        error "Module not registered: $module"
-        return 1
-    fi
-    
-    local interactive_callback="${MODULE_REGISTRY[${module}__interactive]}"
-    if [[ -n "$interactive_callback" ]] && type "$interactive_callback" &>/dev/null; then
-        "$interactive_callback" "$action" "$module"
-    fi
-}
-
-# Validate module configuration
-# Usage: config_validate "action" "module"
-config_validate() {
-    local action="$1"
-    local module="$2"
-    
-    if ! config_module_exists "$module"; then
-        error "Module not registered: $module"
-        return 1
-    fi
-    
-    local validate_callback="${MODULE_REGISTRY[${module}__validate]}"
-    if [[ -n "$validate_callback" ]] && type "$validate_callback" &>/dev/null; then
-        "$validate_callback" "$action" "$module"
-        return $?
-    fi
-    
-    return 0
-}
-
 # =============================================================================
-# HIGH-LEVEL WORKFLOW FUNCTIONS
+# HIGH-LEVEL WORKFLOW
 # =============================================================================
+
 # Fix validation errors only (minimal prompting)
-# Usage: config_fix_errors "action" "module1" "module2" ...
+# Usage: config_fix_errors "module1" "module2" ...
 config_fix_errors() {
-    local action="$1"
-    shift
     local modules=("$@")
     
     console ""
@@ -257,27 +348,17 @@ config_fix_errors() {
     console "Please provide the required information:"
     console ""
     
-    # Only call fix_errors for modules that actually failed validation
+    # Only prompt failed modules
     for module in "${modules[@]}"; do
-        # First check if this module has validation errors
-        if ! config_validate "$action" "$module"; then
-            # This module has errors - call its fix callback
-            local fix_callback="${MODULE_REGISTRY[${module}__fix_errors]}"
-            if [[ -n "$fix_callback" ]] && type "$fix_callback" &>/dev/null; then
-                "$fix_callback" "$action" "$module"
-            else
-                # Fallback: use regular interactive if no fix callback
-                config_interactive "$action" "$module"
-            fi
+        if ! module_validate "$module"; then
+            module_prompt_errors "$module"
         fi
     done
 }
 
 # Interactive category selection menu
-# Usage: config_menu "action" "module1" "module2" ...
+# Usage: config_menu "module1" "module2" ...
 config_menu() {
-    local action="$1"
-    shift
     local modules=("$@")
     
     while true; do
@@ -291,16 +372,15 @@ config_menu() {
         console "  0) Done - Confirm and proceed"
         for module in "${modules[@]}"; do
             ((i++))
-            # Capitalize first letter of module name
-            local display_name="${module^}"
-            console "  $i) $display_name Configuration"
+            local display=$(echo ${module^} | tr '_' ' ')
+            console "  $i) $display"
         done
         console ""
         
         # Show current configuration
         console "Current Configuration:"
         for module in "${modules[@]}"; do
-            config_display "$action" "$module"
+            module_display "$module"
             console ""
         done
         
@@ -312,7 +392,7 @@ config_menu() {
             # Validate before confirming
             local validation_errors=0
             for module in "${modules[@]}"; do
-                if ! config_validate "$action" "$module"; then
+                if ! module_validate "$module"; then
                     ((validation_errors++))
                 fi
             done
@@ -330,43 +410,38 @@ config_menu() {
             # Valid selection - edit that module
             local selected_module="${modules[$((selection-1))]}"
             console ""
-            section_header "${selected_module^} Configuration"
+            section_header "$(echo ${selected_module^} | tr '_' ' ') Configuration"
             console "Press ENTER to keep current value, or type new value"
             console ""
-            config_interactive "$action" "$selected_module"
-            success "${selected_module^} configuration updated"
+            module_prompt_all "$selected_module"
+            success "$(echo ${selected_module^} | tr '_' ' ') configuration updated"
         else
             warn "Invalid selection. Please enter a number between 0 and $i."
         fi
     done
 }
 
-# Complete configuration workflow for an action
-# Usage: config_workflow "action" "module1" "module2" ...
+# Complete configuration workflow
+# Usage: config_workflow "module1" "module2" ...
 config_workflow() {
-    local action="$1"
-    shift
     local modules=("$@")
     
-    # Apply environment variable overrides FIRST
-    config_apply_env_overrides "$action"
-    
-    # Validate all modules BEFORE first display
+    # Validate all modules
     local validation_errors=0
     for module in "${modules[@]}"; do
-        if ! config_validate "$action" "$module"; then
+        if ! module_validate "$module"; then
             ((validation_errors++))
         fi
     done
     
-    # If validation fails, fix errors only (not all fields)
+    # If validation fails, fix errors only
     if [[ "$validation_errors" -gt 0 ]]; then
-        config_fix_errors "$action" "${modules[@]}"
+        config_fix_errors "${modules[@]}"
         
         # Re-validate after fixes
         validation_errors=0
         for module in "${modules[@]}"; do
-            if ! config_validate "$action" "$module"; then
+            if ! module_validate "$module"; then
                 ((validation_errors++))
             fi
         done
@@ -382,7 +457,7 @@ config_workflow() {
     console ""
     section_header "Configuration Summary"
     for module in "${modules[@]}"; do
-        config_display "$action" "$module"
+        module_display "$module"
         console ""
     done
     
@@ -394,13 +469,13 @@ config_workflow() {
         case "${response,,}" in
             y|yes)
                 # Show interactive menu
-                config_menu "$action" "${modules[@]}"
+                config_menu "${modules[@]}"
                 
                 # After menu, show updated config
                 console ""
                 section_header "Configuration Summary"
                 for module in "${modules[@]}"; do
-                    config_display "$action" "$module"
+                    module_display "$module"
                     console ""
                 done
                 ;;
@@ -416,39 +491,4 @@ config_workflow() {
                 ;;
         esac
     done
-}
-
-
-# =============================================================================
-# DYNAMIC CONFIGURATION (FOR SETUP SCRIPTS)
-# =============================================================================
-# Register custom variables for an action (bypasses module system)
-# Usage: config_register_vars "action" "VAR1:default1" "VAR2:default2" ...
-config_register_vars() {
-    local action="$1"
-    shift
-    local module="custom"
-    
-    for var_spec in "$@"; do
-        local key="${var_spec%%:*}"
-        local default_value="${var_spec#*:}"
-        
-        # Set default value
-        config_set "$action" "$module" "$key" "$default_value"
-        
-        # Check for environment variable override
-        local env_var="DPS_${key}"
-        if [[ -n "${!env_var:-}" ]]; then
-            config_set "$action" "$module" "$key" "${!env_var}"
-            debug "Custom var override: $env_var=${!env_var}"
-        fi
-    done
-}
-
-# Get custom variable value
-# Usage: config_get_var "action" "VAR_NAME"
-config_get_var() {
-    local action="$1"
-    local key="$2"
-    config_get "$action" "custom" "$key"
 }
