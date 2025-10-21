@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# File:          nixSetup_network.sh
-# Description:   NixOS network configuration generation functions
-# Author:        DPS Project
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-21
+# Description:   Script Library File
+# Feature:       NixOS network configuration generation functions
 # ==================================================================================================
 
 # =============================================================================
@@ -10,7 +12,7 @@
 # =============================================================================
 
 # Generate NixOS network configuration for Deploy VM
-# Usage: create_deploy_network_config "hostname" ["dhcp"|"static"]
+# Usage: create_deploy_network_config "hostname" ["dhcp"|"static"] ["ip_address"] ["gateway"]
 create_deploy_network_config() {
     local hostname="$1"
     local network_method="${2:-dhcp}"

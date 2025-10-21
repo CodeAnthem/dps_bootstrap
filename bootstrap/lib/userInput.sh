@@ -1,27 +1,32 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Bootstrap - Common Helper Functions
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-21
+# Description:   Script Library File
+# Feature:       User input and interaction helper functions
 # ==================================================================================================
 
 # =============================================================================
-# USER INPUT FUNCTIONS
+# USER PROMPT FUNCTIONS
 # =============================================================================
 
-# Reusable input functions
+# Prompt for yes/no confirmation
+# Usage: prompt_yes_no "question" [default_yes]
 prompt_yes_no() {
     local prompt="$1"
-    local response
     local default_yes="${2:-false}"
+    local response
     
     # Read from terminal directly to avoid stdin pollution
     if [[ -t 0 ]]; then
         # We have a real terminal
-        read -p "$prompt [y/N]: " response
+        read -rp "$prompt [y/N]: " response < /dev/tty
     else
         # No terminal (piped script), try to read from /dev/tty
         if [[ -c /dev/tty ]]; then
             echo "$prompt [y/N]: "
-            read response < /dev/tty || {
+            read -r response < /dev/tty || {
                 if [[ "$default_yes" == "true" ]]; then
                     echo "No input received, assuming 'yes'"
                     return 0
@@ -51,15 +56,19 @@ prompt_yes_no() {
     esac
 }
 
+# Prompt for password with confirmation
+# Usage: prompt_password "prompt text"
 prompt_password() {
     local prompt="$1"
     local password
     local confirm_password
+    
     while true; do
-        read -s -p "$prompt: " password
+        read -rsp "$prompt: " password < /dev/tty
         echo
-        read -s -p "Confirm $prompt: " confirm_password
+        read -rsp "Confirm $prompt: " confirm_password < /dev/tty
         echo
+        
         if [[ "$password" == "$confirm_password" ]]; then
             echo "$password"
             return 0
@@ -69,6 +78,8 @@ prompt_password() {
     done
 }
 
+# Prompt for GitHub token
+# Usage: github_token=$(prompt_github_token)
 prompt_github_token() {
     local token
     
@@ -82,13 +93,13 @@ prompt_github_token() {
     # Read from terminal directly to avoid stdin pollution
     if [[ -t 0 ]]; then
         # We have a real terminal
-        read -s -p "Enter GitHub token (or press Enter to skip): " token
+        read -rsp "Enter GitHub token (or press Enter to skip): " token < /dev/tty
         echo
     else
         # No terminal (piped script), try to read from /dev/tty
         if [[ -c /dev/tty ]]; then
             echo "Enter GitHub token (or press Enter to skip): " >&2
-            read -s token < /dev/tty || {
+            read -rs token < /dev/tty || {
                 echo "No input received, skipping token" >&2
                 token=""
             }
@@ -110,68 +121,15 @@ prompt_github_token() {
     printf '%s' "$token"
 }
 
-
 # =============================================================================
 # NIX SHELL WRAPPER
 # =============================================================================
 
+# Execute command in nix-shell environment
+# Usage: with_nix_shell "packages" "command"
 with_nix_shell() {
     local packages="$1"
     shift
     debug "Running with nix-shell packages: $packages"
     nix-shell -p $packages --run "$*"
-}
-
-# =============================================================================
-# CONFIGURATION PREVIEW
-# =============================================================================
-
-show_configuration_preview() {
-    local mode="$1"
-    
-    new_section
-    section_header "Configuration Preview"
-    
-    printf "📋 Mode: %s\n\n" "$mode"
-    
-    if [[ "$mode" == "deploy" ]]; then
-        show_deploy_config
-    else
-        show_node_config
-    fi
-    
-    echo
-    printf "╰─────────────────────────────────────────────────────────────────────────────╯\n"
-    echo
-    
-    # Auto-confirm after timeout if needed
-    if prompt_yes_no "Proceed with this configuration?" true; then
-        success "Configuration confirmed!"
-    else
-        error "Configuration not confirmed. Exiting."
-    fi
-}
-
-show_deploy_config() {
-    echo "Deploy VM Configuration:"
-    echo "  Hostname                        = ${DPS_HOSTNAME:-[not set]}"
-    echo "  Network Method                  = ${DPS_NETWORK_METHOD:-dhcp}"
-    echo "  IP Address                      = ${DPS_IP_ADDRESS:-[dhcp]}"
-    echo "  Network Gateway                 = ${DPS_NETWORK_GATEWAY:-192.168.1.1}"
-    echo "  Encryption                      = ${DPS_ENCRYPTION:-y}"
-    echo "  Disk Target                     = ${DPS_DISK_TARGET:-/dev/sda}"
-    echo "  Admin User                      = ${DPS_ADMIN_USER:-admin}"
-}
-
-show_node_config() {
-    echo "Managed Node Configuration:"
-    echo "  Role                            = ${DPS_ROLE:-[not set]}"
-    echo "  Hostname                        = ${DPS_HOSTNAME:-[not set]}"
-    echo "  IP Address                      = ${DPS_IP_ADDRESS:-[not set]}"
-    echo "  Network Gateway                 = ${DPS_NETWORK_GATEWAY:-192.168.1.1}"
-    echo "  DNS Primary                     = ${DPS_NETWORK_DNS_PRIMARY:-1.1.1.1}"
-    echo "  DNS Secondary                   = ${DPS_NETWORK_DNS_SECONDARY:-1.0.0.1}"
-    echo "  Encryption                      = ${DPS_ENCRYPTION:-n}"
-    echo "  Disk Target                     = ${DPS_DISK_TARGET:-/dev/sda}"
-    echo "  Admin User                      = ${DPS_ADMIN_USER:-admin}"
 }

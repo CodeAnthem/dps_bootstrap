@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Bootstrap - Nix Setup Helper Functions
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-21
+# Description:   Script Library File
+# Feature:       NixOS installation and configuration generation functions
 # ==================================================================================================
 
 # =============================================================================
 # REPOSITORY MANAGEMENT
 # =============================================================================
 
+# Clone a Git repository with optional authentication
+# Usage: clone_repository "repo_url" "target_path" ["github_token"]
 clone_repository() {
     local repo_url="$1"
     local target_path="$2"
-    local github_token="$3"
+    local github_token="${3:-}"
     
     log "Cloning repository to $target_path"
     
@@ -39,6 +45,8 @@ clone_repository() {
 # NIXOS CONFIGURATION GENERATION
 # =============================================================================
 
+# Generate hardware configuration
+# Usage: generate_hardware_config "hostname"
 generate_hardware_config() {
     local hostname="$1"
     
@@ -51,6 +59,8 @@ generate_hardware_config() {
     log "Hardware configuration generated at /mnt/etc/nixos/hardware-configuration.nix"
 }
 
+# Create Deploy VM configuration
+# Usage: create_deploy_vm_config "hostname" "use_encryption"
 create_deploy_vm_config() {
     local hostname="$1"
     local use_encryption="$2"
@@ -86,6 +96,8 @@ $(create_deploy_network_config "$hostname")
 EOF
 }
 
+# Create managed node configuration
+# Usage: create_node_config "role" "hostname" "use_encryption" "private_repo_path"
 create_node_config() {
     local role="$1"
     local hostname="$2"
@@ -148,6 +160,8 @@ EOF
 # NIXOS INSTALLATION
 # =============================================================================
 
+# Install Deploy VM
+# Usage: install_deploy_vm "hostname"
 install_deploy_vm() {
     local hostname="$1"
     
@@ -157,6 +171,8 @@ install_deploy_vm() {
     nixos-install --no-root-passwd
 }
 
+# Install managed node
+# Usage: install_managed_node "hostname" "private_repo_path"
 install_managed_node() {
     local hostname="$1"
     local private_repo_path="$2"

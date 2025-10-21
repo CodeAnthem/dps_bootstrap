@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# File:          disk.sh
-# Description:   Disk configuration module (simplified with callbacks)
-# Author:        DPS Project
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-21
+# Description:   Script Library File
+# Feature:       Disk configuration module (callback-based)
 # ==================================================================================================
 
 # =============================================================================
@@ -35,13 +37,13 @@ disk_init_callback() {
     # Default disk configuration
     local defaults=(
         "DISK_TARGET:/dev/sda"
-        "ENCRYPTION:auto|none|manual"
-        "ENCRYPTION_KEY_METHOD:urandom|openssl"
-        "ENCRYPTION_KEY_LENGTH:32"
-        "ENCRYPTION_PASSPHRASE:auto|none|manual"
-        "ENCRYPTION_PASSPHRASE_METHOD:urandom|openssl"
+        "ENCRYPTION:y|y|n"
+        "ENCRYPTION_KEY_METHOD:urandom|urandom|openssl|manual"
+        "ENCRYPTION_KEY_LENGTH:64"
+        "ENCRYPTION_USE_PASSPHRASE:n|y|n"
+        "ENCRYPTION_PASSPHRASE_METHOD:urandom|urandom|openssl|manual"
         "ENCRYPTION_PASSPHRASE_LENGTH:32"
-        "PARTITION_SCHEME:auto|manual"
+        "PARTITION_SCHEME:auto|auto|manual"
         "PARTITION_CONFIG_PATH:"
         "SWAP_SIZE:8G"
     )
@@ -88,17 +90,16 @@ disk_display_callback() {
     
     local encryption
     encryption=$(config_get "$action" "$module" "ENCRYPTION")
-    if [[ "$encryption" == "auto" || "$encryption" == "manual" ]]; then
-        if [[ "$encryption" == "auto" ]]; then
-            console "  KEY_GEN_METHOD: $(config_get "$action" "$module" "ENCRYPTION_KEY_METHOD")"
-            console "  KEY_LENGTH: $(config_get "$action" "$module" "ENCRYPTION_KEY_LENGTH")"
-        fi
-        local passphrase
-        passphrase=$(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE")
-        console "  PASSPHRASE: $passphrase"
-        if [[ "$passphrase" == "auto" ]]; then
-            console "  PASS_GEN_METHOD: $(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE_METHOD")"
-            console "  PASS_LENGTH: $(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE_LENGTH")"
+    if [[ "$encryption" == "y" ]]; then
+        console "  KEY_METHOD: $(config_get "$action" "$module" "ENCRYPTION_KEY_METHOD")"
+        console "  KEY_LENGTH: $(config_get "$action" "$module" "ENCRYPTION_KEY_LENGTH") bytes"
+        
+        local use_passphrase
+        use_passphrase=$(config_get "$action" "$module" "ENCRYPTION_USE_PASSPHRASE")
+        console "  USE_PASSPHRASE: $use_passphrase"
+        if [[ "$use_passphrase" == "y" ]]; then
+            console "  PASSPHRASE_METHOD: $(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE_METHOD")"
+            console "  PASSPHRASE_LENGTH: $(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE_LENGTH") chars"
         fi
     fi
     
@@ -108,7 +109,6 @@ disk_display_callback() {
     scheme=$(config_get "$action" "$module" "PARTITION_SCHEME")
     if [[ "$scheme" == "auto" ]]; then
         console "  SWAP_SIZE: $(config_get "$action" "$module" "SWAP_SIZE")"
-        console "  ROOT_SIZE: remaining disk space"
     elif [[ "$scheme" == "manual" ]]; then
         console "  NIXOS_CONFIG_PATH: $(config_get "$action" "$module" "PARTITION_CONFIG_PATH")"
     fi
@@ -166,103 +166,95 @@ disk_interactive_callback() {
         fi
     done
     
-    # Encryption
+    # Encryption (Y/N)
     local encryption
     encryption=$(config_get "$action" "$module" "ENCRYPTION")
     local enc_options
     enc_options=$(config_get_meta "$action" "$module" "ENCRYPTION" "options")
-    while true; do
-        printf "  %-20s [%s] (%s): " "ENCRYPTION" "$encryption" "$enc_options"
-        read -r new_encryption < /dev/tty
+    printf "  %-20s [%s] (%s): " "ENCRYPTION" "$encryption" "$enc_options"
+    read -r new_encryption < /dev/tty
+    if [[ -n "$new_encryption" ]] && validate_yes_no "$new_encryption"; then
+        new_encryption="${new_encryption,,}"
+        [[ "$new_encryption" == "yes" ]] && new_encryption="y"
+        [[ "$new_encryption" == "no" ]] && new_encryption="n"
         
-        if [[ -n "$new_encryption" ]]; then
-            if validate_choice "$new_encryption" "$enc_options"; then
-                if [[ "$new_encryption" != "$encryption" ]]; then
-                    config_set "$action" "$module" "ENCRYPTION" "$new_encryption"
-                    console "    -> Updated: ENCRYPTION = $new_encryption"
-                    encryption="$new_encryption"
-                else
-                    console "    -> Unchanged"
-                fi
-                break
-            else
-                console "    Error: Invalid encryption. Use 'auto' (generate), 'none' (disabled), or 'manual' (provide key)"
-                continue
-            fi
-        elif [[ -n "$encryption" ]]; then
-            break
+        if [[ "$new_encryption" != "$encryption" ]]; then
+            config_set "$action" "$module" "ENCRYPTION" "$new_encryption"
+            console "    -> Updated: ENCRYPTION = $new_encryption"
+            encryption="$new_encryption"
         else
-            console "    Error: Encryption setting is required"
-            continue
+            console "    -> Unchanged"
         fi
-    done
+    fi
     
-    # Encryption settings (only if auto or manual)
-    if [[ "$encryption" == "auto" || "$encryption" == "manual" ]]; then
+    # Encryption settings (only if enabled)
+    if [[ "$encryption" == "y" ]]; then
         console ""
         console "Encryption Key Settings:"
         
-        # Key generation method (only for auto)
-        if [[ "$encryption" == "auto" ]]; then
-            local key_method
-            key_method=$(config_get "$action" "$module" "ENCRYPTION_KEY_METHOD")
-            local key_options
-            key_options=$(config_get_meta "$action" "$module" "ENCRYPTION_KEY_METHOD" "options")
-            printf "  %-20s [%s] (%s): " "KEY_GEN_METHOD" "$key_method" "$key_options"
-            read -r new_key_method < /dev/tty
-            if [[ -n "$new_key_method" ]] && validate_choice "$new_key_method" "$key_options"; then
-                if [[ "$new_key_method" != "$key_method" ]]; then
-                    config_set "$action" "$module" "ENCRYPTION_KEY_METHOD" "$new_key_method"
-                    console "    -> Updated: KEY_GEN_METHOD = $new_key_method"
-                else
-                    console "    -> Unchanged"
-                fi
-            fi
-            
-            # Key length
-            local key_length
-            key_length=$(config_get "$action" "$module" "ENCRYPTION_KEY_LENGTH")
-            printf "  %-20s [%s]: " "KEY_LENGTH" "$key_length"
-            read -r new_key_length < /dev/tty
-            if [[ -n "$new_key_length" && "$new_key_length" =~ ^[0-9]+$ ]]; then
-                if [[ "$new_key_length" != "$key_length" ]]; then
-                    config_set "$action" "$module" "ENCRYPTION_KEY_LENGTH" "$new_key_length"
-                    console "    -> Updated: KEY_LENGTH = $new_key_length"
-                else
-                    console "    -> Unchanged"
-                fi
-            fi
-        fi
-        
-        # Passphrase
-        local passphrase
-        passphrase=$(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE")
-        local pass_options
-        pass_options=$(config_get_meta "$action" "$module" "ENCRYPTION_PASSPHRASE" "options")
-        printf "  %-20s [%s] (%s): " "PASSPHRASE" "$passphrase" "$pass_options"
-        read -r new_passphrase < /dev/tty
-        if [[ -n "$new_passphrase" ]] && validate_choice "$new_passphrase" "$pass_options"; then
-            if [[ "$new_passphrase" != "$passphrase" ]]; then
-                config_set "$action" "$module" "ENCRYPTION_PASSPHRASE" "$new_passphrase"
-                console "    -> Updated: PASSPHRASE = $new_passphrase"
-                passphrase="$new_passphrase"
+        # Key generation method
+        local key_method
+        key_method=$(config_get "$action" "$module" "ENCRYPTION_KEY_METHOD")
+        local key_options
+        key_options=$(config_get_meta "$action" "$module" "ENCRYPTION_KEY_METHOD" "options")
+        printf "  %-20s [%s] (%s): " "KEY_METHOD" "$key_method" "$key_options"
+        read -r new_key_method < /dev/tty
+        if [[ -n "$new_key_method" ]] && validate_choice "$new_key_method" "$key_options"; then
+            if [[ "$new_key_method" != "$key_method" ]]; then
+                config_set "$action" "$module" "ENCRYPTION_KEY_METHOD" "$new_key_method"
+                console "    -> Updated: KEY_METHOD = $new_key_method"
             else
                 console "    -> Unchanged"
             fi
         fi
         
-        # Passphrase generation settings (only if auto)
-        if [[ "$passphrase" == "auto" ]]; then
+        # Key length
+        local key_length
+        key_length=$(config_get "$action" "$module" "ENCRYPTION_KEY_LENGTH")
+        printf "  %-20s [%s] bytes: " "KEY_LENGTH" "$key_length"
+        read -r new_key_length < /dev/tty
+        if [[ -n "$new_key_length" && "$new_key_length" =~ ^[0-9]+$ ]]; then
+            if [[ "$new_key_length" != "$key_length" ]]; then
+                config_set "$action" "$module" "ENCRYPTION_KEY_LENGTH" "$new_key_length"
+                console "    -> Updated: KEY_LENGTH = $new_key_length"
+            else
+                console "    -> Unchanged"
+            fi
+        fi
+        
+        # Use passphrase (Y/N)
+        local use_passphrase
+        use_passphrase=$(config_get "$action" "$module" "ENCRYPTION_USE_PASSPHRASE")
+        local pass_options
+        pass_options=$(config_get_meta "$action" "$module" "ENCRYPTION_USE_PASSPHRASE" "options")
+        printf "  %-20s [%s] (%s): " "USE_PASSPHRASE" "$use_passphrase" "$pass_options"
+        read -r new_use_passphrase < /dev/tty
+        if [[ -n "$new_use_passphrase" ]] && validate_yes_no "$new_use_passphrase"; then
+            new_use_passphrase="${new_use_passphrase,,}"
+            [[ "$new_use_passphrase" == "yes" ]] && new_use_passphrase="y"
+            [[ "$new_use_passphrase" == "no" ]] && new_use_passphrase="n"
+            
+            if [[ "$new_use_passphrase" != "$use_passphrase" ]]; then
+                config_set "$action" "$module" "ENCRYPTION_USE_PASSPHRASE" "$new_use_passphrase"
+                console "    -> Updated: USE_PASSPHRASE = $new_use_passphrase"
+                use_passphrase="$new_use_passphrase"
+            else
+                console "    -> Unchanged"
+            fi
+        fi
+        
+        # Passphrase settings (only if enabled)
+        if [[ "$use_passphrase" == "y" ]]; then
             local pass_method
             pass_method=$(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE_METHOD")
             local pass_method_options
             pass_method_options=$(config_get_meta "$action" "$module" "ENCRYPTION_PASSPHRASE_METHOD" "options")
-            printf "  %-20s [%s] (%s): " "PASS_GEN_METHOD" "$pass_method" "$pass_method_options"
+            printf "  %-20s [%s] (%s): " "PASSPHRASE_METHOD" "$pass_method" "$pass_method_options"
             read -r new_pass_method < /dev/tty
             if [[ -n "$new_pass_method" ]] && validate_choice "$new_pass_method" "$pass_method_options"; then
                 if [[ "$new_pass_method" != "$pass_method" ]]; then
                     config_set "$action" "$module" "ENCRYPTION_PASSPHRASE_METHOD" "$new_pass_method"
-                    console "    -> Updated: PASS_GEN_METHOD = $new_pass_method"
+                    console "    -> Updated: PASSPHRASE_METHOD = $new_pass_method"
                 else
                     console "    -> Unchanged"
                 fi
@@ -271,12 +263,12 @@ disk_interactive_callback() {
             # Passphrase length
             local pass_length
             pass_length=$(config_get "$action" "$module" "ENCRYPTION_PASSPHRASE_LENGTH")
-            printf "  %-20s [%s]: " "PASS_LENGTH" "$pass_length"
+            printf "  %-20s [%s] chars: " "PASSPHRASE_LENGTH" "$pass_length"
             read -r new_pass_length < /dev/tty
             if [[ -n "$new_pass_length" && "$new_pass_length" =~ ^[0-9]+$ ]]; then
                 if [[ "$new_pass_length" != "$pass_length" ]]; then
                     config_set "$action" "$module" "ENCRYPTION_PASSPHRASE_LENGTH" "$new_pass_length"
-                    console "    -> Updated: PASS_LENGTH = $new_pass_length"
+                    console "    -> Updated: PASSPHRASE_LENGTH = $new_pass_length"
                 else
                     console "    -> Unchanged"
                 fi
@@ -416,6 +408,9 @@ disk_validate_callback() {
     encryption=$(config_get "$action" "$module" "ENCRYPTION")
     if [[ -z "$encryption" ]]; then
         error "Encryption setting is required"
+        ((validation_errors++))
+    elif ! validate_yes_no "$encryption"; then
+        error "Encryption must be 'y' or 'n'"
         ((validation_errors++))
     fi
     

@@ -223,9 +223,9 @@ config_workflow() {
         console ""
     done
     
-    # Ask for modifications
+    # Ask for modifications (no default on empty input)
     while true; do
-        printf "Do you want to modify the configuration? [y/N]: "
+        printf "Do you want to modify the configuration? [y/n]: "
         read -r response < /dev/tty
         
         case "${response,,}" in
@@ -263,9 +263,12 @@ config_workflow() {
                     console ""
                 done
                 ;;
-            n|no|"")
+            n|no)
                 success "Configuration confirmed"
                 return 0
+                ;;
+            "")
+                console "Please enter 'y' to modify or 'n' to confirm"
                 ;;
             *)
                 console "Invalid input. Please enter 'y' or 'n'"

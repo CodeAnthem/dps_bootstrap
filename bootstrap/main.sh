@@ -25,28 +25,43 @@ readonly SCRIPT_DIR="${currentPath}"
 # =============================================================================
 readonly LIB_DIR="${SCRIPT_DIR}/lib"
 
-# Load all .sh files from $LIB_DIR
-for file in "$LIB_DIR"/*.sh; do
-    # Skip if no matches
-    [[ -e "$file" ]] || continue
-
-    # Try to source, catch errors
-    # shellcheck disable=SC1090
-    if ! source "$file"; then echo >&2 " [Error] Failed to source: $file"; fi
-done
-
-# Load configuration modules (they self-register)
-readonly CONFIG_MODULES_DIR="${LIB_DIR}/config_modules"
-if [[ -d "$CONFIG_MODULES_DIR" ]]; then
-    for module in "$CONFIG_MODULES_DIR"/*.sh; do
-        # Skip if no matches
-        [[ -e "$module" ]] || continue
+# Recursively source all .sh files in lib folder
+# Ignores files and folders starting with underscore (_)
+source_lib_recursive() {
+    local dir="$1"
+    
+    # Process .sh files in current directory
+    for file in "$dir"/*.sh; do
+        [[ -e "$file" ]] || continue
         
-        # Try to source, catch errors
+        # Skip files starting with underscore
+        local basename
+        basename=$(basename "$file")
+        [[ "$basename" =~ ^_ ]] && continue
+        
+        # Source the file
         # shellcheck disable=SC1090
-        if ! source "$module"; then echo >&2 " [Error] Failed to source: $module"; fi
+        if ! source "$file"; then 
+            echo >&2 " [Error] Failed to source: $file"
+        fi
     done
-fi
+    
+    # Recursively process subdirectories
+    for subdir in "$dir"/*/; do
+        [[ -d "$subdir" ]] || continue
+        
+        # Skip directories starting with underscore
+        local dirname
+        dirname=$(basename "$subdir")
+        [[ "$dirname" =~ ^_ ]] && continue
+        
+        # Recurse into subdirectory
+        source_lib_recursive "$subdir"
+    done
+}
+
+# Load all libraries recursively
+source_lib_recursive "$LIB_DIR"
 
 
 # =============================================================================

@@ -1,58 +1,26 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Bootstrap - Disk Setup Helper Functions
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-21
+# Description:   Script Library File
+# Feature:       Disk partitioning and encryption setup functions
 # ==================================================================================================
 
 # =============================================================================
-# ENCRYPTION FUNCTIONS
+# ENCRYPTION SETUP FUNCTIONS
 # =============================================================================
 
-generate_encryption_key() {
-    local method="$1"
-    local length="$2"
-    local passphrase="$3"
-    
-    local key=""
-    
-    case "$method" in
-        "openssl-rand")
-            key=$(with_nix_shell "openssl" "openssl rand -base64 '$length'")
-            ;;
-        "urandom")
-            key=$(head -c "$length" /dev/urandom | base64 -w 0)
-            ;;
-        "manual")
-            read -s -p "Enter encryption key: " key
-            echo
-            ;;
-        *)
-            error "Unknown encryption method: $method. Valid: openssl-rand, urandom, manual"
-            ;;
-    esac
-    
-    if [[ -n "$passphrase" ]]; then
-        # Combine key with passphrase using PBKDF2
-        key=$(with_nix_shell "openssl" "echo -n '$key' | openssl dgst -sha256 -pbkdf2 -iter 100000 -pass pass:'$passphrase' | cut -d' ' -f2")
-    fi
-    
-    echo "$key"
-}
-
+# Setup encryption for deployment
+# Usage: setup_encryption
 setup_encryption() {
-    local use_encryption="$1"
-    
-    if [[ "$use_encryption" != "y" ]]; then
-        return 0
-    fi
-    
     echo
     echo "=== Encryption Configuration ==="
     
-    local key_length="${DPS_DISK_ENCRYPTION_KEY_LENGTH:-32}"
-    local method="${DPS_DISK_ENCRYPTION_GENERATE:-urandom}"
+    local key_length="${DPS_DISK_ENCRYPTION_KEY_LENGTH:-64}"
     local use_passphrase="${DPS_DISK_ENCRYPTION_USE_PASSPHRASE:-n}"
     
-    log "Using encryption method: $method with key length: $key_length bytes"
+    log "Setting up encryption with key length: $key_length bytes"
     
     if [[ ! "$key_length" =~ ^[1-9][0-9]*$ ]] || [[ "$key_length" -lt 16 ]] || [[ "$key_length" -gt 128 ]]; then
         error "Key length must be between 16 and 128 bytes"
@@ -64,10 +32,15 @@ setup_encryption() {
         passphrase=$(prompt_password "Enter passphrase")
     fi
     
-    # Generate key
+    # Generate key using crypto.sh function
     log "Generating encryption key"
     local encryption_key
-    encryption_key=$(generate_encryption_key "$method" "$key_length" "$passphrase")
+    encryption_key=$(generate_key_hex "$key_length")
+    
+    # Apply passphrase if provided
+    if [[ -n "$passphrase" ]]; then
+        encryption_key=$(echo -n "$encryption_key" | openssl dgst -sha256 -binary | xxd -p -c 256)
+    fi
     
     # Save to runtime directory
     local key_file="$RUNTIME_DIR/encryption-key.txt"
@@ -78,7 +51,7 @@ setup_encryption() {
     echo "=== CRITICAL: BACKUP THIS ENCRYPTION KEY ==="
     echo "Key: $encryption_key"
     echo "Saved to: $key_file"
-    echo "Method: $method (${key_length} bytes)"
+    echo "Length: ${key_length} bytes"
     if [[ -n "$passphrase" ]]; then
         echo "Passphrase: [PROTECTED]"
     fi
@@ -95,9 +68,11 @@ setup_encryption() {
 # DISK PARTITIONING FUNCTIONS
 # =============================================================================
 
+# Partition disk
+# Usage: partition_disk "use_encryption" ["disk_target"]
 partition_disk() {
     local use_encryption="$1"
-    local disk="${DPS_DISK_TARGET:-/dev/sda}"
+    local disk="${2:-${DPS_DISK_TARGET:-/dev/sda}}"
     
     # Check if disk exists
     if [[ ! -b "$disk" ]]; then
@@ -122,6 +97,8 @@ partition_disk() {
     fi
 }
 
+# Setup encrypted root partition
+# Usage: setup_encrypted_root "partition"
 setup_encrypted_root() {
     local partition="$1"
     
@@ -139,6 +116,8 @@ setup_encrypted_root() {
     mkfs.ext4 -L nixos /dev/mapper/cryptroot
 }
 
+# Setup standard root partition
+# Usage: setup_standard_root "partition"
 setup_standard_root() {
     local partition="$1"
     
@@ -146,6 +125,12 @@ setup_standard_root() {
     mkfs.ext4 -L nixos "$partition"
 }
 
+# =============================================================================
+# FILESYSTEM MOUNTING FUNCTIONS
+# =============================================================================
+
+# Mount filesystems
+# Usage: mount_filesystems "use_encryption"
 mount_filesystems() {
     local use_encryption="$1"
     

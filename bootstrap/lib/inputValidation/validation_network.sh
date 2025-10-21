@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# File:          validation_network.sh
-# Description:   Network-related validation functions
-# Author:        DPS Project
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-21
+# Description:   Script Library File
+# Feature:       Network-related validation functions
 # ==================================================================================================
+
+# =============================================================================
+# IP AND NETWORK VALIDATION FUNCTIONS
+# =============================================================================
 
 # Validate IP address (IPv4)
 # Usage: validate_ip "192.168.1.1"

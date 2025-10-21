@@ -37,8 +37,8 @@ validate_deploy_config() {
     # Deploy VM specific validation: encryption should be enabled for security
     local encryption
     encryption=$(config_get "$action_name" "disk" "ENCRYPTION")
-    if [[ "$encryption" == "none" ]]; then
-        console "Warning: Deploy VM should use encryption for security (recommended: auto or manual)"
+    if [[ "$encryption" == "n" ]]; then
+        console "Warning: Deploy VM should use encryption for security (recommended: y)"
     fi
     
     success "Deploy VM configuration validation passed"
