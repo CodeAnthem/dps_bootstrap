@@ -296,9 +296,26 @@ module_prompt_all() {
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
     
-    # Prompt for all active fields
-    for field in $($get_fields); do
-        field_prompt "$module" "$field"
+    # Keep track of prompted fields to avoid re-prompting
+    local -A prompted_fields
+    
+    # Loop until all active fields have been prompted
+    while true; do
+        local has_new_fields=false
+        
+        # Check for any active fields that haven't been prompted yet
+        for field in $($get_fields); do
+            if [[ -z "${prompted_fields[$field]:-}" ]]; then
+                field_prompt "$module" "$field"
+                prompted_fields["$field"]=1
+                has_new_fields=true
+            fi
+        done
+        
+        # If no new fields appeared, we're done
+        if [[ "$has_new_fields" == "false" ]]; then
+            break
+        fi
     done
     
     console ""
