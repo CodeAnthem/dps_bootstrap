@@ -79,7 +79,21 @@ if [[ $EUID -ne 0 ]]; then
     section_header "Root Privilege Required"
     log " This script requires root privileges."
     echo " -> Attempting to restart with sudo..."
-    exec sudo bash "${BASH_SOURCE[0]}" "$@"
+    
+    # Preserve DPS_* environment variables through sudo
+    dps_vars=()
+    while IFS='=' read -r name value; do
+        if [[ "$name" =~ ^DPS_ ]]; then
+            dps_vars+=("$name=$value")
+        fi
+    done < <(env)
+    
+    # Restart with sudo, preserving DPS_* and DEBUG variables
+    if [[ ${#dps_vars[@]} -gt 0 ]]; then
+        exec sudo "${dps_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
+    else
+        exec sudo bash "${BASH_SOURCE[0]}" "$@"
+    fi
 else
     success "Root privileges confirmed"
 fi

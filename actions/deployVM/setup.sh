@@ -51,15 +51,6 @@ validate_deploy_config() {
 setup() {
     local action_name="$1"
     
-    # Debug: Check environment variables
-    console ""
-    console "=== Environment Variable Check ==="
-    console "DPS_HOSTNAME = ${DPS_HOSTNAME:-<not set>}"
-    console "DPS_ADMIN_USER = ${DPS_ADMIN_USER:-<not set>}"
-    console "DPS_DISK_TARGET = ${DPS_DISK_TARGET:-<not set>}"
-    console "==================================="
-    console ""
-    
     # Initialize configuration
     init_deploy_config "$action_name"
     
