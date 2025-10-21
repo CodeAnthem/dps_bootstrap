@@ -257,15 +257,18 @@ config_fix_errors() {
     console "Please provide the required information:"
     console ""
     
-    # Only prompt for fields that failed validation
+    # Only call fix_errors for modules that actually failed validation
     for module in "${modules[@]}"; do
-        # Call module's fix_errors callback if it exists
-        local fix_callback="${MODULE_REGISTRY[${module}__fix_errors]}"
-        if [[ -n "$fix_callback" ]] && type "$fix_callback" &>/dev/null; then
-            "$fix_callback" "$action" "$module"
-        else
-            # Fallback: use regular interactive if no fix callback
-            config_interactive "$action" "$module"
+        # First check if this module has validation errors
+        if ! config_validate "$action" "$module"; then
+            # This module has errors - call its fix callback
+            local fix_callback="${MODULE_REGISTRY[${module}__fix_errors]}"
+            if [[ -n "$fix_callback" ]] && type "$fix_callback" &>/dev/null; then
+                "$fix_callback" "$action" "$module"
+            else
+                # Fallback: use regular interactive if no fix callback
+                config_interactive "$action" "$module"
+            fi
         fi
     done
 }
