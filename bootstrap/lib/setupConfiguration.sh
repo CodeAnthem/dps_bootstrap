@@ -241,6 +241,9 @@ module_validate() {
         return 1
     fi
     
+    # Set module context for get_active_fields to work
+    MODULE_CONTEXT="$module"
+    
     # Validate each active field
     for field in $($get_fields); do
         if ! field_validate "$module" "$field"; then
@@ -268,6 +271,9 @@ module_prompt_errors() {
     console "$(echo ${module^} | tr '_' ' ') Configuration:"
     console ""
     
+    # Set module context for get_active_fields to work
+    MODULE_CONTEXT="$module"
+    
     # Only prompt for fields that fail validation
     for field in $($get_fields); do
         if ! field_validate "$module" "$field"; then
@@ -287,6 +293,9 @@ module_prompt_all() {
     console "$(echo ${module^} | tr '_' ' ') Configuration:"
     console ""
     
+    # Set module context for get_active_fields to work
+    MODULE_CONTEXT="$module"
+    
     # Prompt for all active fields
     for field in $($get_fields); do
         field_prompt "$module" "$field"
@@ -302,6 +311,9 @@ module_display() {
     local get_fields="${module}_get_active_fields"
     
     console "$(echo ${module^} | tr '_' ' ') Configuration:"
+    
+    # Set module context for get_active_fields to work
+    MODULE_CONTEXT="$module"
     
     # Display each active field
     for field in $($get_fields); do
@@ -409,8 +421,7 @@ config_menu() {
         done
         console ""
         
-        # Show current configuration
-        console "Current Configuration:"
+        # Show current configuration (no header)
         for module in "${modules[@]}"; do
             module_display "$module"
             console ""
