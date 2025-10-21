@@ -25,7 +25,33 @@ init_deploy_config() {
     config_use_module "disk"
     config_use_module "custom"
     
+    # Example: Add Deploy VM specific fields inline
+    MODULE_CONTEXT="deployvm"
+    config_init_module "deployvm"  # Initialize inline module
+    
+    field_declare GIT_REPO_URL \
+        display="Private Git Repository" \
+        default="https://github.com/user/repo.git" \
+        validator=validate_url \
+        error="Invalid Git URL format"
+    
+    field_declare DEPLOY_SSH_KEY_PATH \
+        display="Deploy SSH Key Path" \
+        default="/root/.ssh/deploy_key" \
+        validator=validate_path
+    
     success "Deploy VM configuration initialized"
+}
+
+# Get active fields for deployvm module
+deployvm_get_active_fields() {
+    echo "GIT_REPO_URL"
+    echo "DEPLOY_SSH_KEY_PATH"
+}
+
+# No extra validation needed for deployvm
+deployvm_validate_extra() {
+    return 0
 }
 
 # Validate Deploy VM specific configuration
@@ -49,7 +75,7 @@ setup() {
     init_deploy_config
     
     # Run configuration workflow (display -> interactive -> validate)
-    if ! config_workflow "network" "disk" "custom"; then
+    if ! config_workflow "network" "disk" "custom" "deployvm"; then
         error "Configuration workflow failed"
         return 1
     fi
@@ -68,6 +94,8 @@ setup() {
     console "Disk: $(config_get "disk" "DISK_TARGET")"
     console "Encryption: $(config_get "disk" "ENCRYPTION")"
     console "Admin User: $(config_get "custom" "ADMIN_USER")"
+    console "Git Repository: $(config_get "deployvm" "GIT_REPO_URL")"
+    console "Deploy Key: $(config_get "deployvm" "DEPLOY_SSH_KEY_PATH")"
     console "====================================="
     console ""
     

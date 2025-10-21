@@ -80,7 +80,7 @@ network_validate_extra() {
         # All three must be present for static
         if [[ -n "$ip" && -n "$mask" && -n "$gateway" ]]; then
             # Validate gateway is in same subnet
-            if ! validate_same_subnet "$ip" "$mask" "$gateway"; then
+            if ! validate_subnet "$ip" "$mask" "$gateway"; then
                 validation_error "Gateway $gateway must be in the same subnet as $ip/$mask"
                 return 1
             fi
@@ -89,5 +89,3 @@ network_validate_extra() {
     
     return 0
 }
-
-# No registration needed - modules are loaded via config_use_module()

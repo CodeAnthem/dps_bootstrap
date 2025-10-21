@@ -156,17 +156,22 @@ field_validate() {
     
     # Run validator if value present and validator exists
     if [[ -n "$value" && -n "$validator" ]]; then
+        # Get custom error message if defined
+        local error_msg=$(field_get "$module" "$field" "error")
+        
         # Special case: validate_choice needs options as second argument
         if [[ "$validator" == "validate_choice" ]]; then
             local options=$(field_get "$module" "$field" "options")
             if ! $validator "$value" "$options"; then
-                validation_error "Invalid $display: $value (valid options: $options)"
+                local msg="${error_msg:-Invalid $display: $value (valid options: $options)}"
+                validation_error "$msg"
                 return 1
             fi
         else
-            # Standard validator - error message comes from validator
+            # Standard validator - use custom error or default
             if ! $validator "$value"; then
-                validation_error "Invalid $display: $value"
+                local msg="${error_msg:-Invalid $display: $value}"
+                validation_error "$msg"
                 return 1
             fi
         fi
@@ -219,8 +224,16 @@ field_prompt() {
     
     # Update if changed
     if [[ "$new_value" != "$current" ]]; then
-        config_set "$module" "$field" "$new_value"
-        console "    -> Updated: $field = $new_value"
+        # Special case: convert CIDR to netmask for NETWORK_MASK field
+        if [[ "$field" == "NETWORK_MASK" && "$new_value" =~ ^[0-9]+$ ]]; then
+            local converted
+            converted=$(cidr_to_netmask "$new_value")
+            config_set "$module" "$field" "$converted"
+            console "    -> Updated: $field = $converted (converted from /$new_value)"
+        else
+            config_set "$module" "$field" "$new_value"
+            console "    -> Updated: $field = $new_value"
+        fi
     fi
 }
 

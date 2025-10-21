@@ -28,6 +28,16 @@ list_available_disks() {
 disk_init_callback() {
     # MODULE_CONTEXT is already set to "disk"
     
+    # Show available disks before prompting
+    console ""
+    console "Available disks:"
+    local disk_count=0
+    while IFS= read -r disk_info; do
+        ((disk_count++))
+        console "  $disk_count) $disk_info"
+    done < <(list_available_disks)
+    console ""
+    
     field_declare DISK_TARGET \
         display="Target Disk" \
         required=true \
@@ -51,6 +61,11 @@ disk_init_callback() {
         display="Swap Size" \
         default="8G" \
         validator=validate_disk_size
+    
+    field_declare ENCRYPTION_PASSWORD \
+        display="Encryption Password" \
+        validator=validate_nonempty \
+        error="Encryption password cannot be empty"
 }
 
 # =============================================================================
@@ -58,11 +73,17 @@ disk_init_callback() {
 # =============================================================================
 disk_get_active_fields() {
     local scheme=$(config_get "PARTITION_SCHEME")
+    local encryption=$(config_get "ENCRYPTION")
     
     # Base fields always active
     echo "DISK_TARGET"
     echo "ENCRYPTION"
     echo "PARTITION_SCHEME"
+    
+    # Encryption password only if encryption enabled
+    if [[ "$encryption" == "y" ]]; then
+        echo "ENCRYPTION_PASSWORD"
+    fi
     
     # Swap size only for auto partitioning
     if [[ "$scheme" == "auto" ]]; then
@@ -77,5 +98,3 @@ disk_validate_extra() {
     # No cross-field validation needed for disk module
     return 0
 }
-
-# No registration needed - modules are loaded via config_use_module()

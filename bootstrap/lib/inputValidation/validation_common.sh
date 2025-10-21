@@ -18,6 +18,12 @@ validate_yes_no() {
     [[ "$normalized" =~ ^(y|yes|n|no)$ ]]
 }
 
+# Validate non-empty string
+# Usage: validate_nonempty "some value"
+validate_nonempty() {
+    [[ -n "$1" ]]
+}
+
 # =============================================================================
 # USER/SYSTEM VALIDATION FUNCTIONS
 # =============================================================================
@@ -54,3 +60,15 @@ validate_file_path() { [[ -f "$1" ]]; }
 # Validate directory path exists
 # Usage: validate_dir_path "/path/to/dir"
 validate_dir_path() { [[ -d "$1" ]]; }
+
+# Validate general path (doesn't need to exist)
+# Usage: validate_path "/path/to/something"
+validate_path() {
+    [[ "$1" =~ ^/ || "$1" =~ ^~/ || "$1" =~ ^\. ]]
+}
+
+# Validate URL format
+# Usage: validate_url "https://github.com/user/repo.git"
+validate_url() {
+    [[ "$1" =~ ^(https?|git|ssh):// ]]
+}

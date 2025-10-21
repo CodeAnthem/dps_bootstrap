@@ -25,7 +25,8 @@ custom_init_callback() {
     field_declare TIMEZONE \
         display="Timezone" \
         default="UTC" \
-        validator=validate_timezone
+        validator=validate_timezone \
+        error="Invalid timezone (examples: UTC, Europe/Zurich, America/New_York, Asia/Tokyo)"
 }
 
 # =============================================================================
@@ -45,5 +46,3 @@ custom_validate_extra() {
     # No cross-field validation needed
     return 0
 }
-
-# No registration needed - modules are loaded via config_use_module()
