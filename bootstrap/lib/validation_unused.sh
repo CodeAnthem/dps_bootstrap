@@ -1,58 +1,16 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Bootstrap - Validation Helper Functions
+# File:          validation_unused.sh
+# Description:   Validation functions that are currently unused but kept for potential future use
+# Author:        DPS Project
+# ==================================================================================================
+# NOTE: This file is NOT sourced by default. Functions here are for reference only.
 # ==================================================================================================
 
-# =============================================================================
-# VALIDATION FUNCTIONS
-# =============================================================================
+# Legacy validation functions from old validation.sh that validate entire configurations
+# These are replaced by the new modular callback-based validation system
 
-validate_ip() {
-    local ip="$1"
-    if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        IFS='.' read -ra ADDR <<< "$ip"
-        for i in "${ADDR[@]}"; do
-            if [[ $i -gt 255 ]]; then
-                return 1
-            fi
-        done
-        return 0
-    fi
-    return 1
-}
-
-validate_hostname() {
-    local hostname="$1"
-    if [[ $hostname =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$ ]]; then
-        return 0
-    fi
-    return 1
-}
-
-validate_disk() {
-    local disk="$1"
-    if [[ ! -b "$disk" ]]; then
-        return 1
-    fi
-    return 0
-}
-
-validate_role() {
-    local role="$1"
-    local valid_roles=("worker" "gateway" "gpu-worker")
-    
-    for valid_role in "${valid_roles[@]}"; do
-        if [[ "$role" == "$valid_role" ]]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
-# =============================================================================
-# CONFIGURATION VALIDATION
-# =============================================================================
-
+# Validate deploy configuration (LEGACY - use module callbacks instead)
 validate_deploy_config() {
     local errors=()
     
@@ -92,6 +50,7 @@ validate_deploy_config() {
     fi
 }
 
+# Validate node configuration (LEGACY - use module callbacks instead)
 validate_node_config() {
     local errors=()
     

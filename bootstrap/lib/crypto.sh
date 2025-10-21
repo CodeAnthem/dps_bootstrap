@@ -143,7 +143,8 @@ validate_entropy() {
     
     # Entropy = length * log2(charset_size)
     local length=${#string}
-    local entropy=$(awk "BEGIN { print int($length * log($charset_size) / log(2)) }")
+    local entropy
+    entropy=$(awk "BEGIN { print int($length * log($charset_size) / log(2)) }")
     
     [[ "$entropy" -ge "$min_bits" ]]
 }
@@ -183,10 +184,59 @@ secure_clear_var() {
 }
 
 # =============================================================================
+# SSH KEY MANAGEMENT
+# =============================================================================
+
+# Generate SSH key pair (ed25519)
+# Usage: generate_ssh_key "key_file" ["passphrase"] ["hostname"]
+generate_ssh_key() {
+    local key_file="$1"
+    local passphrase="${2:-}"
+    local hostname="${3:-$(hostname)}"
+    
+    log "Generating SSH key: $key_file"
+    
+    mkdir -p "$(dirname "$key_file")"
+    
+    if [[ -n "$passphrase" ]]; then
+        with_nix_shell "openssh" "ssh-keygen -t ed25519 -f '$key_file' -N '$passphrase' -C 'dps-admin@$hostname'"
+    else
+        with_nix_shell "openssh" "ssh-keygen -t ed25519 -f '$key_file' -N '' -C 'dps-admin@$hostname'"
+    fi
+    
+    chmod 600 "$key_file"
+    chmod 644 "${key_file}.pub"
+    
+    # Return public key
+    cat "${key_file}.pub"
+}
+
+# =============================================================================
+# AGE KEY MANAGEMENT
+# =============================================================================
+
+# Generate Age key for SOPS encryption
+# Usage: generate_age_key "key_file"
+generate_age_key() {
+    local key_file="$1"
+    log "Generating Age key: $key_file"
+    
+    mkdir -p "$(dirname "$key_file")"
+    with_nix_shell "age" "age-keygen -o '$key_file'"
+    chmod 600 "$key_file"
+    
+    # Extract public key
+    local public_key
+    public_key=$(grep "public key:" "$key_file" | cut -d: -f2 | tr -d ' ')
+    echo "$public_key"
+}
+
+# =============================================================================
 # RECOMMENDED DEFAULTS
 # =============================================================================
 # LUKS encryption key: 512 bits (64 bytes) - use generate_key_hex 64
-# SSH keys: 256-512 bits - use ssh-keygen
+# SSH keys: 256-512 bits - use generate_ssh_key
+# Age keys: use generate_age_key
 # Passphrases: 32+ characters or 6+ words - use generate_passphrase_urandom 32 or generate_passphrase_words 6
 # User passwords: 16+ characters - use generate_password 16
 # =============================================================================

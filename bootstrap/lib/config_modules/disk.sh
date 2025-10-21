@@ -307,19 +307,35 @@ disk_interactive_callback() {
         console ""
         console "For manual partitioning, provide a NixOS disko configuration file path."
         console "See: https://github.com/nix-community/disko"
+        console "Leave empty to switch back to auto partitioning."
         
         local nixos_config_path
         nixos_config_path=$(config_get "$action" "$module" "PARTITION_CONFIG_PATH")
-        printf "  %-20s [%s]: " "NIXOS_CONFIG_PATH" "$nixos_config_path"
-        read -r new_nixos_config_path < /dev/tty
-        if [[ -n "$new_nixos_config_path" ]]; then
-            if [[ "$new_nixos_config_path" != "$nixos_config_path" ]]; then
-                config_set "$action" "$module" "PARTITION_CONFIG_PATH" "$new_nixos_config_path"
-                console "    -> Updated: NIXOS_CONFIG_PATH = $new_nixos_config_path"
+        
+        while true; do
+            printf "  %-20s [%s]: " "NIXOS_CONFIG_PATH" "$nixos_config_path"
+            read -r new_nixos_config_path < /dev/tty
+            
+            if [[ -z "$new_nixos_config_path" ]]; then
+                # Empty input - switch to auto
+                console "    -> Switching to auto partitioning (no path provided)"
+                config_set "$action" "$module" "PARTITION_SCHEME" "auto"
+                scheme="auto"
+                break
+            elif validate_file_path "$new_nixos_config_path"; then
+                # Valid file path
+                if [[ "$new_nixos_config_path" != "$nixos_config_path" ]]; then
+                    config_set "$action" "$module" "PARTITION_CONFIG_PATH" "$new_nixos_config_path"
+                    console "    -> Updated: NIXOS_CONFIG_PATH = $new_nixos_config_path"
+                else
+                    console "    -> Unchanged"
+                fi
+                break
             else
-                console "    -> Unchanged"
+                console "    Error: File does not exist: $new_nixos_config_path"
+                continue
             fi
-        fi
+        done
         console ""
     fi
     
