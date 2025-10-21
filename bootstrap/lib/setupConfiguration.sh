@@ -145,9 +145,19 @@ field_validate() {
     
     # Run validator if value present and validator exists
     if [[ -n "$value" && -n "$validator" ]]; then
-        if ! $validator "$value"; then
-            validation_error "Invalid $display: $value"
-            return 1
+        # Special case: validate_choice needs options as second argument
+        if [[ "$validator" == "validate_choice" ]]; then
+            local options=$(field_get "$module" "$field" "options")
+            if ! $validator "$value" "$options"; then
+                validation_error "Invalid $display: $value"
+                return 1
+            fi
+        else
+            # Standard validator with single argument
+            if ! $validator "$value"; then
+                validation_error "Invalid $display: $value"
+                return 1
+            fi
         fi
     fi
     
