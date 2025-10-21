@@ -24,6 +24,8 @@ log() { logDate "" "$1"; }
 error() { logDate "❌" "[ERROR] - $1"; exit 2; }
 success() { logDate "✅" "$1"; }
 debug() { [[ "${DEBUG:-0}" == "1" ]] && logDate "🐛" "$1" || true; }
+warn() { logDate "⚠️ " "$1"; }
+validation_error() { logDate "❌" "[VALIDATION] $1"; }
 
 # =============================================================================
 # VISUAL FORMATTING FUNCTIONS

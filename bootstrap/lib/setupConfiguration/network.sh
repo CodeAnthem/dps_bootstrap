@@ -293,10 +293,10 @@ network_validate_callback() {
     local hostname
     hostname=$(config_get "$action" "$module" "HOSTNAME")
     if [[ -z "$hostname" ]]; then
-        error "Hostname is required"
+        validation_error "Hostname is required"
         ((validation_errors++))
     elif ! validate_hostname "$hostname"; then
-        error "Invalid hostname format: $hostname"
+        validation_error "Invalid hostname format: $hostname"
         ((validation_errors++))
     fi
     
@@ -304,7 +304,7 @@ network_validate_callback() {
     local method
     method=$(config_get "$action" "$module" "NETWORK_METHOD")
     if [[ -z "$method" ]]; then
-        error "Network method is required"
+        validation_error "Network method is required"
         ((validation_errors++))
     fi
     
@@ -313,30 +313,30 @@ network_validate_callback() {
         local ip
         ip=$(config_get "$action" "$module" "IP_ADDRESS")
         if [[ -z "$ip" ]]; then
-            error "IP address is required for static configuration"
+            validation_error "IP address is required for static configuration"
             ((validation_errors++))
         elif ! validate_ip "$ip"; then
-            error "Invalid IP address: $ip"
+            validation_error "Invalid IP address: $ip"
             ((validation_errors++))
         fi
         
         local mask
         mask=$(config_get "$action" "$module" "NETWORK_MASK")
         if [[ -z "$mask" ]]; then
-            error "Network mask is required for static configuration"
+            validation_error "Network mask is required for static configuration"
             ((validation_errors++))
         elif ! validate_netmask "$mask"; then
-            error "Invalid network mask: $mask"
+            validation_error "Invalid network mask: $mask"
             ((validation_errors++))
         fi
         
         local gateway
         gateway=$(config_get "$action" "$module" "NETWORK_GATEWAY")
         if [[ -z "$gateway" ]]; then
-            error "Gateway is required for static configuration"
+            validation_error "Gateway is required for static configuration"
             ((validation_errors++))
         elif ! validate_ip "$gateway"; then
-            error "Invalid gateway IP: $gateway"
+            validation_error "Invalid gateway IP: $gateway"
             ((validation_errors++))
         fi
     fi

@@ -151,7 +151,7 @@ custom_validate_callback() {
     local admin_user
     admin_user=$(config_get "$action" "$module" "ADMIN_USER")
     if [[ -n "$admin_user" ]] && ! validate_username "$admin_user"; then
-        error "Invalid admin username format: $admin_user"
+        validation_error "Invalid admin username format: $admin_user"
         ((validation_errors++))
     fi
     
@@ -159,7 +159,7 @@ custom_validate_callback() {
     local ssh_port
     ssh_port=$(config_get "$action" "$module" "SSH_PORT")
     if [[ -n "$ssh_port" ]] && ! validate_port "$ssh_port"; then
-        error "Invalid SSH port: $ssh_port"
+        validation_error "Invalid SSH port: $ssh_port"
         ((validation_errors++))
     fi
     

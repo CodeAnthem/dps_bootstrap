@@ -396,10 +396,10 @@ disk_validate_callback() {
     local disk_target
     disk_target=$(config_get "$action" "$module" "DISK_TARGET")
     if [[ -z "$disk_target" ]]; then
-        error "Disk target is required"
+        validation_error "Disk target is required"
         ((validation_errors++))
     elif ! validate_disk_path "$disk_target"; then
-        error "Invalid disk target or disk does not exist: $disk_target"
+        validation_error "Invalid disk target or disk does not exist: $disk_target"
         ((validation_errors++))
     fi
     
@@ -407,10 +407,10 @@ disk_validate_callback() {
     local encryption
     encryption=$(config_get "$action" "$module" "ENCRYPTION")
     if [[ -z "$encryption" ]]; then
-        error "Encryption setting is required"
+        validation_error "Encryption setting is required"
         ((validation_errors++))
     elif ! validate_yes_no "$encryption"; then
-        error "Encryption must be 'y' or 'n'"
+        validation_error "Encryption must be 'y' or 'n'"
         ((validation_errors++))
     fi
     
@@ -418,7 +418,7 @@ disk_validate_callback() {
     local scheme
     scheme=$(config_get "$action" "$module" "PARTITION_SCHEME")
     if [[ -z "$scheme" ]]; then
-        error "Partition scheme is required"
+        validation_error "Partition scheme is required"
         ((validation_errors++))
     fi
     
@@ -427,10 +427,10 @@ disk_validate_callback() {
         local swap_size
         swap_size=$(config_get "$action" "$module" "SWAP_SIZE")
         if [[ -z "$swap_size" ]]; then
-            error "Swap size is required for auto partitioning"
+            validation_error "Swap size is required for auto partitioning"
             ((validation_errors++))
         elif ! validate_disk_size "$swap_size"; then
-            error "Invalid swap size format: $swap_size"
+            validation_error "Invalid swap size format: $swap_size"
             ((validation_errors++))
         fi
     fi
