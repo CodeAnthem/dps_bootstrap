@@ -21,7 +21,7 @@ prompt_validated() {
     local error_msg="${5:-Invalid input}"
     
     while true; do
-        printf "  %-20s [%s]: " "$label" "$current_value"
+        printf "  %-20s [%s]: " "$label" "$current_value" >&2
         read -r new_value < /dev/tty
         
         # Empty input handling
@@ -60,7 +60,7 @@ prompt_bool() {
     local default="${3:-}"
     
     while true; do
-        printf "  %-20s [%s] (y/n): " "$label" "$current_value"
+        printf "  %-20s [%s] (y/n): " "$label" "$current_value" >&2
         read -r new_value < /dev/tty
         
         # Empty input
@@ -99,7 +99,7 @@ prompt_choice() {
     local options="$3"
     
     while true; do
-        printf "  %-20s [%s] (%s): " "$label" "$current_value" "$options"
+        printf "  %-20s [%s] (%s): " "$label" "$current_value" "$options" >&2
         read -r new_value < /dev/tty
         
         # Empty input - keep current
@@ -139,7 +139,7 @@ prompt_number() {
         [[ -n "$min" && -z "$max" ]] && range_hint=" (min: $min)"
         [[ -z "$min" && -n "$max" ]] && range_hint=" (max: $max)"
         
-        printf "  %-20s [%s]%s: " "$label" "$current_value" "$range_hint"
+        printf "  %-20s [%s]%s: " "$label" "$current_value" "$range_hint" >&2
         read -r new_value < /dev/tty
         
         # Empty input
