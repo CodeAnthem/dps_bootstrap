@@ -16,7 +16,7 @@ network_init_callback() {
     
     # Default network configuration
     local defaults=(
-        "HOSTNAME:deployVM-01"
+        "HOSTNAME:"
         "NETWORK_METHOD:dhcp|static"
         "IP_ADDRESS:"
         "NETWORK_MASK:"
