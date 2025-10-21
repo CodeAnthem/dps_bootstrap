@@ -132,7 +132,7 @@ prompt_disk() {
     
     # Show available disks
     local available_disks
-    mapfile -t available_disks < <(list_available_disks)
+    mapfile -t available_disks < <(list_available_disks) >&2
     
     while true; do
         printf "  %-20s [%s]: " "$label" "$current_value" >&2
