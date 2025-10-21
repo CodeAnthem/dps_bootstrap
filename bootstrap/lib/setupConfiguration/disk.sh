@@ -28,27 +28,46 @@ list_available_disks() {
 disk_init_callback() {
     # MODULE_CONTEXT is already set to "disk"
     
-    # Show available disks before prompting
-    console ""
-    console "Available disks:"
-    local disk_count=0
-    while IFS= read -r disk_info; do
-        ((disk_count++))
-        console "  $disk_count) $disk_info"
-    done < <(list_available_disks)
-    console ""
-    
     field_declare DISK_TARGET \
         display="Target Disk" \
         required=true \
         default="/dev/sda" \
-        validator=validate_disk_path
+        type=disk
     
     field_declare ENCRYPTION \
         display="Enable Encryption" \
         required=true \
         default=y \
         type=bool
+    
+    field_declare ENCRYPTION_KEY_METHOD \
+        display="Encryption Key Method" \
+        default="urandom" \
+        type=choice \
+        options="urandom|openssl|manual"
+    
+    field_declare ENCRYPTION_KEY_LENGTH \
+        display="Encryption Key Length" \
+        default="64" \
+        type=number \
+        validator=validate_port
+    
+    field_declare ENCRYPTION_USE_PASSPHRASE \
+        display="Use Additional Passphrase" \
+        default="n" \
+        type=bool
+    
+    field_declare ENCRYPTION_PASSPHRASE_METHOD \
+        display="Passphrase Generation Method" \
+        default="urandom" \
+        type=choice \
+        options="urandom|openssl|manual"
+    
+    field_declare ENCRYPTION_PASSPHRASE_LENGTH \
+        display="Passphrase Length" \
+        default="32" \
+        type=number \
+        validator=validate_port
     
     field_declare PARTITION_SCHEME \
         display="Partition Scheme" \
@@ -61,11 +80,6 @@ disk_init_callback() {
         display="Swap Size" \
         default="8G" \
         validator=validate_disk_size
-    
-    field_declare ENCRYPTION_PASSWORD \
-        display="Encryption Password" \
-        validator=validate_nonempty \
-        error="Encryption password cannot be empty"
 }
 
 # =============================================================================
@@ -74,15 +88,24 @@ disk_init_callback() {
 disk_get_active_fields() {
     local scheme=$(config_get "PARTITION_SCHEME")
     local encryption=$(config_get "ENCRYPTION")
+    local use_passphrase=$(config_get "ENCRYPTION_USE_PASSPHRASE")
     
     # Base fields always active
     echo "DISK_TARGET"
     echo "ENCRYPTION"
     echo "PARTITION_SCHEME"
     
-    # Encryption password only if encryption enabled
+    # Encryption settings only if encryption enabled
     if [[ "$encryption" == "y" ]]; then
-        echo "ENCRYPTION_PASSWORD"
+        echo "ENCRYPTION_KEY_METHOD"
+        echo "ENCRYPTION_KEY_LENGTH"
+        echo "ENCRYPTION_USE_PASSPHRASE"
+        
+        # Passphrase settings only if passphrase enabled
+        if [[ "$use_passphrase" == "y" ]]; then
+            echo "ENCRYPTION_PASSPHRASE_METHOD"
+            echo "ENCRYPTION_PASSPHRASE_LENGTH"
+        fi
     fi
     
     # Swap size only for auto partitioning

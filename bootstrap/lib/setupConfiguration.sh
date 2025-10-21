@@ -202,23 +202,33 @@ field_prompt() {
             choice) validator="validate_choice" ;;
             number) validator="validate_port" ;;  # Default number validator
             bool) validator="validate_yes_no" ;;
+            disk) validator="validate_disk_path" ;;
         esac
     fi
     
     local new_value
     
-    # Use appropriate prompt from inputHelpers.sh based on type
+    # Dispatch to appropriate prompt based on type
     case "$type" in
-        choice)
-            new_value=$(prompt_choice "$display" "$current" "$options")
-            ;;
         bool)
             new_value=$(prompt_bool "$display" "$current")
+            ;;
+        choice)
+            local options=$(field_get "$module" "$field" "options")
+            new_value=$(prompt_choice "$display" "$current" "$options")
+            ;;
+        disk)
+            new_value=$(prompt_disk "$display" "$current")
             ;;
         *)
             # Default: validated text input (works for text and number types)
             # Validators handle their own constraints (no need for min/max)
-            new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag")
+            local error_msg=$(field_get "$module" "$field" "error")
+            if [[ -n "$error_msg" ]]; then
+                new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag" "$error_msg")
+            else
+                new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag")
+            fi
             ;;
     esac
     

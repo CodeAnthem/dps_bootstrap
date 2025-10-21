@@ -36,29 +36,23 @@ validate_ip() {
 # Usage: cidr_to_netmask "24" → "255.255.255.0"
 cidr_to_netmask() {
     local cidr="$1"
-    local mask=""
-    local full=$((cidr / 8))
-    local partial=$((cidr % 8))
+    local octets=()
     
-    # Full octets (255)
-    for ((i=0; i<full; i++)); do
-        mask+="255"
-        [[ $i -lt 3 ]] && mask+="."
+    # Calculate each octet
+    for ((i=0; i<4; i++)); do
+        local bits_in_octet=$((cidr > 8 ? 8 : cidr))
+        [[ $bits_in_octet -lt 0 ]] && bits_in_octet=0
+        
+        local octet_value=0
+        for ((bit=0; bit<bits_in_octet; bit++)); do
+            octet_value=$((octet_value + (1 << (7 - bit))))
+        done
+        
+        octets+=("$octet_value")
+        cidr=$((cidr - 8))
     done
     
-    # Partial octet
-    if [[ $full -lt 4 ]]; then
-        [[ $full -gt 0 ]] && mask+="."
-        local partial_value=$((256 - (256 >> partial)))
-        mask+="$partial_value"
-        
-        # Remaining zero octets
-        for ((i=full+1; i<4; i++)); do
-            mask+=".0"
-        done
-    fi
-    
-    echo "$mask"
+    echo "${octets[0]}.${octets[1]}.${octets[2]}.${octets[3]}"
 }
 
 # Validate network mask (CIDR notation or dotted decimal)

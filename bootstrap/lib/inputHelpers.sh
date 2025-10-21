@@ -124,6 +124,48 @@ prompt_choice() {
     done
 }
 
+# Prompt for disk selection
+# Usage: prompt_disk "label" "current_value"
+prompt_disk() {
+    local label="$1"
+    local current_value="$2"
+    
+    # Show available disks
+    local available_disks
+    mapfile -t available_disks < <(list_available_disks)
+    
+    while true; do
+        printf "  %-20s [%s]: " "$label" "$current_value" >&2
+        read -r new_value < /dev/tty
+        
+        # Empty input - keep current
+        if [[ -z "$new_value" ]]; then
+            if [[ -n "$current_value" ]]; then
+                echo "$current_value"
+                return 0
+            else
+                console "    Error: $label is required" >&2
+                continue
+            fi
+        fi
+        
+        # Check if it's a number (selection from list)
+        if [[ "$new_value" =~ ^[0-9]+$ ]] && ((new_value >= 1 && new_value <= ${#available_disks[@]})); then
+            local selected_disk="${available_disks[$((new_value-1))]}"
+            new_value="${selected_disk%% *}"
+        fi
+        
+        # Validate disk path
+        if [[ -b "$new_value" ]]; then
+            echo "$new_value"
+            return 0
+        else
+            console "    Error: Disk '$new_value' does not exist or is not a block device" >&2
+            continue
+        fi
+    done
+}
+
 # Prompt for numeric input
 # Usage: prompt_number "label" "current_value" "min" "max" ["required"|"optional"]
 prompt_number() {
