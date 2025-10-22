@@ -16,6 +16,9 @@
 console() { echo "${1:-}" >&2; }
 consolef() { printf "%s\n" "${1:-}" >&2; }
 
+# Newline
+newline() { echo >&2; }
+
 # Log with timestamp
 # Usage: logDate "prefix" "message"
 logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "${1:-"  "}" "$2" >&2; }

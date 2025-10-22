@@ -277,12 +277,11 @@ execute_action() {
     fi
     
     # Execute the setup function
-    log "Executing $action_name setup..."
+    info "Executing $action_name setup..."
     section_title "Action: $action_name"
     if ! setup; then
         error "Action setup failed for: $action_name"
     fi
-    
     success "Action completed successfully: $action_name"
 }
 

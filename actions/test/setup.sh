@@ -57,7 +57,6 @@ assert_false() {
 # =============================================================================
 
 test_ip_validation() {
-    console ""
     console "Testing IP Address Validation:"
     
     # Valid IPs
@@ -76,7 +75,6 @@ test_ip_validation() {
 }
 
 test_hostname_validation() {
-    console ""
     console "Testing Hostname Validation:"
     
     # Valid hostnames
@@ -93,7 +91,6 @@ test_hostname_validation() {
 }
 
 test_netmask_validation() {
-    console ""
     console "Testing Network Mask Validation:"
     
     # Valid CIDR notation
@@ -113,7 +110,6 @@ test_netmask_validation() {
 }
 
 test_port_validation() {
-    console ""
     console "Testing Port Validation:"
     
     # Valid ports
@@ -132,7 +128,6 @@ test_port_validation() {
 }
 
 test_timezone_validation() {
-    console ""
     console "Testing Timezone Validation:"
     
     # Valid timezones
@@ -149,7 +144,6 @@ test_timezone_validation() {
 }
 
 test_username_validation() {
-    console ""
     console "Testing Username Validation:"
     
     # Valid usernames
@@ -166,7 +160,6 @@ test_username_validation() {
 }
 
 test_cidr_conversion() {
-    console ""
     console "Testing CIDR to Netmask Conversion:"
     
     # Test conversions
@@ -200,7 +193,6 @@ test_cidr_conversion() {
 }
 
 test_url_validation() {
-    console ""
     console "Testing URL Validation:"
     
     # Valid URLs
@@ -216,7 +208,6 @@ test_url_validation() {
 }
 
 test_path_validation() {
-    console ""
     console "Testing Path Validation:"
     
     # Valid paths
@@ -236,17 +227,25 @@ test_path_validation() {
 setup() {
     # Run all tests
     test_ip_validation
+    newline
     test_hostname_validation
+    newline
     test_netmask_validation
+    newline
     test_port_validation
+    newline
     test_timezone_validation
+    newline
     test_username_validation
+    newline
     test_cidr_conversion
+    newline
     test_url_validation
+    newline
     test_path_validation
+    newline
     
     # Summary
-    console ""
     section_header "Test Summary"
     console "  ✅ Passed: $test_passed"
     console "  ❌ Failed: $test_failed"
