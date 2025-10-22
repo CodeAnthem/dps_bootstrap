@@ -121,18 +121,25 @@ log "Runtime directory: $RUNTIME_DIR"
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
-    if [[ $exit_code -eq 0 ]]; then
-        log "Script completed successfully"
-    elif [[ $exit_code -eq 1 ]]; then
+
+    # Print error messages
+    if [[ $exit_code -eq 1 ]]; then
         console
         log "Script aborted by user"
     else
         log "Script failed with exit code: $exit_code"
     fi
 
+    # Cleanup
+    log "Cleaning up session"
+
+    # Clean up runtime directory
     if [[ -d "${RUNTIME_DIR:-}" ]]; then
-        log "Cleaning up runtime directory: $RUNTIME_DIR"
-        rm -rf "$RUNTIME_DIR"
+        if rm -rf "$RUNTIME_DIR"; then
+            success "Runtime directory cleaned up: $RUNTIME_DIR"
+        else
+            error "Failed to clean up runtime directory: $RUNTIME_DIR"
+        fi
     fi
 
     exit "$exit_code"
