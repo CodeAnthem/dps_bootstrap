@@ -546,7 +546,7 @@ config_workflow() {
         case "${response,,}" in
             y|yes)
                 # Show interactive menu
-                console ""
+                console "Yes"
                 config_menu "${modules[@]}"
                 
                 # After menu, show updated config0
@@ -558,7 +558,7 @@ config_workflow() {
                 done
                 ;;
             n|no)
-                console "No changes made. Proceeding..."
+                console "No"
                 success "Configuration confirmed"
                 return 0
                 ;;
