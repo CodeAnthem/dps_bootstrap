@@ -131,7 +131,7 @@ cleanup() {
     fi
 
     # Cleanup
-    log "Cleaning up session"
+    info "Cleaning up session"
 
     # Clean up runtime directory
     if [[ -d "${RUNTIME_DIR:-}" ]]; then
