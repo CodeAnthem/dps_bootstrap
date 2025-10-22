@@ -446,10 +446,7 @@ config_menu() {
     local modules=("$@")
     
     while true; do
-        console ""
         section_header "Configuration Menu"
-        console "Select a category to modify:"
-        console ""
         
         # Build menu
         local i=0
@@ -547,16 +544,15 @@ config_workflow() {
     
     # Ask if user wants to modify anything
     while true; do
-        printf "Do you want to modify any settings? [y/n]: "
-        read -r -n 1 response < /dev/tty
-        echo  # Newline after single-char input
+        printf "  -> Do you want to modify any settings? [y/n]: "
+        read -rn 1 response < /dev/tty
         
         case "${response,,}" in
             y|yes)
                 # Show interactive menu
                 config_menu "${modules[@]}"
                 
-                # After menu, show updated config
+                # After menu, show updated config0
                 console ""
                 section_header "Configuration Summary"
                 for module in "${modules[@]}"; do
@@ -568,9 +564,9 @@ config_workflow() {
                 success "Configuration confirmed"
                 return 0
                 ;;
-            "")
-                console "Please enter 'y' to modify or 'n' to confirm"
-                ;;
+            "") ;;
+                # console "Please enter 'y' to modify or 'n' to confirm"
+                # ;;
             *)
                 console "Invalid input. Please enter 'y' or 'n'"
                 ;;
