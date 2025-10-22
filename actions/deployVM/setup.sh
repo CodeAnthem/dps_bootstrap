@@ -18,13 +18,40 @@ set -euo pipefail
 # =============================================================================
 # ACTION CONFIGURATION
 # =============================================================================
+
+# Deploy module callbacks (action-specific)
+deploy_init_callback() {
+    field_declare GIT_REPO_URL \
+        display="Private Git Repository" \
+        default="https://github.com/user/repo.git" \
+        validator=validate_url \
+        error="Invalid Git URL format"
+    
+    field_declare DEPLOY_SSH_KEY_PATH \
+        display="Deploy SSH Key Path" \
+        default="/root/.ssh/deploy_key" \
+        validator=validate_path
+}
+
+deploy_get_active_fields() {
+    echo "GIT_REPO_URL"
+    echo "DEPLOY_SSH_KEY_PATH"
+}
+
+deploy_validate_extra() {
+    return 0
+}
+
 # Initialize Deploy VM configuration
 init_deploy_config() {
     # Load and initialize standard modules
     config_use_module "network"
     config_use_module "disk"
     config_use_module "custom"
-    config_use_module "deploy"
+    
+    # Initialize action-specific deploy module inline
+    config_init_module "deploy"
+    deploy_init_callback
     
     success "Deploy VM configuration initialized"
 }
