@@ -535,7 +535,6 @@ config_workflow() {
     fi
     
     # Display all configurations
-    console ""
     section_header "Configuration Summary"
     for module in "${modules[@]}"; do
         module_display "$module"
@@ -544,7 +543,7 @@ config_workflow() {
     
     # Ask if user wants to modify anything
     while true; do
-        printf "  -> Do you want to modify any settings? [y/n]: "
+        printf "-> Do you want to modify any settings? [y/n]: "
         read -rn 1 response < /dev/tty
         
         case "${response,,}" in
