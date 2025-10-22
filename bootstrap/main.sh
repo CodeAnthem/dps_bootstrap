@@ -165,6 +165,12 @@ discover_actions() {
         action_name=$(basename "$action_dir")
         local setup_script="${action_dir}setup.sh"
         
+        # Skip test action unless DPS_TEST=true
+        if [[ "$action_name" == "test" && "${DPS_TEST:-false}" != "true" ]]; then
+            debug "Skipping test action (DPS_TEST not set to true)"
+            continue
+        fi
+        
         if [[ -f "$setup_script" ]]; then
             # Parse description from header (first 10 lines only, no sourcing)
             local description
