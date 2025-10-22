@@ -558,14 +558,13 @@ config_workflow() {
                 done
                 ;;
             n|no)
+                console "No changes made. Proceeding..."
                 success "Configuration confirmed"
                 return 0
                 ;;
             "") ;;
-                # console "Please enter 'y' to modify or 'n' to confirm"
-                # ;;
             *)
-                console "Invalid input. Please enter 'y' or 'n'"
+                console "Invalid input - Please enter 'y' or 'n'"
                 ;;
         esac
     done
