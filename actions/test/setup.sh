@@ -227,23 +227,14 @@ test_path_validation() {
 setup() {
     # Run all tests
     test_ip_validation
-    newline
     test_hostname_validation
-    newline
     test_netmask_validation
-    newline
     test_port_validation
-    newline
     test_timezone_validation
-    newline
     test_username_validation
-    newline
     test_cidr_conversion
-    newline
     test_url_validation
-    newline
     test_path_validation
-    newline
     
     # Summary
     new_section
