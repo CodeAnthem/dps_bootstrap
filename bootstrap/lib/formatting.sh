@@ -52,7 +52,7 @@ draw_title() {
 
 # Section header (small box)
 # Usage: section_header "title"
-section_header() { new_section; draw_title "  $1" 50; }
+section_header() { draw_title "  $1" 50; }
 
 # Section title (large box with clear)
 # Usage: section_title "title"
