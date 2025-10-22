@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# File:          network.sh
-# Description:   Network configuration module
-# Author:        DPS Project
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2025-10-21 | Modified: 2025-10-22
+# Description:   Script Library File
+# Feature:       Network configuration module (hostname, IP, DNS, gateway)
 # ==================================================================================================
 
 # =============================================================================
