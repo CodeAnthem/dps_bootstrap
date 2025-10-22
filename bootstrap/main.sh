@@ -77,7 +77,7 @@ section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 if [[ $EUID -ne 0 ]]; then
     new_section
     section_header "Root Privilege Required"
-    log " This script requires root privileges."
+    info " This script requires root privileges."
     echo " -> Attempting to restart with sudo..."
     
     # Preserve DPS_* environment variables through sudo
@@ -110,8 +110,7 @@ readonly RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
 # Create runtime directory
 mkdir -p "$RUNTIME_DIR"
 chmod 700 "$RUNTIME_DIR"
-
-log "Runtime directory: $RUNTIME_DIR"
+info "Runtime directory: $RUNTIME_DIR"
 
 
 # =============================================================================
@@ -196,7 +195,7 @@ discover_actions() {
         error "No valid actions found in $ACTIONS_DIR"
     fi
     
-    log "Discovered $action_count available actions"
+    info "Discovered $action_count available actions"
 }
 
 # =============================================================================
