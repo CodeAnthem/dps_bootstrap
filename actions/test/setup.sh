@@ -238,7 +238,6 @@ setup() {
     
     # Summary
     new_section
-    newline
     section_header "Test Summary"
     console "  ✅ Passed: $test_passed"
     console "  ❌ Failed: $test_failed"
