@@ -298,8 +298,9 @@ module_prompt_errors() {
     MODULE_CONTEXT="$module"
     
     # Only prompt for fields that fail validation
+    # Suppress validation error output during this check
     for field in $($get_fields); do
-        if ! field_validate "$module" "$field"; then
+        if ! field_validate "$module" "$field" 2>/dev/null; then
             field_prompt "$module" "$field"
         fi
     done
