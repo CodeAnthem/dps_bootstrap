@@ -426,8 +426,6 @@ config_init_module() {
 # Usage: config_fix_errors "module1" "module2" ...
 config_fix_errors() {
     local modules=("$@")
-    
-    console ""
     warn "Some configuration values are missing or invalid."
     console "Please provide the required information:"
     console ""
@@ -543,7 +541,7 @@ config_workflow() {
     
     # Ask if user wants to modify anything
     while true; do
-        printf "-> Do you want to modify any settings? [y/n]: "
+        consolef "-> Do you want to modify any settings? [y/n]: "
         read -rn 1 response < /dev/tty
         
         case "${response,,}" in

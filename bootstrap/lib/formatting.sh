@@ -14,6 +14,7 @@
 # Output to console (stderr)
 # Usage: console "message"
 console() { echo "${1:-}" >&2; }
+consolef() { printf "%s\n" "${1:-}" >&2; }
 
 # Log with timestamp
 # Usage: logDate "prefix" "message"
