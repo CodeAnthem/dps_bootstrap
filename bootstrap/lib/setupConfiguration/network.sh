@@ -8,9 +8,7 @@
 # =============================================================================
 # MODULE INITIALIZATION
 # =============================================================================
-network_init_callback() {
-    # MODULE_CONTEXT is already set to "network"
-    
+network_init_callback() {    
     field_declare HOSTNAME \
         display="Hostname" \
         required=true \
@@ -77,6 +75,12 @@ network_validate_extra() {
         local mask=$(config_get "NETWORK_MASK")
         local gateway=$(config_get "NETWORK_GATEWAY")
         
+        # Check if Gateway is same as IP
+        if [[ "$ip" == "$gateway" ]]; then
+            validation_error "Gateway cannot be the same as IP"
+            return 1
+        fi
+
         # All three must be present for static
         if [[ -n "$ip" && -n "$mask" && -n "$gateway" ]]; then
             # Validate gateway is in same subnet
