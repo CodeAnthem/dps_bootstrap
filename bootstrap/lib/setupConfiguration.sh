@@ -542,6 +542,7 @@ config_workflow() {
     # Ask if user wants to modify anything
     while true; do
         read -rsn 1 -p "-> Do you want to modify any settings? [y/n]: " response < /dev/tty
+        echo
         
         case "${response,,}" in
             y|yes)
