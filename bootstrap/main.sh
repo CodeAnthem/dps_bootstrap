@@ -121,11 +121,10 @@ log "Runtime directory: $RUNTIME_DIR"
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
-    console
-
     if [[ $exit_code -eq 0 ]]; then
         log "Script completed successfully"
     elif [[ $exit_code -eq 1 ]]; then
+        console
         log "Script aborted by user"
     else
         log "Script failed with exit code: $exit_code"
@@ -297,5 +296,4 @@ execute_action "$selected_action"
 # =============================================================================
 # END
 # =============================================================================
-echo "=== $SCRIPT_NAME v$SCRIPT_VERSION ==="
 exit 0
