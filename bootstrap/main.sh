@@ -77,7 +77,7 @@ section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 if [[ $EUID -ne 0 ]]; then
     new_section
     section_header "Root Privilege Required"
-    info " This script requires root privileges."
+    info "This script requires root privileges."
     echo " -> Attempting to restart with sudo..."
     
     # Preserve DPS_* environment variables through sudo
