@@ -25,9 +25,9 @@ logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "${1:-"  "}" "$2" >&2; }
 
 # Standard logging functions
 log() { logDate "" "$1"; }
-info() { logDate "ℹ️  [INFO] - " "$1"; }
-error() { logDate "❌ [FAIL] - " "$1"; exit 2; }
-success() { logDate "✅ [PASS] - " "$1"; }
+info() { logDate "ℹ️  [INFO] -" "$1"; }
+error() { logDate "❌ [FAIL] -" "$1"; exit 2; }
+success() { logDate "✅ [PASS] -" "$1"; }
 debug() { [[ "${DEBUG:-0}" == "1" ]] && logDate "🐛 [DEBUG] - " "$1" || true; }
 warn() { logDate "⚠️ [WARN] - " "$1"; }
 validation_error() { logDate "❌ [VALIDATION] - " "$1"; }
