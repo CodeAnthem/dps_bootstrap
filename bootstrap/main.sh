@@ -126,7 +126,7 @@ cleanup() {
     if [[ $exit_code -eq 1 ]]; then
         console
         log "Script aborted by user"
-    else
+    elif (( exit_code > 1 )); then
         log "Script failed with exit code: $exit_code"
     fi
 
