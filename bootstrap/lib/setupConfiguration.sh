@@ -5,6 +5,7 @@
 # Description:   Generic configuration system with field-based metadata
 # Architecture:  Module declares fields → Generic validation/prompting → Smart workflow
 # ==================================================================================================
+# shellcheck disable=SC2155
 
 # =============================================================================
 # GLOBAL STATE
@@ -291,6 +292,7 @@ field_prompt() {
     local current=$(config_get "$module" "$field")
     local required=$(field_get "$module" "$field" "required")
     
+    
     # Set context and cache options
     set_input_context "$module" "$field"
     
@@ -367,8 +369,7 @@ module_prompt_errors() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     
-    console "$(echo ${module^} | tr '_' ' ') Configuration:"
-    console ""
+    console "$(echo "${module^}" | tr '_' ' ') Configuration:"
     
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
@@ -390,7 +391,7 @@ module_prompt_all() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     
-    console "$(echo ${module^} | tr '_' ' ') Configuration:"
+    console "$(echo "${module^}" | tr '_' ' ') Configuration:"
     console ""
     
     # Set module context for get_active_fields to work
@@ -427,7 +428,7 @@ module_display() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     
-    console "$(echo ${module^} | tr '_' ' ') Configuration:"
+    console "$(echo "${module^}" | tr '_' ' ') Configuration:"
     
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
@@ -503,15 +504,11 @@ config_init_module() {
 # Usage: config_fix_errors "module1" "module2" ...
 config_fix_errors() {
     local modules=("$@")
-    warn "Some configuration values are missing or invalid."
-    console "Please provide the required information:"
-    console ""
+    section_header "Configuration Required"
     
-    # Only prompt failed modules
+    # Prompt for missing/invalid fields in each module
     for module in "${modules[@]}"; do
-        if ! module_validate "$module"; then
-            module_prompt_errors "$module"
-        fi
+        module_prompt_errors "$module"
     done
 }
 
@@ -528,7 +525,7 @@ config_menu() {
         console "  0) Done - Confirm and proceed"
         for module in "${modules[@]}"; do
             ((i++))
-            local display=$(echo ${module^} | tr '_' ' ')
+            local display=$(echo "${module^}" | tr '_' ' ')
             console "  $i) $display"
         done
         console ""
@@ -540,7 +537,7 @@ config_menu() {
         done
         
         # Get selection
-        printf "Select category (0-$i): "
+        echo -n "Select category (0-$i): "
         read -r -n 1 selection < /dev/tty
         echo  # Newline after single-char input
         
@@ -566,11 +563,11 @@ config_menu() {
             # Valid selection - edit that module
             local selected_module="${modules[$((selection-1))]}"
             console ""
-            section_header "$(echo ${selected_module^} | tr '_' ' ') Configuration"
+            section_header "$(echo "${selected_module^}" | tr '_' ' ') Configuration"
             console "Press ENTER to keep current value, or type new value"
             console ""
             module_prompt_all "$selected_module"
-            success "$(echo ${selected_module^} | tr '_' ' ') configuration updated"
+            success "$(echo "${selected_module^}" | tr '_' ' ') configuration updated"
         else
             warn "Invalid selection. Please enter a number between 0 and $i."
         fi
@@ -582,20 +579,21 @@ config_menu() {
 config_workflow() {
     local modules=("$@")
     
-    # Validate all modules
-    local validation_errors=0
+    # Check if any fields are missing (silent check)
+    local needs_input=false
     for module in "${modules[@]}"; do
-        if ! module_validate "$module"; then
-            ((validation_errors++))
+        if ! module_validate "$module" 2>/dev/null; then
+            needs_input=true
+            break
         fi
     done
     
-    # If validation fails, fix errors only
-    if [[ "$validation_errors" -gt 0 ]]; then
+    # If validation fails, prompt for required fields
+    if [[ "$needs_input" == "true" ]]; then
         config_fix_errors "${modules[@]}"
         
-        # Re-validate after fixes
-        validation_errors=0
+        # Re-validate after input
+        local validation_errors=0
         for module in "${modules[@]}"; do
             if ! module_validate "$module"; then
                 ((validation_errors++))
@@ -604,9 +602,10 @@ config_workflow() {
         
         if [[ "$validation_errors" -gt 0 ]]; then
             error "Configuration validation still has $validation_errors error(s)"
+            return 1
         fi
         
-        success "Required fields completed"
+        success "Configuration completed"
     fi
     
     # Display all configurations
