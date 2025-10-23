@@ -369,20 +369,27 @@ module_prompt_errors() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     
-    console "$(echo "${module^}" | tr '_' ' ') Configuration:"
-    
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
     
-    # Only prompt for fields that fail validation
-    # Suppress validation error output during this check
+    # First pass: check if there are any fields that need prompting
+    local fields_to_prompt=()
     for field in $($get_fields); do
         if ! field_validate "$module" "$field" 2>/dev/null; then
-            field_prompt "$module" "$field"
+            fields_to_prompt+=("$field")
         fi
     done
     
-    console ""
+    # Only show header and prompt if there are fields that need input
+    if [[ ${#fields_to_prompt[@]} -gt 0 ]]; then
+        console "$(echo "${module^}" | tr '_' ' ') Configuration:"
+        
+        for field in "${fields_to_prompt[@]}"; do
+            field_prompt "$module" "$field"
+        done
+        
+        console ""
+    fi
 }
 
 # Prompt for all active fields in a module (full interactive)
@@ -493,7 +500,7 @@ config_init_module() {
     # Apply DPS_* environment variable overrides
     config_apply_env_overrides "$module"
     
-    success "Configuration initialized for module: $module"
+    debug "Configuration initialized for module: $module"
 }
 
 # =============================================================================
