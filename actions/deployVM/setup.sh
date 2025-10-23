@@ -23,14 +23,15 @@ set -euo pipefail
 deploy_init_callback() {
     field_declare GIT_REPO_URL \
         display="Private Git Repository" \
+        input=url \
         default="https://github.com/user/repo.git" \
-        validator=validate_url \
-        error="Invalid Git URL format"
+        required=true
     
     field_declare DEPLOY_SSH_KEY_PATH \
         display="Deploy SSH Key Path" \
+        input=path \
         default="/root/.ssh/deploy_key" \
-        validator=validate_path
+        required=true
 }
 
 deploy_get_active_fields() {
@@ -41,6 +42,7 @@ deploy_get_active_fields() {
 deploy_validate_extra() {
     return 0
 }
+
 
 # Initialize Deploy VM configuration
 init_deploy_config() {

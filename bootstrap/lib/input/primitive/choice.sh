@@ -2,32 +2,37 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2025-10-21
-# Description:   Script Library File
-# Feature:       Choice and option validation functions
+# Date:          Created: 2025-10-23 | Modified: 2025-10-23
+# Description:   Input Handler - Choice
+# Feature:       Multiple choice selection from predefined options
 # ==================================================================================================
 
 # =============================================================================
-# CHOICE VALIDATION FUNCTIONS
+# CHOICE INPUT
 # =============================================================================
 
-# Validate choice from options (pipe-separated)
-# Usage: validate_choice "dhcp" "dhcp|static"
+prompt_hint_choice() {
+    local options=$(input_opt "options" "")
+    if [[ -n "$options" ]]; then
+        echo "(${options//|/, })"
+    fi
+}
+
 validate_choice() {
     local value="$1"
-    local options="$2"
+    local options=$(input_opt "options" "")
+    
+    [[ -z "$options" ]] && return 1
     
     IFS='|' read -ra choices <<< "$options"
     for choice in "${choices[@]}"; do
-        if [[ "$value" == "$choice" ]]; then
-            return 0
-        fi
+        [[ "$value" == "$choice" ]] && return 0
     done
+    
     return 1
 }
 
-# Validate node role (convenience wrapper for validate_choice)
-# Usage: validate_role "worker"
-validate_role() {
-    validate_choice "$1" "worker|gateway|gpu-worker"
+error_msg_choice() {
+    local options=$(input_opt "options" "")
+    echo "Invalid choice. Options: ${options//|/, }"
 }

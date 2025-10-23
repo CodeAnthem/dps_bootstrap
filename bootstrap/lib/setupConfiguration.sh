@@ -21,6 +21,13 @@ declare -gA CONFIG_DATA 2>/dev/null || true
 # Module registry: stores module callbacks
 declare -gA MODULE_REGISTRY 2>/dev/null || true
 
+# Input context (set during field_prompt/field_validate)
+declare -gx INPUT_CONTEXT_MODULE=""
+declare -gx INPUT_CONTEXT_FIELD=""
+
+# Cached options for current input (populated when context is set)
+declare -gA INPUT_OPTIONS_CACHE 2>/dev/null || true
+
 # =============================================================================
 # FIELD METADATA MANAGEMENT
 # =============================================================================
@@ -133,10 +140,9 @@ field_validate() {
     local module="$1"
     local field="$2"
     
+    local input=$(field_get "$module" "$field" "input")
     local value=$(config_get "$module" "$field")
     local required=$(field_get "$module" "$field" "required")
-    local validator=$(field_get "$module" "$field" "validator")
-    local type=$(field_get "$module" "$field" "type")
     local display=$(field_get "$module" "$field" "display")
     
     # Check if required and empty
@@ -145,106 +151,176 @@ field_validate() {
         return 1
     fi
     
-    # Auto-detect validator based on type if not specified
-    if [[ -z "$validator" ]]; then
-        case "$type" in
-            choice) validator="validate_choice" ;;
-            number) validator="validate_number" ;;
-            bool) validator="validate_yes_no" ;;
-        esac
-    fi
+    # Skip validation if empty and optional
+    [[ -z "$value" ]] && return 0
     
-    # Run validator if value present and validator exists
-    if [[ -n "$value" && -n "$validator" ]]; then
-        # Get custom error message if defined
+    # Set context for validator
+    set_input_context "$module" "$field"
+    
+    # Run validator
+    local result=0
+    if ! "validate_${input}" "$value"; then
+        # Get custom error or use error_msg_* function if exists
         local error_msg=$(field_get "$module" "$field" "error")
-        
-        # Special case: validate_choice needs options as second argument
-        if [[ "$validator" == "validate_choice" ]]; then
-            local options=$(field_get "$module" "$field" "options")
-            if ! $validator "$value" "$options"; then
-                local msg="${error_msg:-Invalid $display: $value (valid options: $options)}"
-                validation_error "$msg"
-                return 1
-            fi
-        else
-            # Standard validator - use custom error or default
-            if ! $validator "$value"; then
-                local msg="${error_msg:-Invalid $display: $value}"
-                validation_error "$msg"
-                return 1
-            fi
+        if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
+            error_msg=$("error_msg_${input}" "$value")
         fi
+        validation_error "${error_msg:-Invalid $display}"
+        result=1
     fi
     
-    return 0
+    # Clear context
+    clear_input_context
+    
+    return $result
 }
 
-# Prompt for one field (uses inputHelpers.sh functions)
+# =============================================================================
+# INPUT CONTEXT HELPERS
+# =============================================================================
+
+# Get option for current input with default fallback
+# Usage: input_opt "option_name" "default_value"
+input_opt() {
+    local option="$1"
+    local default="${2:-}"
+    echo "${INPUT_OPTIONS_CACHE[$option]:-$default}"
+}
+
+# Set input context and cache all options
+set_input_context() {
+    local module="$1"
+    local field="$2"
+    
+    INPUT_CONTEXT_MODULE="$module"
+    INPUT_CONTEXT_FIELD="$field"
+    
+    # Clear and populate options cache
+    INPUT_OPTIONS_CACHE=()
+    
+    # Cache common options that inputs might need
+    local opt
+    for opt in min max minlen maxlen pattern options default required read_type error; do
+        local value=$(field_get "$module" "$field" "$opt")
+        [[ -n "$value" ]] && INPUT_OPTIONS_CACHE[$opt]="$value"
+    done
+}
+
+# Clear input context
+clear_input_context() {
+    INPUT_CONTEXT_MODULE=""
+    INPUT_CONTEXT_FIELD=""
+    INPUT_OPTIONS_CACHE=()
+}
+
+# =============================================================================
+# GENERIC INPUT LOOP
+# =============================================================================
+
+# Generic input loop - handles read, empty, validation, normalization
+generic_input_loop() {
+    local display="$1"
+    local current="$2"
+    local input_name="$3"
+    
+    # Get prompt hint if exists
+    local hint=""
+    if type "prompt_hint_${input_name}" &>/dev/null; then
+        hint=$("prompt_hint_${input_name}")
+    fi
+    
+    # Get read type (default: string with enter)
+    local read_type=$(input_opt "read_type" "string")
+    
+    while true; do
+        # Display prompt
+        if [[ -n "$hint" ]]; then
+            printf "  %-20s [%s] %s: " "$display" "$current" "$hint" >&2
+        else
+            printf "  %-20s [%s]: " "$display" "$current" >&2
+        fi
+        
+        # Read based on type
+        local value
+        if [[ "$read_type" == "char" ]]; then
+            read -r -n 1 value < /dev/tty
+            echo >&2  # Newline after single char
+        else
+            read -r value < /dev/tty
+        fi
+        
+        # Empty handling - keep current
+        if [[ -z "$value" ]]; then
+            echo "$current"
+            return 0
+        fi
+        
+        # Validate
+        if "validate_${input_name}" "$value"; then
+            # Normalize if function exists
+            if type "normalize_${input_name}" &>/dev/null; then
+                value=$("normalize_${input_name}" "$value")
+            fi
+            echo "$value"
+            return 0
+        else
+            # Get error message
+            local error
+            if type "error_msg_${input_name}" &>/dev/null; then
+                error=$("error_msg_${input_name}" "$value")
+            else
+                error="Invalid input"
+            fi
+            console "    Error: $error"
+        fi
+    done
+}
+
+# =============================================================================
+# FIELD PROMPTING
+# =============================================================================
+
+# Prompt for one field
 # Usage: field_prompt "module" "field"
 field_prompt() {
     local module="$1"
     local field="$2"
     
-    local current=$(config_get "$module" "$field")
-    local validator=$(field_get "$module" "$field" "validator")
-    local required=$(field_get "$module" "$field" "required")
-    local type=$(field_get "$module" "$field" "type")
+    local input=$(field_get "$module" "$field" "input")
     local display=$(field_get "$module" "$field" "display")
-    local options=$(field_get "$module" "$field" "options")
+    local current=$(config_get "$module" "$field")
+    local required=$(field_get "$module" "$field" "required")
     
-    local req_flag="optional"
-    [[ "$required" == "true" ]] && req_flag="required"
-    
-    # Auto-detect validator based on type if not specified
-    if [[ -z "$validator" ]]; then
-        case "$type" in
-            choice) validator="validate_choice" ;;
-            number) validator="validate_port" ;;  # Default number validator
-            bool) validator="validate_yes_no" ;;
-            disk) validator="validate_disk_path" ;;
-        esac
-    fi
+    # Set context and cache options
+    set_input_context "$module" "$field"
     
     local new_value
     
-    # Dispatch to appropriate prompt based on type
-    case "$type" in
-        bool)
-            new_value=$(prompt_bool "$display" "$current")
-            ;;
-        choice)
-            local options=$(field_get "$module" "$field" "options")
-            new_value=$(prompt_choice "$display" "$current" "$options")
-            ;;
-        disk)
-            new_value=$(prompt_disk "$display" "$current")
-            ;;
-        *)
-            # Default: validated text input (works for text and number types)
-            # Validators handle their own constraints (no need for min/max)
-            local error_msg=$(field_get "$module" "$field" "error")
-            if [[ -n "$error_msg" ]]; then
-                new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag" "$error_msg")
-            else
-                new_value=$(prompt_validated "$display" "$current" "$validator" "$req_flag")
-            fi
-            ;;
-    esac
+    # Check if input has custom prompt
+    if type "prompt_${input}" &>/dev/null; then
+        # Use custom prompt
+        new_value=$("prompt_${input}" "$display" "$current")
+    else
+        # Use generic loop
+        new_value=$(generic_input_loop "$display" "$current" "$input")
+    fi
+    
+    # Clear context
+    clear_input_context
+    
+    # Check required after prompt
+    if [[ "$required" == "true" && -z "$new_value" ]]; then
+        validation_error "$display is required"
+        return 1
+    fi
     
     # Update if changed
     if [[ "$new_value" != "$current" ]]; then
-        # Special case: convert CIDR to netmask for NETWORK_MASK field
-        if [[ "$field" == "NETWORK_MASK" && "$new_value" =~ ^[0-9]+$ ]]; then
-            local converted
-            converted=$(cidr_to_netmask "$new_value")
-            config_set "$module" "$field" "$converted"
-            console "    -> Updated: $field = $converted (converted from /$new_value)"
-        else
-            config_set "$module" "$field" "$new_value"
-            console "    -> Updated: $field = $new_value"
-        fi
+        config_set "$module" "$field" "$new_value"
+        console "    -> Updated: $field = $new_value"
     fi
+    
+    return 0
 }
 
 # =============================================================================

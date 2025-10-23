@@ -8,23 +8,6 @@
 # ==================================================================================================
 
 # =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-list_available_disks() {
-    local disks=()
-    
-    while IFS= read -r disk; do
-        if [[ -b "$disk" && ! "$disk" =~ [0-9]$ && ! "$disk" =~ loop ]]; then
-            local size
-            size=$(lsblk -b -d -o SIZE -n "$disk" 2>/dev/null | numfmt --to=iec 2>/dev/null || echo "unknown")
-            disks+=("$disk ($size)")
-        fi
-    done < <(find /dev -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' 2>/dev/null | sort)
-    
-    printf '%s\n' "${disks[@]}"
-}
-
-# =============================================================================
 # MODULE INITIALIZATION
 # =============================================================================
 disk_init_callback() {
@@ -32,56 +15,63 @@ disk_init_callback() {
     
     field_declare DISK_TARGET \
         display="Target Disk" \
-        required=true \
+        input=disk \
         default="/dev/sda" \
-        type=disk
+        required=true
+    
+    field_declare ROOT_SIZE \
+        display="Root Partition Size" \
+        input=disk_size \
+        default="50G" \
+        required=true
     
     field_declare ENCRYPTION \
         display="Enable Encryption" \
-        required=true \
-        default=y \
-        type=bool
+        input=toggle \
+        default=true \
+        required=true
     
     field_declare ENCRYPTION_KEY_METHOD \
         display="Encryption Key Method" \
+        input=choice \
         default="urandom" \
-        type=choice \
         options="urandom|openssl|manual"
     
     field_declare ENCRYPTION_KEY_LENGTH \
         display="Encryption Key Length" \
+        input=int \
         default="64" \
-        type=number \
-        validator=validate_port
+        min=32 \
+        max=512
     
     field_declare ENCRYPTION_USE_PASSPHRASE \
-        display="Use Additional Passphrase" \
-        default="n" \
-        type=bool
+        display="Use Passphrase" \
+        input=question \
+        default=no
     
     field_declare ENCRYPTION_PASSPHRASE_METHOD \
         display="Passphrase Generation Method" \
+        input=choice \
         default="urandom" \
-        type=choice \
         options="urandom|openssl|manual"
     
     field_declare ENCRYPTION_PASSPHRASE_LENGTH \
         display="Passphrase Length" \
+        input=int \
         default="32" \
-        type=number \
-        validator=validate_port
+        min=16 \
+        max=128
     
     field_declare PARTITION_SCHEME \
         display="Partition Scheme" \
-        required=true \
-        default=auto \
-        type=choice \
+        input=choice \
+        default="auto" \
         options="auto|manual"
     
     field_declare SWAP_SIZE \
         display="Swap Size" \
-        default="8G" \
-        validator=validate_disk_size
+        input=disk_size \
+        default="8G"
 }
 
 # =============================================================================

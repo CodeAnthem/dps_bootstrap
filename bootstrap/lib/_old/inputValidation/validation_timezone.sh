@@ -20,7 +20,9 @@ validate_yes_no() {
 
 # Validate non-empty string
 # Usage: validate_nonempty "some value"
-validate_nonempty() { [[ -n "$1" ]]; }
+validate_nonempty() {
+    [[ -n "$1" ]]
+}
 
 # =============================================================================
 # USER/SYSTEM VALIDATION FUNCTIONS
@@ -28,7 +30,9 @@ validate_nonempty() { [[ -n "$1" ]]; }
 
 # Validate username (Linux username rules)
 # Usage: validate_username "admin"
-validate_username() { [[ "$1" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; }
+validate_username() { 
+    [[ "$1" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]
+}
 
 # Validate timezone
 # Usage: validate_timezone "UTC" or validate_timezone "Europe/Berlin"

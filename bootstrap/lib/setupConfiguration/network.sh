@@ -13,37 +13,37 @@
 network_init_callback() {    
     field_declare HOSTNAME \
         display="Hostname" \
-        required=true \
-        validator=validate_hostname
+        input=hostname \
+        required=true
     
     field_declare NETWORK_METHOD \
         display="Network Method" \
+        input=choice \
+        default="dhcp" \
         required=true \
-        default=dhcp \
-        type=choice \
         options="dhcp|static"
     
     field_declare IP_ADDRESS \
         display="IP Address" \
-        validator=validate_ip
+        input=ip
     
     field_declare NETWORK_MASK \
         display="Network Mask" \
-        validator=validate_netmask
+        input=mask
     
     field_declare NETWORK_GATEWAY \
         display="Gateway" \
-        validator=validate_ip
+        input=ip
     
     field_declare NETWORK_DNS_PRIMARY \
         display="Primary DNS" \
-        default="1.1.1.1" \
-        validator=validate_ip
+        input=ip \
+        default="1.1.1.1"
     
     field_declare NETWORK_DNS_SECONDARY \
         display="Secondary DNS" \
-        default="1.0.0.1" \
-        validator=validate_ip
+        input=ip \
+        default="1.0.0.1"
 }
 
 # =============================================================================

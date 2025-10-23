@@ -15,20 +15,23 @@ custom_init_callback() {
     
     field_declare ADMIN_USER \
         display="Admin Username" \
+        input=username \
         default="admin" \
-        validator=validate_username
+        required=true
     
     field_declare SSH_PORT \
         display="SSH Port" \
+        input=port \
         default="22" \
-        type=number \
-        validator=validate_port
+        required=true \
+        min=1 \
+        max=65535
     
     field_declare TIMEZONE \
         display="Timezone" \
+        input=timezone \
         default="UTC" \
-        validator=validate_timezone \
-        error="Invalid timezone (examples: UTC, Europe/Zurich, America/New_York, Asia/Tokyo)"
+        required=true
 }
 
 # =============================================================================
