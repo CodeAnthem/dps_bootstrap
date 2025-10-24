@@ -120,13 +120,14 @@ info "Runtime directory: $RUNTIME_DIR"
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
+    newline
+    info "Stopping DPS Bootstrap"
 
     # Print error messages
     if [[ $exit_code -eq 1 ]]; then
-        console
-        log "Script aborted by user"
+        warn "Script aborted by user"
     elif (( exit_code > 1 )); then
-        log "Script failed with exit code: $exit_code"
+        error "Script failed with exit code: $exit_code"
     fi
 
     # Cleanup
