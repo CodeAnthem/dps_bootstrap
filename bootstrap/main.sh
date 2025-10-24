@@ -134,10 +134,11 @@ purgeRuntimeDir() {
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
+    info "Stopping DPS Bootstrap"
     
     # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
-        info "Script aborted"
+        warn "Script aborted"
     elif [[ $exit_code -eq 130 ]]; then
         # SIGINT (CTRL+C) - silent exit
         :
@@ -146,6 +147,7 @@ cleanup() {
     fi
 
     # Cleanup
+    
     info "Cleaning up session"
     purgeRuntimeDir
 }
