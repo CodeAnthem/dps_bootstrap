@@ -316,6 +316,10 @@ field_prompt() {
         return 1
     fi
     
+    if [[ -z "$new_value" ]]; then
+        return 0
+    fi
+    
     # Update if changed
     if [[ "$new_value" != "$current" ]]; then
         config_set "$module" "$field" "$new_value"
