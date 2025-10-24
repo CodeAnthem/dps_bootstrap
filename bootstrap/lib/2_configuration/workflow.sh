@@ -54,7 +54,7 @@ config_menu() {
 
             if [[ "$validation_errors" -gt 0 ]]; then
                 warn "Configuration still has $validation_errors error(s)."
-                console "Please fix all errors before proceeding."
+                warn "Please fix all errors before proceeding."
                 continue
             fi
 
@@ -68,6 +68,14 @@ config_menu() {
             console "Press ENTER to keep current value, or type new value"
             console ""
             module_prompt_all "$selected_module"
+            
+            # Validate immediately after editing
+            if ! module_validate "$selected_module"; then
+                console ""
+                warn "Configuration has validation errors - please fix them"
+                module_prompt_errors "$selected_module"
+            fi
+            
             success "$(echo "${selected_module^}" | tr '_' ' ') configuration updated"
         else
             warn "Invalid selection. Please enter 1-$i or X to proceed."
