@@ -150,6 +150,7 @@ cleanup() {
     
     info "Cleaning up session"
     purgeRuntimeDir
+    ls -l /tmp/ | grep -i "dps"
 }
 
 # Interrupt handler
