@@ -135,17 +135,18 @@ purgeRuntimeDir() {
 cleanup() {
     local exit_code=$?
     
-    # Only add newline if interrupted (CTRL+C = 130) or abort (1)
-    # This clears the prompt line when aborting, but avoids double newline on normal exit
-    if [[ $exit_code -eq 1 || $exit_code -eq 130 ]]; then
-        newline
-    fi
+    # Always add newline to clear prompt line
+    # This handles CTRL+C in prompts and abort scenarios cleanly
+    newline
     
     info "Stopping DPS Bootstrap"
 
-    # Print error messages
+    # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
         error "Script aborted"
+    elif [[ $exit_code -eq 130 ]]; then
+        # SIGINT (CTRL+C) - silent exit
+        :
     elif (( exit_code > 1 )); then
         error "Script failed with exit code: $exit_code"
     fi
