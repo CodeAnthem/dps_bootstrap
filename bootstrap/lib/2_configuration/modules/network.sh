@@ -32,7 +32,7 @@ network_init_callback() {
         display="Network Mask" \
         required=true \
         input=mask \
-        default="24"
+        default="255.255.255.0"
     
     field_declare NETWORK_GATEWAY \
         display="Gateway" \
