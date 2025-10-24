@@ -526,6 +526,12 @@ config_menu() {
     
     while true; do
         section_header "Configuration Menu"
+               
+        # Show current configuration (no header)
+        for module in "${modules[@]}"; do
+            module_display "$module"
+            console ""
+        done
         
         # Build menu
         local i=0
@@ -536,13 +542,7 @@ config_menu() {
             console "  $i) $display"
         done
         console ""
-        
-        # Show current configuration (no header)
-        for module in "${modules[@]}"; do
-            module_display "$module"
-            console ""
-        done
-        
+
         # Get selection
         echo -n "Select category (0-$i): "
         read -r -n 1 selection < /dev/tty
