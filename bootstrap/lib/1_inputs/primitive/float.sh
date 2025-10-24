@@ -17,5 +17,9 @@ validate_float() {
 }
 
 error_msg_float() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Must be a number (integer or decimal)"
 }

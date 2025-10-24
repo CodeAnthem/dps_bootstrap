@@ -18,5 +18,9 @@ validate_path() {
 }
 
 error_msg_path() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid path (must start with /, ~, or .)"
 }

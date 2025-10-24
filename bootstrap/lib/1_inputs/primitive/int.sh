@@ -40,8 +40,12 @@ validate_int() {
 }
 
 error_msg_int() {
-    local min=$(input_opt "min" "")
-    local max=$(input_opt "max" "")
+    local value="$1"
+    local code="${2:-0}"
+    local min
+    local max
+    min=$(input_opt "min" "")
+    max=$(input_opt "max" "")
     
     if [[ -n "$min" && -n "$max" ]]; then
         echo "Must be an integer between $min and $max"

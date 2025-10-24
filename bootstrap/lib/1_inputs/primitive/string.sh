@@ -44,9 +44,14 @@ validate_string() {
 }
 
 error_msg_string() {
-    local minlen=$(input_opt "minlen" "")
-    local maxlen=$(input_opt "maxlen" "")
-    local pattern=$(input_opt "pattern" "")
+    local value="$1"
+    local code="${2:-0}"
+    local minlen
+    local maxlen
+    local pattern
+    minlen=$(input_opt "minlen" "")
+    maxlen=$(input_opt "maxlen" "")
+    pattern=$(input_opt "pattern" "")
     
     if [[ -n "$pattern" ]]; then
         echo "Must match pattern: $pattern"

@@ -62,41 +62,24 @@ error_msg_input_name() {
 - Old code calling `error_msg_input()` still works
 - Can migrate inputs gradually
 
-## Example: Timezone Validator
+## Examples
 
-### Before (Mixed Concerns)
+### Example 1: Complex Validator (Multiple Error Codes)
+
+**Timezone** - Different failure modes need different messages
+
 ```bash
 validate_timezone() {
     local tz="$1"
     
-    if ! command -v timedatectl &>/dev/null; then
-        # ERROR: Validation contains error message logic!
-        return 1
-    fi
+    [[ -z "$tz" ]] && return 1  # Empty
     
-    timedatectl list-timezones | grep -qxi "$tz"  # Race condition!
-}
-
-error_msg_timezone() {
-    echo "Invalid timezone"  # Generic, not helpful
-}
-```
-
-### After (Clean + Detailed)
-```bash
-validate_timezone() {
-    local tz="$1"
-    
-    [[ -z "$tz" ]] && return 1
-    
-    # NixOS always has timedatectl
     if ! command -v timedatectl &>/dev/null; then
         return 2  # Command not available
     fi
     
-    # Avoid pipe race condition
     local timezones
-    timezones=$(timedatectl list-timezones 2>/dev/null) || return 3
+    timezones=$(timedatectl list-timezones 2>/dev/null) || return 3  # Command failed
     
     grep -qxi "$tz" <<< "$timezones" && return 0
     
@@ -112,6 +95,65 @@ error_msg_timezone() {
         2) echo "timedatectl command not available (required for timezone validation)" ;;
         3) echo "Failed to retrieve timezone list from timedatectl" ;;
         *) echo "Invalid timezone (examples: UTC, Europe/Zurich, America/New_York)" ;;
+    esac
+}
+```
+
+### Example 2: Simple Validator (Single Error Mode)
+
+**IP Address** - Only one failure mode (invalid format)
+
+```bash
+validate_ip() {
+    local ip="$1"
+    local IFS=.
+    local -a octets
+    
+    read -r -a octets <<< "$ip"
+    (( ${#octets[@]} == 4 )) || return 1
+    
+    # Validate each octet...
+    return 0
+}
+
+error_msg_ip() {
+    local value="$1"
+    local code="${2:-0}"  # Accept but don't use
+    
+    # Simple validator - only one failure mode
+    echo "Invalid IP address format (example: 192.168.1.1)"
+}
+```
+
+### Example 3: Validator with Context
+
+**Choice** - Uses INPUT_OPTIONS_CACHE for validation
+
+```bash
+validate_choice() {
+    local value="$1"
+    local options
+    options=$(input_opt "options" "")
+    
+    [[ -z "$options" ]] && return 2  # No options configured
+    
+    IFS='|' read -ra choices <<< "$options"
+    for choice in "${choices[@]}"; do
+        [[ "$value" == "$choice" ]] && return 0
+    done
+    
+    return 1  # Not in list
+}
+
+error_msg_choice() {
+    local value="$1"
+    local code="${2:-0}"
+    local options
+    options=$(input_opt "options" "")
+    
+    case "$code" in
+        2) echo "No options configured for choice input" ;;
+        *) echo "Options: ${options//|/, }" ;;
     esac
 }
 ```
@@ -164,6 +206,42 @@ The configuration system (`2_configuration/field.sh`) automatically:
 3. Displays specific message to user
 
 No changes needed in calling code!
+
+## Current Implementation Status
+
+### Network Inputs
+| Input | Error Codes | Status |
+|-------|-------------|--------|
+| **ip** | 1=invalid | ✅ Backwards compatible |
+| **hostname** | 1=invalid | ✅ Backwards compatible |
+| **mask** | 1=invalid | ✅ Backwards compatible |
+| **port** | 1=invalid | ✅ Backwards compatible |
+
+### System Inputs
+| Input | Error Codes | Status |
+|-------|-------------|--------|
+| **timezone** | 1=not found, 2=no command, 3=failed | ✅ **Full implementation** |
+| **username** | 1=invalid | ✅ Backwards compatible |
+| **path** | 1=invalid | ✅ Backwards compatible |
+| **url** | 1=invalid | ✅ Backwards compatible |
+
+### Disk Inputs
+| Input | Error Codes | Status |
+|-------|-------------|--------|
+| **disk** | 1=invalid | ✅ Backwards compatible |
+| **disk_size** | 1=invalid | ✅ Backwards compatible |
+
+### Primitive Inputs
+| Input | Error Codes | Status |
+|-------|-------------|--------|
+| **choice** | 1=not in list, 2=no options | ✅ Backwards compatible |
+| **string** | 1=invalid | ✅ Backwards compatible |
+| **int** | 1=invalid | ✅ Backwards compatible |
+| **float** | 1=invalid | ✅ Backwards compatible |
+| **toggle** | 1=invalid | ✅ Backwards compatible |
+| **question** | 1=invalid | ✅ Backwards compatible |
+
+**All 16 input validators now follow the error code pattern!** 🎯
 
 ## Best Practices
 

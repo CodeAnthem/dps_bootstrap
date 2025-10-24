@@ -29,5 +29,9 @@ normalize_toggle() {
 }
 
 error_msg_toggle() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Enter true, false, enabled, or disabled"
 }

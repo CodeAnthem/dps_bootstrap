@@ -21,5 +21,9 @@ validate_disk_size() {
 }
 
 error_msg_disk_size() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid disk size format (examples: 8G, 500M, 1T, 50G)"
 }

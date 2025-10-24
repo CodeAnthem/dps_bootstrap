@@ -17,5 +17,9 @@ validate_url() {
 }
 
 error_msg_url() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid URL (must start with http://, https://, git://, or ssh://)"
 }

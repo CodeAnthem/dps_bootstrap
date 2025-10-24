@@ -29,5 +29,9 @@ normalize_question() {
 }
 
 error_msg_question() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Enter yes or no"
 }

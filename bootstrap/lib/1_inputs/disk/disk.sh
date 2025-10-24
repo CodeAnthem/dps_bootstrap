@@ -69,5 +69,17 @@ prompt_disk() {
 
 validate_disk() {
     local value="$1"
-    [[ -b "$value" ]]
+    
+    [[ -z "$value" ]] && return 1
+    [[ -b "$value" ]] && return 0
+    
+    return 1
+}
+
+error_msg_disk() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
+    echo "'$value' is not a valid block device"
 }
