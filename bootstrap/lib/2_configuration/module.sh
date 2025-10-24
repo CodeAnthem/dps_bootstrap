@@ -156,13 +156,11 @@ config_use_module() {
     local module="$1"
     local module_file
     
-    # Try to find module file in new location first, then old location
-    if [[ -f "$LIB_ROOT/2_configuration/modules/${module}.sh" ]]; then
-        module_file="$LIB_ROOT/2_configuration/modules/${module}.sh"
-    elif [[ -f "${SCRIPT_DIR}/lib/setupConfiguration/${module}.sh" ]]; then
-        module_file="${SCRIPT_DIR}/lib/setupConfiguration/${module}.sh"
-    elif [[ -f "$(dirname "${BASH_SOURCE[0]}")/setupConfiguration/${module}.sh" ]]; then
-        module_file="$(dirname "${BASH_SOURCE[0]}")/setupConfiguration/${module}.sh"
+    # Find module file - check new location first
+    if [[ -f "${LIB_DIR}/2_configuration/modules/${module}.sh" ]]; then
+        module_file="${LIB_DIR}/2_configuration/modules/${module}.sh"
+    elif [[ -f "${SCRIPT_DIR}/lib/2_configuration/modules/${module}.sh" ]]; then
+        module_file="${SCRIPT_DIR}/lib/2_configuration/modules/${module}.sh"
     else
         error "Configuration module not found: $module"
         return 1

@@ -16,8 +16,10 @@ disk_init_callback() {
     # Auto-detect first disk if not provided
     local default_disk=""
     if [[ -z "$(config_get "disk" "DISK_TARGET")" ]]; then
-        # Source disk input to get list function
-        source "$LIB_ROOT/input/disk/disk.sh" 2>/dev/null || true
+        # Source disk input to get list function (if not already loaded)
+        if ! type list_available_disks &>/dev/null; then
+            source "${LIB_DIR}/1_inputs/disk/disk.sh" 2>/dev/null || true
+        fi
         if type list_available_disks &>/dev/null; then
             default_disk=$(list_available_disks | head -n1 | awk '{print $1}')
         fi
