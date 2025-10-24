@@ -137,12 +137,12 @@ cleanup() {
     
     # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
-        error "Script aborted"
+        info "Script aborted"
     elif [[ $exit_code -eq 130 ]]; then
         # SIGINT (CTRL+C) - silent exit
         :
     elif (( exit_code > 1 )); then
-        error "Script failed with exit code: $exit_code"
+        warn "Script failed with exit code: $exit_code"
     fi
 
     # Cleanup
