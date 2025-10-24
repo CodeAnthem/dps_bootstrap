@@ -199,6 +199,7 @@ field_prompt() {
         
         # New value provided - update
         config_set "$module" "$field" "$new_value"
+        if [[ "$current" == "$new_value" ]]; then return 0; fi # Skip if same value
         if [[ -n "$current" ]]; then
             console "    -> Updated: $current -> $new_value"
         else
