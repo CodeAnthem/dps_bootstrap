@@ -79,13 +79,7 @@ prompt_mask() {
 
 validate_mask() {
     local mask="$1"
-    
-    # Check if it's CIDR notation (1-32, reject 0)
-    if [[ "$mask" =~ ^[0-9]+$ ]]; then
-        [[ "$mask" -ge 1 && "$mask" -le 32 ]]
-        return $?
-    fi
-    
+        
     # Check if it's dotted decimal (validate as IP)
     local IFS=.
     local -a octets
@@ -114,5 +108,5 @@ error_msg_mask() {
     local code="${2:-0}"
     
     # Simple validator - only one failure mode
-    echo "Invalid network mask (use CIDR like 24 or dotted decimal like 255.255.255.0)"
+    echo "Invalid network mask (use CIDR ONLY in interactive prompt) dotted decimal (e.g., 255.255.255.0)"
 }
