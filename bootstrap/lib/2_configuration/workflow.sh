@@ -40,9 +40,7 @@ config_menu() {
         done
 
         # Build menu
-        console "Select category (1-$i or X to proceed):"
-        echo -n "> "
-        read -r -n 1 selection < /dev/tty
+        read -sr -n 1 -p "Select category (1-$i or X to proceed):" selection < /dev/tty
         echo  # Newline after single-char input
 
         if [[ "${selection,,}" == "x" ]]; then
