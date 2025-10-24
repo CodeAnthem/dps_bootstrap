@@ -63,26 +63,35 @@ config_menu() {
         elif [[ "$selection" =~ ^[0-9]+$ ]] && [[ "$selection" -ge 1 ]] && [[ "$selection" -le "$i" ]]; then
             # Valid selection - edit that module
             local selected_module="${modules[$((selection-1))]}"
+            local validation_output=""
             
             # Loop until module validates
             while true; do
                 console ""
                 section_header "$(echo "${selected_module^}" | tr '_' ' ') Configuration"
+                
+                # Show validation errors from previous iteration (if any)
+                if [[ -n "$validation_output" ]]; then
+                    console ""
+                    warn "Previous validation errors - please fix:"
+                    echo "$validation_output" >&2
+                    console ""
+                fi
+                
                 console "Press ENTER to keep current value, or type new value"
                 console ""
                 module_prompt_all "$selected_module"
                 
-                # Validate immediately after editing
-                if module_validate "$selected_module"; then
+                # Validate and capture output
+                validation_output=$(module_validate "$selected_module" 2>&1)
+                local validation_result=$?
+                
+                if [[ $validation_result -eq 0 ]]; then
                     # Valid - exit loop
                     success "$(echo "${selected_module^}" | tr '_' ' ') configuration updated"
                     break
-                else
-                    # Invalid - show errors and loop again
-                    console ""
-                    warn "Configuration has validation errors - please review and fix:"
-                    # Give user a moment to see errors before re-prompting
                 fi
+                # Invalid - loop again with captured errors
             done
         else
             warn "Invalid selection. Please enter 1-$i or X to proceed."
