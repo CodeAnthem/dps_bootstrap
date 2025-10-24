@@ -124,6 +124,7 @@ network_validate_extra() {
         # Check if Gateway is same as IP
         if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then
             validation_error "Gateway cannot be the same as IP address"
+            validation_error "Gateway cannot be the same as IP address"
             return 1
         fi
 
