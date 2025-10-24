@@ -124,9 +124,12 @@ config_workflow() {
             y|yes)
                 # Show interactive menu
                 console "Yes"
-                config_menu "${modules[@]}"
+                if config_menu "${modules[@]}"; then
+                    # User pressed X in menu to proceed - confirmed
+                    return 0
+                fi
 
-                # After menu, show updated config
+                # User exited menu without X, show updated config and ask again
                 console ""
                 section_header "Configuration Summary"
                 for module in "${modules[@]}"; do
