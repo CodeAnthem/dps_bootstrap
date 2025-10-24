@@ -138,7 +138,7 @@ cleanup() {
     
     # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
-        warn "Script aborted"
+        warn "Script aborted by user"
     elif [[ $exit_code -eq 130 ]]; then
         # SIGINT (CTRL+C) - silent exit
         :
@@ -156,7 +156,7 @@ cleanup() {
 
 # Interrupt handler
 # shellcheck disable=SC2329
-trap 'newline; info "Script aborted by user"' SIGINT
+trap 'newline; info "Script aborted by user"; exit 1' SIGINT
 
 # Setup cleanup trap
 trap cleanup EXIT
