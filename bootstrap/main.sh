@@ -163,7 +163,7 @@ cleanup() {
 # Interrupt handler
 # Handle Ctrl+C (SIGINT)
 interrupted=false
-trap 'interrupted=true; cleanup' SIGINT
+trap 'interrupted=true' SIGINT
 
 # Setup cleanup trap
 trap cleanup EXIT
