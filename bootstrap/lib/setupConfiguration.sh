@@ -319,6 +319,7 @@ field_prompt() {
     if [[ -z "$new_value" ]]; then
         return 0
     fi
+    console "new value: $new_value"
     
     # Update if changed
     if [[ "$new_value" != "$current" ]]; then
