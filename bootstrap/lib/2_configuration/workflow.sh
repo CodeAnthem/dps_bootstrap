@@ -16,7 +16,7 @@
 config_fix_errors() {
     local modules=("$@")
     section_header "Configuration Required"
-    
+
     # Prompt for missing/invalid fields in each module
     for module in "${modules[@]}"; do
         module_prompt_errors "$module"
@@ -27,10 +27,10 @@ config_fix_errors() {
 # Usage: config_menu "module1" "module2" ...
 config_menu() {
     local modules=("$@")
-    
+
     while true; do
         section_header "Configuration Menu"
-               
+
         # Show current configuration with numbers
         local i=0
         for module in "${modules[@]}"; do
@@ -38,13 +38,13 @@ config_menu() {
             module_display "$module" "$i"
             console ""
         done
-        
+
         # Build menu
         console "Select category (1-$i or X to proceed):"
         echo -n "> "
         read -r -n 1 selection < /dev/tty
         echo  # Newline after single-char input
-        
+
         if [[ "${selection,,}" == "x" ]]; then
             # Validate before confirming
             local validation_errors=0
@@ -53,14 +53,14 @@ config_menu() {
                     ((validation_errors++))
                 fi
             done
-            
+
             if [[ "$validation_errors" -gt 0 ]]; then
                 console ""
                 warn "Configuration still has $validation_errors error(s)."
                 console "Please fix all errors before proceeding."
                 continue
             fi
-            
+
             success "Configuration confirmed"
             return 0
         elif [[ "$selection" =~ ^[0-9]+$ ]] && [[ "$selection" -ge 1 ]] && [[ "$selection" -le "$i" ]]; then
@@ -82,7 +82,7 @@ config_menu() {
 # Usage: config_workflow "module1" "module2" ...
 config_workflow() {
     local modules=("$@")
-    
+
     # Check if any fields are missing (silent check)
     local needs_input=false
     for module in "${modules[@]}"; do
@@ -91,11 +91,11 @@ config_workflow() {
             break
         fi
     done
-    
+
     # If validation fails, prompt for required fields
     if [[ "$needs_input" == "true" ]]; then
         config_fix_errors "${modules[@]}"
-        
+
         # Re-validate after input
         local validation_errors=0
         for module in "${modules[@]}"; do
@@ -103,32 +103,32 @@ config_workflow() {
                 ((validation_errors++))
             fi
         done
-        
+
         if [[ "$validation_errors" -gt 0 ]]; then
             error "Configuration validation still has $validation_errors error(s)"
             return 1
         fi
-        
+
         success "Configuration completed"
     fi
-    
+
     # Display all configurations
     section_header "Configuration Summary"
     for module in "${modules[@]}"; do
         module_display "$module"
         console ""
     done
-    
+
     # Ask if user wants to modify anything
     while true; do
         read -rsn 1 -p "-> Do you want to modify any settings? [y/n]: " response < /dev/tty
-        
+
         case "${response,,}" in
             y|yes)
                 # Show interactive menu
                 console "Yes"
                 config_menu "${modules[@]}"
-                
+
                 # After menu, show updated config
                 console ""
                 section_header "Configuration Summary"

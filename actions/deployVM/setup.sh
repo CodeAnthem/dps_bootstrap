@@ -80,7 +80,7 @@ setup() {
     init_deploy_config
     
     # Run configuration workflow (display -> interactive -> validate)
-    if ! config_workflow "network" "disk" "custom" "deploy"; then
+    if ! config_workflow "network" "disk" "system" "deploy"; then
         error "Configuration workflow failed"
         return 1
     fi
@@ -93,12 +93,12 @@ setup() {
     
     # Show final configuration summary
     console ""
-    console "=== Deploy VM Configuration Summary ==="
+    console "=== Deploy VM Configuration Summary in setup.sh ==="
     console "Hostname: $(config_get "network" "HOSTNAME")"
     console "Network: $(config_get "network" "NETWORK_METHOD")"
     console "Disk: $(config_get "disk" "DISK_TARGET")"
     console "Encryption: $(config_get "disk" "ENCRYPTION")"
-    console "Admin User: $(config_get "custom" "ADMIN_USER")"
+    console "Admin User: $(config_get "system" "ADMIN_USER")"
     console "Git Repository: $(config_get "deploy" "GIT_REPO_URL")"
     console "Deploy Key: $(config_get "deploy" "DEPLOY_SSH_KEY_PATH")"
     console "====================================="
