@@ -81,9 +81,9 @@ prompt_mask() {
 validate_mask() {
     local mask="$1"
     
-    # Check if it's CIDR notation (0-32)
+    # Check if it's CIDR notation (1-32, reject 0)
     if [[ "$mask" =~ ^[0-9]+$ ]]; then
-        [[ "$mask" -ge 0 && "$mask" -le 32 ]]
+        [[ "$mask" -ge 1 && "$mask" -le 32 ]]
         return $?
     fi
     

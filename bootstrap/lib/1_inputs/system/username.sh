@@ -13,9 +13,13 @@
 
 validate_username() {
     local username="$1"
-    [[ "$username" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]
+    
+    # Minimum 2 characters for system administration
+    [[ ${#username} -ge 2 ]] || return 1
+    
+    [[ "$username" =~ ^[a-z_][a-z0-9_-]{1,31}$ ]]
 }
 
 error_msg_username() {
-    echo "Invalid username (must start with lowercase letter or underscore, max 32 chars)"
+    echo "Invalid username (2-32 chars, start with lowercase letter or underscore)"
 }

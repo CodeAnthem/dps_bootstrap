@@ -13,11 +13,16 @@
 
 validate_hostname() {
     local hostname="$1"
-    local hostname_regex='^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$'
+    
+    # Minimum 2 chars, lowercase letters, digits, hyphens (not at start/end)
+    local hostname_regex='^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
+    
+    # Must be at least 2 characters
+    [[ ${#hostname} -ge 2 ]] || return 1
     
     [[ "$hostname" =~ $hostname_regex ]]
 }
 
 error_msg_hostname() {
-    echo "Invalid hostname (must start/end with alphanumeric, hyphens allowed in middle, max 63 chars)"
+    echo "Invalid hostname (2-63 chars, lowercase alphanumeric, hyphens allowed in middle)"
 }

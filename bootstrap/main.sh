@@ -134,11 +134,19 @@ purgeRuntimeDir() {
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
-    newline
+    
+    # Only add newline if interrupted (CTRL+C = 130) or abort (1)
+    # This clears the prompt line when aborting, but avoids double newline on normal exit
+    if [[ $exit_code -eq 1 || $exit_code -eq 130 ]]; then
+        newline
+    fi
+    
     info "Stopping DPS Bootstrap"
 
     # Print error messages
-    if (( exit_code > 1 )); then
+    if [[ $exit_code -eq 1 ]]; then
+        error "Script aborted"
+    elif (( exit_code > 1 )); then
         error "Script failed with exit code: $exit_code"
     fi
 
