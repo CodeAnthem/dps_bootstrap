@@ -139,7 +139,11 @@ cleanup() {
     # This handles CTRL+C in prompts and abort scenarios cleanly
     newline
     echo "Exit Code: $exit_code" >&2
-    info "Stopping DPS Bootstrap"
+    if [[ $interrupted ]]; then
+        info "Script interrupted by user"
+    else
+        info "Stopping DPS Bootstrap"
+    fi
 
     # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
@@ -155,6 +159,11 @@ cleanup() {
     info "Cleaning up session"
     purgeRuntimeDir
 }
+
+# Interrupt handler
+# Handle Ctrl+C (SIGINT)
+interrupted=false
+trap 'interrupted=true; cleanup' SIGINT
 
 # Setup cleanup trap
 trap cleanup EXIT
