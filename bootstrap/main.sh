@@ -135,16 +135,6 @@ purgeRuntimeDir() {
 cleanup() {
     local exit_code=$?
     
-    # Always add newline to clear prompt line
-    # This handles CTRL+C in prompts and abort scenarios cleanly
-    newline
-    echo "Exit Code: $exit_code" >&2
-    if [[ $interrupted ]]; then
-        info "Script interrupted by user"
-    else
-        info "Stopping DPS Bootstrap"
-    fi
-
     # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
         error "Script aborted"
@@ -161,9 +151,8 @@ cleanup() {
 }
 
 # Interrupt handler
-# Handle Ctrl+C (SIGINT)
-interrupted=false
-trap 'interrupted=true' SIGINT
+# shellcheck disable=SC2329
+trap 'newline; info "Script aborted by user"' SIGINT
 
 # Setup cleanup trap
 trap cleanup EXIT
