@@ -13,16 +13,20 @@
 disk_init_callback() {
     # MODULE_CONTEXT is already set to "disk"
     
+    # Auto-detect first disk if not provided
+    local default_disk=""
+    if [[ -z "$(config_get "disk" "DISK_TARGET")" ]]; then
+        # Source disk input to get list function
+        source "$LIB_ROOT/input/disk/disk.sh" 2>/dev/null || true
+        if type list_available_disks &>/dev/null; then
+            default_disk=$(list_available_disks | head -n1 | awk '{print $1}')
+        fi
+    fi
+    
     field_declare DISK_TARGET \
         display="Target Disk" \
         input=disk \
-        default="/dev/sda" \
-        required=true
-    
-    field_declare ROOT_SIZE \
-        display="Root Partition Size" \
-        input=disk_size \
-        default="50G" \
+        default="$default_disk" \
         required=true
     
     field_declare ENCRYPTION \
@@ -67,20 +71,17 @@ disk_init_callback() {
         input=choice \
         default="auto" \
         options="auto|manual"
-    
-    field_declare SWAP_SIZE \
-        display="Swap Size" \
-        input=disk_size \
-        default="8G"
 }
 
 # =============================================================================
 # ACTIVE FIELDS LOGIC
 # =============================================================================
 disk_get_active_fields() {
-    local scheme=$(config_get "PARTITION_SCHEME")
-    local encryption=$(config_get "ENCRYPTION")
-    local use_passphrase=$(config_get "ENCRYPTION_USE_PASSPHRASE")
+    local encryption
+    local use_passphrase
+    
+    encryption=$(config_get "disk" "ENCRYPTION")
+    use_passphrase=$(config_get "disk" "ENCRYPTION_USE_PASSPHRASE")
     
     # Base fields always active
     echo "DISK_TARGET"
@@ -98,11 +99,6 @@ disk_get_active_fields() {
             echo "ENCRYPTION_PASSPHRASE_METHOD"
             echo "ENCRYPTION_PASSPHRASE_LENGTH"
         fi
-    fi
-    
-    # Swap size only for auto partitioning
-    if [[ "$scheme" == "auto" ]]; then
-        echo "SWAP_SIZE"
     fi
 }
 
