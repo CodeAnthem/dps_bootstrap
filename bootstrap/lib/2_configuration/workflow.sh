@@ -72,13 +72,12 @@ config_menu() {
                 
                 # Show validation errors from previous iteration (if any)
                 if [[ -n "$validation_output" ]]; then
-                    console ""
-                    warn "Previous validation errors - please fix:"
+                    console "  Validation errors - please fix:"
                     echo "$validation_output" >&2
                     console ""
                 fi
                 
-                console "Press ENTER to keep current value, or type new value"
+                console " Press ENTER to keep current value, or type new value"
                 console ""
                 module_prompt_all "$selected_module"
                 
