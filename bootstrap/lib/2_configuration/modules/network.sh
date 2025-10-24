@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2025-10-22
+# Date:          Created: 2025-10-21 | Modified: 2025-10-24
 # Description:   Script Library File
 # Feature:       Network configuration module (hostname, IP, DNS, gateway)
 # ==================================================================================================
@@ -23,7 +23,7 @@ network_init_callback() {
         required=true \
         options="dhcp|static"
     
-    field_declare IP_ADDRESS \
+    field_declare NETWORK_IP \
         display="IP Address" \
         required=true \
         input=ip
@@ -31,7 +31,8 @@ network_init_callback() {
     field_declare NETWORK_MASK \
         display="Network Mask" \
         required=true \
-        input=mask
+        input=mask \
+        default="24"
     
     field_declare NETWORK_GATEWAY \
         display="Gateway" \
@@ -41,11 +42,13 @@ network_init_callback() {
     field_declare NETWORK_DNS_PRIMARY \
         display="Primary DNS" \
         input=ip \
+        required=true \
         default="1.1.1.1"
     
     field_declare NETWORK_DNS_SECONDARY \
         display="Secondary DNS" \
         input=ip \
+        required=true \
         default="1.0.0.1"
 }
 
@@ -64,7 +67,7 @@ network_get_active_fields() {
     
     # Conditional fields for static configuration
     if [[ "$method" == "static" ]]; then
-        echo "IP_ADDRESS"
+        echo "NETWORK_IP"
         echo "NETWORK_MASK"
         echo "NETWORK_GATEWAY"
     fi
@@ -117,13 +120,12 @@ network_validate_extra() {
         local mask
         local gateway
         
-        ip=$(config_get "network" "IP_ADDRESS")
+        ip=$(config_get "network" "NETWORK_IP")
         mask=$(config_get "network" "NETWORK_MASK")
         gateway=$(config_get "network" "NETWORK_GATEWAY")
         
         # Check if Gateway is same as IP
         if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then
-            validation_error "Gateway cannot be the same as IP address"
             validation_error "Gateway cannot be the same as IP address"
             return 1
         fi
