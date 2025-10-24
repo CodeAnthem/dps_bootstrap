@@ -319,7 +319,7 @@ field_prompt() {
     # Update if changed
     if [[ "$new_value" != "$current" ]]; then
         config_set "$module" "$field" "$new_value"
-        if [[ -n "$new_value" ]]; then
+        if [[ -n "$current" ]]; then
             console "    -> Updated: $current -> $new_value"
         else
             console "    -> Set: $new_value"
