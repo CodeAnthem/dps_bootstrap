@@ -562,7 +562,7 @@ config_menu() {
         # Show current configuration with numbers
         local i=0
         for module in "${modules[@]}"; do
-            ((i++))
+            ((++i))
             module_display "$module" "$i"
             console ""
         done
