@@ -103,14 +103,28 @@ fi
 # SETUP RUNTIME DIRECTORY
 # =============================================================================
 # Setup runtime directory - declare and assign separately
-timestamp=""
-printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
-readonly RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
+setupRuntimeDir() {
+    timestamp=""
+    printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
+    readonly RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
 
-# Create runtime directory
-mkdir -p "$RUNTIME_DIR"
-chmod 700 "$RUNTIME_DIR"
-info "Runtime directory: $RUNTIME_DIR"
+    # Create runtime directory
+    mkdir -p "$RUNTIME_DIR"
+    chmod 700 "$RUNTIME_DIR"
+    info "Runtime directory: $RUNTIME_DIR"
+}
+setupRuntimeDir
+
+# shellcheck disable=SC2329
+purgeRuntimeDir() {
+    if [[ -d "${RUNTIME_DIR:-}" ]]; then
+        if rm -rf "$RUNTIME_DIR"; then
+            success "Runtime directory cleaned up: $RUNTIME_DIR"
+        else
+            error "Failed to clean up runtime directory: $RUNTIME_DIR"
+        fi
+    fi
+}
 
 
 # =============================================================================
@@ -124,25 +138,13 @@ cleanup() {
     info "Stopping DPS Bootstrap"
 
     # Print error messages
-    if [[ $exit_code -eq 1 ]]; then
-        warn "Script aborted by user"
-    elif (( exit_code > 1 )); then
+    if (( exit_code > 1 )); then
         error "Script failed with exit code: $exit_code"
     fi
 
     # Cleanup
     info "Cleaning up session"
-
-    # Clean up runtime directory
-    if [[ -d "${RUNTIME_DIR:-}" ]]; then
-        if rm -rf "$RUNTIME_DIR"; then
-            success "Runtime directory cleaned up: $RUNTIME_DIR"
-        else
-            error "Failed to clean up runtime directory: $RUNTIME_DIR"
-        fi
-    fi
-
-    exit "$exit_code"
+    purgeRuntimeDir
 }
 
 # Setup cleanup trap
