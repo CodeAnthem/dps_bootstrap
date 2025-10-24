@@ -112,7 +112,7 @@ module_prompt_all() {
         fi
     done
     
-    console ""
+    console "X"
 }
 
 # =============================================================================
@@ -143,7 +143,7 @@ module_display() {
         local value
         display=$(field_get "$module" "$field" "display")
         value=$(config_get "$module" "$field")
-        console " > $display: $value"
+        console "   > $display: $value"
     done
 }
 

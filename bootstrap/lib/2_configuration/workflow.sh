@@ -53,7 +53,6 @@ config_menu() {
             done
 
             if [[ "$validation_errors" -gt 0 ]]; then
-                console ""
                 warn "Configuration still has $validation_errors error(s)."
                 console "Please fix all errors before proceeding."
                 continue
