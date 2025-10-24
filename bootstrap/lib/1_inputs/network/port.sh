@@ -26,7 +26,11 @@ validate_port() {
 }
 
 error_msg_port() {
+    local value="$1"
+    local code="${2:-0}"
     local min=$(input_opt "min" "1")
     local max=$(input_opt "max" "65535")
+    
+    # Simple validator - only one failure mode  
     echo "Port must be a number between $min and $max"
 }

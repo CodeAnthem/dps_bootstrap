@@ -33,6 +33,11 @@ validate_choice() {
 }
 
 error_msg_choice() {
-    local options=$(input_opt "options" "")
+    local value="$1"
+    local code="${2:-0}"
+    local options
+    options=$(input_opt "options" "")
+    
+    # Simple validator - only one failure mode
     echo "Options: ${options//|/, }"
 }

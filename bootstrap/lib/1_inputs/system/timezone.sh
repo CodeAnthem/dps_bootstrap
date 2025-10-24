@@ -76,25 +76,31 @@ validate_timezone() {
     
     [[ -z "$tz" ]] && return 1
     
-    # If timedatectl available, use it
-    if command -v timedatectl &>/dev/null; then
-        timedatectl list-timezones | grep -qxi "$tz"
-        return $?
+    # NixOS always has timedatectl - use it exclusively
+    if ! command -v timedatectl &>/dev/null; then
+        return 2  # timedatectl not available
     fi
     
-    # Fallback: check zoneinfo directory
-    if [[ -d "/usr/share/zoneinfo" ]]; then
-        [[ -f "/usr/share/zoneinfo/$tz" ]] && return 0
-    fi
+    # Get list and check - avoid pipe race condition
+    local timezones
+    timezones=$(timedatectl list-timezones 2>/dev/null) || return 3
     
-    # Last resort: validate format
-    if [[ "$tz" =~ ^[A-Z][A-Za-z_]+(/[A-Za-z_]+)+$ ]] || [[ "$tz" =~ ^(UTC|GMT)$ ]]; then
+    # Case-insensitive exact match
+    if grep -qxi "$tz" <<< "$timezones"; then
         return 0
     fi
     
-    return 1
+    return 1  # Not found
 }
 
 error_msg_timezone() {
-    echo "Invalid timezone (examples: UTC, Europe/Zurich, America/New_York)"
+    local value="$1"
+    local code="$2"
+    
+    case "$code" in
+        1) echo "Timezone '$value' not found in system timezone database" ;;
+        2) echo "timedatectl command not available (required for timezone validation)" ;;
+        3) echo "Failed to retrieve timezone list from timedatectl" ;;
+        *) echo "Invalid timezone (examples: UTC, Europe/Zurich, America/New_York)" ;;
+    esac
 }

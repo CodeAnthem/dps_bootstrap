@@ -47,5 +47,9 @@ validate_ip() {
 
 
 error_msg_ip() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid IP address format (example: 192.168.1.1)"
 }

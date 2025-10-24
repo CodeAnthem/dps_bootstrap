@@ -21,5 +21,9 @@ validate_username() {
 }
 
 error_msg_username() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid username (2-32 chars, start with lowercase letter or underscore)"
 }

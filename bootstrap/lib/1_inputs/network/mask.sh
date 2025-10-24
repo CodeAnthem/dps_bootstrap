@@ -111,5 +111,9 @@ validate_mask() {
 }
 
 error_msg_mask() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid network mask (use CIDR like 24 or dotted decimal like 255.255.255.0)"
 }

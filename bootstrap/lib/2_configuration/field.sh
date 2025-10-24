@@ -39,23 +39,27 @@ field_validate() {
     # Set context for validator
     set_input_context "$module" "$field"
     
-    # Run validator
-    local result=0
-    if ! "validate_${input}" "$value"; then
-        # Get custom error or use error_msg_* function if exists
+    # Run validator and capture error code
+    local error_code
+    "validate_${input}" "$value"
+    error_code=$?
+    
+    if [[ $error_code -ne 0 ]]; then
+        # Get custom error or use error_msg_* function with error code
         local error_msg
         error_msg=$(field_get "$module" "$field" "error")
         if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
-            error_msg=$("error_msg_${input}" "$value")
+            error_msg=$("error_msg_${input}" "$value" "$error_code")
         fi
         validation_error "${error_msg:-Invalid $display}"
-        result=1
+        clear_input_context
+        return 1
     fi
     
     # Clear context
     clear_input_context
     
-    return $result
+    return 0
 }
 
 # =============================================================================
@@ -100,8 +104,12 @@ generic_input_loop() {
             return 0
         fi
         
-        # Validate
-        if "validate_${input_name}" "$value"; then
+        # Validate and capture error code
+        local error_code
+        "validate_${input_name}" "$value"
+        error_code=$?
+        
+        if [[ $error_code -eq 0 ]]; then
             # Normalize if function exists
             if type "normalize_${input_name}" &>/dev/null; then
                 value=$("normalize_${input_name}" "$value")
@@ -109,10 +117,10 @@ generic_input_loop() {
             echo "$value"
             return 0
         else
-            # Get error message
+            # Get error message with error code
             local error
             if type "error_msg_${input_name}" &>/dev/null; then
-                error=$("error_msg_${input_name}" "$value")
+                error=$("error_msg_${input_name}" "$value" "$error_code")
             else
                 error="Invalid input"
             fi

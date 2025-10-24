@@ -24,5 +24,9 @@ validate_hostname() {
 }
 
 error_msg_hostname() {
+    local value="$1"
+    local code="${2:-0}"
+    
+    # Simple validator - only one failure mode
     echo "Invalid hostname (2-63 chars, lowercase alphanumeric, hyphens allowed in middle)"
 }
