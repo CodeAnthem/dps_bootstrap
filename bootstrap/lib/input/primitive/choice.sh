@@ -34,5 +34,5 @@ validate_choice() {
 
 error_msg_choice() {
     local options=$(input_opt "options" "")
-    echo "Invalid choice. Options: ${options//|/, }"
+    echo "Options: ${options//|/, }"
 }

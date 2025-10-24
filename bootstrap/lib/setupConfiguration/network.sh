@@ -70,6 +70,7 @@ network_get_active_fields() {
 # CROSS-FIELD VALIDATION
 # =============================================================================
 network_validate_extra() {
+    echo "is this ever exeucted"; exit 5
     local method=$(config_get "NETWORK_METHOD")
     
     if [[ "$method" == "static" ]]; then
