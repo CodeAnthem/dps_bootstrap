@@ -281,7 +281,7 @@ generic_input_loop() {
 # FIELD PROMPTING
 # =============================================================================
 
-# Prompt for one field
+# Prompt user for a single field (with validation loop)
 # Usage: field_prompt "module" "field"
 field_prompt() {
     local module="$1"
@@ -292,47 +292,63 @@ field_prompt() {
     local current=$(config_get "$module" "$field")
     local required=$(field_get "$module" "$field" "required")
     
-    
-    # Set context and cache options
-    set_input_context "$module" "$field"
-    
-    local new_value
-    
-    # Check if input has custom prompt
-    if type "prompt_${input}" &>/dev/null; then
-        # Use custom prompt
-        new_value=$("prompt_${input}" "$display" "$current")
-    else
-        # Use generic loop
-        new_value=$(generic_input_loop "$display" "$current" "$input")
-    fi
-    
-    # Clear context
-    clear_input_context
-    
-    # Check required after prompt
-    if [[ "$required" == "true" && -z "$new_value" ]]; then
-        validation_error "$display is required"
-        return 1
-    fi
-    
-    if [[ -z "$new_value" ]]; then
-        return 0
-    fi
-
-    # Update if changed
-    if [[ "$new_value" != "$current" ]]; then
+    # Loop until we get valid input or user provides valid current value
+    while true; do
+        # Set context and cache options
+        set_input_context "$module" "$field"
+        
+        local new_value
+        
+        # Check if input has custom prompt
+        if type "prompt_${input}" &>/dev/null; then
+            # Use custom prompt
+            new_value=$("prompt_${input}" "$display" "$current")
+        else
+            # Use generic loop
+            new_value=$(generic_input_loop "$display" "$current" "$input")
+        fi
+        
+        # Clear context
+        clear_input_context
+        
+        # Empty input means keep current value
+        if [[ -z "$new_value" ]]; then
+            # Check if current value is valid
+            if [[ "$required" == "true" && -z "$current" ]]; then
+                validation_error "$display is required"
+                continue  # Re-prompt
+            fi
+            
+            # Validate current value
+            if [[ -n "$current" ]]; then
+                set_input_context "$module" "$field"
+                if ! "validate_${input}" "$current"; then
+                    # Get error message
+                    local error_msg=$(field_get "$module" "$field" "error")
+                    if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
+                        error_msg=$("error_msg_${input}" "$current")
+                    fi
+                    validation_error "${error_msg:-Invalid $display}"
+                    clear_input_context
+                    continue  # Re-prompt
+                fi
+                clear_input_context
+            fi
+            
+            # Current value is valid, keep it
+            return 0
+        fi
+        
+        # New value provided - update
         config_set "$module" "$field" "$new_value"
         if [[ -n "$current" ]]; then
             console "    -> Updated: $current -> $new_value"
         else
             console "    -> Set: $new_value"
         fi
-    else
-        console "    -> Unchanged!"
-    fi
-    
-    return 0
+        
+        return 0
+    done
 }
 
 # =============================================================================
@@ -440,12 +456,18 @@ module_prompt_all() {
 }
 
 # Display module configuration
-# Usage: module_display "module"
+# Usage: module_display "module" [number]
 module_display() {
     local module="$1"
+    local number="$2"
     local get_fields="${module}_get_active_fields"
     
-    console "$(echo "${module^}" | tr '_' ' ') Configuration:"
+    local header="$(echo "${module^}" | tr '_' ' ') Configuration:"
+    if [[ -n "$number" ]]; then
+        console "$number. $header"
+    else
+        console "$header"
+    fi
     
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
@@ -537,28 +559,21 @@ config_menu() {
     while true; do
         section_header "Configuration Menu"
                
-        # Show current configuration (no header)
+        # Show current configuration with numbers
+        local i=0
         for module in "${modules[@]}"; do
-            module_display "$module"
+            ((i++))
+            module_display "$module" "$i"
             console ""
         done
         
         # Build menu
-        local i=0
-        console "  0) Done - Confirm and proceed"
-        for module in "${modules[@]}"; do
-            ((i++))
-            local display=$(echo "${module^}" | tr '_' ' ')
-            console "  $i) $display"
-        done
-        console ""
-
-        # Get selection
-        echo -n "Select category (0-$i): "
+        console "Select category (1-$i or X to proceed):"
+        echo -n "> "
         read -r -n 1 selection < /dev/tty
         echo  # Newline after single-char input
         
-        if [[ "$selection" == "0" ]]; then
+        if [[ "${selection,,}" == "x" ]]; then
             # Validate before confirming
             local validation_errors=0
             for module in "${modules[@]}"; do
@@ -586,7 +601,7 @@ config_menu() {
             module_prompt_all "$selected_module"
             success "$(echo "${selected_module^}" | tr '_' ' ') configuration updated"
         else
-            warn "Invalid selection. Please enter a number between 0 and $i."
+            warn "Invalid selection. Please enter 1-$i or X to proceed."
         fi
     done
 }

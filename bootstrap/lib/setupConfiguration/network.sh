@@ -67,23 +67,63 @@ network_get_active_fields() {
 }
 
 # =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+# Convert IP address to integer
+ip_to_int() {
+    local ip="$1"
+    local a b c d
+    IFS='.' read -r a b c d <<< "$ip"
+    echo "$((a * 256**3 + b * 256**2 + c * 256 + d))"
+}
+
+# Validate subnet relationship
+# Usage: validate_subnet "192.168.1.10" "255.255.255.0" "192.168.1.1"
+validate_subnet() {
+    local ip="$1"
+    local mask="$2"
+    local gateway="$3"
+    
+    # Convert to integers and check if they're in the same subnet
+    local ip_int
+    local gateway_int
+    local mask_int
+    
+    ip_int=$(ip_to_int "$ip")
+    gateway_int=$(ip_to_int "$gateway")
+    mask_int=$(ip_to_int "$mask")
+    
+    # Apply mask to both IPs and compare
+    local ip_network=$((ip_int & mask_int))
+    local gateway_network=$((gateway_int & mask_int))
+    
+    [[ "$ip_network" -eq "$gateway_network" ]]
+}
+
+# =============================================================================
 # CROSS-FIELD VALIDATION
 # =============================================================================
 network_validate_extra() {
-    local method=$(config_get "NETWORK_METHOD")
+    local method
+    method=$(config_get "network" "NETWORK_METHOD")
     
     if [[ "$method" == "static" ]]; then
-        local ip=$(config_get "IP_ADDRESS")
-        local mask=$(config_get "NETWORK_MASK")
-        local gateway=$(config_get "NETWORK_GATEWAY")
+        local ip
+        local mask
+        local gateway
+        
+        ip=$(config_get "network" "IP_ADDRESS")
+        mask=$(config_get "network" "NETWORK_MASK")
+        gateway=$(config_get "network" "NETWORK_GATEWAY")
         
         # Check if Gateway is same as IP
-        if [[ "$ip" == "$gateway" ]]; then
-            validation_error "Gateway cannot be the same as IP"
+        if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then
+            validation_error "Gateway cannot be the same as IP address"
             return 1
         fi
 
-        # All three must be present for static
+        # All three must be present for subnet validation
         if [[ -n "$ip" && -n "$mask" && -n "$gateway" ]]; then
             # Validate gateway is in same subnet
             if ! validate_subnet "$ip" "$mask" "$gateway"; then
