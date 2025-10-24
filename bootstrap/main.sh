@@ -138,7 +138,7 @@ cleanup() {
     # Always add newline to clear prompt line
     # This handles CTRL+C in prompts and abort scenarios cleanly
     newline
-    
+    echo "Exit Code: $exit_code" >&2
     info "Stopping DPS Bootstrap"
 
     # Print error messages only for actual failures
