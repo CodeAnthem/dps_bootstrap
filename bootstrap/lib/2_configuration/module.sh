@@ -126,7 +126,8 @@ module_display() {
     local number="${2:-}"
     local get_fields="${module}_get_active_fields"
     
-    local header="$(echo "${module^}" | tr '_' ' ') Configuration:"
+    local header
+    header="$(echo "${module^}" | tr '_' ' ') Configuration:"
     if [[ -n "$number" ]]; then
         console "$number. $header"
     else
@@ -183,7 +184,8 @@ config_use_module() {
 config_init_module() {
     local module="$1"
     
-    # Set module context
+    # Set module context (used by field_declare in init callback)
+    # shellcheck disable=SC2034
     MODULE_CONTEXT="$module"
     
     # Call module's init callback if it exists

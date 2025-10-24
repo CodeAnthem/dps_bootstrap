@@ -20,7 +20,8 @@ declare -gA FIELD_REGISTRY 2>/dev/null || true
 # Configuration data storage: module__field → value
 declare -gA CONFIG_DATA 2>/dev/null || true
 
-# Module registry: stores module callbacks
+# Module registry: stores module callbacks (used by config_use_module)
+# shellcheck disable=SC2034
 declare -gA MODULE_REGISTRY 2>/dev/null || true
 
 # Input context (set during field_prompt/field_validate)

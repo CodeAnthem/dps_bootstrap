@@ -50,7 +50,8 @@ network_init_callback() {
 # ACTIVE FIELDS LOGIC
 # =============================================================================
 network_get_active_fields() {
-    local method=$(config_get "NETWORK_METHOD")
+    local method
+    method=$(config_get "network" "NETWORK_METHOD")
     
     # Base fields always active
     echo "HOSTNAME"

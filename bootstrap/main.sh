@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2025-10-20
+# Date:          Created: 2025-10-12 | Modified: 2025-10-24
 # Description:   Entry point selector for DPS Bootstrap - dynamically discovers and executes actions
 # Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
@@ -210,7 +210,7 @@ select_action() {
     
     # Display available actions in correct order (sorted by key)
     local sorted_keys
-    IFS=$'\n' sorted_keys=($(printf '%s\n' "${!ACTIONS[@]}" | sort -n))
+    mapfile -t sorted_keys < <(printf '%s\n' "${!ACTIONS[@]}" | sort -n)
     
     console "  0) Abort - Exit the script"
     for i in "${sorted_keys[@]}"; do
