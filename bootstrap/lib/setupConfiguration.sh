@@ -252,7 +252,7 @@ generic_input_loop() {
         
         # Empty handling - keep current
         if [[ -z "$value" ]]; then
-            echo "$current"
+            # echo "$current"
             return 0
         fi
         
@@ -320,7 +320,7 @@ field_prompt() {
         return 0
     fi
     console "new value: $new_value"
-    
+
     # Update if changed
     if [[ "$new_value" != "$current" ]]; then
         config_set "$module" "$field" "$new_value"
