@@ -25,14 +25,17 @@ network_init_callback() {
     
     field_declare IP_ADDRESS \
         display="IP Address" \
+        required=true \
         input=ip
     
     field_declare NETWORK_MASK \
         display="Network Mask" \
+        required=true \
         input=mask
     
     field_declare NETWORK_GATEWAY \
         display="Gateway" \
+        required=true \
         input=ip
     
     field_declare NETWORK_DNS_PRIMARY \
