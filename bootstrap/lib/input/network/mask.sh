@@ -59,11 +59,10 @@ prompt_mask() {
                 # Convert CIDR to dotted decimal
                 local dotted
                 dotted=$(cidr_to_netmask "$value")
-                console "    Converted: /$value → $dotted"
                 echo "$dotted"
                 return 0
             else
-                console "    Error: CIDR must be between 0 and 32"
+                console "    Error: CIDR must be between 1 and 32"
                 continue
             fi
         fi
