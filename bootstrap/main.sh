@@ -156,7 +156,7 @@ cleanup() {
 
 # Interrupt handler
 # shellcheck disable=SC2329
-trap 'newline; info "Script aborted by user"; exit 1' SIGINT
+trap 'newline; exit 1' SIGINT
 
 # Setup cleanup trap
 trap cleanup EXIT
