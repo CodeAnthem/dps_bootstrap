@@ -459,7 +459,7 @@ module_prompt_all() {
 # Usage: module_display "module" [number]
 module_display() {
     local module="$1"
-    local number="$2"
+    local number="${2:-}"
     local get_fields="${module}_get_active_fields"
     
     local header="$(echo "${module^}" | tr '_' ' ') Configuration:"
@@ -562,9 +562,7 @@ config_menu() {
         # Show current configuration with numbers
         local i=0
         for module in "${modules[@]}"; do
-        console "i: $i"
             ((++i))
-        console "i: $i"
             module_display "$module" "$i"
             console ""
         done
