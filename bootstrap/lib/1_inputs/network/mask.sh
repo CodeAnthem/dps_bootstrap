@@ -49,7 +49,6 @@ prompt_mask() {
         
         # Empty - keep current
         if [[ -z "$value" ]]; then
-            echo "$current"
             return 0
         fi
         

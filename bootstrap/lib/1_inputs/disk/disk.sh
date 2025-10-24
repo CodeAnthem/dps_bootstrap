@@ -48,7 +48,6 @@ prompt_disk() {
         
         # Empty - keep current
         if [[ -z "$value" ]]; then
-            echo "$current"
             return 0
         fi
         

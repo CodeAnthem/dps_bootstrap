@@ -21,7 +21,6 @@ prompt_timezone() {
         
         # Empty - keep current
         if [[ -z "$value" ]]; then
-            echo "$current"
             return 0
         fi
         
