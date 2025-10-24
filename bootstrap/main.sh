@@ -119,9 +119,9 @@ setupRuntimeDir
 purgeRuntimeDir() {
     if [[ -d "${RUNTIME_DIR:-}" ]]; then
         if rm -rf "$RUNTIME_DIR"; then
-            success "Runtime directory cleaned up: $RUNTIME_DIR"
+            success " > Runtime directory cleaned up: $RUNTIME_DIR"
         else
-            error "Failed to clean up runtime directory: $RUNTIME_DIR"
+            error " > Failed to clean up runtime directory: $RUNTIME_DIR"
         fi
     fi
 }
@@ -134,7 +134,7 @@ purgeRuntimeDir() {
 # shellcheck disable=SC2329
 cleanup() {
     local exit_code=$?
-    info "Stopping DPS Bootstrap"
+
     
     # Print error messages only for actual failures
     if [[ $exit_code -eq 1 ]]; then
@@ -146,8 +146,9 @@ cleanup() {
         warn "Script failed with exit code: $exit_code"
     fi
 
+    info "Stopping DPS Bootstrap"
+
     # Cleanup
-    
     info "Cleaning up session"
     purgeRuntimeDir
     ls -l /tmp/ | grep -i "dps"
