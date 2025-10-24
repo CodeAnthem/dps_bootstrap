@@ -49,7 +49,7 @@ init_deploy_config() {
     # Load and initialize standard modules
     config_use_module "network"
     config_use_module "disk"
-    config_use_module "custom"
+    config_use_module "system"
     
     # Initialize action-specific deploy module inline
     config_init_module "deploy"

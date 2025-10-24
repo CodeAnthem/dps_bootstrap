@@ -183,7 +183,7 @@ config_workflow() {
     # Check if DPS_AUTO_CONFIRM is set to skip interactive configuration
     if [[ "${DPS_AUTO_CONFIRM:-}" == "true" ]]; then
         log "Auto-confirm enabled, skipping interactive configuration"
-        return config_validate "$action_name"
+        return "$(config_validate "$action_name")"
     fi
     
     while true; do
