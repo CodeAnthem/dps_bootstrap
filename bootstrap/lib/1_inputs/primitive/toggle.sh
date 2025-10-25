@@ -23,8 +23,8 @@ validate_toggle() {
 normalize_toggle() {
     local value="$1"
     case "${value,,}" in
-        true|enabled|1) echo "true" ;;
-        false|disabled|0) echo "false" ;;
+        true|enabled|1) echo "✓" ;;
+        false|disabled|0) echo "✗" ;;
     esac
 }
 
