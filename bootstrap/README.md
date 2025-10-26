@@ -1,31 +1,52 @@
-# Bootstrap System Documentation
+# Bootstrap System
 
-**Interactive NixOS deployment scripts with shared libraries.**
+**Interactive NixOS deployment with modular configuration system.**
 
-## 🏗️ Architecture
+## Overview
+
+The bootstrap system provides an action-based deployment framework with:
+- **Configuration System** - Module-based config with validation
+- **Input Handlers** - Type-safe input validation and transformation
+- **Action System** - Auto-discovered deployment actions
+- **Workflows** - Interactive and automated deployment modes
+
+## Architecture
 
 ```
 bootstrap/
-├── main.sh                      # Action discovery and entry point
-├── lib/                         # Shared libraries
-│   ├── setupConfiguration.sh    # Configuration engine
-│   ├── setupConfiguration/      # Config modules (network, disk, custom)
-│   ├── inputValidation/         # Validators (IP, hostname, disk, etc.)
-│   ├── nixosSetup/              # NixOS operations (network, disk, install)
-│   ├── formatting.sh            # Logging and UI functions
-│   ├── userInput.sh             # Interactive prompts
-│   ├── inputHelpers.sh          # Validation helpers
-│   └── crypto.sh                # Encryption/SSH/Age keys
-└── ../actions/                  # Deployment actions
-    ├── deployVM/setup.sh        # Deploy VM action
-    └── nixosNode/setup.sh       # Managed node action
+├── main.sh                          # Entry point & action discovery
+├── start.sh                         # One-liner download script
+├── lib/                             # Shared libraries
+│   ├── 1_inputs/                    # Input handlers
+│   │   ├── network/                 # IP, hostname, mask, port
+│   │   ├── system/                  # Timezone, username, path, url
+│   │   ├── disk/                    # Disk selection, size
+│   │   ├── primitive/               # String, int, float, toggle, choice
+│   │   ├── API.md                   # Input API reference
+│   │   └── README.md                # Input documentation
+│   ├── 2_configuration/             # Configuration system
+│   │   ├── core.sh                  # Data storage & registries
+│   │   ├── field.sh                 # Field validation & prompting
+│   │   ├── module.sh                # Module operations
+│   │   ├── workflow.sh              # User workflows
+│   │   ├── modules/                 # Configuration modules
+│   │   │   ├── network.sh           # Network configuration
+│   │   │   ├── disk.sh              # Disk configuration
+│   │   │   └── system.sh            # System configuration
+│   │   ├── API.md                   # Module API reference
+│   │   └── README.md                # Configuration documentation
+│   ├── nixosSetup/                  # NixOS operations
+│   │   ├── network.sh               # Network config generation
+│   │   ├── disk.sh                  # Partitioning & encryption
+│   │   └── installation.sh          # NixOS installation
+│   ├── formatting.sh                # Logging & UI
+│   ├── userInput.sh                 # Legacy prompts
+│   └── crypto.sh                    # Encryption & SSH keys
+└── ../actions/                      # Deployment actions
+    ├── deployVM/                    # Deploy VM action
+    ├── nixosNode/                   # Managed node action
+    └── test/                        # Test suite
 ```
-
-**Actions-Based System:**
-- Actions discovered automatically from `actions/` folder
-- Each action has metadata and `setup()` function
-- Shared libraries available to all actions
-- Easy to extend with new deployment types
 
 ## 🔧 Core Components
 
@@ -39,93 +60,68 @@ bootstrap/
 - Interactive action selection menu
 - Runtime directory setup with cleanup
 
-### Configuration System
-**Purpose**: Unified configuration management for all actions
+### Configuration System (`lib/2_configuration/`)
+**Purpose**: Module-based configuration with validation
 
-**Features**:
-- Module-based configuration (network, disk, custom)
+**Key Features**:
+- Conditional fields (e.g., IP only shown for static networking)
+- Cross-field validation (e.g., gateway must differ from IP)
 - Environment variable overrides (`DPS_*`)
-- Interactive configuration with validation
-- Smart defaults per deployment type
-- Validation-first workflow (forces fixes before proceeding)
+- Interactive menu with validation loop
+- See [lib/2_configuration/README.md](lib/2_configuration/README.md) for details
+
+**Available Modules**:
+- `network` - Hostname, IP, DNS, gateway
+- `disk` - Disk target, encryption, partitioning
+- `system` - Admin user, SSH port, timezone
+
+### Input Handlers (`lib/1_inputs/`)
+**Purpose**: Validate and transform user input
+
+**16 Input Types**:
+- Network: `ip`, `hostname`, `mask`, `port`
+- System: `timezone`, `username`, `path`, `url`
+- Disk: `disk`, `disk_size`
+- Primitive: `choice`, `string`, `int`, `float`, `toggle`, `question`
+
+**Each input handler provides**:
+- `validate_*()` - Validate input
+- `error_msg_*()` - Error messages
+- `normalize_*()` - Transform for storage
+- `display_*()` - Transform for display
+- See [lib/1_inputs/README.md](lib/1_inputs/README.md) for details
 
 ### Available Actions
 
 **deployVM** - Deploy VM with management tools
-- Defaults: Encryption=yes, DHCP networking
-- Installs deployment tools
-- Uses `deployVM/nixosConfiguration/`
+- Configuration: network + disk + system + deploy
+- Features: Auto encryption, DHCP default
 
-**nixosNode** - Managed NixOS node
-- Role-based configuration from flake
-- Static networking required
-- Links to private config repository
+**nixosNode** - Managed NixOS node  
+- Configuration: network (static) + system
+- Features: Role-based config from flake
 
-## 📚 Library System
+**test** - Test suite
+- Runs input handler tests
+- Validates configuration system
 
-### Logging & UI (formatting.sh)
-**Functions**:
-- `log()`, `error()`, `success()`, `warn()` - Logging with timestamps
+## Core Libraries
+
+### Logging & UI (`formatting.sh`)
+- `log()`, `error()`, `success()`, `warn()` - Timestamped logging
 - `validation_error()` - Non-fatal validation errors
-- `section_header()`, `draw_title()` - UI formatting
-- `debug()` - Debug logging (enabled with DEBUG=1)
+- `section_header()` - UI section headers
+- `debug()` - Debug logging (DEBUG=1)
 
-### Configuration System (setupConfiguration.sh)
-**Core Functions**:
-- `config_set()`, `config_get()` - Get/set config values
-- `config_init()` - Initialize module with defaults
-- `config_workflow()` - Complete config workflow (validate → display → interactive → confirm)
-- `config_register_vars()` - Register custom variables dynamically
-- `config_apply_env_overrides()` - Apply `DPS_*` environment variables
+### NixOS Operations (`nixosSetup/`)
+- `network.sh` - Generate network configuration
+- `disk.sh` - Partition, encrypt, mount
+- `installation.sh` - Install NixOS, hardware config
 
-**Module Functions** (setupConfiguration/*.sh):
-- `network` module - Hostname, IP, DNS, gateway configuration
-- `disk` module - Disk target, encryption, partitioning
-- `custom` module - Admin user, SSH port, timezone
-
-### Validation (inputValidation/*.sh)
-**Network Validators**:
-- `validate_ip()`, `validate_hostname()`, `validate_netmask()`
-- `validate_subnet()`, `validate_dns()`
-
-**Disk Validators**:
-- `validate_disk_path()`, `validate_disk_size()`
-- `validate_partition_scheme()`
-
-**Common Validators**:
-- `validate_yes_no()`, `validate_username()`, `validate_port()`
-- `validate_timezone()`, `validate_choice()`
-
-### User Input (userInput.sh, inputHelpers.sh)
-**Basic Prompts**:
-- `prompt_yes_no()`, `prompt_password()`, `prompt_github_token()`
-
-**Validated Prompts** (inputHelpers.sh):
-- `prompt_validated()` - Generic validated input
-- `prompt_bool()` - Boolean Y/N with normalization
-- `prompt_choice()` - Choice from options
-- `prompt_number()` - Numeric with range validation
-
-### NixOS Operations (nixosSetup/*.sh)
-**Network Configuration**:
-- `generate_network_config()` - Create NixOS network config
-- `configure_dhcp()`, `configure_static()` - Network modes
-
-**Disk Operations**:
-- `partition_disk()` - GPT partitioning with EFI
-- `setup_encryption()` - LUKS encryption setup
-- `mount_filesystems()` - Filesystem mounting
-
-**Installation**:
-- `generate_hardware_config()` - Hardware detection
-- `install_nixos()` - NixOS installation
-- `clone_repository()` - Git operations with auth
-
-### Cryptography (crypto.sh)
-**Functions**:
-- `generate_encryption_key()` - LUKS key generation
-- `generate_ssh_keypair()` - SSH key creation
-- `generate_age_keypair()` - Age encryption keys
+### Cryptography (`crypto.sh`)
+- `generate_encryption_key()` - LUKS keys
+- `generate_ssh_keypair()` - SSH keys
+- `generate_age_keypair()` - Age encryption
 
 ## ⚙️ Configuration
 
@@ -152,63 +148,62 @@ export DPS_NETWORK_METHOD="dhcp"
 ./main.sh
 ```
 
-### Smart Defaults
-**Deploy VM**: `DPS_ENCRYPTION="y"`, `DPS_NETWORK_METHOD="dhcp"`
-**Managed Node**: `DPS_ENCRYPTION="n"`, static IP required
-
 ### Configuration Workflow
-1. **Validation** - All settings validated before confirmation
-2. **Display** - Current configuration shown with defaults
-3. **Interactive Mode** - Triggered automatically if validation fails or on request
-4. **Confirmation** - User confirms before proceeding
 
-If required fields are empty or invalid, interactive mode is **forced** to fix errors.
+Actions use: `config_workflow("network", "disk", "system")`
 
-## 🔍 Debugging
+**Automatic workflow:**
+1. **Fix Errors** - Prompt only for missing/invalid required fields
+2. **Interactive Menu** - Show all modules, user can edit any
+3. **Validation Loop** - Can't exit module until validation passes
+4. **Confirm** - User presses X to proceed (validates all modules)
 
-**Enable Debug Mode**:
+**Features:**
+- Smart defaults per action (deployVM: encryption=true, dhcp)
+- Conditional fields (IP only for static networking)
+- Cross-field validation (gateway ≠ IP, same subnet)
+- Environment overrides applied automatically
+
+## Quick Start
+
+**One-liner (downloads and runs):**
+```bash
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
+```
+
+**With environment variables:**
+```bash
+export DPS_HOSTNAME="myserver"
+export DPS_NETWORK_METHOD="dhcp"
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
+```
+
+**Local execution:**
+```bash
+./bootstrap/main.sh
+```
+
+## Debugging
+
+**Enable debug mode:**
 ```bash
 export DEBUG=1
 ./main.sh
 ```
 
-**Debug Output Shows**:
-- Library loading (recursive)
-- Module registration
-- Environment variable overrides
-- Configuration key registration
-- Validation steps and errors
+## Documentation
 
-**Common Issues**:
-- **"Hostname is required"** - Interactive mode will prompt for it
-- **"Module not registered"** - Action's setup.sh has issues
-- **"Invalid disk target"** - Check `lsblk` for available disks
-- **Library loading** - Check file permissions, avoid `_` prefix (ignored files)
-- **Root privileges** - Script will prompt for sudo if needed
+- **[lib/1_inputs/README.md](lib/1_inputs/README.md)** - Input handlers
+- **[lib/1_inputs/API.md](lib/1_inputs/API.md)** - Input API reference
+- **[lib/2_configuration/README.md](lib/2_configuration/README.md)** - Configuration system
+- **[lib/2_configuration/API.md](lib/2_configuration/API.md)** - Module API reference
+- **[../README.md](../README.md)** - Project overview
+- **[../PLAN.md](../PLAN.md)** - Architecture details
 
-## 📋 Usage
+## Development
 
-**Basic Usage**:
-```bash
-./main.sh  # Interactive mode selection
-```
-
-**Pre-configured**:
-```bash
-export DPS_HOSTNAME="deploy-01"
-export DPS_DISK_TARGET="/dev/nvme0n1"
-./main.sh
-```
-
----
-
-## 📖 Additional Documentation
-
-- **Developer Guide** - [README_dev.md](README_dev.md) - Extending and modifying the system
-- **Main Project** - [../README.md](../README.md) - Project overview
-- **Architecture** - [../PLAN.md](../PLAN.md) - Technical architecture details
-
----
-
-**Version**: 4.0 (Actions-based with configuration system)  
-**Last Updated**: 2025-10-21
+See [README_dev.md](README_dev.md) for:
+- Creating new input handlers
+- Creating new configuration modules
+- Creating new actions
+- Testing and validation
