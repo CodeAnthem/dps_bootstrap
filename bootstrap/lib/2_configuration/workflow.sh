@@ -84,7 +84,7 @@ config_menu() {
                 validation_output=$(module_validate "$selected_module" 2>&1)
                 local validation_result=$?
                 
-                if [[ $validation_result -eq 0 ]]; then
+                if [[ "$validation_result" -eq 0 ]]; then
                     # Valid - exit loop
                     success "$(echo "${selected_module^}" | tr '_' ' ') configuration updated"
                     break

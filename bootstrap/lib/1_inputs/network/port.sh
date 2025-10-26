@@ -12,25 +12,43 @@
 # =============================================================================
 
 prompt_hint_port() {
-    local min=$(input_opt "min" "1")
-    local max=$(input_opt "max" "65535")
+    local min max
+    min=$(input_opt "min" "1")
+    max=$(input_opt "max" "65535")
     echo "($min-$max)"
 }
 
 validate_port() {
     local value="$1"
-    local min=$(input_opt "min" "1")
-    local max=$(input_opt "max" "65535")
+    local min max
+    min=$(input_opt "min" "1")
+    max=$(input_opt "max" "65535")
     
-    [[ "$value" =~ ^[0-9]+$ ]] && (( value >= min && value <= max ))
+    # Must be numeric
+    [[ "$value" =~ ^[0-9]+$ ]] || return 1
+    
+    # Check range
+    (( value >= min && value <= max )) || return 2
+    
+    return 0
 }
 
 error_msg_port() {
     local value="$1"
     local code="${2:-0}"
-    local min=$(input_opt "min" "1")
-    local max=$(input_opt "max" "65535")
+    local min max
+    min=$(input_opt "min" "1")
+    max=$(input_opt "max" "65535")
     
-    # Simple validator - only one failure mode  
-    echo "Port must be a number between $min and $max"
+    case "$code" in
+        1)
+            echo "Port must be numeric (no letters or special characters)"
+            ;;
+        2)
+            echo "Port must be between $min and $max"
+            ;;
+        *)
+            echo "Invalid port number"
+            ;;
+    esac
 }

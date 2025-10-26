@@ -12,7 +12,8 @@
 # =============================================================================
 
 prompt_hint_choice() {
-    local options=$(input_opt "options" "")
+    local options
+    options=$(input_opt "options" "")
     if [[ -n "$options" ]]; then
         echo "(${options//|/, })"
     fi
@@ -20,10 +21,13 @@ prompt_hint_choice() {
 
 validate_choice() {
     local value="$1"
-    local options=$(input_opt "options" "")
+    local options
+    options=$(input_opt "options" "")
     
-    [[ -z "$options" ]] && return 1
+    # No options configured
+    [[ -z "$options" ]] && return 3
     
+    # Check if value matches any option
     IFS='|' read -ra choices <<< "$options"
     for choice in "${choices[@]}"; do
         [[ "$value" == "$choice" ]] && return 0
@@ -38,6 +42,15 @@ error_msg_choice() {
     local options
     options=$(input_opt "options" "")
     
-    # Simple validator - only one failure mode
-    echo "Options: ${options//|/, }"
+    case "$code" in
+        1)
+            echo "Invalid choice. Options: ${options//|/, }"
+            ;;
+        3)
+            echo "Configuration error: No options defined"
+            ;;
+        *)
+            echo "Invalid choice"
+            ;;
+    esac
 }

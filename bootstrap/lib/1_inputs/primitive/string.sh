@@ -12,8 +12,9 @@
 # =============================================================================
 
 prompt_hint_string() {
-    local minlen=$(input_opt "minlen" "")
-    local maxlen=$(input_opt "maxlen" "")
+    local minlen maxlen
+    minlen=$(input_opt "minlen" "")
+    maxlen=$(input_opt "maxlen" "")
     
     if [[ -n "$minlen" && -n "$maxlen" ]]; then
         echo "(length: $minlen-$maxlen chars)"
@@ -26,9 +27,10 @@ prompt_hint_string() {
 
 validate_string() {
     local value="$1"
-    local minlen=$(input_opt "minlen" "")
-    local maxlen=$(input_opt "maxlen" "")
-    local pattern=$(input_opt "pattern" "")
+    local minlen maxlen pattern
+    minlen=$(input_opt "minlen" "")
+    maxlen=$(input_opt "maxlen" "")
+    pattern=$(input_opt "pattern" "")
     
     # Check pattern if specified
     if [[ -n "$pattern" ]]; then
@@ -37,8 +39,8 @@ validate_string() {
     
     # Check length if specified
     local len=${#value}
-    [[ -n "$minlen" && "$len" -lt "$minlen" ]] && return 1
-    [[ -n "$maxlen" && "$len" -gt "$maxlen" ]] && return 1
+    [[ -n "$minlen" && "$len" -lt "$minlen" ]] && return 2
+    [[ -n "$maxlen" && "$len" -gt "$maxlen" ]] && return 2
     
     return 0
 }
@@ -46,22 +48,32 @@ validate_string() {
 error_msg_string() {
     local value="$1"
     local code="${2:-0}"
-    local minlen
-    local maxlen
-    local pattern
+    local minlen maxlen pattern
     minlen=$(input_opt "minlen" "")
     maxlen=$(input_opt "maxlen" "")
     pattern=$(input_opt "pattern" "")
     
-    if [[ -n "$pattern" ]]; then
-        echo "Must match pattern: $pattern"
-    elif [[ -n "$minlen" && -n "$maxlen" ]]; then
-        echo "Length must be between $minlen and $maxlen characters"
-    elif [[ -n "$minlen" ]]; then
-        echo "Must be at least $minlen characters"
-    elif [[ -n "$maxlen" ]]; then
-        echo "Must be at most $maxlen characters"
-    else
-        echo "Invalid string"
-    fi
+    case "$code" in
+        1)
+            if [[ -n "$pattern" ]]; then
+                echo "Must match pattern: $pattern"
+            else
+                echo "Invalid format"
+            fi
+            ;;
+        2)
+            if [[ -n "$minlen" && -n "$maxlen" ]]; then
+                echo "Length must be between $minlen and $maxlen characters"
+            elif [[ -n "$minlen" ]]; then
+                echo "Must be at least $minlen characters"
+            elif [[ -n "$maxlen" ]]; then
+                echo "Must be at most $maxlen characters"
+            else
+                echo "Length out of range"
+            fi
+            ;;
+        *)
+            echo "Invalid string"
+            ;;
+    esac
 }

@@ -139,8 +139,16 @@ module_display() {
     for field in $($get_fields); do
         local display
         local value
+        local input
         display=$(field_get "$module" "$field" "display")
         value=$(config_get "$module" "$field")
+        input=$(field_get "$module" "$field" "input")
+        
+        # Transform value for display if display function exists
+        if type "display_${input}" &>/dev/null; then
+            value=$("display_${input}" "$value")
+        fi
+        
         console "   > $display: $value"
     done
 }

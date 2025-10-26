@@ -1,3 +1,1 @@
-disable=SC2034  # Unused variables left for readability
-disable=SC2155  # Declare and assign separately to avoid masking return values
-disable=SC1017  # Declare and assign separately to avoid masking return values
+disable=SC2034  # Unused variables (API functions may not use all params)

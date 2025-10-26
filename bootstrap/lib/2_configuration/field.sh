@@ -44,7 +44,7 @@ field_validate() {
     "validate_${input}" "$value"
     error_code=$?
     
-    if [[ $error_code -ne 0 ]]; then
+    if [[ "$error_code" -ne 0 ]]; then
         # Get custom error or use error_msg_* function with error code
         local error_msg
         error_msg=$(field_get "$module" "$field" "error")
@@ -109,7 +109,7 @@ generic_input_loop() {
         "validate_${input_name}" "$value"
         error_code=$?
         
-        if [[ $error_code -eq 0 ]]; then
+        if [[ "$error_code" -eq 0 ]]; then
             # Normalize if function exists
             if type "normalize_${input_name}" &>/dev/null; then
                 value=$("normalize_${input_name}" "$value")

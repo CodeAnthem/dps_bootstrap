@@ -12,8 +12,9 @@
 # =============================================================================
 
 prompt_hint_int() {
-    local min=$(input_opt "min" "")
-    local max=$(input_opt "max" "")
+    local min max
+    min=$(input_opt "min" "")
+    max=$(input_opt "max" "")
     
     if [[ -n "$min" && -n "$max" ]]; then
         echo "($min-$max)"
@@ -26,15 +27,16 @@ prompt_hint_int() {
 
 validate_int() {
     local value="$1"
-    local min=$(input_opt "min" "")
-    local max=$(input_opt "max" "")
+    local min max
+    min=$(input_opt "min" "")
+    max=$(input_opt "max" "")
     
     # Must be integer
     [[ "$value" =~ ^-?[0-9]+$ ]] || return 1
     
     # Check range if specified
-    [[ -n "$min" && "$value" -lt "$min" ]] && return 1
-    [[ -n "$max" && "$value" -gt "$max" ]] && return 1
+    [[ -n "$min" && "$value" -lt "$min" ]] && return 2
+    [[ -n "$max" && "$value" -gt "$max" ]] && return 2
     
     return 0
 }
@@ -42,18 +44,27 @@ validate_int() {
 error_msg_int() {
     local value="$1"
     local code="${2:-0}"
-    local min
-    local max
+    local min max
     min=$(input_opt "min" "")
     max=$(input_opt "max" "")
     
-    if [[ -n "$min" && -n "$max" ]]; then
-        echo "Must be an integer between $min and $max"
-    elif [[ -n "$min" ]]; then
-        echo "Must be an integer >= $min"
-    elif [[ -n "$max" ]]; then
-        echo "Must be an integer <= $max"
-    else
-        echo "Must be an integer"
-    fi
+    case "$code" in
+        1)
+            echo "Must be an integer (no letters or special characters)"
+            ;;
+        2)
+            if [[ -n "$min" && -n "$max" ]]; then
+                echo "Must be between $min and $max"
+            elif [[ -n "$min" ]]; then
+                echo "Must be >= $min"
+            elif [[ -n "$max" ]]; then
+                echo "Must be <= $max"
+            else
+                echo "Out of range"
+            fi
+            ;;
+        *)
+            echo "Must be an integer"
+            ;;
+    esac
 }
