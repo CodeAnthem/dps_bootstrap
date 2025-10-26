@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - Deploy VM Action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-17 | Modified: 2025-10-17
+# Date:          Created: 2025-10-17 | Modified: 2025-10-26
 # Description:   Deploy VM management hub setup with deployment tools and infrastructure management
 # Feature:       LUKS encryption, SOPS integration, SSH orchestration, mass deployment capabilities
 # Author:        DPS Project
@@ -55,18 +55,19 @@ init_deploy_config() {
     config_init_module "deploy"
     deploy_init_callback
     
-    success "Deploy VM configuration initialized"
+    # Apply Deploy VM action-specific defaults
+    # These override module defaults but respect DPS_* environment variables
+    config_set_default "disk" "ENCRYPTION" "true"
+    config_set_default "network" "NETWORK_METHOD" "dhcp"
+    
+    success "Deploy VM configuration initialized with action defaults"
 }
 
 
 # Validate Deploy VM specific configuration
 validate_deploy_config() {
-    # Deploy VM specific validation: encryption should be enabled for security
-    local encryption
-    encryption=$(config_get "disk" "ENCRYPTION")
-    if [[ "$encryption" == "n" ]]; then
-        warn "Deploy VM should use encryption for security (recommended: y)"
-    fi
+    # Deploy VM enforces encryption by default via config_set_default
+    # Additional action-specific validation can be added here
     
     success "Deploy VM configuration validation passed"
     return 0

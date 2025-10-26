@@ -111,6 +111,29 @@ config_get() {
     echo "${CONFIG_DATA[${module}__${key}]:-}"
 }
 
+# Set action-specific default (respects environment variable priority)
+# Usage: config_set_default "module" "field" "value"
+# Priority: module default < action default < environment variable
+config_set_default() {
+    local module="$1"
+    local field="$2"
+    local value="$3"
+    
+    # Check if environment variable is set
+    local env_var="DPS_${field}"
+    local env_value="${!env_var:-}"
+    
+    # If env var is set, don't override it
+    if [[ -n "$env_value" ]]; then
+        debug "Action default skipped (env var set): $module.$field (DPS_${field}=${env_value})"
+        return 0
+    fi
+    
+    # Set the action-specific default
+    config_set "$module" "$field" "$value"
+    debug "Action default applied: $module.$field = $value"
+}
+
 # Apply DPS_* environment variable overrides for a module
 # Usage: config_apply_env_overrides "module"
 config_apply_env_overrides() {

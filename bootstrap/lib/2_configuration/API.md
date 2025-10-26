@@ -198,6 +198,11 @@ deploy_init_callback() {
         required=true
 }
 
+# Set action-specific defaults (optional)
+# These override module defaults but respect DPS_* env vars
+config_set_default "disk" "ENCRYPTION" "true"
+config_set_default "network" "NETWORK_METHOD" "dhcp"
+
 # Run interactive workflow
 config_workflow "network" "disk" "deploy"
 
@@ -216,6 +221,11 @@ config_get "module" "FIELD_NAME"
 
 # Set configuration value (rarely needed - prompts do this)
 config_set "module" "FIELD_NAME" "value"
+
+# Set action-specific default (respects environment variables)
+# Priority: module default < action default < environment variable
+# Use this in action setup.sh to override module defaults
+config_set_default "module" "FIELD_NAME" "value"
 
 # Get field metadata
 field_get "module" "FIELD_NAME" "display"
