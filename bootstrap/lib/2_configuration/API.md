@@ -15,26 +15,26 @@ Configuration modules organize related fields (e.g., `network`, `disk`, `system`
 **Purpose:** Initialize module fields  
 **Context:** `MODULE_CONTEXT` is set to module name  
 **Returns:** Nothing  
-**When called:** During `config_use_module()` or `config_init_module()`
+**When called:** During `nds_config_use_module()` or `nds_config_init_module()`
 
 **Example:**
 ```bash
 network_init_callback() {
     # MODULE_CONTEXT is already set to "network"
     
-    field_declare HOSTNAME \
+    nds_field_declare HOSTNAME \
         display="Hostname" \
         input=hostname \
         required=true
     
-    field_declare NETWORK_METHOD \
+    nds_field_declare NETWORK_METHOD \
         display="Network Method" \
         input=choice \
         default="dhcp" \
         required=true \
         options="dhcp|static"
     
-    field_declare NETWORK_IP \
+    nds_field_declare NETWORK_IP \
         display="IP Address" \
         input=ip \
         required=true
@@ -139,32 +139,32 @@ network_validate_extra() {
 
 ```
 1. Load Module
-   config_use_module "network"
+   nds_config_use_module "network"
    ├─→ Source network.sh
    ├─→ Set MODULE_CONTEXT="network"
    ├─→ Call network_init_callback()
-   │   └─→ field_declare for each field
-   └─→ config_apply_env_overrides("network")
+   │   └─→ nds_field_declare for each field
+   └─→ nds_config_apply_env_overrides("network")
        └─→ Apply DPS_* environment variables
 
 2. Run Workflow
-   config_workflow "network" "disk"
-   ├─→ config_fix_errors()
-   │   └─→ module_prompt_errors() for each module
+   nds_config_workflow "network" "disk"
+   ├─→ nds_config_fix_errors()
+   │   └─→ nds_module_prompt_errors() for each module
    │       └─→ Prompt only fields that failed validation
    │
-   └─→ config_menu()
+   └─→ nds_config_menu()
        ├─→ nds_module_display() for each module
        │   └─→ Show current configuration
        │
        └─→ User selects module to edit
-           └─→ module_prompt_all()
+           └─→ nds_module_prompt_all()
                └─→ Prompt all active fields
 
 3. Validation
-   module_validate("network")
+   nds_module_validate("network")
    ├─→ For each field in network_get_active_fields():
-   │   └─→ field_validate()
+   │   └─→ nds_field_validate()
    │       ├─→ validate_{input}()
    │       └─→ error_msg_{input}() if failed
    │
@@ -174,7 +174,7 @@ network_validate_extra() {
 4. Display
    nds_module_display("network")
    └─→ For each field in network_get_active_fields():
-       ├─→ config_get() - Get stored value
+       ├─→ nds_config_get() - Get stored value
        ├─→ display_{input}() - Transform for display (if exists)
        └─→ console output
 ```
@@ -187,12 +187,12 @@ network_validate_extra() {
 
 ```bash
 # Load and initialize standard module
-config_use_module "network"
+nds_config_use_module "network"
 
 # Initialize custom inline module
-config_init_module "deploy"
+nds_config_init_module "deploy"
 deploy_init_callback() {
-    field_declare GIT_REPO_URL \
+    nds_field_declare GIT_REPO_URL \
         display="Git Repository" \
         input=url \
         required=true
@@ -200,15 +200,15 @@ deploy_init_callback() {
 
 # Set action-specific defaults (optional)
 # These override module defaults but respect DPS_* env vars
-config_set_default "disk" "ENCRYPTION" "true"
-config_set_default "network" "NETWORK_METHOD" "dhcp"
+nds_config_set_default "disk" "ENCRYPTION" "true"
+nds_config_set_default "network" "NETWORK_METHOD" "dhcp"
 
 # Run interactive workflow
-config_workflow "network" "disk" "deploy"
+nds_config_workflow "network" "disk" "deploy"
 
 # Access configuration
-hostname=$(config_get "network" "HOSTNAME")
-disk=$(config_get "disk" "DISK_TARGET")
+hostname=$(nds_config_get "network" "HOSTNAME")
+disk=$(nds_config_get "disk" "DISK_TARGET")
 ```
 
 ---
@@ -217,23 +217,23 @@ disk=$(config_get "disk" "DISK_TARGET")
 
 ```bash
 # Get configuration value
-config_get "module" "FIELD_NAME"
+nds_config_get "module" "FIELD_NAME"
 
 # Set configuration value (rarely needed - prompts do this)
-config_set "module" "FIELD_NAME" "value"
+nds_config_set "module" "FIELD_NAME" "value"
 
 # Set action-specific default (respects environment variables)
 # Priority: module default < action default < environment variable
 # Use this in action setup.sh to override module defaults
-config_set_default "module" "FIELD_NAME" "value"
+nds_config_set_default "module" "FIELD_NAME" "value"
 
 # Get field metadata
-field_get "module" "FIELD_NAME" "display"
-field_get "module" "FIELD_NAME" "required"
-field_get "module" "FIELD_NAME" "input"
+nds_field_get "module" "FIELD_NAME" "display"
+nds_field_get "module" "FIELD_NAME" "required"
+nds_field_get "module" "FIELD_NAME" "input"
 
 # Check field existence
-field_exists "module" "FIELD_NAME"
+nds_field_exists "module" "FIELD_NAME"
 ```
 
 ---
@@ -262,7 +262,7 @@ Create `bootstrap/lib/2_configuration/modules/{module}.sh`
 ```bash
 {module}_init_callback() {
     # Declare all fields
-    field_declare FIELD_NAME \
+    nds_field_declare FIELD_NAME \
         display="Display Name" \
         input=input_type \
         required=true \
@@ -279,7 +279,7 @@ Create `bootstrap/lib/2_configuration/modules/{module}.sh`
     echo "FIELD_NAME_2"
     
     # Conditional fields
-    if [[ "$(config_get "{module}" "SOME_FIELD")" == "value" ]]; then
+    if [[ "$(nds_config_get "{module}" "SOME_FIELD")" == "value" ]]; then
         echo "CONDITIONAL_FIELD"
     fi
 }
@@ -292,8 +292,8 @@ Create `bootstrap/lib/2_configuration/modules/{module}.sh`
     # Cross-field validation
     local field1
     local field2
-    field1=$(config_get "{module}" "FIELD1")
-    field2=$(config_get "{module}" "FIELD2")
+    field1=$(nds_config_get "{module}" "FIELD1")
+    field2=$(nds_config_get "{module}" "FIELD2")
     
     if [[ "$field1" == "$field2" ]]; then
         validation_error "Field1 cannot equal Field2"
@@ -308,8 +308,8 @@ Create `bootstrap/lib/2_configuration/modules/{module}.sh`
 
 ```bash
 # In actions/*/setup.sh
-config_use_module "{module}"
-config_workflow "{module}"
+nds_config_use_module "{module}"
+nds_config_workflow "{module}"
 ```
 
 **Done!** The system handles validation, prompting, and display automatically.
@@ -322,13 +322,13 @@ config_workflow "{module}"
 
 ```bash
 # Fix validation errors only (minimal prompting)
-config_fix_errors "network" "disk" "system"
+nds_config_fix_errors "network" "disk" "system"
 
 # Interactive category menu (edit any field)
-config_menu "network" "disk" "system"
+nds_config_menu "network" "disk" "system"
 
 # Complete workflow: fix errors → menu → validate
-config_workflow "network" "disk" "system"
+nds_config_workflow "network" "disk" "system"
 ```
 
 ---
@@ -337,13 +337,13 @@ config_workflow "network" "disk" "system"
 
 ```bash
 # Validate all active fields + extra validation
-module_validate "network"
+nds_module_validate "network"
 
 # Prompt only fields that failed validation
-module_prompt_errors "network"
+nds_module_prompt_errors "network"
 
 # Prompt all active fields (interactive edit)
-module_prompt_all "network"
+nds_module_prompt_all "network"
 
 # Display module configuration
 nds_module_display "network"
@@ -373,13 +373,13 @@ export DPS_HOSTNAME="myhost"
 export DPS_NETWORK_METHOD="static"
 export DPS_NETWORK_IP="192.168.1.10"
 
-config_use_module "network"
+nds_config_use_module "network"
 # Values are automatically applied
 ```
 
 **Pattern:** `DPS_{FIELD_NAME}=value`
 
-**Applied during:** `config_use_module()` and `config_init_module()`
+**Applied during:** `nds_config_use_module()` and `nds_config_init_module()`
 
 ---
 
@@ -390,7 +390,7 @@ Actions can create custom modules inline without creating separate files:
 ```bash
 # In actions/deployVM/setup.sh
 deploy_init_callback() {
-    field_declare GIT_REPO_URL \
+    nds_field_declare GIT_REPO_URL \
         display="Git Repository" \
         input=url \
         required=true
@@ -402,11 +402,10 @@ deploy_get_active_fields() {
 }
 
 # Initialize inline module
-config_init_module "deploy"
-deploy_init_callback
+nds_config_init_module "deploy"
 
 # Use in workflow
-config_workflow "network" "disk" "deploy"
+nds_config_workflow "network" "disk" "deploy"
 ```
 
 ---
@@ -428,22 +427,22 @@ config_workflow "network" "disk" "deploy"
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ ACTION LAYER (setup.sh)                                   │
-│   config_use_module(), config_workflow(), config_get()   │
+│   nds_config_use_module(), nds_config_workflow(), nds_config_get()   │
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ WORKFLOW LAYER (workflow.sh)                             │
-│   config_fix_errors(), config_menu(), config_workflow()  │
+│   nds_config_fix_errors(), nds_config_menu(), nds_config_workflow()  │
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ MODULE LAYER (module.sh)                                 │
-│   module_validate(), module_prompt_all(), nds_module_display()│
+│   nds_module_validate(), nds_module_prompt_all(), nds_module_display()│
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ FIELD LAYER (field.sh)                                   │
-│   field_validate(), field_prompt(), generic_input_loop() │
+│   nds_field_validate(), nds_field_prompt(), generic_input_loop() │
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐

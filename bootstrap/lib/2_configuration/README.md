@@ -11,27 +11,27 @@ The configuration system provides module-based configuration management with fie
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ ACTION LAYER (actions/*/setup.sh)                        │
-│   config_use_module(), config_workflow(), config_get()  │
+│   nds_config_use_module(), nds_config_workflow(), nds_config_get()  │
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ WORKFLOW LAYER (workflow.sh)                             │
-│   config_fix_errors(), config_menu(), config_workflow()  │
+│   nds_config_fix_errors(), nds_config_menu(), nds_config_workflow()  │
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ MODULE LAYER (module.sh)                                 │
-│   module_validate(), module_prompt_all(), nds_module_display()│
+│   nds_module_validate(), nds_module_prompt_all(), nds_module_display()│
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ FIELD LAYER (field.sh)                                   │
-│   field_validate(), field_prompt(), generic_input_loop() │
+│   nds_field_validate(), nds_field_prompt(), generic_input_loop() │
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ CORE LAYER (core.sh)                                     │
-│   CONFIG_DATA, FIELD_REGISTRY, config_get(), config_set()│
+│   CONFIG_DATA, FIELD_REGISTRY, nds_config_get(), nds_config_set()│
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -313,10 +313,10 @@ config_workflow "network" "disk"
 ## Data Flow Example
 
 ```
-1. Action calls: config_workflow("network")
+1. Action calls: nds_config_workflow("network")
 
 2. Workflow fixes errors:
-   module_prompt_errors("network")
+   nds_module_prompt_errors("network")
      → Prompt only for missing/invalid fields
 
 3. Workflow shows menu:
@@ -324,19 +324,19 @@ config_workflow "network" "disk"
      → Show current configuration
 
 4. User selects "Edit Network":
-   module_prompt_all("network")
+   nds_module_prompt_all("network")
      → Prompt all active fields
    
    For each field:
-     field_prompt("network", "HOSTNAME")
+     nds_field_prompt("network", "HOSTNAME")
        → generic_input_loop()
           → validate_hostname()
           → normalize_hostname() (if exists)
           → Store in CONFIG_DATA
 
 5. Validate after editing:
-   module_validate("network")
-     → field_validate() for each field
+   nds_module_validate("network")
+     → nds_field_validate() for each field
      → network_validate_extra() for cross-field
 
 6. If invalid, loop back to step 4
