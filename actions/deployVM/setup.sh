@@ -18,9 +18,8 @@ set -euo pipefail
 # =============================================================================
 # ACTION CONFIGURATION
 # =============================================================================
-
-# Deploy module callbacks (action-specific)
 deploy_init_callback() {
+    # Declare action-specific fields
     nds_field_declare GIT_REPO_URL \
         display="Private Git Repository" \
         input=url \
@@ -32,20 +31,7 @@ deploy_init_callback() {
         input=path \
         default="/root/.ssh/deploy_key" \
         required=true
-}
 
-deploy_get_active_fields() {
-    echo "GIT_REPO_URL"
-    echo "DEPLOY_SSH_KEY_PATH"
-}
-
-deploy_validate_extra() {
-    return 0
-}
-
-
-# Initialize Deploy VM configuration
-init_deploy_config() {
     # Load and initialize standard modules
     nds_config_use_module "network"
     nds_config_use_module "disk"
@@ -53,25 +39,22 @@ init_deploy_config() {
     
     # Initialize action-specific deploy module inline
     nds_config_init_module "deploy"
-    deploy_init_callback
     
     # Apply Deploy VM action-specific defaults
-    # These override module defaults but respect DPS_* environment variables
     nds_config_set_default "disk" "ENCRYPTION" "true"
     nds_config_set_default "network" "NETWORK_METHOD" "dhcp"
-    
-    success "Deploy VM configuration initialized with action defaults"
 }
 
+# deploy_get_active_fields() {
+#     echo "GIT_REPO_URL"
+#     echo "DEPLOY_SSH_KEY_PATH"
+# }
 
-# Validate Deploy VM specific configuration
-validate_deploy_config() {
-    # Deploy VM enforces encryption by default via config_set_default
-    # Additional action-specific validation can be added here
-    
-    success "Deploy VM configuration validation passed"
-    return 0
-}
+# deploy_validate_extra() {
+#     return 0
+# }
+
+
 
 # =============================================================================
 # INSTALLATION WORKFLOW
@@ -237,18 +220,11 @@ setup() {
     draw_title "Deploy VM Installation"
     
     # Phase 1: Configuration
-    section_header "Configuration Phase"
-    init_deploy_config
+
     
     # Run configuration workflow (error fix → interactive → validate)
     if ! nds_config_workflow "network" "disk" "system" "deploy"; then
         error "Configuration cancelled or failed validation"
-        return 1
-    fi
-    
-    # Additional Deploy VM validation
-    if ! validate_deploy_config; then
-        error "Deploy VM validation failed"
         return 1
     fi
     
