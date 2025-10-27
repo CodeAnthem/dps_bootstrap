@@ -11,24 +11,16 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 disk_init_callback() {
-    # MODULE_CONTEXT is already set to "disk"
-    
     # Auto-detect first disk if not provided
-    local default_disk=""
+    local first_disk=""
     if [[ -z "$(nds_config_get "disk" "DISK_TARGET")" ]]; then
-        # Source disk input to get list function (if not already loaded)
-        if ! type list_available_disks &>/dev/null; then
-            source "${LIB_DIR}/1_inputs/disk/disk.sh" 2>/dev/null || true
-        fi
-        if type list_available_disks &>/dev/null; then
-            default_disk=$(list_available_disks | head -n1 | awk '{print $1}')
-        fi
+        first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
     fi
     
     nds_field_declare DISK_TARGET \
         display="Target Disk" \
         input=disk \
-        default="$default_disk" \
+        default="$first_disk" \
         required=true
     
     nds_field_declare ENCRYPTION \
