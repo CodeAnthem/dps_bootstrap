@@ -90,14 +90,14 @@ disk_get_active_fields() {
     echo "ENCRYPTION"
     echo "PARTITION_SCHEME"
     
-    # Encryption settings only if encryption enabled
-    if [[ "$encryption" == "y" ]]; then
+    # Encryption settings only if encryption enabled (toggle normalizes to "true")
+    if [[ "$encryption" == "true" ]]; then
         echo "ENCRYPTION_KEY_METHOD"
         echo "ENCRYPTION_KEY_LENGTH"
         echo "ENCRYPTION_USE_PASSPHRASE"
         
-        # Passphrase settings only if passphrase enabled
-        if [[ "$use_passphrase" == "y" ]]; then
+        # Passphrase settings only if passphrase enabled (question normalizes to "yes")
+        if [[ "$use_passphrase" == "yes" ]]; then
             echo "ENCRYPTION_PASSPHRASE_METHOD"
             echo "ENCRYPTION_PASSPHRASE_LENGTH"
         fi
