@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Configuration System - Module Operations
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-24
+# Date:          Created: 2025-10-24 | Modified: 2025-10-27
 # Description:   Module-level validation, prompting, and display
 # Dependencies:  2_field.sh
 # ==================================================================================================
@@ -11,24 +11,40 @@
 # MODULE VALIDATION
 # =============================================================================
 
+# Get active fields for a module (auto-generates if get_active_fields doesn't exist)
+# Usage: nds_module_get_fields "module"
+# Note: ${module}_get_active_fields() is OPTIONAL. Only implement it if you need
+#       conditional field activation (e.g., network module shows IP fields only for static).
+#       If not implemented, all declared fields are automatically returned.
+nds_module_get_fields() {
+    local module="$1"
+    local get_fields="${module}_get_active_fields"
+    
+    # If module has get_active_fields function, use it (for conditional fields)
+    if type "$get_fields" &>/dev/null; then
+        $get_fields
+        return 0
+    fi
+    
+    # Otherwise, auto-generate from all declared fields (default behavior)
+    for key in "${!FIELD_REGISTRY[@]}"; do
+        if [[ "$key" =~ ^${module}__(.+)__display$ ]]; then
+            echo "${BASH_REMATCH[1]}"
+        fi
+    done
+}
+
 # Validate all active fields in a module
 # Usage: nds_module_validate "module"
 nds_module_validate() {
     local module="$1"
-    local get_fields="${module}_get_active_fields"
     local validation_errors=0
-    
-    # Check if get_active_fields function exists
-    if ! type "$get_fields" &>/dev/null; then
-        error "Module $module must implement ${get_fields}()"
-        return 1
-    fi
     
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
     
     # Validate each active field
-    for field in $($get_fields); do
+    for field in $(nds_module_get_fields "$module"); do
         if ! nds_field_validate "$module" "$field"; then
             ((validation_errors++))
         fi
@@ -53,14 +69,13 @@ nds_module_validate() {
 # Usage: nds_module_prompt_errors "module"
 nds_module_prompt_errors() {
     local module="$1"
-    local get_fields="${module}_get_active_fields"
     
     # Set module context for get_active_fields to work
     MODULE_CONTEXT="$module"
     
     # First pass: check if there are any fields that need prompting
     local fields_to_prompt=()
-    for field in $($get_fields); do
+    for field in $(nds_module_get_fields "$module"); do
         if ! nds_field_validate "$module" "$field" 2>/dev/null; then
             fields_to_prompt+=("$field")
         fi
@@ -82,7 +97,6 @@ nds_module_prompt_errors() {
 # Usage: nds_module_prompt_all "module"
 nds_module_prompt_all() {
     local module="$1"
-    local get_fields="${module}_get_active_fields"
     
     console "$(echo "${module^}" | tr '_' ' ') Configuration:"
     console ""
@@ -98,7 +112,7 @@ nds_module_prompt_all() {
         local has_new_fields=false
         
         # Check for any active fields that haven't been prompted yet
-        for field in $($get_fields); do
+        for field in $(nds_module_get_fields "$module"); do
             if [[ -z "${prompted_fields[$field]:-}" ]]; then
                 nds_field_prompt "$module" "$field"
                 prompted_fields["$field"]=1
@@ -122,7 +136,6 @@ nds_module_prompt_all() {
 nds_module_display() {
     local module="$1"
     local number="${2:-}"
-    local get_fields="${module}_get_active_fields"
     
     local header
     header="$(echo "${module^}" | tr '_' ' ') Configuration:"
@@ -136,7 +149,7 @@ nds_module_display() {
     MODULE_CONTEXT="$module"
     
     # Display each active field
-    for field in $($get_fields); do
+    for field in $(nds_module_get_fields "$module"); do
         local display
         local value
         local input

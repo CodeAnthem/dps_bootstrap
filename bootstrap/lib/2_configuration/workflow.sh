@@ -146,7 +146,7 @@ nds_config_workflow() {
             y|yes)
                 # Show interactive menu
                 console "Yes"
-                if config_menu "${modules[@]}"; then
+                if nds_config_menu "${modules[@]}"; then
                     # User pressed X in menu to proceed - confirmed
                     return 0
                 fi
