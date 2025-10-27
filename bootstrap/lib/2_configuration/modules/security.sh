@@ -11,28 +11,28 @@
 # MODULE INITIALIZATION
 # =============================================================================
 security_init_callback() {
-    field_declare FIREWALL_ENABLE \
+    nds_field_declare FIREWALL_ENABLE \
         display="Enable Firewall" \
         input=toggle \
         required=true \
         default=true
     
-    field_declare FIREWALL_ALLOW_PORTS_TCP \
+    nds_field_declare FIREWALL_ALLOW_PORTS_TCP \
         display="Allowed TCP Ports (space-separated)" \
         input=string \
         default="22"
     
-    field_declare FIREWALL_ALLOW_PORTS_UDP \
+    nds_field_declare FIREWALL_ALLOW_PORTS_UDP \
         display="Allowed UDP Ports (space-separated)" \
         input=string \
         default=""
     
-    field_declare HARDENING_ENABLE \
+    nds_field_declare HARDENING_ENABLE \
         display="Apply Security Hardening" \
         input=toggle \
         default=true
     
-    field_declare FAIL2BAN_ENABLE \
+    nds_field_declare FAIL2BAN_ENABLE \
         display="Enable Fail2Ban" \
         input=toggle \
         default=false
@@ -43,7 +43,7 @@ security_init_callback() {
 # =============================================================================
 security_get_active_fields() {
     local firewall_enable
-    firewall_enable=$(config_get "security" "FIREWALL_ENABLE")
+    firewall_enable=$(nds_config_get "security" "FIREWALL_ENABLE")
     
     echo "FIREWALL_ENABLE"
     

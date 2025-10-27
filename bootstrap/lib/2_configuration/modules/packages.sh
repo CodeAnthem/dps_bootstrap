@@ -11,17 +11,17 @@
 # MODULE INITIALIZATION
 # =============================================================================
 packages_init_callback() {
-    field_declare ESSENTIAL_PACKAGES \
+    nds_field_declare ESSENTIAL_PACKAGES \
         display="Essential Packages (space-separated)" \
         input=string \
         default="vim git curl wget htop tmux"
     
-    field_declare ADDITIONAL_PACKAGES \
+    nds_field_declare ADDITIONAL_PACKAGES \
         display="Additional Packages (space-separated)" \
         input=string \
         default=""
     
-    field_declare ENABLE_FLAKES \
+    nds_field_declare ENABLE_FLAKES \
         display="Enable Nix Flakes" \
         input=toggle \
         default=true

@@ -15,7 +15,7 @@ disk_init_callback() {
     
     # Auto-detect first disk if not provided
     local default_disk=""
-    if [[ -z "$(config_get "disk" "DISK_TARGET")" ]]; then
+    if [[ -z "$(nds_config_get "disk" "DISK_TARGET")" ]]; then
         # Source disk input to get list function (if not already loaded)
         if ! type list_available_disks &>/dev/null; then
             source "${LIB_DIR}/1_inputs/disk/disk.sh" 2>/dev/null || true
@@ -25,50 +25,50 @@ disk_init_callback() {
         fi
     fi
     
-    field_declare DISK_TARGET \
+    nds_field_declare DISK_TARGET \
         display="Target Disk" \
         input=disk \
         default="$default_disk" \
         required=true
     
-    field_declare ENCRYPTION \
+    nds_field_declare ENCRYPTION \
         display="Enable Encryption" \
         input=toggle \
         default=true \
         required=true
     
-    field_declare ENCRYPTION_KEY_METHOD \
+    nds_field_declare ENCRYPTION_KEY_METHOD \
         display="Encryption Key Method" \
         input=choice \
         default="urandom" \
         options="urandom|openssl|manual"
     
-    field_declare ENCRYPTION_KEY_LENGTH \
+    nds_field_declare ENCRYPTION_KEY_LENGTH \
         display="Encryption Key Length" \
         input=int \
         default="64" \
         min=32 \
         max=512
     
-    field_declare ENCRYPTION_USE_PASSPHRASE \
+    nds_field_declare ENCRYPTION_USE_PASSPHRASE \
         display="Use Passphrase" \
         input=question \
         default=no
     
-    field_declare ENCRYPTION_PASSPHRASE_METHOD \
+    nds_field_declare ENCRYPTION_PASSPHRASE_METHOD \
         display="Passphrase Generation Method" \
         input=choice \
         default="urandom" \
         options="urandom|openssl|manual"
     
-    field_declare ENCRYPTION_PASSPHRASE_LENGTH \
+    nds_field_declare ENCRYPTION_PASSPHRASE_LENGTH \
         display="Passphrase Length" \
         input=int \
         default="32" \
         min=16 \
         max=128
     
-    field_declare PARTITION_SCHEME \
+    nds_field_declare PARTITION_SCHEME \
         display="Partition Scheme" \
         input=choice \
         default="auto" \
@@ -82,8 +82,8 @@ disk_get_active_fields() {
     local encryption
     local use_passphrase
     
-    encryption=$(config_get "disk" "ENCRYPTION")
-    use_passphrase=$(config_get "disk" "ENCRYPTION_USE_PASSPHRASE")
+    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    use_passphrase=$(nds_config_get "disk" "ENCRYPTION_USE_PASSPHRASE")
     
     # Base fields always active
     echo "DISK_TARGET"

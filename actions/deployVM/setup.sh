@@ -21,13 +21,13 @@ set -euo pipefail
 
 # Deploy module callbacks (action-specific)
 deploy_init_callback() {
-    field_declare GIT_REPO_URL \
+    nds_field_declare GIT_REPO_URL \
         display="Private Git Repository" \
         input=url \
         default="https://github.com/user/repo.git" \
         required=true
     
-    field_declare DEPLOY_SSH_KEY_PATH \
+    nds_field_declare DEPLOY_SSH_KEY_PATH \
         display="Deploy SSH Key Path" \
         input=path \
         default="/root/.ssh/deploy_key" \
@@ -47,18 +47,18 @@ deploy_validate_extra() {
 # Initialize Deploy VM configuration
 init_deploy_config() {
     # Load and initialize standard modules
-    config_use_module "network"
-    config_use_module "disk"
-    config_use_module "system"
+    nds_config_use_module "network"
+    nds_config_use_module "disk"
+    nds_config_use_module "system"
     
     # Initialize action-specific deploy module inline
-    config_init_module "deploy"
+    nds_config_init_module "deploy"
     deploy_init_callback
     
     # Apply Deploy VM action-specific defaults
     # These override module defaults but respect DPS_* environment variables
-    config_set_default "disk" "ENCRYPTION" "true"
-    config_set_default "network" "NETWORK_METHOD" "dhcp"
+    nds_config_set_default "disk" "ENCRYPTION" "true"
+    nds_config_set_default "network" "NETWORK_METHOD" "dhcp"
     
     success "Deploy VM configuration initialized with action defaults"
 }
@@ -82,9 +82,9 @@ install_system() {
     section_header "System Installation"
     
     local disk encryption hostname
-    disk=$(config_get "disk" "DISK_TARGET")
-    encryption=$(config_get "disk" "ENCRYPTION")
-    hostname=$(config_get "network" "HOSTNAME")
+    disk=$(nds_config_get "disk" "DISK_TARGET")
+    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    hostname=$(nds_config_get "network" "HOSTNAME")
     
     # Phase 1: Disk partitioning
     step_start "Partitioning disk: $disk"
@@ -149,14 +149,14 @@ post_install_setup() {
     section_header "Post-Install Configuration"
     
     local git_repo admin_user
-    git_repo=$(config_get "deploy" "GIT_REPO_URL")
-    admin_user=$(config_get "system" "ADMIN_USER")
+    git_repo=$(nds_config_get "deploy" "GIT_REPO_URL")
+    admin_user=$(nds_config_get "system" "ADMIN_USER")
     
     # Generate SSH keys for admin user
     step_start "Generating SSH keys for $admin_user"
     local ssh_key_path="/mnt/home/${admin_user}/.ssh/id_ed25519"
     mkdir -p "$(dirname "$ssh_key_path")"
-    if ! generate_ssh_key "$ssh_key_path" "" "$(config_get "network" "HOSTNAME")"; then
+    if ! generate_ssh_key "$ssh_key_path" "" "$(nds_config_get "network" "HOSTNAME")"; then
         warn "SSH key generation failed (non-critical)"
     else
         step_complete "SSH keys generated"
@@ -193,11 +193,11 @@ show_completion_summary() {
     section_header "Installation Complete!"
     
     local hostname encryption disk admin_user git_repo
-    hostname=$(config_get "network" "HOSTNAME")
-    encryption=$(config_get "disk" "ENCRYPTION")
-    disk=$(config_get "disk" "DISK_TARGET")
-    admin_user=$(config_get "system" "ADMIN_USER")
-    git_repo=$(config_get "deploy" "GIT_REPO_URL")
+    hostname=$(nds_config_get "network" "HOSTNAME")
+    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    disk=$(nds_config_get "disk" "DISK_TARGET")
+    admin_user=$(nds_config_get "system" "ADMIN_USER")
+    git_repo=$(nds_config_get "deploy" "GIT_REPO_URL")
     
     console ""
     console "╭─────────────────────────────────────────────╮"
@@ -241,7 +241,7 @@ setup() {
     init_deploy_config
     
     # Run configuration workflow (error fix → interactive → validate)
-    if ! config_workflow "network" "disk" "system" "deploy"; then
+    if ! nds_config_workflow "network" "disk" "system" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi
@@ -255,13 +255,13 @@ setup() {
     # Phase 2: Show final configuration summary
     new_section
     section_header "Configuration Summary"
-    module_display "network"
+    nds_module_display "network"
     console ""
-    module_display "disk"
+    nds_module_display "disk"
     console ""
-    module_display "system"
+    nds_module_display "system"
     console ""
-    module_display "deploy"
+    nds_module_display "deploy"
     
     # Phase 3: Confirm installation
     console ""

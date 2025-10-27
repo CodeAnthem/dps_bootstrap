@@ -12,8 +12,8 @@
 # =============================================================================
 
 # Validate one field
-# Usage: field_validate "module" "field"
-field_validate() {
+# Usage: nds_field_validate "module" "field"
+nds_field_validate() {
     local module="$1"
     local field="$2"
     
@@ -22,10 +22,10 @@ field_validate() {
     local required
     local display
     
-    input=$(field_get "$module" "$field" "input")
-    value=$(config_get "$module" "$field")
-    required=$(field_get "$module" "$field" "required")
-    display=$(field_get "$module" "$field" "display")
+    input=$(nds_field_get "$module" "$field" "input")
+    value=$(nds_config_get "$module" "$field")
+    required=$(nds_field_get "$module" "$field" "required")
+    display=$(nds_field_get "$module" "$field" "display")
     
     # Check if required and empty
     if [[ "$required" == "true" && -z "$value" ]]; then
@@ -47,7 +47,7 @@ field_validate() {
     if [[ "$error_code" -ne 0 ]]; then
         # Get custom error or use error_msg_* function with error code
         local error_msg
-        error_msg=$(field_get "$module" "$field" "error")
+        error_msg=$(nds_field_get "$module" "$field" "error")
         if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
             error_msg=$("error_msg_${input}" "$value" "$error_code")
         fi
@@ -134,8 +134,8 @@ generic_input_loop() {
 # =============================================================================
 
 # Prompt user for a single field (with validation loop)
-# Usage: field_prompt "module" "field"
-field_prompt() {
+# Usage: nds_field_prompt "module" "field"
+nds_field_prompt() {
     local module="$1"
     local field="$2"
     
@@ -144,10 +144,10 @@ field_prompt() {
     local current
     local required
     
-    input=$(field_get "$module" "$field" "input")
-    display=$(field_get "$module" "$field" "display")
-    current=$(config_get "$module" "$field")
-    required=$(field_get "$module" "$field" "required")
+    input=$(nds_field_get "$module" "$field" "input")
+    display=$(nds_field_get "$module" "$field" "display")
+    current=$(nds_config_get "$module" "$field")
+    required=$(nds_field_get "$module" "$field" "required")
     
     # Loop until we get valid input or user provides valid current value
     while true; do
@@ -182,7 +182,7 @@ field_prompt() {
                 if ! "validate_${input}" "$current"; then
                     # Get error message
                     local error_msg
-                    error_msg=$(field_get "$module" "$field" "error")
+                    error_msg=$(nds_field_get "$module" "$field" "error")
                     if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
                         error_msg=$("error_msg_${input}" "$current")
                     fi
@@ -198,7 +198,7 @@ field_prompt() {
         fi
         
         # New value provided - update
-        config_set "$module" "$field" "$new_value"
+        nds_config_set "$module" "$field" "$new_value"
         if [[ "$current" == "$new_value" ]]; then return 0; fi # Skip if same value
         if [[ -n "$current" ]]; then
             console "    -> Updated: $current -> $new_value"

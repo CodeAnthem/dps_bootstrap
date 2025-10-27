@@ -13,13 +13,13 @@
 system_init_callback() {
     # MODULE_CONTEXT is already set to "system"
     
-    field_declare ADMIN_USER \
+    nds_field_declare ADMIN_USER \
         display="Admin Username" \
         input=username \
         default="admin" \
         required=true
     
-    field_declare SSH_PORT \
+    nds_field_declare SSH_PORT \
         display="SSH Port" \
         input=port \
         default="22" \
@@ -27,7 +27,7 @@ system_init_callback() {
         min=1 \
         max=65535
     
-    field_declare TIMEZONE \
+    nds_field_declare TIMEZONE \
         display="Timezone" \
         input=timezone \
         default="UTC" \

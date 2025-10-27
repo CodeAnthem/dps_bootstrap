@@ -12,20 +12,20 @@
 # =============================================================================
 
 # Fix validation errors only (minimal prompting)
-# Usage: config_fix_errors "module1" "module2" ...
-config_fix_errors() {
+# Usage: nds_config_fix_errors "module1" "module2" ...
+nds_config_fix_errors() {
     local modules=("$@")
     section_header "Configuration Required"
 
     # Prompt for missing/invalid fields in each module
     for module in "${modules[@]}"; do
-        module_prompt_errors "$module"
+        nds_module_prompt_errors "$module"
     done
 }
 
 # Interactive category selection menu
-# Usage: config_menu "module1" "module2" ...
-config_menu() {
+# Usage: nds_config_menu "module1" "module2" ...
+nds_config_menu() {
     local modules=("$@")
 
     while true; do
@@ -35,7 +35,7 @@ config_menu() {
         local i=0
         for module in "${modules[@]}"; do
             ((++i))
-            module_display "$module" "$i"
+            nds_module_display "$module" "$i"
             console ""
         done
 
@@ -47,7 +47,7 @@ config_menu() {
             # Validate before confirming
             local validation_errors=0
             for module in "${modules[@]}"; do
-                if ! module_validate "$module"; then
+                if ! nds_module_validate "$module"; then
                     ((validation_errors++))
                 fi
             done
@@ -78,10 +78,10 @@ config_menu() {
                 
                 console " Press ENTER to keep current value, or type new value"
                 console ""
-                module_prompt_all "$selected_module"
+                nds_module_prompt_all "$selected_module"
                 
                 # Validate and capture output
-                validation_output=$(module_validate "$selected_module" 2>&1)
+                validation_output=$(nds_module_validate "$selected_module" 2>&1)
                 local validation_result=$?
                 
                 if [[ "$validation_result" -eq 0 ]]; then
@@ -98,14 +98,14 @@ config_menu() {
 }
 
 # Complete configuration workflow
-# Usage: config_workflow "module1" "module2" ...
-config_workflow() {
+# Usage: nds_config_workflow "module1" "module2" ...
+nds_config_workflow() {
     local modules=("$@")
 
     # Check if any fields are missing (silent check)
     local needs_input=false
     for module in "${modules[@]}"; do
-        if ! module_validate "$module" 2>/dev/null; then
+        if ! nds_module_validate "$module" 2>/dev/null; then
             needs_input=true
             break
         fi
@@ -113,12 +113,12 @@ config_workflow() {
 
     # If validation fails, prompt for required fields
     if [[ "$needs_input" == "true" ]]; then
-        config_fix_errors "${modules[@]}"
+        nds_config_fix_errors "${modules[@]}"
 
         # Re-validate after input
         local validation_errors=0
         for module in "${modules[@]}"; do
-            if ! module_validate "$module"; then
+            if ! nds_module_validate "$module"; then
                 ((validation_errors++))
             fi
         done

@@ -11,38 +11,38 @@
 # MODULE INITIALIZATION
 # =============================================================================
 boot_init_callback() {
-    field_declare UEFI_MODE \
+    nds_field_declare UEFI_MODE \
         display="UEFI Mode" \
         input=toggle \
         required=true \
         default=true
     
-    field_declare BOOTLOADER \
+    nds_field_declare BOOTLOADER \
         display="Bootloader" \
         input=choice \
         required=true \
         default="systemd-boot" \
         options="systemd-boot|grub|refind"
     
-    field_declare SECURE_BOOT \
+    nds_field_declare SECURE_BOOT \
         display="Enable Secure Boot" \
         input=toggle \
         default=false
     
-    field_declare SECURE_BOOT_METHOD \
+    nds_field_declare SECURE_BOOT_METHOD \
         display="Secure Boot Method" \
         input=choice \
         default="lanzaboote" \
         options="lanzaboote|sbctl"
     
-    field_declare BOOT_TIMEOUT \
+    nds_field_declare BOOT_TIMEOUT \
         display="Boot Menu Timeout (seconds)" \
         input=int \
         default="5" \
         min=0 \
         max=30
     
-    field_declare BOOT_ANIMATION \
+    nds_field_declare BOOT_ANIMATION \
         display="Boot Animation" \
         input=choice \
         default="normal" \
@@ -54,8 +54,8 @@ boot_init_callback() {
 # =============================================================================
 boot_get_active_fields() {
     local uefi secure_boot
-    uefi=$(config_get "boot" "UEFI_MODE")
-    secure_boot=$(config_get "boot" "SECURE_BOOT")
+    uefi=$(nds_config_get "boot" "UEFI_MODE")
+    secure_boot=$(nds_config_get "boot" "SECURE_BOOT")
     
     # Base fields
     echo "UEFI_MODE"
@@ -77,9 +77,9 @@ boot_get_active_fields() {
 # =============================================================================
 boot_validate_extra() {
     local uefi bootloader secure_boot
-    uefi=$(config_get "boot" "UEFI_MODE")
-    bootloader=$(config_get "boot" "BOOTLOADER")
-    secure_boot=$(config_get "boot" "SECURE_BOOT")
+    uefi=$(nds_config_get "boot" "UEFI_MODE")
+    bootloader=$(nds_config_get "boot" "BOOTLOADER")
+    secure_boot=$(nds_config_get "boot" "SECURE_BOOT")
     
     # Validate bootloader compatibility with UEFI/BIOS
     if [[ "$uefi" == "false" ]]; then

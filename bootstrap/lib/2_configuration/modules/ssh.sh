@@ -11,51 +11,51 @@
 # MODULE INITIALIZATION
 # =============================================================================
 ssh_init_callback() {
-    field_declare SSH_ENABLE \
+    nds_field_declare SSH_ENABLE \
         display="Enable SSH Server" \
         input=toggle \
         required=true \
         default=true
     
-    field_declare SSH_PORT \
+    nds_field_declare SSH_PORT \
         display="SSH Port" \
         input=port \
         default="22"
     
-    field_declare SSH_PASSWORD_AUTH \
+    nds_field_declare SSH_PASSWORD_AUTH \
         display="Allow Password Authentication" \
         input=toggle \
         default=false
     
-    field_declare SSH_ROOT_LOGIN \
+    nds_field_declare SSH_ROOT_LOGIN \
         display="Permit Root Login" \
         input=choice \
         default="no" \
         options="yes|no|prohibit-password"
     
-    field_declare SSH_KEY_METHOD \
+    nds_field_declare SSH_KEY_METHOD \
         display="SSH Key Method" \
         input=choice \
         default="auto" \
         options="auto|manual|none"
     
-    field_declare SSH_KEY_TYPE \
+    nds_field_declare SSH_KEY_TYPE \
         display="SSH Key Type" \
         input=choice \
         default="ed25519" \
         options="ed25519|rsa|ecdsa"
     
-    field_declare SSH_KEY_PASSPHRASE \
+    nds_field_declare SSH_KEY_PASSPHRASE \
         display="Use Key Passphrase" \
         input=toggle \
         default=false
     
-    field_declare SSH_KEY_PATH \
+    nds_field_declare SSH_KEY_PATH \
         display="SSH Key Path" \
         input=path \
         default="/root/.ssh/id_ed25519"
     
-    field_declare SSH_AUTHORIZED_KEYS \
+    nds_field_declare SSH_AUTHORIZED_KEYS \
         display="Authorized SSH Keys" \
         input=text \
         default=""
@@ -66,8 +66,8 @@ ssh_init_callback() {
 # =============================================================================
 ssh_get_active_fields() {
     local ssh_enable key_method
-    ssh_enable=$(config_get "ssh" "SSH_ENABLE")
-    key_method=$(config_get "ssh" "SSH_KEY_METHOD")
+    ssh_enable=$(nds_config_get "ssh" "SSH_ENABLE")
+    key_method=$(nds_config_get "ssh" "SSH_KEY_METHOD")
     
     # Always show enable
     echo "SSH_ENABLE"
@@ -97,9 +97,9 @@ ssh_get_active_fields() {
 # =============================================================================
 ssh_validate_extra() {
     local ssh_enable password_auth key_method
-    ssh_enable=$(config_get "ssh" "SSH_ENABLE")
-    password_auth=$(config_get "ssh" "SSH_PASSWORD_AUTH")
-    key_method=$(config_get "ssh" "SSH_KEY_METHOD")
+    ssh_enable=$(nds_config_get "ssh" "SSH_ENABLE")
+    password_auth=$(nds_config_get "ssh" "SSH_PASSWORD_AUTH")
+    key_method=$(nds_config_get "ssh" "SSH_KEY_METHOD")
     
     [[ "$ssh_enable" != "true" ]] && return 0
     

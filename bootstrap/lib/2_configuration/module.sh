@@ -12,8 +12,8 @@
 # =============================================================================
 
 # Validate all active fields in a module
-# Usage: module_validate "module"
-module_validate() {
+# Usage: nds_module_validate "module"
+nds_module_validate() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     local validation_errors=0
@@ -29,7 +29,7 @@ module_validate() {
     
     # Validate each active field
     for field in $($get_fields); do
-        if ! field_validate "$module" "$field"; then
+        if ! nds_field_validate "$module" "$field"; then
             ((validation_errors++))
         fi
     done
@@ -50,8 +50,8 @@ module_validate() {
 # =============================================================================
 
 # Prompt only for fields that failed validation
-# Usage: module_prompt_errors "module"
-module_prompt_errors() {
+# Usage: nds_module_prompt_errors "module"
+nds_module_prompt_errors() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     
@@ -61,7 +61,7 @@ module_prompt_errors() {
     # First pass: check if there are any fields that need prompting
     local fields_to_prompt=()
     for field in $($get_fields); do
-        if ! field_validate "$module" "$field" 2>/dev/null; then
+        if ! nds_field_validate "$module" "$field" 2>/dev/null; then
             fields_to_prompt+=("$field")
         fi
     done
@@ -71,7 +71,7 @@ module_prompt_errors() {
         console "$(echo "${module^}" | tr '_' ' ') Configuration:"
         
         for field in "${fields_to_prompt[@]}"; do
-            field_prompt "$module" "$field"
+            nds_field_prompt "$module" "$field"
         done
         
         console ""
@@ -79,8 +79,8 @@ module_prompt_errors() {
 }
 
 # Prompt for all active fields in a module (full interactive)
-# Usage: module_prompt_all "module"
-module_prompt_all() {
+# Usage: nds_module_prompt_all "module"
+nds_module_prompt_all() {
     local module="$1"
     local get_fields="${module}_get_active_fields"
     
@@ -100,7 +100,7 @@ module_prompt_all() {
         # Check for any active fields that haven't been prompted yet
         for field in $($get_fields); do
             if [[ -z "${prompted_fields[$field]:-}" ]]; then
-                field_prompt "$module" "$field"
+                nds_field_prompt "$module" "$field"
                 prompted_fields["$field"]=1
                 has_new_fields=true
             fi
@@ -118,8 +118,8 @@ module_prompt_all() {
 # =============================================================================
 
 # Display module configuration
-# Usage: module_display "module" [number]
-module_display() {
+# Usage: nds_module_display "module" [number]
+nds_module_display() {
     local module="$1"
     local number="${2:-}"
     local get_fields="${module}_get_active_fields"
@@ -140,9 +140,9 @@ module_display() {
         local display
         local value
         local input
-        display=$(field_get "$module" "$field" "display")
-        value=$(config_get "$module" "$field")
-        input=$(field_get "$module" "$field" "input")
+        display=$(nds_field_get "$module" "$field" "display")
+        value=$(nds_config_get "$module" "$field")
+        input=$(nds_field_get "$module" "$field" "input")
         
         # Transform value for display if display function exists
         if type "display_${input}" &>/dev/null; then
@@ -158,8 +158,8 @@ module_display() {
 # =============================================================================
 
 # Load and use a configuration module
-# Usage: config_use_module "network"
-config_use_module() {
+# Usage: nds_config_use_module "network"
+nds_config_use_module() {
     local module="$1"
     local module_file
     
@@ -182,12 +182,12 @@ config_use_module() {
     fi
     
     # Initialize the module
-    config_init_module "$module"
+    nds_config_init_module "$module"
 }
 
-# Initialize a module (called by config_use_module or directly)
-# Usage: config_init_module "module"
-config_init_module() {
+# Initialize a module (called by nds_config_use_module or directly)
+# Usage: nds_config_init_module "module"
+nds_config_init_module() {
     local module="$1"
     
     # Set module context (used by field_declare in init callback)
@@ -204,7 +204,7 @@ config_init_module() {
     fi
     
     # Apply DPS_* environment variable overrides
-    config_apply_env_overrides "$module"
+    nds_config_apply_env_overrides "$module"
     
     debug "Configuration initialized for module: $module"
 }

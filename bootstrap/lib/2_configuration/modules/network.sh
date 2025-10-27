@@ -11,41 +11,41 @@
 # MODULE INITIALIZATION
 # =============================================================================
 network_init_callback() {    
-    field_declare HOSTNAME \
+    nds_field_declare HOSTNAME \
         display="Hostname" \
         input=hostname \
         required=true
     
-    field_declare NETWORK_METHOD \
+    nds_field_declare NETWORK_METHOD \
         display="Network Method" \
         input=choice \
         default="dhcp" \
         required=true \
         options="dhcp|static"
     
-    field_declare NETWORK_IP \
+    nds_field_declare NETWORK_IP \
         display="IP Address" \
         required=true \
         input=ip
     
-    field_declare NETWORK_MASK \
+    nds_field_declare NETWORK_MASK \
         display="Network Mask" \
         required=true \
         input=mask \
         default="255.255.255.0"
     
-    field_declare NETWORK_GATEWAY \
+    nds_field_declare NETWORK_GATEWAY \
         display="Gateway" \
         required=true \
         input=ip
     
-    field_declare NETWORK_DNS_PRIMARY \
+    nds_field_declare NETWORK_DNS_PRIMARY \
         display="Primary DNS" \
         input=ip \
         required=true \
         default="1.1.1.1"
     
-    field_declare NETWORK_DNS_SECONDARY \
+    nds_field_declare NETWORK_DNS_SECONDARY \
         display="Secondary DNS" \
         input=ip \
         required=true \
@@ -57,7 +57,7 @@ network_init_callback() {
 # =============================================================================
 network_get_active_fields() {
     local method
-    method=$(config_get "network" "NETWORK_METHOD")
+    method=$(nds_config_get "network" "NETWORK_METHOD")
     
     # Base fields always active
     echo "HOSTNAME"
@@ -113,16 +113,16 @@ validate_subnet() {
 # =============================================================================
 network_validate_extra() {
     local method
-    method=$(config_get "network" "NETWORK_METHOD")
+    method=$(nds_config_get "network" "NETWORK_METHOD")
     
     if [[ "$method" == "static" ]]; then
         local ip
         local mask
         local gateway
         
-        ip=$(config_get "network" "NETWORK_IP")
-        mask=$(config_get "network" "NETWORK_MASK")
-        gateway=$(config_get "network" "NETWORK_GATEWAY")
+        ip=$(nds_config_get "network" "NETWORK_IP")
+        mask=$(nds_config_get "network" "NETWORK_MASK")
+        gateway=$(nds_config_get "network" "NETWORK_GATEWAY")
         
         # Check if Gateway is same as IP
         if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then

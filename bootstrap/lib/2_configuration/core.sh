@@ -36,8 +36,8 @@ declare -gA INPUT_OPTIONS_CACHE 2>/dev/null || true
 # =============================================================================
 
 # Declare a field with metadata (uses MODULE_CONTEXT)
-# Usage: field_declare HOSTNAME display="Hostname" required=true validator=validate_hostname
-field_declare() {
+# Usage: nds_field_declare HOSTNAME display="Hostname" required=true validator=validate_hostname
+nds_field_declare() {
     local field_name="$1"
     shift
     local module="${MODULE_CONTEXT}"
@@ -56,14 +56,14 @@ field_declare() {
     
     # Set default value if provided
     local default="${FIELD_REGISTRY[${module}__${field_name}__default]:-}"
-    config_set "$module" "$field_name" "$default"
+    nds_config_set "$module" "$field_name" "$default"
     
     debug "Field declared: $module.$field_name"
 }
 
 # Get field metadata attribute
-# Usage: field_get "module" "field" "attribute"
-field_get() {
+# Usage: nds_field_get "module" "field" "attribute"
+nds_field_get() {
     local module="$1"
     local field="$2"
     local attribute="$3"
@@ -72,8 +72,8 @@ field_get() {
 }
 
 # Check if field exists
-# Usage: field_exists "module" "field"
-field_exists() {
+# Usage: nds_field_exists "module" "field"
+nds_field_exists() {
     local module="$1"
     local field="$2"
     
@@ -85,8 +85,8 @@ field_exists() {
 # =============================================================================
 
 # Set configuration value
-# Usage: config_set "module" "field" "value"
-config_set() {
+# Usage: nds_config_set "module" "field" "value"
+nds_config_set() {
     local module="$1"
     local key="$2"
     local value="$3"
@@ -96,8 +96,8 @@ config_set() {
 }
 
 # Get configuration value
-# Usage: config_get "module" "field" OR config_get "field" (uses MODULE_CONTEXT)
-config_get() {
+# Usage: nds_config_get "module" "field" OR nds_config_get "field" (uses MODULE_CONTEXT)
+nds_config_get() {
     if [[ $# -eq 1 ]]; then
         # Single arg: use MODULE_CONTEXT
         local module="${MODULE_CONTEXT}"
@@ -112,9 +112,9 @@ config_get() {
 }
 
 # Set action-specific default (respects environment variable priority)
-# Usage: config_set_default "module" "field" "value"
+# Usage: nds_config_set_default "module" "field" "value"
 # Priority: module default < action default < environment variable
-config_set_default() {
+nds_config_set_default() {
     local module="$1"
     local field="$2"
     local value="$3"
@@ -130,13 +130,13 @@ config_set_default() {
     fi
     
     # Set the action-specific default
-    config_set "$module" "$field" "$value"
+    nds_config_set "$module" "$field" "$value"
     debug "Action default applied: $module.$field = $value"
 }
 
 # Apply DPS_* environment variable overrides for a module
-# Usage: config_apply_env_overrides "module"
-config_apply_env_overrides() {
+# Usage: nds_config_apply_env_overrides "module"
+nds_config_apply_env_overrides() {
     local module="$1"
     
     debug "Scanning for DPS_* environment variable overrides for module: $module"
@@ -149,7 +149,7 @@ config_apply_env_overrides() {
             local env_var="DPS_${field_name}"
             
             if [[ -n "${!env_var:-}" ]]; then
-                config_set "$module" "$field_name" "${!env_var}"
+                nds_config_set "$module" "$field_name" "${!env_var}"
                 log "Environment override: $env_var=${!env_var} -> $module.$field_name"
             fi
         fi
@@ -157,8 +157,8 @@ config_apply_env_overrides() {
 }
 
 # Export configuration as shell variables
-# Usage: config_export "module1" "module2" ...
-config_export() {
+# Usage: nds_config_export "module1" "module2" ...
+nds_config_export() {
     for module in "$@"; do
         for key in "${!CONFIG_DATA[@]}"; do
             if [[ "$key" =~ ^${module}__(.+)$ ]]; then
