@@ -176,13 +176,13 @@ nds_config_use_module() {
     local module="$1"
     local module_file
     
-    # Find module file - check new location first
-    if [[ -f "${LIB_DIR}/2_configuration/modules/${module}.sh" ]]; then
-        module_file="${LIB_DIR}/2_configuration/modules/${module}.sh"
-    elif [[ -f "${SCRIPT_DIR}/lib/2_configuration/modules/${module}.sh" ]]; then
-        module_file="${SCRIPT_DIR}/lib/2_configuration/modules/${module}.sh"
+    # Find module file in new unified modules directory
+    if [[ -f "${LIB_DIR}/modules/${module}.sh" ]]; then
+        module_file="${LIB_DIR}/modules/${module}.sh"
+    elif [[ -f "${SCRIPT_DIR}/lib/modules/${module}.sh" ]]; then
+        module_file="${SCRIPT_DIR}/lib/modules/${module}.sh"
     else
-        error "Configuration module not found: $module"
+        error "Module not found: $module"
         return 1
     fi
     
