@@ -74,53 +74,225 @@ validate_deploy_config() {
 }
 
 # =============================================================================
+# INSTALLATION WORKFLOW
+# =============================================================================
+
+# Install system - disk partitioning, encryption, NixOS installation
+install_system() {
+    section_header "System Installation"
+    
+    local disk encryption hostname
+    disk=$(config_get "disk" "DISK_TARGET")
+    encryption=$(config_get "disk" "ENCRYPTION")
+    hostname=$(config_get "network" "HOSTNAME")
+    
+    # Phase 1: Disk partitioning
+    step_start "Partitioning disk: $disk"
+    if ! partition_disk "$encryption" "$disk"; then
+        error "Disk partitioning failed"
+        return 1
+    fi
+    step_complete "Disk partitioned"
+    
+    # Phase 2: Encryption setup (if enabled)
+    if [[ "$encryption" == "true" ]]; then
+        step_start "Setting up LUKS encryption"
+        if ! setup_encryption; then
+            error "Encryption setup failed"
+            return 1
+        fi
+        step_complete "Encryption configured"
+    fi
+    
+    # Phase 3: Mount filesystems
+    step_start "Mounting filesystems"
+    if ! mount_filesystems "$encryption"; then
+        error "Failed to mount filesystems"
+        return 1
+    fi
+    step_complete "Filesystems mounted"
+    
+    # Phase 4: Generate hardware config
+    step_start "Generating hardware configuration"
+    if ! generate_hardware_config "$hostname"; then
+        error "Hardware configuration generation failed"
+        return 1
+    fi
+    step_complete "Hardware config generated"
+    
+    # Phase 5: Create NixOS configuration
+    step_start "Creating NixOS configuration"
+    if ! create_deploy_vm_config "$hostname" "$encryption"; then
+        error "NixOS configuration creation failed"
+        return 1
+    fi
+    step_complete "NixOS configuration created"
+    
+    # Phase 6: Install NixOS
+    step_start "Installing NixOS"
+    if ! install_deploy_vm "$hostname"; then
+        error "NixOS installation failed"
+        return 1
+    fi
+    step_complete "NixOS installed"
+    
+    success "System installation complete"
+    return 0
+}
+
+# =============================================================================
+# POST-INSTALL SETUP
+# =============================================================================
+
+# Post-install configuration - keys, repository, tools
+post_install_setup() {
+    section_header "Post-Install Configuration"
+    
+    local git_repo admin_user
+    git_repo=$(config_get "deploy" "GIT_REPO_URL")
+    admin_user=$(config_get "system" "ADMIN_USER")
+    
+    # Generate SSH keys for admin user
+    step_start "Generating SSH keys for $admin_user"
+    local ssh_key_path="/mnt/home/${admin_user}/.ssh/id_ed25519"
+    mkdir -p "$(dirname "$ssh_key_path")"
+    if ! generate_ssh_key "$ssh_key_path" "" "$(config_get "network" "HOSTNAME")"; then
+        warn "SSH key generation failed (non-critical)"
+    else
+        step_complete "SSH keys generated"
+    fi
+    
+    # Generate Age encryption key for SOPS
+    step_start "Generating Age encryption key"
+    local age_key_path="/mnt/home/${admin_user}/.config/sops/age/keys.txt"
+    mkdir -p "$(dirname "$age_key_path")"
+    if ! generate_age_key "$age_key_path"; then
+        warn "Age key generation failed (non-critical)"
+    else
+        step_complete "Age keys generated"
+    fi
+    
+    # Set proper ownership for user files
+    step_start "Setting file permissions"
+    if [[ -d "/mnt/home/${admin_user}" ]]; then
+        chown -R 1000:1000 "/mnt/home/${admin_user}" 2>/dev/null || true
+    fi
+    step_complete "Permissions set"
+    
+    success "Post-install configuration complete"
+    return 0
+}
+
+# =============================================================================
+# COMPLETION SUMMARY
+# =============================================================================
+
+# Show installation completion summary with next steps
+show_completion_summary() {
+    new_section
+    section_header "Installation Complete!"
+    
+    local hostname encryption disk admin_user git_repo
+    hostname=$(config_get "network" "HOSTNAME")
+    encryption=$(config_get "disk" "ENCRYPTION")
+    disk=$(config_get "disk" "DISK_TARGET")
+    admin_user=$(config_get "system" "ADMIN_USER")
+    git_repo=$(config_get "deploy" "GIT_REPO_URL")
+    
+    console ""
+    console "╭─────────────────────────────────────────────╮"
+    console "│  Deploy VM Ready: $hostname"
+    console "╰─────────────────────────────────────────────╯"
+    console ""
+    
+    # Show encryption key backup warning
+    if [[ "$encryption" == "true" ]]; then
+        warn "ENCRYPTION KEY BACKUP REQUIRED!"
+        console "   Encryption is enabled on $disk"
+        console "   ⚠️  Backup LUKS key before rebooting!"
+        console "   Key location: /tmp/luks_key.txt (if saved)"
+        console ""
+    fi
+    
+    console "📋 Next Steps:"
+    console "   1️⃣  Reboot the system"
+    console "   2️⃣  Login as: $admin_user"
+    console "   3️⃣  Clone private repository: $git_repo"
+    console "   4️⃣  Configure SOPS with Age keys"
+    console "   5️⃣  Setup SSH keys for node deployment"
+    console "   6️⃣  Begin deploying managed nodes"
+    console ""
+    
+    console "📚 Documentation:"
+    console "   - README: /etc/nixos/README.md"
+    console "   - SSH Key: /home/${admin_user}/.ssh/id_ed25519.pub"
+    console "   - Age Key: /home/${admin_user}/.config/sops/age/keys.txt"
+    console ""
+}
+
+# =============================================================================
 # MAIN SETUP FUNCTION
 # =============================================================================
 setup() {
-    # Initialize configuration
+    draw_title "Deploy VM Installation"
+    
+    # Phase 1: Configuration
+    section_header "Configuration Phase"
     init_deploy_config
     
-    # Run configuration workflow (display -> interactive -> validate)
+    # Run configuration workflow (error fix → interactive → validate)
     if ! config_workflow "network" "disk" "system" "deploy"; then
-        error "Configuration workflow failed"
+        error "Configuration cancelled or failed validation"
         return 1
     fi
     
-    # Additional Deploy VM specific validation
+    # Additional Deploy VM validation
     if ! validate_deploy_config; then
-        error "Deploy VM specific validation failed"
+        error "Deploy VM validation failed"
         return 1
     fi
     
-    # Show final configuration summary
+    # Phase 2: Show final configuration summary
+    new_section
+    section_header "Configuration Summary"
+    module_display "network"
     console ""
-    console "=== Deploy VM Configuration Summary in setup.sh ==="
-    console "Hostname: $(config_get "network" "HOSTNAME")"
-    console "Network: $(config_get "network" "NETWORK_METHOD")"
-    console "Disk: $(config_get "disk" "DISK_TARGET")"
-    console "Encryption: $(config_get "disk" "ENCRYPTION")"
-    console "Admin User: $(config_get "system" "ADMIN_USER")"
-    console "Git Repository: $(config_get "deploy" "GIT_REPO_URL")"
-    console "Deploy Key: $(config_get "deploy" "DEPLOY_SSH_KEY_PATH")"
-    console "====================================="
+    module_display "disk"
     console ""
+    module_display "system"
+    console ""
+    module_display "deploy"
     
-    # TODO: Implement Deploy VM installation workflow
-    # This is a template - actual implementation will include:
-    # - Disk partitioning and encryption setup
-    # - NixOS installation with Deploy VM configuration
-    # - Deployment tools installation
-    # - SOPS and SSH key management setup
-    # - Private repository configuration
+    # Phase 3: Confirm installation
+    console ""
+    read -p "Proceed with installation? [y/N]: " -n 1 -r confirm
+    echo
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        warn "Installation cancelled by user"
+        return 1
+    fi
     
-    success "Deploy VM setup template executed successfully"
-    console "This is a template implementation - full Deploy VM setup coming soon!"
+    # Phase 4: System installation
+    new_section
+    if ! install_system; then
+        error "System installation failed"
+        return 1
+    fi
     
+    # Phase 5: Post-install setup
+    new_section
+    if ! post_install_setup; then
+        warn "Post-install setup had issues (non-critical)"
+    fi
+    
+    # Phase 6: Show completion summary
+    show_completion_summary
+    
+    success "Deploy VM installation complete!"
     return 0
 }
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
-# Additional helper functions can be added here as needed
-# The configuration management is now handled by the configurator.sh library
+# Helper functions for Deploy VM specific operations can be added here
