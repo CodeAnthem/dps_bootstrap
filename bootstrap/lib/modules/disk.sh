@@ -13,9 +13,7 @@
 disk_init_callback() {
     # Auto-detect first disk if not provided
     local first_disk=""
-    if [[ -z "$(nds_config_get "disk" "DISK_TARGET")" ]]; then
-        first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
-    fi
+    first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
     
     echo test
     echo $(nds_config_get "disk" "DISK_TARGET")
