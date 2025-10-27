@@ -33,9 +33,13 @@ deploy_init_callback() {
         required=true
 
     # Load and initialize standard modules
-    nds_config_use_module "network"
-    nds_config_use_module "disk"
-    nds_config_use_module "system"
+    nds_config_use_module "boot" # Bootloader, UEFI, and secure boot configuration
+    nds_config_use_module "disk" # Disk partitioning and encryption
+    nds_config_use_module "network" # Network configuration
+    nds_config_use_module "region" # Timezone, locale, and keyboard configuration
+    nds_config_use_module "security" # Security configuration
+    nds_config_use_module "ssh" # SSH configuration
+    nds_config_use_module "system" # System configuration
     
     # Apply Deploy VM action-specific defaults
     nds_config_set_default "disk" "ENCRYPTION" "true"
