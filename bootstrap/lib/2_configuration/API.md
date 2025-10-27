@@ -154,7 +154,7 @@ network_validate_extra() {
    │       └─→ Prompt only fields that failed validation
    │
    └─→ config_menu()
-       ├─→ module_display() for each module
+       ├─→ nds_module_display() for each module
        │   └─→ Show current configuration
        │
        └─→ User selects module to edit
@@ -172,7 +172,7 @@ network_validate_extra() {
        └─→ Cross-field validation
 
 4. Display
-   module_display("network")
+   nds_module_display("network")
    └─→ For each field in network_get_active_fields():
        ├─→ config_get() - Get stored value
        ├─→ display_{input}() - Transform for display (if exists)
@@ -346,8 +346,8 @@ module_prompt_errors "network"
 module_prompt_all "network"
 
 # Display module configuration
-module_display "network"
-module_display "network" "1"  # With number prefix
+nds_module_display "network"
+nds_module_display "network" "1"  # With number prefix
 ```
 
 ---
@@ -438,7 +438,7 @@ config_workflow "network" "disk" "deploy"
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ MODULE LAYER (module.sh)                                 │
-│   module_validate(), module_prompt_all(), module_display()│
+│   module_validate(), module_prompt_all(), nds_module_display()│
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐

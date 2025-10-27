@@ -21,7 +21,7 @@ The configuration system provides module-based configuration management with fie
                   │
 ┌─────────────────▼────────────────────────────────────────┐
 │ MODULE LAYER (module.sh)                                 │
-│   module_validate(), module_prompt_all(), module_display()│
+│   module_validate(), module_prompt_all(), nds_module_display()│
 └─────────────────┬────────────────────────────────────────┘
                   │
 ┌─────────────────▼────────────────────────────────────────┐
@@ -59,7 +59,7 @@ The configuration system provides module-based configuration management with fie
 **Provides:**
 - `module_validate` - Validate all fields
 - `module_prompt_all` - Prompt all fields
-- `module_display` - Show configuration
+- `nds_module_display` - Show configuration
 
 ### workflow.sh - User Workflows
 **Purpose:** High-level user interactions  
@@ -320,7 +320,7 @@ config_workflow "network" "disk"
      → Prompt only for missing/invalid fields
 
 3. Workflow shows menu:
-   module_display("network")
+   nds_module_display("network")
      → Show current configuration
 
 4. User selects "Edit Network":

@@ -94,7 +94,7 @@ mymodule_init_callback() {
 # =============================================================================
 # DISPLAY CALLBACK
 # =============================================================================
-mymodule_display_callback() {
+mynds_module_display_callback() {
     local action="$1"
     local module="$2"
     
@@ -143,7 +143,7 @@ mymodule_validate_callback() {
 # =============================================================================
 config_register_module "mymodule" \
     "mymodule_init_callback" \
-    "mymodule_display_callback" \
+    "mynds_module_display_callback" \
     "mymodule_interactive_callback" \
     "mymodule_validate_callback"
 ```

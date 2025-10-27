@@ -122,7 +122,7 @@ Prompt shows: "true" (NOT transformed - user needs to type actual value)
 ```
 
 **Important:** `display_*()` is ONLY used in:
-- ✅ `module_display()` - Configuration menu
+- ✅ `nds_module_display()` - Configuration menu
 - ❌ NOT in prompts `[current]` field
 - ❌ NOT in "Updated: X → Y" messages
 

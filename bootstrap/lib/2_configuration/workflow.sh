@@ -134,7 +134,7 @@ nds_config_workflow() {
     # Display all configurations
     section_header "Configuration Summary"
     for module in "${modules[@]}"; do
-        module_display "$module"
+        nds_module_display "$module"
         console ""
     done
 
@@ -155,7 +155,7 @@ nds_config_workflow() {
                 console ""
                 section_header "Configuration Summary"
                 for module in "${modules[@]}"; do
-                    module_display "$module"
+                    nds_module_display "$module"
                     console ""
                 done
                 ;;
