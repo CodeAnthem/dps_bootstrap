@@ -44,7 +44,7 @@ region_init_callback() {
 # =============================================================================
 # CROSS-FIELD VALIDATION
 # =============================================================================
-region_validate_extra() {
-    # No cross-field validation needed
-    return 0
-}
+# region_validate_extra() {
+#     # No cross-field validation needed
+#     return 0
+# }

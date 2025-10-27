@@ -2,9 +2,9 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2025-10-22
-# Description:   Script Library File
-# Feature:       system configuration module (admin user, SSH, timezone)
+# Date:          Created: 2025-10-21 | Modified: 2025-10-27
+# Description:   System user configuration
+# Feature:       Admin user and system-level settings
 # ==================================================================================================
 
 # =============================================================================
@@ -18,36 +18,7 @@ system_init_callback() {
         input=username \
         default="admin" \
         required=true
-    
-    nds_field_declare SSH_PORT \
-        display="SSH Port" \
-        input=port \
-        default="22" \
-        required=true \
-        min=1 \
-        max=65535
-    
-    nds_field_declare TIMEZONE \
-        display="Timezone" \
-        input=timezone \
-        default="UTC" \
-        required=true
 }
 
-# =============================================================================
-# ACTIVE FIELDS LOGIC
-# =============================================================================
-system_get_active_fields() {
-    # All system fields are always active
-    echo "ADMIN_USER"
-    echo "SSH_PORT"
-    echo "TIMEZONE"
-}
-
-# =============================================================================
-# CROSS-FIELD VALIDATION
-# =============================================================================
-system_validate_extra() {
-    # No cross-field validation needed
-    return 0
-}
+# Note: No need for system_get_active_fields() - auto-generates all fields
+# Note: No need for system_validate_extra() - no cross-field validation
