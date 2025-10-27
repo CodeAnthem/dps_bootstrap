@@ -214,18 +214,14 @@ show_completion_summary() {
 # MAIN SETUP FUNCTION
 # =============================================================================
 setup() {    
-    # Phase 1: Initialize configuration
-    # Initialize the deploy module (which loads network, disk, system via callback)
-    nds_config_init_module "deploy"
-    
-    # Phase 2: Configuration workflow
+    # Phase 1: Configuration workflow (auto-initializes modules)
     # Run configuration workflow (error fix → interactive → validate)
     if ! nds_config_workflow "network" "disk" "system" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi
     
-    # # Phase 3: Show final configuration summary
+    # # Phase 2: Show final configuration summary
     # new_section
     # section_header "Configuration Summary"
     # nds_module_display "network"
@@ -236,7 +232,7 @@ setup() {
     # console ""
     # nds_module_display "deploy"
     
-    # # Phase 4: Confirm installation
+    # # Phase 3: Confirm installation
     # console ""
     # read -p "Proceed with installation? [y/N]: " -n 1 -r confirm
     # echo
@@ -247,20 +243,20 @@ setup() {
     
     echo done
     exit 0
-    # Phase 5: System installation
+    # Phase 4: System installation
     new_section
     if ! install_system; then
         error "System installation failed"
         return 1
     fi
     
-    # Phase 6: Post-install setup
+    # Phase 5: Post-install setup
     new_section
     if ! post_install_setup; then
         warn "Post-install setup had issues (non-critical)"
     fi
     
-    # Phase 7: Show completion summary
+    # Phase 6: Show completion summary
     show_completion_summary
     
     success "Deploy VM installation complete!"

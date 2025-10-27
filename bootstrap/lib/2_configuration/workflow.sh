@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Configuration System - Workflows
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-24
+# Date:          Created: 2025-10-24 | Modified: 2025-10-27
 # Description:   High-level user workflows
 # Dependencies:  3_module.sh
 # ==================================================================================================
@@ -55,6 +55,8 @@ nds_config_menu() {
             if [[ "$validation_errors" -gt 0 ]]; then
                 warn "Configuration still has $validation_errors error(s)."
                 warn "Please fix all errors before proceeding."
+                read -p "Press ENTER to continue..." -r
+                console ""
                 continue
             fi
 
@@ -93,6 +95,8 @@ nds_config_menu() {
             done
         else
             warn "Invalid selection. Please enter 1-$i or X to proceed."
+            read -p "Press ENTER to continue..." -r
+            console ""
         fi
     done
 }
@@ -101,6 +105,27 @@ nds_config_menu() {
 # Usage: nds_config_workflow "module1" "module2" ...
 nds_config_workflow() {
     local modules=("$@")
+
+    # Auto-initialize any modules that haven't been initialized yet
+    for module in "${modules[@]}"; do
+        # Check if module has any fields declared (if not, it needs initialization)
+        local has_fields=false
+        for key in "${!FIELD_REGISTRY[@]}"; do
+            if [[ "$key" =~ ^${module}__.*__display$ ]]; then
+                has_fields=true
+                break
+            fi
+        done
+        
+        # Initialize if no fields found
+        if [[ "$has_fields" == "false" ]]; then
+            debug "Auto-initializing module: $module"
+            nds_config_init_module "$module" || {
+                error "Failed to initialize module: $module"
+                return 1
+            }
+        fi
+    done
 
     # Check if any fields are missing (silent check)
     local needs_input=false
