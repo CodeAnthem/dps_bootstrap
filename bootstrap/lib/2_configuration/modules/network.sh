@@ -2,20 +2,15 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2025-10-24
-# Description:   Script Library File
-# Feature:       Network configuration module (hostname, IP, DNS, gateway)
+# Date:          Created: 2025-10-21 | Modified: 2025-10-27
+# Description:   Network configuration module
+# Feature:       Network method (DHCP/static), IP, DNS, gateway configuration
 # ==================================================================================================
 
 # =============================================================================
 # MODULE INITIALIZATION
 # =============================================================================
 network_init_callback() {    
-    nds_field_declare HOSTNAME \
-        display="Hostname" \
-        input=hostname \
-        required=true
-    
     nds_field_declare NETWORK_METHOD \
         display="Network Method" \
         input=choice \
@@ -60,7 +55,6 @@ network_get_active_fields() {
     method=$(nds_config_get "network" "NETWORK_METHOD")
     
     # Base fields always active
-    echo "HOSTNAME"
     echo "NETWORK_METHOD"
     echo "NETWORK_DNS_PRIMARY"
     echo "NETWORK_DNS_SECONDARY"

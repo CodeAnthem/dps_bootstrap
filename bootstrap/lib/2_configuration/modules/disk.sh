@@ -66,7 +66,7 @@ disk_init_callback() {
         input=int \
         default="32" \
         min=16 \
-        max=128
+        max=256
     
     nds_field_declare PARTITION_SCHEME \
         display="Partition Scheme" \

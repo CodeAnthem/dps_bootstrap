@@ -33,17 +33,41 @@ deploy_init_callback() {
         required=true
 
     # Load and initialize standard modules
-    nds_config_use_module "boot" # Bootloader, UEFI, and secure boot configuration
-    nds_config_use_module "disk" # Disk partitioning and encryption
-    nds_config_use_module "network" # Network configuration
-    nds_config_use_module "region" # Timezone, locale, and keyboard configuration
-    nds_config_use_module "security" # Security configuration
-    nds_config_use_module "ssh" # SSH configuration
-    nds_config_use_module "system" # System configuration
+    nds_config_use_module "system"   # System identity, admin user, shell
+    nds_config_use_module "network"  # Network configuration
+    nds_config_use_module "disk"     # Disk partitioning and encryption
+    nds_config_use_module "boot"     # Bootloader, UEFI, and secure boot
+    nds_config_use_module "ssh"      # SSH server and keys
+    nds_config_use_module "security" # Firewall, fail2ban, hardening
+    nds_config_use_module "region"   # Timezone, locale, keyboard
     
     # Apply Deploy VM action-specific defaults
-    nds_config_set_default "disk" "ENCRYPTION" "true"
+    # System
+    nds_config_set_default "system" "ADMIN_SHELL" "bash"
+    nds_config_set_default "system" "AUTO_UPGRADE" "true"
+    nds_config_set_default "system" "DEFAULT_EDITOR" "vim"
+    
+    # Network
     nds_config_set_default "network" "NETWORK_METHOD" "dhcp"
+    
+    # Disk & Encryption
+    nds_config_set_default "disk" "ENCRYPTION" "true"
+    nds_config_set_default "disk" "ENCRYPTION_KEY_METHOD" "urandom"
+    nds_config_set_default "disk" "ENCRYPTION_KEY_LENGTH" "64"
+    
+    # Boot & Secure Boot
+    nds_config_set_default "boot" "BOOTLOADER" "systemd-boot"
+    nds_config_set_default "boot" "SECURE_BOOT_METHOD" "lanzaboote"
+    
+    # SSH Hardening
+    nds_config_set_default "ssh" "SSH_ENABLE" "true"
+    nds_config_set_default "ssh" "SSH_KEY_TYPE" "ed25519"
+    nds_config_set_default "ssh" "SSH_PASSWORD_AUTH" "false"
+    nds_config_set_default "ssh" "SSH_ROOT_LOGIN" "prohibit-password"
+    
+    # Security
+    nds_config_set_default "security" "FIREWALL_ENABLE" "true"
+    nds_config_set_default "security" "FAIL2BAN_ENABLE" "true"
 }
 
 # deploy_get_active_fields() {
@@ -220,7 +244,7 @@ show_completion_summary() {
 setup() {    
     # Phase 1: Configuration workflow (auto-initializes modules)
     # Run configuration workflow (error fix → interactive → validate)
-    if ! nds_config_workflow "network" "disk" "system" "deploy"; then
+    if ! nds_config_workflow "system" "network" "disk" "boot" "ssh" "security" "region" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi
