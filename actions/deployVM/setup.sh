@@ -213,9 +213,7 @@ show_completion_summary() {
 # =============================================================================
 # MAIN SETUP FUNCTION
 # =============================================================================
-setup() {
-    draw_title "Deploy VM Installation"
-    
+setup() {    
     # Phase 1: Initialize configuration
     # Initialize the deploy module (which loads network, disk, system via callback)
     nds_config_init_module "deploy"
@@ -227,26 +225,28 @@ setup() {
         return 1
     fi
     
-    # Phase 3: Show final configuration summary
-    new_section
-    section_header "Configuration Summary"
-    nds_module_display "network"
-    console ""
-    nds_module_display "disk"
-    console ""
-    nds_module_display "system"
-    console ""
-    nds_module_display "deploy"
+    # # Phase 3: Show final configuration summary
+    # new_section
+    # section_header "Configuration Summary"
+    # nds_module_display "network"
+    # console ""
+    # nds_module_display "disk"
+    # console ""
+    # nds_module_display "system"
+    # console ""
+    # nds_module_display "deploy"
     
-    # Phase 4: Confirm installation
-    console ""
-    read -p "Proceed with installation? [y/N]: " -n 1 -r confirm
-    echo
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        warn "Installation cancelled by user"
-        return 1
-    fi
+    # # Phase 4: Confirm installation
+    # console ""
+    # read -p "Proceed with installation? [y/N]: " -n 1 -r confirm
+    # echo
+    # if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    #     warn "Installation cancelled by user"
+    #     return 1
+    # fi
     
+    echo done
+    exit 0
     # Phase 5: System installation
     new_section
     if ! install_system; then
