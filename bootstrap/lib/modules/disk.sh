@@ -17,6 +17,10 @@ disk_init_callback() {
         first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
     fi
     
+    echo test
+    echo $(nds_config_get "disk" "DISK_TARGET")
+    echo test2
+    
     nds_field_declare DISK_TARGET \
         display="Target Disk" \
         input=disk \
