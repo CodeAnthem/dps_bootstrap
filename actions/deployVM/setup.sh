@@ -33,10 +33,14 @@ deploy_init_callback() {
         required=true
 
     # Default Values for modules
-    # System
-    nds_config_set_default "system" "ADMIN_SHELL" "bash"
-    nds_config_set_default "system" "AUTO_UPGRADE" "true"
-    nds_config_set_default "system" "DEFAULT_EDITOR" "vim"
+    # Access - Admin user and SSH
+    nds_config_set_default "access" "ADMIN_USER" "admin"
+    nds_config_set_default "access" "SUDO_PASSWORD_REQUIRED" "true"
+    nds_config_set_default "access" "SSH_ENABLE" "true"
+    nds_config_set_default "access" "SSH_PORT" "22"
+    nds_config_set_default "access" "SSH_USE_KEY" "true"
+    nds_config_set_default "access" "SSH_KEY_TYPE" "ed25519"
+    nds_config_set_default "access" "SSH_KEY_PASSPHRASE" "false"
 
     # Network
     nds_config_set_default "network" "NETWORK_METHOD" "dhcp"
@@ -46,18 +50,13 @@ deploy_init_callback() {
     nds_config_set_default "disk" "ENCRYPTION_KEY_METHOD" "urandom"
     nds_config_set_default "disk" "ENCRYPTION_KEY_LENGTH" "64"
 
-    # Boot & Secure Boot
+    # Boot
     nds_config_set_default "boot" "BOOTLOADER" "systemd-boot"
-    nds_config_set_default "boot" "SECURE_BOOT_METHOD" "lanzaboote"
-
-    # SSH Hardening
-    nds_config_set_default "ssh" "SSH_ENABLE" "true"
-    nds_config_set_default "ssh" "SSH_KEY_TYPE" "ed25519"
-    nds_config_set_default "ssh" "SSH_PASSWORD_AUTH" "false"
-    nds_config_set_default "ssh" "SSH_ROOT_LOGIN" "prohibit-password"
 
     # Security
+    nds_config_set_default "security" "SECURE_BOOT" "false"
     nds_config_set_default "security" "FIREWALL_ENABLE" "true"
+    nds_config_set_default "security" "HARDENING_ENABLE" "true"
     nds_config_set_default "security" "FAIL2BAN_ENABLE" "true"
 }
 
@@ -237,7 +236,7 @@ setup() {
     console " This will install a deploy VM to manage nixos nodes"
 
     # Initialize modules and run configuration workflow (error fix → interactive → validate)
-    if ! nds_config_workflow "system" "network" "disk" "boot" "ssh" "security" "region" "deploy"; then
+    if ! nds_config_workflow "access" "network" "disk" "boot" "security" "region" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi

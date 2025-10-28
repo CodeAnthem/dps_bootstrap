@@ -2,30 +2,31 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-26 | Modified: 2025-10-27
+# Date:          Created: 2025-10-26 | Modified: 2025-10-28
 # Description:   Security Module - Configuration & NixOS Generation
-# Feature:       Firewall, hardening, security configuration and NixOS generation
+# Feature:       Secure boot, firewall, hardening, and security configuration
 # ==================================================================================================
 
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
 security_init_callback() {
+    nds_field_declare SECURE_BOOT \
+        display="Enable Secure Boot" \
+        input=toggle \
+        default=false
+    
+    nds_field_declare SECURE_BOOT_METHOD \
+        display="Secure Boot Method" \
+        input=choice \
+        default="lanzaboote" \
+        options="lanzaboote|sbctl"
+    
     nds_field_declare FIREWALL_ENABLE \
         display="Enable Firewall" \
         input=toggle \
         required=true \
         default=true
-    
-    nds_field_declare FIREWALL_ALLOW_PORTS_TCP \
-        display="Allowed TCP Ports (space-separated)" \
-        input=string \
-        default="22"
-    
-    nds_field_declare FIREWALL_ALLOW_PORTS_UDP \
-        display="Allowed UDP Ports (space-separated)" \
-        input=string \
-        default=""
     
     nds_field_declare HARDENING_ENABLE \
         display="Apply Security Hardening" \
@@ -42,16 +43,16 @@ security_init_callback() {
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
 security_get_active_fields() {
-    local firewall_enable
-    firewall_enable=$(nds_config_get "security" "FIREWALL_ENABLE")
+    local secure_boot
+    secure_boot=$(nds_config_get "security" "SECURE_BOOT")
     
-    echo "FIREWALL_ENABLE"
+    echo "SECURE_BOOT"
     
-    if [[ "$firewall_enable" == "true" ]]; then
-        echo "FIREWALL_ALLOW_PORTS_TCP"
-        echo "FIREWALL_ALLOW_PORTS_UDP"
+    if [[ "$secure_boot" == "true" ]]; then
+        echo "SECURE_BOOT_METHOD"
     fi
     
+    echo "FIREWALL_ENABLE"
     echo "HARDENING_ENABLE"
     echo "FAIL2BAN_ENABLE"
 }
@@ -70,28 +71,32 @@ security_validate_extra() {
 
 # Auto-mode: reads from configuration modules
 nds_nixcfg_security_auto() {
-    local firewall_enable tcp_ports udp_ports hardening fail2ban
+    local secure_boot secure_boot_method firewall_enable hardening fail2ban ssh_port
+    secure_boot=$(nds_config_get "security" "SECURE_BOOT")
+    secure_boot_method=$(nds_config_get "security" "SECURE_BOOT_METHOD")
     firewall_enable=$(nds_config_get "security" "FIREWALL_ENABLE")
-    tcp_ports=$(nds_config_get "security" "FIREWALL_ALLOW_PORTS_TCP")
-    udp_ports=$(nds_config_get "security" "FIREWALL_ALLOW_PORTS_UDP")
     hardening=$(nds_config_get "security" "HARDENING_ENABLE")
     fail2ban=$(nds_config_get "security" "FAIL2BAN_ENABLE")
     
+    # Get SSH port from access module to auto-add to firewall
+    ssh_port=$(nds_config_get "access" "SSH_PORT")
+    
     local block
-    block=$(_nixcfg_security_generate "$firewall_enable" "$tcp_ports" "$udp_ports" "$hardening" "$fail2ban")
+    block=$(_nixcfg_security_generate "$secure_boot" "$secure_boot_method" "$firewall_enable" "$ssh_port" "$hardening" "$fail2ban")
     nds_nixcfg_register "security" "$block" 70
 }
 
 # Manual mode: explicit parameters
 nds_nixcfg_security() {
-    local firewall_enable="${1:-true}"
-    local tcp_ports="${2:-22}"
-    local udp_ports="${3:-}"
-    local hardening="${4:-true}"
-    local fail2ban="${5:-false}"
+    local secure_boot="${1:-false}"
+    local secure_boot_method="${2:-lanzaboote}"
+    local firewall_enable="${3:-true}"
+    local ssh_port="${4:-22}"
+    local hardening="${5:-true}"
+    local fail2ban="${6:-false}"
     
     local block
-    block=$(_nixcfg_security_generate "$firewall_enable" "$tcp_ports" "$udp_ports" "$hardening" "$fail2ban")
+    block=$(_nixcfg_security_generate "$secure_boot" "$secure_boot_method" "$firewall_enable" "$ssh_port" "$hardening" "$fail2ban")
     nds_nixcfg_register "security" "$block" 70
 }
 
@@ -100,29 +105,34 @@ nds_nixcfg_security() {
 # =============================================================================
 
 _nixcfg_security_generate() {
-    local firewall_enable="$1"
-    local tcp_ports="$2"
-    local udp_ports="$3"
-    local hardening="$4"
-    local fail2ban="$5"
+    local secure_boot="$1"
+    local secure_boot_method="$2"
+    local firewall_enable="$3"
+    local ssh_port="$4"
+    local hardening="$5"
+    local fail2ban="$6"
     
     local output=""
+    
+    # Secure Boot
+    if [[ "$secure_boot" == "true" ]]; then
+        output+="# Secure Boot via $secure_boot_method\n"
+        if [[ "$secure_boot_method" == "lanzaboote" ]]; then
+            output+="# See: https://github.com/nix-community/lanzaboote\n"
+        else
+            output+="# See: https://github.com/Foxboron/sbctl\n"
+        fi
+        output+="# Configure after installation\n\n"
+    fi
     
     # Firewall configuration
     if [[ "$firewall_enable" == "true" ]]; then
         output+="networking.firewall = {\n"
         output+="  enable = true;\n"
         
-        if [[ -n "$tcp_ports" ]]; then
-            local tcp_array
-            IFS=' ' read -ra tcp_array <<< "$tcp_ports"
-            output+="  allowedTCPPorts = [ $(printf '%s ' "${tcp_array[@]}") ];\n"
-        fi
-        
-        if [[ -n "$udp_ports" ]]; then
-            local udp_array
-            IFS=' ' read -ra udp_array <<< "$udp_ports"
-            output+="  allowedUDPPorts = [ $(printf '%s ' "${udp_array[@]}") ];\n"
+        # Auto-add SSH port if provided
+        if [[ -n "$ssh_port" ]]; then
+            output+="  allowedTCPPorts = [ $ssh_port ];\n"
         fi
         
         output+="};\n\n"

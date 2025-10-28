@@ -10,7 +10,12 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-network_init_callback() {    
+network_init_callback() {
+    nds_field_declare HOSTNAME \
+        display="Hostname" \
+        input=hostname \
+        required=true
+    
     nds_field_declare NETWORK_METHOD \
         display="Network Method" \
         input=choice \
@@ -55,6 +60,7 @@ network_get_active_fields() {
     method=$(nds_config_get "network" "NETWORK_METHOD")
     
     # Base fields always active
+    echo "HOSTNAME"
     echo "NETWORK_METHOD"
     echo "NETWORK_DNS_PRIMARY"
     echo "NETWORK_DNS_SECONDARY"

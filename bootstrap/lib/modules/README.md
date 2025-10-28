@@ -71,30 +71,30 @@ EOF
 
 ## Available Modules
 
-### Core System
-- **system.sh** - Hostname, admin user, shell, system settings
-- **boot.sh** - Bootloader, UEFI, secure boot
-- **disk.sh** - Disk partitioning, encryption
+### Core Installation
+- **access.sh** - Admin user, sudo, SSH server and key configuration
+- **network.sh** - Hostname, network method (DHCP/static), IP configuration
+- **disk.sh** - Disk partitioning and encryption
+- **boot.sh** - Bootloader and UEFI configuration
 
-### Network & Security
-- **network.sh** - Network method (DHCP/static), IP configuration
-- **ssh.sh** - SSH server, keys, authentication
-- **security.sh** - Firewall, hardening, fail2ban
+### Security
+- **security.sh** - Secure boot, firewall, hardening, fail2ban
 
-### Regional & Environment
-- **region.sh** - Timezone, locale, keyboard
-- **packages.sh** - System packages, Nix flakes
+### Regional Settings
+- **region.sh** - Country auto-defaults, timezone, locale, keyboard
+
+### Optional
+- **packages.sh** - System packages, Nix flakes (not used in bootstrap)
 
 ## Module Loading
 
-Modules are loaded automatically by `nds_config_use_module()`:
+Modules are auto-initialized by the workflow:
 
 ```bash
 # In action setup.sh
-deploy_init_callback() {
-    nds_config_use_module "system"
-    nds_config_use_module "network"
-    nds_config_use_module "disk"
+setup() {
+    # Modules auto-initialize - just define workflow order
+    nds_config_workflow "access" "network" "disk" "boot" "security" "region" "deploy"
 }
 ```
 

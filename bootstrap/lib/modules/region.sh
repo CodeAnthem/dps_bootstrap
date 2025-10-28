@@ -46,6 +46,15 @@ region_init_callback() {
         default=""
 }
 
-# Note: No need for region_get_active_fields() - all fields always shown
-# Note: No need for region_validate_extra() - no cross-field validation
-# Note: Country defaults are auto-applied in country.sh normalize function
+# =============================================================================
+# CONFIGURATION - Active Fields Logic
+# =============================================================================
+# Used to have another sorting
+region_get_active_fields() {
+    echo "COUNTRY"
+    echo "TIMEZONE"
+    echo "LOCALE_MAIN"
+    echo "LOCALE_EXTRA"
+    echo "KEYBOARD_LAYOUT"
+    echo "KEYBOARD_VARIANT"
+}
