@@ -112,44 +112,57 @@ _nixcfg_security_generate() {
     
     # Secure Boot
     if [[ "$secure_boot" == "true" ]]; then
-        output+="# Secure Boot via $secure_boot_method\n"
+        output="# Secure Boot via $secure_boot_method"
         if [[ "$secure_boot_method" == "lanzaboote" ]]; then
-            output+="# See: https://github.com/nix-community/lanzaboote\n"
+            output+="
+# See: https://github.com/nix-community/lanzaboote"
         else
-            output+="# See: https://github.com/Foxboron/sbctl\n"
+            output+="
+# See: https://github.com/Foxboron/sbctl"
         fi
-        output+="# Configure after installation\n\n"
+        output+="
+# Configure after installation
+
+"
     fi
     
     # Firewall configuration
     if [[ "$firewall_enable" == "true" ]]; then
-        output+="networking.firewall = {\n"
-        output+="  enable = true;\n"
+        output+="networking.firewall = {
+  enable = true;"
         
         # Auto-add SSH port if provided
         if [[ -n "$ssh_port" ]]; then
-            output+="  allowedTCPPorts = [ $ssh_port ];\n"
+            output+="
+  allowedTCPPorts = [ $ssh_port ];"
         fi
         
-        output+="};\n\n"
+        output+="
+};
+
+"
     else
-        output+="networking.firewall.enable = false;\n\n"
+        output+="networking.firewall.enable = false;
+
+"
     fi
     
     # Security hardening
     if [[ "$hardening" == "true" ]]; then
-        output+="# Security hardening\n"
-        output+="security.hideProcessInformation = true;\n"
-        output+="security.lockKernelModules = true;\n"
-        output+="security.protectKernelImage = true;\n\n"
+        output+="# Security hardening
+security.hideProcessInformation = true;
+security.lockKernelModules = true;
+security.protectKernelImage = true;
+
+"
     fi
     
     # Fail2Ban
     if [[ "$fail2ban" == "true" ]]; then
-        output+="services.fail2ban = {\n"
-        output+="  enable = true;\n"
-        output+="  maxretry = 5;\n"
-        output+="};\n"
+        output+="services.fail2ban = {
+  enable = true;
+  maxretry = 5;
+};"
     fi
     
     nds_nixcfg_register "security" "$output" 70

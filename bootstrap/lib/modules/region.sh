@@ -11,13 +11,6 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 region_init_callback() {
-    # Country selection for auto-defaults (optional but shown first)
-    nds_field_declare COUNTRY \
-        display="Country (auto-sets defaults)" \
-        input=country \
-        default="" \
-        help="Automatically configures timezone, locale, keyboard layout and variant for your region"
-    
     nds_field_declare TIMEZONE \
         display="Timezone" \
         input=timezone \
@@ -43,7 +36,7 @@ region_init_callback() {
     
     nds_field_declare KEYBOARD_VARIANT \
         display="Keyboard Variant (optional)" \
-        input=string \
+        input=keyboard_variant \
         default="" \
         help="Layout modification - common: nodeadkeys (de/fr), dvorak/colemak (us), abnt2 (br) - leave empty for standard"
 }
@@ -53,7 +46,6 @@ region_init_callback() {
 # =============================================================================
 # Used to have another sorting
 region_get_active_fields() {
-    echo "COUNTRY"
     echo "TIMEZONE"
     echo "LOCALE_MAIN"
     echo "LOCALE_EXTRA"
@@ -99,35 +91,39 @@ _nixcfg_region_generate() {
     local keyboard_layout="$4"
     local keyboard_variant="$5"
     
-    local output=""
+    local output
     
-    # Timezone
-    output+="time.timeZone = \"$timezone\";\n\n"
-    
-    # Locale
-    output+="i18n.defaultLocale = \"$locale_main\";\n"
+    # Build config block
+    output="time.timeZone = \"$timezone\";
+
+i18n.defaultLocale = \"$locale_main\";"
     
     # Extra locales if specified
     if [[ -n "$locale_extra" ]]; then
-        output+="i18n.extraLocaleSettings = {\n"
+        output+="
+i18n.extraLocaleSettings = {"
         # Split by space and add each locale
         local locale
         for locale in $locale_extra; do
-            output+="  LC_ALL = \"$locale\";\n"
+            output+="
+  LC_ALL = \"$locale\";"
         done
-        output+="};\n"
+        output+="
+};"
     fi
     
-    output+="\n"
+    output+="
+
+"
     
     # Keyboard layout
     if [[ -n "$keyboard_variant" ]]; then
-        output+="services.xserver.xkb = {\n"
-        output+="  layout = \"$keyboard_layout\";\n"
-        output+="  variant = \"$keyboard_variant\";\n"
-        output+="};\n"
+        output+="services.xserver.xkb = {
+  layout = \"$keyboard_layout\";
+  variant = \"$keyboard_variant\";
+};"
     else
-        output+="services.xserver.xkb.layout = \"$keyboard_layout\";\n"
+        output+="services.xserver.xkb.layout = \"$keyboard_layout\";"
     fi
     
     nds_nixcfg_register "region" "$output" 40

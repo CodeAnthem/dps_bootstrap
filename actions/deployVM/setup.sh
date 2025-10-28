@@ -63,6 +63,9 @@ deploy_init_callback() {
     nds_config_set_default "security" "FIREWALL_ENABLE" "true"
     nds_config_set_default "security" "HARDENING_ENABLE" "true"
     nds_config_set_default "security" "FAIL2BAN_ENABLE" "true"
+    
+    # Quick Setup
+    nds_config_set_default "quick" "COUNTRY" ""
 }
 
 # deploy_get_active_fields() {
@@ -84,15 +87,7 @@ deploy_init_callback() {
 install_system() {
     section_header "System Installation"
 
-    # Phase 1: Write NixOS configuration from registered blocks
-    step_start "Writing NixOS configuration"
-    if ! nds_nixcfg_write "/tmp/dps_configuration.nix"; then
-        step_fail "Configuration write failed"
-        return 1
-    fi
-    step_complete "Configuration written"
-
-    # Phase 2: Run disk preparation (partition, encryption, mount, hardware config)
+    # Phase 1: Run disk preparation (partition, encryption, mount, hardware config)
     step_start "Preparing disk and filesystems"
     if ! nds_nixinstall_auto; then
         step_fail "Disk preparation failed"
@@ -230,7 +225,7 @@ setup() {
     console "This will install a deploy VM to manage NixOS nodes"
 
     # Configuration workflow
-    if ! nds_config_workflow "access" "network" "disk" "boot" "security" "region" "deploy"; then
+    if ! nds_config_workflow "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi
@@ -250,6 +245,26 @@ setup() {
     nds_nixcfg_security_auto
     nds_nixcfg_region_auto
     step_complete "Modules configured"
+    
+    # Write config to temp file
+    step_start "Writing configuration"
+    if ! nds_nixcfg_write "/tmp/dps_configuration.nix"; then
+        step_fail "Failed to write config"
+        return 1
+    fi
+    step_complete "Configuration written"
+    
+    # Show config and ask for confirmation
+    new_section
+    section_header "Generated NixOS Configuration"
+    cat /tmp/dps_configuration.nix
+    echo ""
+    prompt "Review the configuration above. Continue with installation? (y/n): "
+    read -r confirm
+    if [[ "${confirm,,}" != "y" ]]; then
+        warn "Installation cancelled by user"
+        return 0
+    fi
     
     # System installation
     new_section
