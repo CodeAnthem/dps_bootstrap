@@ -19,7 +19,6 @@ set -euo pipefail
 # ACTION CONFIGURATION
 # =============================================================================
 deploy_init_callback() {
-    echo deploy_init_callback
     # Declare action-specific fields
     nds_field_declare GIT_REPO_URL \
         display="Private Git Repository" \
@@ -32,11 +31,8 @@ deploy_init_callback() {
         input=path \
         default="/root/.ssh/deploy_key" \
         required=true
-
-    # NOTE: No need to call nds_config_use_module - workflow auto-initializes all modules!
-    # The workflow will automatically initialize: system, network, disk, boot, ssh, security, region
     
-    # Apply Deploy VM action-specific defaults
+    # Default Values for modules
     # System
     nds_config_set_default "system" "ADMIN_SHELL" "bash"
     nds_config_set_default "system" "AUTO_UPGRADE" "true"
@@ -63,8 +59,6 @@ deploy_init_callback() {
     # Security
     nds_config_set_default "security" "FIREWALL_ENABLE" "true"
     nds_config_set_default "security" "FAIL2BAN_ENABLE" "true"
-
-    echo deploy_init_callback_done
 }
 
 # deploy_get_active_fields() {
@@ -239,7 +233,6 @@ show_completion_summary() {
 # MAIN SETUP FUNCTION
 # =============================================================================
 setup() {    
-    echo setup
     # Phase 1: Configuration workflow (auto-initializes modules)
     # Run configuration workflow (error fix → interactive → validate)
     if ! nds_config_workflow "system" "network" "disk" "boot" "ssh" "security" "region" "deploy"; then
