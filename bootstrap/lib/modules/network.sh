@@ -147,52 +147,50 @@ validate_subnet() {
 
 # Auto-mode: reads from configuration modules
 nds_nixcfg_network_auto() {
-    local method hostname
+    local hostname method ip gateway dns1 dns2
+    hostname=$(nds_config_get "network" "HOSTNAME")
     method=$(nds_config_get "network" "NETWORK_METHOD")
-    hostname=$(nds_config_get "system" "HOSTNAME")
+    ip=$(nds_config_get "network" "NETWORK_IP")
+    gateway=$(nds_config_get "network" "NETWORK_GATEWAY")
+    dns1=$(nds_config_get "network" "NETWORK_DNS_PRIMARY")
+    dns2=$(nds_config_get "network" "NETWORK_DNS_SECONDARY")
     
-    local block
-    if [[ "$method" == "static" ]]; then
-        block=$(_nixcfg_network_static \
-            "$hostname" \
-            "$(nds_config_get "network" "NETWORK_IP")" \
-            "$(nds_config_get "network" "NETWORK_GATEWAY")" \
-            "$(nds_config_get "network" "NETWORK_MASK")" \
-            "$(nds_config_get "network" "NETWORK_DNS_PRIMARY")" \
-            "$(nds_config_get "network" "NETWORK_DNS_SECONDARY")")
-    else
-        block=$(_nixcfg_network_dhcp \
-            "$hostname" \
-            "$(nds_config_get "network" "NETWORK_DNS_PRIMARY")" \
-            "$(nds_config_get "network" "NETWORK_DNS_SECONDARY")")
-    fi
-    
-    nds_nixcfg_register "network" "$block" 20
+    _nixcfg_network_generate "$hostname" "$method" "$ip" "$gateway" "$dns1" "$dns2"
 }
 
 # Manual mode: explicit parameters
 nds_nixcfg_network() {
-    local method="$1"
-    local hostname="$2"
+    local hostname="$1"
+    local method="${2:-dhcp}"
     local ip="${3:-}"
     local gateway="${4:-}"
-    local mask="${5:-24}"
-    local dns_primary="${6:-1.1.1.1}"
-    local dns_secondary="${7:-1.0.0.1}"
+    local dns1="${5:-}"
+    local dns2="${6:-}"
     
-    local block
-    if [[ "$method" == "static" ]]; then
-        block=$(_nixcfg_network_static "$hostname" "$ip" "$gateway" "$mask" "$dns_primary" "$dns_secondary")
-    else
-        block=$(_nixcfg_network_dhcp "$hostname" "$dns_primary" "$dns_secondary")
-    fi
-    
-    nds_nixcfg_register "network" "$block" 20
+    _nixcfg_network_generate "$hostname" "$method" "$ip" "$gateway" "$dns1" "$dns2"
 }
 
 # =============================================================================
 # NIXOS CONFIG GENERATION - Implementation
 # =============================================================================
+
+_nixcfg_network_generate() {
+    local hostname="$1"
+    local method="$2"
+    local ip="$3"
+    local gateway="$4"
+    local dns1="$5"
+    local dns2="$6"
+    
+    if [[ "$method" == "static" ]]; then
+        # Extract mask from IP (e.g., 192.168.1.10/24 -> 24)
+        local mask="${ip##*/}"
+        local ip_only="${ip%/*}"
+        _nixcfg_network_static "$hostname" "$ip_only" "$gateway" "$mask" "$dns1" "$dns2"
+    else
+        _nixcfg_network_dhcp "$hostname" "$dns1" "$dns2"
+    fi
+}
 
 _nixcfg_network_static() {
     local hostname="$1"
@@ -202,7 +200,8 @@ _nixcfg_network_static() {
     local dns_primary="$5"
     local dns_secondary="$6"
     
-    cat <<EOF
+    local block
+    block=$(cat <<EOF
 networking = {
   hostName = "$hostname";
   interfaces.eth0.ipv4.addresses = [{
@@ -213,6 +212,9 @@ networking = {
   nameservers = [ "$dns_primary" "$dns_secondary" ];
 };
 EOF
+)
+    
+    nds_nixcfg_register "network" "$block" 20
 }
 
 _nixcfg_network_dhcp() {
@@ -220,11 +222,15 @@ _nixcfg_network_dhcp() {
     local dns_primary="$2"
     local dns_secondary="$3"
     
-    cat <<EOF
+    local block
+    block=$(cat <<EOF
 networking = {
   hostName = "$hostname";
   networkmanager.enable = true;
   nameservers = [ "$dns_primary" "$dns_secondary" ];
 };
 EOF
+)
+    
+    nds_nixcfg_register "network" "$block" 20
 }

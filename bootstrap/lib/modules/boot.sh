@@ -46,9 +46,7 @@ nds_nixcfg_boot_auto() {
     bootloader=$(nds_config_get "boot" "BOOTLOADER")
     uefi=$(nds_config_get "boot" "UEFI_MODE")
     
-    local block
-    block=$(_nixcfg_boot_generate "$bootloader" "$uefi")
-    nds_nixcfg_register "boot" "$block" 10
+    _nixcfg_boot_generate "$bootloader" "$uefi"
 }
 
 # Manual mode: explicit parameters
@@ -56,9 +54,7 @@ nds_nixcfg_boot() {
     local bootloader="$1"
     local uefi="${2:-true}"
     
-    local block
-    block=$(_nixcfg_boot_generate "$bootloader" "$uefi")
-    nds_nixcfg_register "boot" "$block" 10
+    _nixcfg_boot_generate "$bootloader" "$uefi"
 }
 
 # =============================================================================
@@ -89,19 +85,24 @@ _nixcfg_boot_generate() {
 _nixcfg_boot_systemd() {
     local uefi="$1"
     
-    cat <<EOF
+    local block
+    block=$(cat <<EOF
 boot.loader = {
   systemd-boot.enable = true;
   efi.canTouchEfiVariables = true;
 };
 EOF
+)
+    
+    nds_nixcfg_register "boot" "$block" 10
 }
 
 _nixcfg_boot_grub() {
     local uefi="$1"
     
+    local block
     if [[ "$uefi" == "true" ]]; then
-        cat <<EOF
+        block=$(cat <<EOF
 boot.loader = {
   grub = {
     enable = true;
@@ -112,23 +113,31 @@ boot.loader = {
   efi.canTouchEfiVariables = true;
 };
 EOF
+)
     else
-        cat <<EOF
+        block=$(cat <<EOF
 boot.loader.grub = {
   enable = true;
   device = "/dev/sda";  # Adjust to your disk
 };
 EOF
+)
     fi
+    
+    nds_nixcfg_register "boot" "$block" 10
 }
 
 _nixcfg_boot_refind() {
     local uefi="$1"
     
-    cat <<EOF
+    local block
+    block=$(cat <<EOF
 boot.loader = {
   refind.enable = true;
   efi.canTouchEfiVariables = true;
 };
 EOF
+)
+    
+    nds_nixcfg_register "boot" "$block" 10
 }

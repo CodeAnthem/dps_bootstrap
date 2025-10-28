@@ -73,9 +73,7 @@ nds_nixcfg_region_auto() {
     keyboard_layout=$(nds_config_get "region" "KEYBOARD_LAYOUT")
     keyboard_variant=$(nds_config_get "region" "KEYBOARD_VARIANT")
     
-    local block
-    block=$(_nixcfg_region_generate "$timezone" "$locale_main" "$locale_extra" "$keyboard_layout" "$keyboard_variant")
-    nds_nixcfg_register "region" "$block" 40
+    _nixcfg_region_generate "$timezone" "$locale_main" "$locale_extra" "$keyboard_layout" "$keyboard_variant"
 }
 
 # Manual mode: explicit parameters
@@ -86,9 +84,7 @@ nds_nixcfg_region() {
     local keyboard_layout="${4:-us}"
     local keyboard_variant="${5:-}"
     
-    local block
-    block=$(_nixcfg_region_generate "$timezone" "$locale_main" "$locale_extra" "$keyboard_layout" "$keyboard_variant")
-    nds_nixcfg_register "region" "$block" 40
+    _nixcfg_region_generate "$timezone" "$locale_main" "$locale_extra" "$keyboard_layout" "$keyboard_variant"
 }
 
 # =============================================================================
@@ -133,5 +129,5 @@ _nixcfg_region_generate() {
         output+="services.xserver.xkb.layout = \"$keyboard_layout\";\n"
     fi
     
-    echo -e "$output"
+    nds_nixcfg_register "region" "$output" 40
 }

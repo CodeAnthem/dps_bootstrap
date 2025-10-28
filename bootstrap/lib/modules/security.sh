@@ -81,9 +81,7 @@ nds_nixcfg_security_auto() {
     # Get SSH port from access module to auto-add to firewall
     ssh_port=$(nds_config_get "access" "SSH_PORT")
     
-    local block
-    block=$(_nixcfg_security_generate "$secure_boot" "$secure_boot_method" "$firewall_enable" "$ssh_port" "$hardening" "$fail2ban")
-    nds_nixcfg_register "security" "$block" 70
+    _nixcfg_security_generate "$secure_boot" "$secure_boot_method" "$firewall_enable" "$ssh_port" "$hardening" "$fail2ban"
 }
 
 # Manual mode: explicit parameters
@@ -95,9 +93,7 @@ nds_nixcfg_security() {
     local hardening="${5:-true}"
     local fail2ban="${6:-false}"
     
-    local block
-    block=$(_nixcfg_security_generate "$secure_boot" "$secure_boot_method" "$firewall_enable" "$ssh_port" "$hardening" "$fail2ban")
-    nds_nixcfg_register "security" "$block" 70
+    _nixcfg_security_generate "$secure_boot" "$secure_boot_method" "$firewall_enable" "$ssh_port" "$hardening" "$fail2ban"
 }
 
 # =============================================================================
@@ -156,5 +152,5 @@ _nixcfg_security_generate() {
         output+="};\n"
     fi
     
-    echo -e "$output"
+    nds_nixcfg_register "security" "$output" 70
 }

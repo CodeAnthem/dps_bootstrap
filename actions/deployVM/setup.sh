@@ -31,6 +31,11 @@ deploy_init_callback() {
         input=path \
         default="/root/.ssh/deploy_key" \
         required=true
+    
+    nds_field_declare DEPLOY_TOOLS_PATH \
+        display="Deploy Tools Installation Path" \
+        input=path \
+        default="/home/admin/deployTools"
 
     # Default Values for modules
     # Access - Admin user and SSH
@@ -112,26 +117,29 @@ install_system() {
 
     # Phase 4: Generate hardware config
     step_start "Generating hardware configuration"
-    if ! generate_hardware_config "$hostname"; then
-        error "Hardware configuration generation failed"
-        return 1
-    fi
+    nixos-generate-config --root /mnt
     step_complete "Hardware config generated"
 
-    # Phase 5: Create NixOS configuration
-    step_start "Creating NixOS configuration"
-    if ! create_deploy_vm_config "$hostname" "$encryption"; then
-        error "NixOS configuration creation failed"
-        return 1
-    fi
-    step_complete "NixOS configuration created"
+    # Phase 5: Write NixOS configuration from registered blocks
+    step_start "Writing NixOS configuration"
+    nds_nixcfg_write "/mnt/etc/nixos/configuration.nix"
+    step_complete "Configuration written"
 
-    # Phase 6: Install NixOS
-    step_start "Installing NixOS"
-    if ! install_deploy_vm "$hostname"; then
-        error "NixOS installation failed"
-        return 1
+    # Phase 6: Copy nixosConfiguration files if they exist
+    local nixos_config_src
+    nixos_config_src="$(dirname "$(realpath "$0")")/nixosConfiguration"
+    if [[ -d "$nixos_config_src" ]]; then
+        step_start "Merging custom NixOS configuration"
+        # TODO: Implement merging of custom NixOS config
+        # For now, just note it exists
+        console "   Custom config found at: $nixos_config_src"
+        console "   TODO: Merge with generated config"
+        step_complete "Custom config noted"
     fi
+
+    # Phase 7: Install NixOS
+    step_start "Installing NixOS system"
+    nixos-install --root /mnt --no-root-passwd
     step_complete "NixOS installed"
 
     success "System installation complete"
@@ -232,54 +240,181 @@ show_completion_summary() {
 # MAIN SETUP FUNCTION
 # =============================================================================
 setup() {
-    # Description
-    console " This will install a deploy VM to manage nixos nodes"
+    section_header "Deploy VM Installation"
+    console "This will install a deploy VM to manage NixOS nodes"
+    console ""
 
-    # Initialize modules and run configuration workflow (error fix → interactive → validate)
+    # Phase 1: Configuration workflow
     if ! nds_config_workflow "access" "network" "disk" "boot" "security" "region" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi
 
-    # # Phase 2: Show final configuration summary
-    # new_section
-    # section_header "Configuration Summary"
-    # nds_module_display "network"
-    # console ""
-    # nds_module_display "disk"
-    # console ""
-    # nds_module_display "system"
-    # console ""
-    # nds_module_display "deploy"
+    # Phase 2: Show final configuration summary
+    new_section
+    section_header "Configuration Summary"
+    nds_module_display "access"
+    console ""
+    nds_module_display "network"
+    console ""
+    nds_module_display "disk"
+    console ""
+    nds_module_display "boot"
+    console ""
+    nds_module_display "security"
+    console ""
+    nds_module_display "region"
+    console ""
+    nds_module_display "deploy"
 
-    # # Phase 3: Confirm installation
-    # console ""
-    # read -p "Proceed with installation? [y/N]: " -n 1 -r confirm
-    # echo
-    # if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    #     warn "Installation cancelled by user"
-    #     return 1
-    # fi
+    # Phase 3: Confirm installation
+    console ""
+    if ! confirm_action "Proceed with installation?"; then
+        warn "Installation cancelled by user"
+        return 1
+    fi
 
-    echo "setup done"
-    exit 0
-    # Phase 4: System installation
+    # Phase 4: Generate NixOS configuration from modules
+    new_section
+    section_header "Generating NixOS Configuration"
+    
+    # Clear any previous config
+    nds_nixcfg_clear
+    
+    # Generate all module configs (they register themselves)
+    step_start "Generating module configurations"
+    nds_nixcfg_access_auto
+    nds_nixcfg_network_auto
+    nds_nixcfg_boot_auto
+    nds_nixcfg_security_auto
+    nds_nixcfg_region_auto
+    step_complete "Modules configured"
+    
+    # Phase 5: System installation
     new_section
     if ! install_system; then
         error "System installation failed"
         return 1
     fi
 
-    # Phase 5: Post-install setup
+    # Phase 6: Copy deployTools to user home
     new_section
-    if ! post_install_setup; then
-        warn "Post-install setup had issues (non-critical)"
+    if ! install_deploy_tools; then
+        warn "Deploy tools installation had issues (non-critical)"
     fi
 
-    # Phase 6: Show completion summary
+    # Phase 7: Collect and show secrets
+    new_section
+    if ! collect_and_show_secrets; then
+        warn "Secrets collection had issues (non-critical)"
+    fi
+
+    # Phase 8: Show completion summary
     show_completion_summary
 
     success "Deploy VM installation complete!"
+    return 0
+}
+
+# =============================================================================
+# DEPLOY TOOLS INSTALLATION
+# =============================================================================
+install_deploy_tools() {
+    section_header "Installing Deploy Tools"
+    
+    local admin_user deploy_tools_src deploy_tools_dest
+    admin_user=$(nds_config_get "access" "ADMIN_USER")
+    
+    local script_dir
+    script_dir="$(dirname "$(realpath "$0")")"
+    deploy_tools_src="${script_dir}/deployTools"
+    deploy_tools_dest=$(nds_config_get "deploy" "DEPLOY_TOOLS_PATH")
+    
+    step_start "Copying deploy tools to $deploy_tools_dest"
+    
+    if [[ ! -d "$deploy_tools_src" ]]; then
+        warn "Deploy tools source not found: $deploy_tools_src"
+        return 1
+    fi
+    
+    # Create destination on mounted filesystem
+    local mnt_dest="/mnt${deploy_tools_dest}"
+    mkdir -p "$mnt_dest"
+    
+    # Copy tools
+    if ! cp -r "$deploy_tools_src"/* "$mnt_dest/"; then
+        error "Failed to copy deploy tools"
+        return 1
+    fi
+    
+    # Set ownership
+    chown -R 1000:1000 "$mnt_dest" 2>/dev/null || true
+    
+    step_complete "Deploy tools installed"
+    success "Deploy tools installed to: $deploy_tools_dest"
+    return 0
+}
+
+# =============================================================================
+# SECRETS COLLECTION AND WARNING
+# =============================================================================
+collect_and_show_secrets() {
+    section_header "Secrets and Keys"
+    
+    local secrets_dir encryption ssh_key_type admin_user
+    secrets_dir="/tmp/dps_secrets_$(date +%s)"
+    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    ssh_key_type=$(nds_config_get "access" "SSH_KEY_TYPE")
+    admin_user=$(nds_config_get "access" "ADMIN_USER")
+    
+    mkdir -p "$secrets_dir"
+    
+    console ""
+    console "╭───────────────────────────────────────────────────╮"
+    console "│  ⚠️  IMPORTANT: Backup These Secrets!            │"
+    console "╰───────────────────────────────────────────────────╯"
+    console ""
+    
+    # Collect LUKS key if encryption enabled
+    if [[ "$encryption" == "true" ]]; then
+        local luks_key="/tmp/luks_key.txt"
+        if [[ -f "$luks_key" ]]; then
+            cp "$luks_key" "$secrets_dir/"
+            console "🔐 LUKS Encryption Key:"
+            console "   Location: $secrets_dir/luks_key.txt"
+            console "   ⚠️  Required to unlock encrypted disk!"
+            console ""
+        fi
+    fi
+    
+    # Show SSH key locations
+    console "🔑 SSH Keys ($ssh_key_type):"
+    console "   Private: /home/${admin_user}/.ssh/id_${ssh_key_type}"
+    console "   Public:  /home/${admin_user}/.ssh/id_${ssh_key_type}.pub"
+    console "   ⚠️  Required for remote node deployment!"
+    console ""
+    
+    # Show Age key location
+    console "🔐 Age Encryption Key (for SOPS):"
+    console "   Location: /home/${admin_user}/.config/sops/age/keys.txt"
+    console "   ⚠️  Required for secrets management!"
+    console ""
+    
+    # Show private repo SSH key if configured
+    local deploy_ssh_key
+    deploy_ssh_key=$(nds_config_get "deploy" "DEPLOY_SSH_KEY_PATH")
+    if [[ -n "$deploy_ssh_key" ]]; then
+        console "🔑 Private Repository SSH Key:"
+        console "   Path: $deploy_ssh_key"
+        console "   ⚠️  Required for private git repository access!"
+        console ""
+    fi
+    
+    warn "Secrets directory: $secrets_dir"
+    warn "This directory is in /tmp and will be DELETED on reboot!"
+    warn "Back up all secrets BEFORE rebooting!"
+    console ""
+    
     return 0
 }
 

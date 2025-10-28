@@ -111,9 +111,7 @@ nds_nixcfg_access_auto() {
     ssh_port=$(nds_config_get "access" "SSH_PORT")
     ssh_use_key=$(nds_config_get "access" "SSH_USE_KEY")
     
-    local block
-    block=$(_nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_use_key")
-    nds_nixcfg_register "access" "$block" 30
+    _nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_use_key"
 }
 
 # Manual mode: explicit parameters
@@ -124,9 +122,7 @@ nds_nixcfg_access() {
     local ssh_port="${4:-22}"
     local ssh_use_key="${5:-true}"
     
-    local block
-    block=$(_nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_use_key")
-    nds_nixcfg_register "access" "$block" 30
+    _nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_use_key"
 }
 
 # =============================================================================
@@ -144,7 +140,8 @@ _nixcfg_access_generate() {
     local password_auth="false"
     [[ "$ssh_use_key" == "false" ]] && password_auth="true"
     
-    cat <<EOF
+    local block
+    block=$(cat <<EOF
 # Admin User
 users.users.$admin_user = {
   isNormalUser = true;
@@ -166,4 +163,7 @@ services.openssh = {
   };
 };
 EOF
+)
+    
+    nds_nixcfg_register "access" "$block" 30
 }
