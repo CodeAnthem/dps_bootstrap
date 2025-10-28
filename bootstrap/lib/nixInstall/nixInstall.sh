@@ -56,10 +56,6 @@ nds_nixinstall() {
         error "Hardware configuration generation failed"
     fi
     
-    # Step 5: Install NixOS
-    if ! _nixinstall_install_nixos; then
-        error "NixOS installation failed"
-    fi
-    
-    success "NixOS installation completed successfully"
+    success "NixOS disk preparation completed successfully"
+    log "Configuration must be written to /mnt/etc/nixos/configuration.nix before running nixos-install"
 }

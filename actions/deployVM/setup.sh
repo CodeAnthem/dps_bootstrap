@@ -92,13 +92,13 @@ install_system() {
     fi
     step_complete "Configuration written"
 
-    # Phase 2: Run NixOS installation (disk, encryption, mount, hardware, install)
-    step_start "Running NixOS installation"
+    # Phase 2: Run disk preparation (partition, encryption, mount, hardware config)
+    step_start "Preparing disk and filesystems"
     if ! nds_nixinstall_auto; then
-        step_fail "NixOS installation failed"
+        step_fail "Disk preparation failed"
         return 1
     fi
-    step_complete "NixOS installation complete"
+    step_complete "Disk preparation complete"
     
     # Phase 3: Copy generated config to mounted system
     step_start "Copying configuration to installed system"
@@ -119,6 +119,14 @@ install_system() {
         console "   TODO: Merge with generated config"
         step_complete "Custom config noted"
     fi
+
+    # Phase 5: Run NixOS installation
+    step_start "Installing NixOS system"
+    if ! _nixinstall_install_nixos; then
+        step_fail "NixOS installation failed"
+        return 1
+    fi
+    step_complete "NixOS installed"
 
     success "System installation complete"
     return 0

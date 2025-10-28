@@ -69,6 +69,10 @@ nds_nixcfg_write() {
         echo "{ config, pkgs, ... }:"
         echo ""
         echo "{"
+        echo "  imports = ["
+        echo "    ./hardware-configuration.nix"
+        echo "  ];"
+        echo ""
         
         # Output blocks sorted by priority
         for key in $(printf '%s\n' "${!NDS_NIXCFG_BLOCKS[@]}" | sort); do
@@ -77,6 +81,11 @@ nds_nixcfg_write() {
             printf '%s\n' "${NDS_NIXCFG_BLOCKS[$key]}" | sed 's/^/  /'
             echo ""
         done
+        
+        # System state version
+        echo "  # === system ==="
+        echo "  system.stateVersion = \"25.05\";"
+        echo ""
         
         echo "}"
     } > "$output_file"

@@ -16,7 +16,11 @@
 _nixinstall_generate_hardware_config() {
     log "Generating hardware configuration"
     
-    if ! nixos-generate-config --root /mnt; then
+    # Create directory if it doesn't exist
+    mkdir -p /mnt/etc/nixos
+    
+    # Generate hardware configuration
+    if ! nixos-generate-config --root /mnt --show-hardware-config > /mnt/etc/nixos/hardware-configuration.nix; then
         error "Failed to generate hardware configuration"
     fi
     
