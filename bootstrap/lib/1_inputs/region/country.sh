@@ -132,9 +132,9 @@ apply_country_defaults() {
     IFS='|' read -r timezone locale keyboard <<< "$defaults"
     
     # Set defaults for region module
-    nds_config_set_default "region" "TIMEZONE" "$timezone"
-    nds_config_set_default "region" "LOCALE_MAIN" "$locale"
-    nds_config_set_default "region" "KEYBOARD_LAYOUT" "$keyboard"
+    nds_config_set "region" "TIMEZONE" "$timezone"
+    nds_config_set "region" "LOCALE_MAIN" "$locale"
+    nds_config_set "region" "KEYBOARD_LAYOUT" "$keyboard"
     
     return 0
 }
