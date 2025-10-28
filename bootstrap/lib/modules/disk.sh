@@ -15,9 +15,6 @@ disk_init_callback() {
     local first_disk=""
     first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
     
-    echo test123
-
-    
     nds_field_declare DISK_TARGET \
         display="Target Disk" \
         input=disk \
@@ -100,7 +97,7 @@ disk_get_active_fields() {
 # =============================================================================
 # CONFIGURATION - Cross-Field Validation
 # =============================================================================
-disk_validate_extra() {
-    # No cross-field validation needed for disk module
-    return 0
-}
+# disk_validate_extra() {
+#     # No cross-field validation needed for disk module
+#     return 0
+# }
