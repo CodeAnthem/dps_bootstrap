@@ -19,7 +19,7 @@ validate_country() {
     local value="$1"
     
     # ISO 3166-1 alpha-2 country code (2 uppercase letters)
-    if [[ ! "$value" =~ ^[A-Z]{2}$ ]]; then
+    if [[ ! "$value" =~ ^[A-Za-z]{2}$ ]]; then
         return 1
     fi
     
