@@ -11,9 +11,9 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 region_init_callback() {
-    # Optional: Country selection for auto-defaults
+    # Country selection for auto-defaults (optional but shown first)
     nds_field_declare COUNTRY \
-        display="Country (optional - sets defaults)" \
+        display="Country (auto-sets defaults)" \
         input=country \
         default=""
     

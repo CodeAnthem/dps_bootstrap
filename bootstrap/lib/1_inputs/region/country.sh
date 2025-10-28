@@ -41,12 +41,7 @@ normalize_country() {
     fi
     
     # Uppercase
-    local normalized="${value^^}"
-    
-    # Apply country defaults when value is normalized (this is when it's being set)
-    apply_country_defaults "$normalized" 2>/dev/null || true
-    
-    echo "$normalized"
+    echo "${value^^}"
 }
 
 error_msg_country() {

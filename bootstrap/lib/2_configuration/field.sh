@@ -206,6 +206,13 @@ nds_field_prompt() {
             console "    -> Set: $new_value"
         fi
         
+        # Special hook: If region module and COUNTRY field, apply defaults
+        if [[ "$module" == "region" && "$field" == "COUNTRY" && -n "$new_value" ]]; then
+            if type apply_country_defaults &>/dev/null; then
+                apply_country_defaults "$new_value" && console "    -> Applied country defaults"
+            fi
+        fi
+        
         return 0
     done
 }
