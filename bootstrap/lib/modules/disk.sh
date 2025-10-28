@@ -102,24 +102,3 @@ disk_get_active_fields() {
 #     return 0
 # }
 
-# =============================================================================
-# NIXOS CONFIG GENERATION - Public API
-# =============================================================================
-
-# Note: Disk configuration is handled during installation by nixosSetup/disk.sh
-# It doesn't generate configuration.nix blocks, but we provide these functions
-# for module completeness and potential future use
-
-# Auto-mode: reads from configuration modules
-nds_nixcfg_disk_auto() {
-    # Disk setup is performed during installation, not in configuration.nix
-    # Return success but don't register any config blocks
-    return 0
-}
-
-# Manual mode: explicit parameters
-nds_nixcfg_disk() {
-    # Disk setup is performed during installation, not in configuration.nix
-    # Return success but don't register any config blocks
-    return 0
-}

@@ -2,13 +2,13 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-26 | Modified: 2025-10-26
-# Description:   NixOS Config Builder Module - Packages
-# Feature:       Generate system packages configuration blocks
+# Date:          Created: 2025-10-28 | Modified: 2025-10-28
+# Description:   NixOS Config Generation - Packages Module
+# Feature:       System packages and Nix Flakes configuration
 # ==================================================================================================
 
 # =============================================================================
-# PUBLIC API
+# NIXOS CONFIG GENERATION - Public API
 # =============================================================================
 
 # Auto-mode: reads from configuration modules
@@ -18,9 +18,7 @@ nds_nixcfg_packages_auto() {
     additional=$(nds_config_get "packages" "ADDITIONAL_PACKAGES")
     flakes=$(nds_config_get "packages" "ENABLE_FLAKES")
     
-    local block
-    block=$(_nixcfg_packages_generate "$essential" "$additional" "$flakes")
-    nds_nixcfg_register "packages" "$block" 60
+    _nixcfg_packages_generate "$essential" "$additional" "$flakes"
 }
 
 # Manual mode: explicit parameters
@@ -29,21 +27,17 @@ nds_nixcfg_packages() {
     local additional="${2:-}"
     local flakes="${3:-true}"
     
-    local block
-    block=$(_nixcfg_packages_generate "$essential" "$additional" "$flakes")
-    nds_nixcfg_register "packages" "$block" 60
+    _nixcfg_packages_generate "$essential" "$additional" "$flakes"
 }
 
 # =============================================================================
-# PRIVATE - Implementation Functions
+# NIXOS CONFIG GENERATION - Implementation
 # =============================================================================
 
 _nixcfg_packages_generate() {
     local essential="$1"
     local additional="$2"
     local flakes="$3"
-    
-    local output=""
     
     # Build package list
     local all_packages="$essential"
@@ -55,17 +49,22 @@ _nixcfg_packages_generate() {
     local pkg_array
     IFS=' ' read -ra pkg_array <<< "$all_packages"
     
-    output+="environment.systemPackages = with pkgs; [\n"
+    local output
+    output="environment.systemPackages = with pkgs; ["
     for pkg in "${pkg_array[@]}"; do
-        [[ -n "$pkg" ]] && output+="  $pkg\n"
+        [[ -n "$pkg" ]] && output+="
+  $pkg"
     done
-    output+="];\n\n"
+    output+="
+];
+
+"
     
     # Flakes configuration
     if [[ "$flakes" == "true" ]]; then
-        output+="# Enable Nix Flakes\n"
-        output+="nix.settings.experimental-features = [ \"nix-command\" \"flakes\" ];\n"
+        output+="# Enable Nix Flakes
+nix.settings.experimental-features = [ \"nix-command\" \"flakes\" ];"
     fi
     
-    echo -e "$output"
+    nds_nixcfg_register "packages" "$output" 60
 }

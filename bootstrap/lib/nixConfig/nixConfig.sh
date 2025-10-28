@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-26 | Modified: 2025-10-26
+# Date:          Created: 2025-10-28 | Modified: 2025-10-28
 # Description:   NixOS Configuration Builder - Registry and Merger
 # Feature:       Priority-based block assembly for NixOS configuration files
 # ==================================================================================================
