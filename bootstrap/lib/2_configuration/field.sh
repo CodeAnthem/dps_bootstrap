@@ -20,29 +20,21 @@ nds_field_validate() {
     local input
     local value
     local required
-    local allow_empty
     local display
     
     input=$(nds_field_get "$module" "$field" "input")
     value=$(nds_config_get "$module" "$field")
     required=$(nds_field_get "$module" "$field" "required")
-    allow_empty=$(nds_field_get "$module" "$field" "allowEmpty")
     display=$(nds_field_get "$module" "$field" "display")
     
-    # Check if value is empty
-    if [[ -z "$value" ]]; then
-        # If allowEmpty=true, skip validation entirely
-        [[ "$allow_empty" == "true" ]] && return 0
-        
-        # Otherwise, check if required
-        if [[ "$required" == "true" ]]; then
-            validation_error "$display is required"
-            return 1
-        fi
-        
-        # Optional and empty - valid
-        return 0
+    # Check if required and empty
+    if [[ "$required" == "true" && -z "$value" ]]; then
+        validation_error "$display is required"
+        return 1
     fi
+    
+    # Skip validation if empty and optional
+    [[ -z "$value" ]] && return 0
     
     # Set context for validator
     set_input_context "$module" "$field"

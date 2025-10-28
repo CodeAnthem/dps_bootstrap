@@ -13,9 +13,9 @@
 region_init_callback() {
     # Optional: Country selection for auto-defaults
     nds_field_declare COUNTRY \
-        display="Country (quick setup)" \
+        display="Country (optional - sets defaults)" \
         input=country \
-        required=false \
+        required=true \
         default=""
     
     nds_field_declare TIMEZONE \
@@ -57,8 +57,8 @@ region_get_active_fields() {
     # Always show country first (optional)
     echo "COUNTRY"
     
-    # If country is set and not "skip", apply defaults before showing other fields
-    if [[ -n "$country" && "$country" != "skip" ]]; then
+    # If country is set, apply defaults before showing other fields
+    if [[ -n "$country" ]]; then
         # Apply country defaults (timezone, locale, keyboard)
         apply_country_defaults "$country" 2>/dev/null || true
     fi
