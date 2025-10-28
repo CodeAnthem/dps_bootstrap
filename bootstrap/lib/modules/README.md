@@ -23,7 +23,14 @@ module_init_callback() {
         display="Field Display Name" \
         input=type \
         default="value" \
-        required=true
+        required=true \
+        allowEmpty=true
+    
+    # Field Attributes:
+    # - required=true    : Field must be prompted (always shown in workflow)
+    # - allowEmpty=true  : Empty values are valid (skip validation if empty)
+    # - default="value"  : Default value
+    # - input=type       : Input type (string, int, choice, toggle, etc.)
 }
 
 # =============================================================================
