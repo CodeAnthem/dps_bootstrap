@@ -17,6 +17,11 @@ prompt_hint_country() {
 
 validate_country() {
     local value="$1"
+
+    # Allow empty = disable
+    if [[ -z "$value" ]]; then
+        return 0
+    fi
     
     # ISO 3166-1 alpha-2 country code (2 uppercase letters)
     if [[ ! "$value" =~ ^[A-Z]{2}$ ]]; then
@@ -46,7 +51,7 @@ error_msg_country() {
             echo "Country code not in database. Use common codes: US, DE, CH, AT,UK, FR, ES, IT, NL, etc."
             ;;
         *)
-            echo "Invalid country code. Use 2-letter ISO code (e.g., US, DE, UK)"
+            echo "Invalid country code. Use 2-letter ISO code or empty to manually configure"
             ;;
     esac
 }
