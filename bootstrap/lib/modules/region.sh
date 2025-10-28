@@ -15,6 +15,7 @@ region_init_callback() {
     nds_field_declare COUNTRY \
         display="Country (optional - sets defaults)" \
         input=country \
+        required=true \
         default=""
     
     nds_field_declare TIMEZONE \
