@@ -84,7 +84,8 @@ step_start() {
 # Usage: step_complete "message"
 step_complete() {
     local message="${1:-$CURRENT_STEP_NAME}"
-    printf "\r✅ %s\n" "$message" >&2
+    # Clear line completely before printing to avoid leftover text
+    printf "\r\033[K✅ %s\n" "$message" >&2
     CURRENT_STEP_NAME=""
 }
 
@@ -92,7 +93,8 @@ step_complete() {
 # Usage: step_fail "message"
 step_fail() {
     local message="${1:-$CURRENT_STEP_NAME}"
-    printf "\r❌ %s\n" "$message" >&2
+    # Clear line completely before printing to avoid leftover text
+    printf "\r\033[K❌ %s\n" "$message" >&2
     CURRENT_STEP_NAME=""
 }
 

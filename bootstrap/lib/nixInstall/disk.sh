@@ -24,6 +24,16 @@ _nixinstall_partition_disk() {
     
     log "Partitioning disk: $disk"
     
+    # Cleanup: unmount any existing partitions and close LUKS devices
+    log "Cleaning up existing partitions"
+    umount -R /mnt 2>/dev/null || true
+    cryptsetup close cryptroot 2>/dev/null || true
+    
+    # Wipe any existing filesystem signatures
+    for part in "${disk}"*; do
+        [[ -b "$part" ]] && wipefs -a "$part" 2>/dev/null || true
+    done
+    
     # Create GPT partition table
     parted "$disk" --script -- mklabel gpt || return 1
     

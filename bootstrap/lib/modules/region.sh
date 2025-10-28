@@ -15,7 +15,8 @@ region_init_callback() {
     nds_field_declare COUNTRY \
         display="Country (auto-sets defaults)" \
         input=country \
-        default=""
+        default="" \
+        help="Automatically configures timezone, locale, keyboard layout and variant for your region"
     
     nds_field_declare TIMEZONE \
         display="Timezone" \
@@ -44,7 +45,7 @@ region_init_callback() {
         display="Keyboard Variant (optional)" \
         input=string \
         default="" \
-        help="e.g., dvorak, colemak, nodeadkeys - leave empty for default"
+        help="Layout modification - common: nodeadkeys (de/fr), dvorak/colemak (us), abnt2 (br) - leave empty for standard"
 }
 
 # =============================================================================
