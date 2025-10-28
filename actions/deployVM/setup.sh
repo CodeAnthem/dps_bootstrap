@@ -242,39 +242,14 @@ show_completion_summary() {
 setup() {
     section_header "Deploy VM Installation"
     console "This will install a deploy VM to manage NixOS nodes"
-    console ""
 
-    # Phase 1: Configuration workflow
+    # Configuration workflow
     if ! nds_config_workflow "access" "network" "disk" "boot" "security" "region" "deploy"; then
         error "Configuration cancelled or failed validation"
         return 1
     fi
 
-    # Phase 2: Show final configuration summary
-    new_section
-    section_header "Configuration Summary"
-    nds_module_display "access"
-    console ""
-    nds_module_display "network"
-    console ""
-    nds_module_display "disk"
-    console ""
-    nds_module_display "boot"
-    console ""
-    nds_module_display "security"
-    console ""
-    nds_module_display "region"
-    console ""
-    nds_module_display "deploy"
-
-    # Phase 3: Confirm installation
-    console ""
-    if ! confirm_action "Proceed with installation?"; then
-        warn "Installation cancelled by user"
-        return 1
-    fi
-
-    # Phase 4: Generate NixOS configuration from modules
+    # Generate NixOS configuration from modules
     new_section
     section_header "Generating NixOS Configuration"
     
@@ -290,26 +265,26 @@ setup() {
     nds_nixcfg_region_auto
     step_complete "Modules configured"
     
-    # Phase 5: System installation
+    # System installation
     new_section
     if ! install_system; then
         error "System installation failed"
         return 1
     fi
 
-    # Phase 6: Copy deployTools to user home
+    # Copy deployTools to user home
     new_section
     if ! install_deploy_tools; then
         warn "Deploy tools installation had issues (non-critical)"
     fi
 
-    # Phase 7: Collect and show secrets
+    # Collect and show secrets
     new_section
     if ! collect_and_show_secrets; then
         warn "Secrets collection had issues (non-critical)"
     fi
 
-    # Phase 8: Show completion summary
+    # Show completion summary
     show_completion_summary
 
     success "Deploy VM installation complete!"
