@@ -33,8 +33,20 @@ validate_country() {
 
 normalize_country() {
     local value="$1"
+    
+    # Empty = skip defaults
+    if [[ -z "$value" ]]; then
+        echo ""
+        return 0
+    fi
+    
     # Uppercase
-    echo "${value^^}"
+    local normalized="${value^^}"
+    
+    # Apply country defaults when value is normalized (this is when it's being set)
+    apply_country_defaults "$normalized" 2>/dev/null || true
+    
+    echo "$normalized"
 }
 
 error_msg_country() {

@@ -46,28 +46,6 @@ region_init_callback() {
         default=""
 }
 
-# =============================================================================
-# CONFIGURATION - Active Fields Logic
-# =============================================================================
-region_get_active_fields() {
-    local country
-    country=$(nds_config_get "region" "COUNTRY")
-    
-    # Always show country first (optional)
-    echo "COUNTRY"
-    
-    # If country is set, apply defaults before showing other fields
-    if [[ -n "$country" ]]; then
-        # Apply country defaults (timezone, locale, keyboard)
-        apply_country_defaults "$country" 2>/dev/null || true
-    fi
-    
-    # Show all other fields
-    echo "TIMEZONE"
-    echo "LOCALE_MAIN"
-    echo "LOCALE_EXTRA"
-    echo "KEYBOARD_LAYOUT"
-    echo "KEYBOARD_VARIANT"
-}
-
+# Note: No need for region_get_active_fields() - all fields always shown
 # Note: No need for region_validate_extra() - no cross-field validation
+# Note: Country defaults are auto-applied in country.sh normalize function

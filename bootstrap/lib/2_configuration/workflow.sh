@@ -156,43 +156,8 @@ nds_config_workflow() {
         success "Configuration completed"
     fi
 
-    # Display all configurations
-    section_header "Configuration Summary"
-    for module in "${modules[@]}"; do
-        nds_module_display "$module"
-        console ""
-    done
-
-    # Ask if user wants to modify anything
-    while true; do
-        read -rsn 1 -p "-> Do you want to modify any settings? [y/n]: " response < /dev/tty
-
-        case "${response,,}" in
-            y|yes)
-                # Show interactive menu
-                console "Yes"
-                if nds_config_menu "${modules[@]}"; then
-                    # User pressed X in menu to proceed - confirmed
-                    return 0
-                fi
-
-                # User exited menu without X, show updated config and ask again
-                console ""
-                section_header "Configuration Summary"
-                for module in "${modules[@]}"; do
-                    nds_module_display "$module"
-                    console ""
-                done
-                ;;
-            n|no)
-                console "No"
-                success "Configuration confirmed"
-                return 0
-                ;;
-            "") ;;
-            *)
-                console "Invalid input - Please enter 'y' or 'n'"
-                ;;
-        esac
-    done
+    # Show interactive configuration menu directly
+    # (it includes a summary and lets user press X to proceed or select categories to edit)
+    nds_config_menu "${modules[@]}"
+    return $?
 }
