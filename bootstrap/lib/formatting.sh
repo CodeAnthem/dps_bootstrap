@@ -69,6 +69,33 @@ new_section() { printf "\033[2J\033[H" >&2; }
 # PROGRESS INDICATORS
 # =============================================================================
 
+# Global variable to track step state
+declare -g CURRENT_STEP_NAME=""
+
+# Start a step with spinner
+# Usage: step_start "message"
+step_start() {
+    local message="$1"
+    CURRENT_STEP_NAME="$message"
+    printf "⏳ %s" "$message" >&2
+}
+
+# Complete a step successfully
+# Usage: step_complete "message"
+step_complete() {
+    local message="${1:-$CURRENT_STEP_NAME}"
+    printf "\r✅ %s\n" "$message" >&2
+    CURRENT_STEP_NAME=""
+}
+
+# Fail a step
+# Usage: step_fail "message"
+step_fail() {
+    local message="${1:-$CURRENT_STEP_NAME}"
+    printf "\r❌ %s\n" "$message" >&2
+    CURRENT_STEP_NAME=""
+}
+
 # Show spinner while process runs
 # Usage: show_spinner <pid>
 show_spinner() {

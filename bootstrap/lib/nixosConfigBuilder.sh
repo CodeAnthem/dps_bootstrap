@@ -74,7 +74,7 @@ nds_nixcfg_write() {
         for key in $(printf '%s\n' "${!NDS_NIXCFG_BLOCKS[@]}" | sort); do
             local block_name="${key#*_}"
             echo "  # === ${block_name} ==="
-            echo "${NDS_NIXCFG_BLOCKS[$key]}" | sed 's/^/  /'
+            printf '%s\n' "${NDS_NIXCFG_BLOCKS[$key]}" | sed 's/^/  /'
             echo ""
         done
         

@@ -35,7 +35,7 @@ deploy_init_callback() {
     nds_field_declare DEPLOY_TOOLS_PATH \
         display="Deploy Tools Installation Path" \
         input=path \
-        default="/home/admin/deployTools"
+        default="~/deployTools"
 
     # Default Values for modules
     # Access - Admin user and SSH
@@ -84,48 +84,31 @@ deploy_init_callback() {
 install_system() {
     section_header "System Installation"
 
-    local disk encryption hostname
-    disk=$(nds_config_get "disk" "DISK_TARGET")
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
-    hostname=$(nds_config_get "network" "HOSTNAME")
-
-    # Phase 1: Disk partitioning
-    step_start "Partitioning disk: $disk"
-    if ! partition_disk "$encryption" "$disk"; then
-        error "Disk partitioning failed"
-        return 1
-    fi
-    step_complete "Disk partitioned"
-
-    # Phase 2: Encryption setup (if enabled)
-    if [[ "$encryption" == "true" ]]; then
-        step_start "Setting up LUKS encryption"
-        if ! setup_encryption; then
-            error "Encryption setup failed"
-            return 1
-        fi
-        step_complete "Encryption configured"
-    fi
-
-    # Phase 3: Mount filesystems
-    step_start "Mounting filesystems"
-    if ! mount_filesystems "$encryption"; then
-        error "Failed to mount filesystems"
-        return 1
-    fi
-    step_complete "Filesystems mounted"
-
-    # Phase 4: Generate hardware config
-    step_start "Generating hardware configuration"
-    nixos-generate-config --root /mnt
-    step_complete "Hardware config generated"
-
-    # Phase 5: Write NixOS configuration from registered blocks
+    # Phase 1: Write NixOS configuration from registered blocks
     step_start "Writing NixOS configuration"
-    nds_nixcfg_write "/mnt/etc/nixos/configuration.nix"
+    if ! nds_nixcfg_write "/tmp/dps_configuration.nix"; then
+        step_fail "Configuration write failed"
+        return 1
+    fi
     step_complete "Configuration written"
 
-    # Phase 6: Copy nixosConfiguration files if they exist
+    # Phase 2: Run NixOS installation (disk, encryption, mount, hardware, install)
+    step_start "Running NixOS installation"
+    if ! nds_nixinstall_auto; then
+        step_fail "NixOS installation failed"
+        return 1
+    fi
+    step_complete "NixOS installation complete"
+    
+    # Phase 3: Copy generated config to mounted system
+    step_start "Copying configuration to installed system"
+    if ! cp /tmp/dps_configuration.nix /mnt/etc/nixos/configuration.nix; then
+        step_fail "Failed to copy configuration"
+        return 1
+    fi
+    step_complete "Configuration copied"
+
+    # Phase 4: Copy nixosConfiguration files if they exist
     local nixos_config_src
     nixos_config_src="$(dirname "$(realpath "$0")")/nixosConfiguration"
     if [[ -d "$nixos_config_src" ]]; then
@@ -136,11 +119,6 @@ install_system() {
         console "   TODO: Merge with generated config"
         step_complete "Custom config noted"
     fi
-
-    # Phase 7: Install NixOS
-    step_start "Installing NixOS system"
-    nixos-install --root /mnt --no-root-passwd
-    step_complete "NixOS installed"
 
     success "System installation complete"
     return 0
@@ -305,6 +283,9 @@ install_deploy_tools() {
     deploy_tools_src="${script_dir}/deployTools"
     deploy_tools_dest=$(nds_config_get "deploy" "DEPLOY_TOOLS_PATH")
     
+    # Expand tilde to actual home path
+    deploy_tools_dest="${deploy_tools_dest/#\~//home/${admin_user}}"
+    
     step_start "Copying deploy tools to $deploy_tools_dest"
     
     if [[ ! -d "$deploy_tools_src" ]]; then
@@ -318,7 +299,7 @@ install_deploy_tools() {
     
     # Copy tools
     if ! cp -r "$deploy_tools_src"/* "$mnt_dest/"; then
-        error "Failed to copy deploy tools"
+        step_fail "Failed to copy deploy tools"
         return 1
     fi
     
