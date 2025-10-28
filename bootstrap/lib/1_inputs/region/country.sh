@@ -12,11 +12,49 @@
 # =============================================================================
 
 prompt_hint_country() {
-    echo "(US, DE, UK, FR, ES, IT, NL, etc. - 2-letter ISO code)"
+    echo "(US, DE, UK, FR, ES, IT, NL, etc. or press Enter to skip)"
+}
+
+# Custom prompt for country - handles skip logic
+prompt_country() {
+    local display="$1"
+    local current="$2"
+    
+    # If already set to skip, don't prompt again
+    if [[ "$current" == "skip" ]]; then
+        return 0
+    fi
+    
+    while true; do
+        printf "  %-20s [%s] (2-letter code or Enter to skip): " "$display" "$current" >&2
+        read -r value < /dev/tty
+        
+        # Empty - set to "skip" so it won't prompt again
+        if [[ -z "$value" ]]; then
+            echo "skip"
+            return 0
+        fi
+        
+        # Normalize to uppercase
+        value="${value^^}"
+        
+        # Try exact match first
+        if get_country_defaults "${value,,}" &>/dev/null; then
+            echo "$value"
+            return 0
+        else
+            console "    Error: Country code '$value' not found. Try: US, DE, CH, UK, FR, ES, etc."
+        fi
+    done
 }
 
 validate_country() {
     local value="$1"
+    
+    # Special value "skip" is always valid
+    if [[ "$value" == "skip" ]]; then
+        return 0
+    fi
     
     # ISO 3166-1 alpha-2 country code (2 uppercase letters)
     if [[ ! "$value" =~ ^[A-Z]{2}$ ]]; then
