@@ -42,8 +42,8 @@ disk_init_callback() {
     
     nds_field_declare ENCRYPTION_USE_PASSPHRASE \
         display="Use Passphrase" \
-        input=question \
-        default=no
+        input=toggle \
+        default=false
     
     nds_field_declare ENCRYPTION_PASSPHRASE_METHOD \
         display="Passphrase Generation Method" \
@@ -86,8 +86,8 @@ disk_get_active_fields() {
         echo "ENCRYPTION_KEY_LENGTH"
         echo "ENCRYPTION_USE_PASSPHRASE"
         
-        # Passphrase settings only if passphrase enabled (question normalizes to "yes")
-        if [[ "$use_passphrase" == "yes" ]]; then
+        # Passphrase settings only if passphrase enabled (toggle normalizes to "true")
+        if [[ "$use_passphrase" == "true" ]]; then
             echo "ENCRYPTION_PASSPHRASE_METHOD"
             echo "ENCRYPTION_PASSPHRASE_LENGTH"
         fi
@@ -101,3 +101,25 @@ disk_get_active_fields() {
 #     # No cross-field validation needed for disk module
 #     return 0
 # }
+
+# =============================================================================
+# NIXOS CONFIG GENERATION - Public API
+# =============================================================================
+
+# Note: Disk configuration is handled during installation by nixosSetup/disk.sh
+# It doesn't generate configuration.nix blocks, but we provide these functions
+# for module completeness and potential future use
+
+# Auto-mode: reads from configuration modules
+nds_nixcfg_disk_auto() {
+    # Disk setup is performed during installation, not in configuration.nix
+    # Return success but don't register any config blocks
+    return 0
+}
+
+# Manual mode: explicit parameters
+nds_nixcfg_disk() {
+    # Disk setup is performed during installation, not in configuration.nix
+    # Return success but don't register any config blocks
+    return 0
+}

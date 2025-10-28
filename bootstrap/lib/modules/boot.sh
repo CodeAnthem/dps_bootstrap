@@ -25,7 +25,15 @@ boot_init_callback() {
         options="systemd-boot|grub|refind"
 }
 
-# Note: All boot fields always shown (no conditional logic needed)
+# =============================================================================
+# CONFIGURATION - Active Fields Logic
+# =============================================================================
+boot_get_active_fields() {
+    # UEFI_MODE must come first as BOOTLOADER selection may depend on it
+    echo "UEFI_MODE"
+    echo "BOOTLOADER"
+}
+
 # Note: No cross-field validation needed for boot module
 
 # =============================================================================

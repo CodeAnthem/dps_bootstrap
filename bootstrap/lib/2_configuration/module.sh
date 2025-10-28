@@ -221,3 +221,61 @@ nds_config_init_module() {
     
     debug "Configuration initialized for module: $module"
 }
+
+# =============================================================================
+# MODULE INTEGRITY VALIDATION
+# =============================================================================
+
+# Check if a module has all required functions
+# Usage: nds_module_check_integrity "module"
+# Returns: 0 if valid, 1 if missing required functions
+nds_module_check_integrity() {
+    local module="$1"
+    local missing=0
+    
+    # Required function: init_callback
+    if ! type "${module}_init_callback" &>/dev/null; then
+        warn "Module '$module': Missing required function ${module}_init_callback()"
+        ((missing++))
+    fi
+    
+    # Required function: nds_nixcfg_<module>_auto (for NixOS config generation)
+    if ! type "nds_nixcfg_${module}_auto" &>/dev/null; then
+        warn "Module '$module': Missing required function nds_nixcfg_${module}_auto()"
+        ((missing++))
+    fi
+    
+    # Required function: nds_nixcfg_<module> (manual mode)
+    if ! type "nds_nixcfg_${module}" &>/dev/null; then
+        warn "Module '$module': Missing required function nds_nixcfg_${module}()"
+        ((missing++))
+    fi
+    
+    # Optional functions (no warning if missing):
+    # - ${module}_get_active_fields() - for conditional field display
+    # - ${module}_validate_extra() - for cross-field validation
+    
+    return $missing
+}
+
+# Check integrity of multiple modules
+# Usage: nds_module_check_all_integrity "module1" "module2" ...
+# Returns: 0 if all valid, 1 if any missing required functions
+nds_module_check_all_integrity() {
+    local modules=("$@")
+    local failed=0
+    
+    for module in "${modules[@]}"; do
+        if ! nds_module_check_integrity "$module"; then
+            ((failed++))
+        fi
+    done
+    
+    if [[ $failed -gt 0 ]]; then
+        error "$failed module(s) failed integrity check"
+        return 1
+    fi
+    
+    success "All modules passed integrity check"
+    return 0
+}
