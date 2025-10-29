@@ -27,15 +27,10 @@ nds_config_init() {
     }
 
     # Load all categories (auto-discovery)
-    for category_file in "${SCRIPT_DIR}/lib/config/categories/"*.sh; do
-        if [[ -f "$category_file" ]]; then
-            # shellcheck disable=SC1090
-            source "$category_file" || {
-                error "Failed to load category: $category_file"
-                return 1
-            }
-        fi
-    done
+    nds_source_dir "${SCRIPT_DIR}/lib/config/categories" false || {
+        fatal "Failed to load categories"
+        return 1
+    }
 
     success "Configuration feature initialized"
     return 0
@@ -44,7 +39,6 @@ nds_config_init() {
 # =============================================================================
 # ACTIVATE CONFIGURATION CATEGORIES
 # =============================================================================
-
 # Activate all categories - called by main.sh before sourcing action setup.sh
 # Must be called AFTER nds_config_init()
 nds_config_activate_categories() {
