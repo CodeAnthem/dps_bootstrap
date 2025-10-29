@@ -178,6 +178,7 @@ crash() {
 # shellcheck disable=SC2329
 _main_stopHandler() {
     local exit_code=$?
+    echo "(DEBUG) Exit code: $exit_code"
 
     # Get custom exit message if exists
     local exit_msg=""
