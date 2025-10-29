@@ -22,8 +22,8 @@ readonly SCRIPT_DIR="${currentPath}"
 
 # Declare global associative array for hook function names
 declare -gA DPS_HOOK_FUCNTIONS=(
-    ["exit_msg"]="phase_exit_msg" # Message to display on exit
-    ["exit_cleanup"]="phase_exit_cleanup" # Cleanup to perform on exit
+    ["exit_msg"]="hook_exit_msg" # Message to display on exit
+    ["exit_cleanup"]="hook_exit_cleanup" # Cleanup to perform on exit
 )
 
 # =============================================================================
@@ -168,6 +168,12 @@ purgeRuntimeDir() {
 # =============================================================================
 # SIGNAL HANDLERS
 # =============================================================================
+declare -g exit_message=""
+crash() {
+    exit_message="$1"
+    exit 200
+}
+
 # shellcheck disable=SC2329
 _main_stopHandler() {
     local exit_code=$?
@@ -184,6 +190,9 @@ _main_stopHandler() {
             ;;
             130)
                 warn "Script aborted by user"
+            ;;
+            200)
+                fatal "${exit_message:-}"
             ;;
             *)
                 warn "Script failed with exit code: $exit_code"
@@ -317,7 +326,8 @@ _nds_select_action() {
         # Validate choice is a number and in range
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
-            console "Loaded action: $selected_action"
+            console "$selected_action"
+            newline
             return 0
         fi
         
@@ -407,7 +417,7 @@ if declare -f nds_config_init_system &>/dev/null; then
         exit 1
     }
 else
-    warn "Configuration system not available (nds_config_init_system not found)"
+    crash "Configuration system not available (nds_config_init_system not found)"
 fi
 
 # Execute selected action
