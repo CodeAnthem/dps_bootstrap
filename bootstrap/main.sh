@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2025-10-24
+# Date:          Created: 2025-10-12 | Modified: 2025-10-29
 # Description:   Entry point selector for DPS Bootstrap - dynamically discovers and executes actions
 # Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
@@ -13,61 +13,93 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="3.0.7"
-readonly SCRIPT_NAME="NixOS Bootstrapper | DPS Project"
+readonly SCRIPT_VERSION="3.0.8"
+readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
-currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
 readonly SCRIPT_DIR="${currentPath}"
+
+# Declare global associative array for hook function names
+declare -gA DPS_HOOK_FUCNTIONS=(
+    ["exit_msg"]="phase_exit_msg" # Message to display on exit
+    ["exit_cleanup"]="phase_exit_cleanup" # Cleanup to perform on exit
+)
 
 # =============================================================================
 # IMPORT LIBRARIES
 # =============================================================================
-readonly LIB_DIR="${SCRIPT_DIR}/lib"
+nds_source_dir() {
+    local directory recursive item basename
 
-# Recursively source all .sh files in lib folder
-# Ignores files and folders starting with underscore (_)
-source_lib_recursive() {
-    local dir="$1"
+    # Validate parameters
+    directory="$1"
+    [[ -d "$directory" ]] || {
+        echo "Error: Directory not found: $directory" >&2
+        return 1
+    }
     
-    # Process .sh files in current directory
-    for file in "$dir"/*.sh; do
-        [[ -e "$file" ]] || continue
-        
-        # Skip files starting with underscore
-        local basename
-        basename=$(basename "$file")
-        [[ "$basename" =~ ^_ ]] && continue
-        
-        # Source the file
-        # shellcheck disable=SC1090
-        if ! source "$file"; then 
-            error "Failed to source: $file"
+    recursive="${2:-false}"
+    [[ "$recursive" == "true" || "$recursive" == "false" ]] || {
+        echo "Error: Invalid recursive parameter: $recursive" >&2
+        return 1
+    }
+
+    for item in "$directory"/*; do
+        [[ -e "$item" ]] || continue # Skip if no match (e.g. empty dir)
+
+        # Skip files/folders starting with underscore
+        basename=$(basename "$item")
+        [[ "${basename:0:1}" == "_" ]] && continue
+
+        # If directory, recurse if enabled
+        if [[ -d "$item" ]]; then
+            if [[ "$recursive" == "true" ]]; then
+                nds_source_dir "$item" "$recursive" || return 1
+            fi
+            continue
         fi
-    done
-    
-    # Recursively process subdirectories
-    for subdir in "$dir"/*/; do
-        [[ -d "$subdir" ]] || continue
-        
-        # Skip directories starting with underscore
-        local dirname
-        dirname=$(basename "$subdir")
-        [[ "$dirname" =~ ^_ ]] && continue
-        
-        # Recurse into subdirectory
-        source_lib_recursive "$subdir"
+
+        # Only source .sh files
+        if [[ "${basename: -3}" == ".sh" ]]; then
+            # shellcheck disable=SC1090
+            if ! source "$item"; then
+                echo "Error: Failed to source: $item" >&2
+                return 1
+            fi
+        fi
     done
 }
 
-# Load all libraries recursively
-source_lib_recursive "$LIB_DIR"
+# Load libraries
+nds_source_dir "${SCRIPT_DIR}/lib" false || exit 1
+success "Bootstrapper 'NDS' libraries loaded"
 
 
 # =============================================================================
-# START MESSAGE
+# HOOK FUNCTIONS
 # =============================================================================
-section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
+# shellcheck disable=SC2329 # Hook is called dynamically
+_nds_callHook() {
+    local hookName="$1"
+    shift
+    local hookFunction="${DPS_HOOK_FUCNTIONS[$hookName]}"
+
+    # Check if hook is valid
+    if [[ -z "$hookFunction" ]]; then
+        error "Hook '$hookName' not found"
+        return 1
+    fi
+
+    # Check and call if hook function exists
+    if declare -f "$hookFunction" &>/dev/null; then
+        "$hookFunction" "$@"
+        return 0
+    fi
+
+    # Hook not active
+    return 1
+}
 
 
 # =============================================================================
@@ -100,20 +132,20 @@ fi
 
 
 # =============================================================================
-# SETUP RUNTIME DIRECTORY
+# RUNTIME DIRECTORY
 # =============================================================================
 # Setup runtime directory - declare and assign separately
 setupRuntimeDir() {
-    timestamp=""
+    local timestamp=""
     printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
-    readonly RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
+    [[ -z "$timestamp" ]] && return 1
+    RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
 
     # Create runtime directory
-    mkdir -p "$RUNTIME_DIR"
-    chmod 700 "$RUNTIME_DIR"
-    info "Runtime directory: $RUNTIME_DIR"
+    mkdir -p "$RUNTIME_DIR" || return 1
+    chmod 700 "$RUNTIME_DIR" || return 1
+    return 0
 }
-setupRuntimeDir
 
 # shellcheck disable=SC2329
 purgeRuntimeDir() {
@@ -124,52 +156,51 @@ purgeRuntimeDir() {
             error " > Failed to clean up runtime directory: $RUNTIME_DIR"
         fi
     fi
+
+    # shellcheck disable=SC2010
+    ls -l /tmp/ | grep -i "dps" # TODO: Remove after debugging
 }
 
 
 # =============================================================================
-# CLEANUP FUNCTIONS
+# SIGNAL HANDLERS
 # =============================================================================
-# Enhanced cleanup function with exit code detection
 # shellcheck disable=SC2329
-cleanup() {
+_main_stopHandler() {
     local exit_code=$?
 
-    
-    # Print error messages only for actual failures
-    if [[ $exit_code -eq 1 ]]; then
-        warn "Script aborted by user"
-    elif [[ $exit_code -eq 130 ]]; then
-        # SIGINT (CTRL+C) - silent exit
-        :
-    elif (( exit_code > 1 )); then
-        warn "Script failed with exit code: $exit_code"
+    # Get custom exit message if exists
+    local exit_msg=""
+    exit_msg=$(_nds_callHook "exit_msg" "$exit_code")
+    if [[ -n "$exit_msg" ]]; then
+        console "$exit_msg"
+    else
+        case "${exit_code}" in
+            0)
+                success "Script completed successfully"
+            ;;
+            130)
+                warn "Script aborted by user"
+            ;;
+            *)
+                warn "Script failed with exit code: $exit_code"
+            ;;
+        esac
+        
     fi
 
-    info "Stopping DPS Bootstrap"
-
-    # Cleanup
+    # Bootstrapper cleanup
     info "Cleaning up session"
     purgeRuntimeDir
-    ls -l /tmp/ | grep -i "dps"
+    
+    # Call cleanup hook
+    _nds_callHook "exit_cleanup" "$exit_code"
 }
-
-# Interrupt handler
-# shellcheck disable=SC2329
-trap 'newline; exit 1' SIGINT
-
-# Setup cleanup trap
-trap cleanup EXIT
 
 
 # =============================================================================
 # ACTION DISCOVERY
 # =============================================================================
-# Discover available actions from actions/ folder
-readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
-declare -A ACTIONS
-declare -A ACTION_DESCRIPTIONS
-
 discover_actions() {
     local action_count=0
     
@@ -302,12 +333,35 @@ execute_action() {
 # =============================================================================
 # MAIN WORKFLOW
 # =============================================================================
+# Interrupt handler
+trap 'newline; exit 130' SIGINT
+
+# Setup cleanup trap
+trap _main_stopHandler EXIT
+
+# Display script header
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
+
+# Setup runtime directory
+declare -g RUNTIME_DIR
+if ! setupRuntimeDir; then
+    error "Failed to setup runtime directory"
+    exit 1
+else
+    info "Runtime directory: $RUNTIME_DIR"
+fi
 
 # Discover available actions
+readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
+declare -A ACTIONS
+declare -A ACTION_DESCRIPTIONS
 discover_actions
 
 # Select action
 selected_action=$(select_action)
+
+# Init configuration modules
+_nds_config_init_modules
 
 # Execute selected action
 execute_action "$selected_action"

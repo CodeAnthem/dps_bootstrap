@@ -12,8 +12,8 @@
 # =============================================================================
 
 # Initialize modules - called by main.sh BEFORE sourcing setup.sh
-# Usage: nds_config_init_modules "module1" "module2" ...
-nds_config_init_modules() {
+# Usage: _nds_config_init_modules "module1" "module2" ...
+_nds_config_init_modules() {
     local modules=("$@")
     
     for module in "${modules[@]}"; do
