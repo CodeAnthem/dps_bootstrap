@@ -214,7 +214,7 @@ generate_ssh_key() {
 # =============================================================================
 # AGE KEY MANAGEMENT
 # =============================================================================
-
+anotherBadCommand
 # Generate Age key for SOPS encryption
 # Usage: generate_age_key "key_file"
 generate_age_key() {
