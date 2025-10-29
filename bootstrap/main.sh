@@ -85,7 +85,12 @@ nds_source_dir() {
                     cleaned+=$'\n'" -> $line"
                 done <<< "$err_output"
 
-                all_errors+=$'\n'"Error: Failed to source: $item${cleaned}"
+                if [[ -z "$all_errors" ]]; then
+                    all_errors="Error: Failed to source: $item${cleaned}"
+                else
+                    all_errors+=$'\n'"Error: Failed to source: $item${cleaned}"
+                fi
+
                 # do not return immediately — collect other errors too
                 continue
             fi
