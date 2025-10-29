@@ -181,6 +181,7 @@ _main_stopHandler() {
 
     # Get custom exit message if exists
     local exit_msg=""
+    echo 000
     exit_msg=$(_nds_callHook "exit_msg" "$exit_code")
     echo 111
     if [[ -n "$exit_msg" ]]; then
