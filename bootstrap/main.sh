@@ -389,22 +389,14 @@ trap _main_stopHandler EXIT
 
 # Setup runtime directory
 declare -g RUNTIME_DIR
-if ! setupRuntimeDir; then
-    error "Failed to setup runtime directory"
-    exit 1
-else
-    info "Runtime directory: $RUNTIME_DIR"
-fi
+if ! setupRuntimeDir; then crash "Failed to setup runtime directory"; fi
+info "Runtime directory: $RUNTIME_DIR"
 
 # Discover available actions
 readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
 declare -a ACTION_NAMES=()
 declare -gA ACTION_DATA=()
-
-if ! _nds_discover_actions; then
-    error "Failed to discover actions"
-    exit 1
-fi
+if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
 # Select action
 selected_action=$(_nds_select_action)
@@ -412,16 +404,13 @@ selected_action=$(_nds_select_action)
 # Init configuration system
 if declare -f nds_config_init_system &>/dev/null; then
     info "Initializing configuration system..."
-    nds_config_init_system || {
-        error "Failed to initialize configuration system"
-        exit 1
-    }
+    nds_config_init_system || crash "Failed to initialize configuration system"
 else
     crash "Configuration system not available (nds_config_init_system not found)"
 fi
 
 # Execute selected action
-_nds_execute_action "$selected_action" || exit 1
+_nds_execute_action "$selected_action" || crash "Failed to execute action"
 
 # =============================================================================
 # END
