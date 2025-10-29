@@ -112,8 +112,8 @@ _nds_callHook() {
 if [[ $EUID -ne 0 ]]; then
     new_section
     section_header "Root Privilege Required"
-    info "This script requires root privileges."
-    echo " -> Attempting to restart with sudo..."
+    warn "This script requires root privileges."
+    info "Attempting to restart with sudo..."
     
     # Preserve DPS_* environment variables through sudo
     dps_vars=()
