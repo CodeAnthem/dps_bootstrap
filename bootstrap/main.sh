@@ -85,11 +85,11 @@ success "Bootstrapper 'NDS' libraries loaded"
 # shellcheck disable=SC2329 # Hook is called dynamically
 _nds_callHook() {
     local hookName="$1"
-    console 00
-    shift
-    console 000
+    console "00 hookName: $hookName"
+    shift 1
+    console "000"
     local hookFunction="${DPS_HOOK_FUCNTIONS[$hookName]}"
-console 01
+    console "01 hookFunction: $hookFunction"
     # Check if hook is valid
     if [[ -z "$hookFunction" ]]; then
         error "Hook '$hookName' not found"
@@ -98,6 +98,7 @@ console 01
     console 02
     # Check and call if hook function exists
     if declare -f "$hookFunction" &>/dev/null; then
+        console 02222
         "$hookFunction" "$@"
         return 0
     fi
@@ -185,6 +186,7 @@ _main_stopHandler() {
     local exit_msg=""
     echo 000
     exit_msg=$(_nds_callHook "exit_msg" "$exit_code")
+    console "exit msg: $exit_msg"
     echo 111
     if [[ -n "$exit_msg" ]]; then
         echo 222
