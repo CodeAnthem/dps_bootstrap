@@ -396,12 +396,18 @@ if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 # Select action
 selected_action=$(_nds_select_action)
 
-# Init configuration system
-if declare -f nds_config_init_system &>/dev/null; then
-    info "Initializing configuration system..."
-    nds_config_init_system || crash "Failed to initialize configuration system"
+# Initialize configuration feature
+if declare -f nds_config_init &>/dev/null; then
+    nds_config_init || crash "Failed to initialize configuration feature"
 else
-    crash "Configuration system not available (nds_config_init_system not found)"
+    crash "Configuration feature not available (nds_config_init not found)"
+fi
+
+# Activate configuration categories
+if declare -f nds_config_activate_categories &>/dev/null; then
+    nds_config_activate_categories || crash "Failed to activate categories"
+else
+    crash "Configuration activation not available (nds_config_activate_categories not found)"
 fi
 
 # Execute selected action
