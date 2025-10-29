@@ -73,6 +73,9 @@ nds_source_dir() {
 
 # Load libraries
 nds_source_dir "${SCRIPT_DIR}/lib" false || exit 1
+
+# Display script header
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 success "Bootstrapper 'NDS' libraries loaded"
 
 
@@ -373,9 +376,6 @@ trap 'newline; exit 130' SIGINT
 
 # Setup cleanup trap
 trap _main_stopHandler EXIT
-
-# Display script header
-section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Setup runtime directory
 declare -g RUNTIME_DIR
