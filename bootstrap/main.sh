@@ -63,7 +63,7 @@ nds_source_dir() {
         # Only source .sh files
         if [[ "${basename: -3}" == ".sh" ]]; then
             # shellcheck disable=SC1090
-            if ! source "$item"; then
+            if ! source -euo pipefail "$item"; then
                 echo "Error: Failed to source: $item" >&2
                 return 1
             fi
