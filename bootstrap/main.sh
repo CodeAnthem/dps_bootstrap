@@ -434,9 +434,6 @@ declare -a ACTION_NAMES=()
 declare -gA ACTION_DATA=()
 if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
-# Select action
-selected_action=$(_nds_select_action)
-
 # Initialize configuration feature
 if declare -f nds_config_init &>/dev/null; then
     nds_config_init || crash "Failed to initialize configuration feature"
@@ -450,6 +447,10 @@ if declare -f nds_config_activate_categories &>/dev/null; then
 else
     crash "Configuration activation not available (nds_config_activate_categories not found)"
 fi
+
+
+# Select action
+selected_action=$(_nds_select_action)
 
 # Execute selected action
 _nds_execute_action "$selected_action" || crash "Failed to execute action"
