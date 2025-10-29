@@ -30,9 +30,15 @@ declare -gA DPS_HOOK_FUCNTIONS=(
 # IMPORT LIBRARIES
 # =============================================================================
 nds_source_dir() {
-    local directory recursive item basename err_output
+    # Imports .sh files from a directory.
+    # If recursive is "true" will descend into subdirectories (skipping names beginning with "_").
+    # Collects errors from validating libraries (running them in a safe subshell) and
+    # prints them all before returning non-zero (so user sees everything at once).
+    local directory recursive item basename
+    local had_error=false
+    local all_errors=""
 
-    directory="$1"
+    directory="${1:-}"
     [[ -d "$directory" ]] || {
         echo "Error: Directory not found: $directory" >&2
         return 1
@@ -45,34 +51,62 @@ nds_source_dir() {
     }
 
     for item in "$directory"/*; do
-        [[ -e "$item" ]] || continue
+        [[ -e "$item" ]] || continue   # Skip when glob doesn't match (empty dir)
 
-        basename=$(basename "$item")
+        basename="$(basename "$item")"
+
+        # Skip files/folders starting with underscore
         [[ "${basename:0:1}" == "_" ]] && continue
 
+        # If directory, maybe recurse
         if [[ -d "$item" ]]; then
             if [[ "$recursive" == "true" ]]; then
-    nds_source_dir "$item" "$recursive" || return 1
-fi
+                nds_source_dir "$item" "$recursive" || return 1
+            fi
             continue
         fi
 
+        # Only consider .sh files
         if [[ "${basename: -3}" == ".sh" ]]; then
-            # Validate file by running it in a safe subshell and capture stderr
+            # Validate by running in a strict subshell and capture stderr output
             local err_output
             if ! err_output=$(bash -euo pipefail "$item" 2>&1); then
-                echo "Error: Failed to source: $item" >&2
-                echo " -> ${err_output}" >&2
-                return 1
+                had_error=true
+
+                # Clean the path prefix "$item: " from each line (pure bash)
+                local cleaned=""
+                local line
+                while IFS= read -r line; do
+                    if [[ "$line" == "$item:"* ]]; then
+                        # Remove exactly "$item: " prefix if present
+                        line="${line#"$item: "}"
+                    fi
+                    # prefix each line with " -> " for nicer formatting
+                    cleaned+=$'\n'" -> $line"
+                done <<< "$err_output"
+
+                all_errors+=$'\n'"Error: Failed to source: $item${cleaned}"
+                # do not return immediately — collect other errors too
+                continue
             fi
 
             # shellcheck disable=SC1090
             if ! source "$item"; then
-                echo "Error: Failed to source: $item" >&2
-                return 1
+                had_error=true
+                all_errors+=$'\n'"Error: Failed to source (during source): $item"
+                continue
             fi
         fi
     done
+
+    if [[ "$had_error" == "true" ]]; then
+        # Print collected errors to stderr and return non-zero
+        echo >&2
+        echo "$all_errors" >&2
+        return 1
+    fi
+
+    return 0
 }
 
 # Load libraries
