@@ -189,7 +189,7 @@ _main_stopHandler() {
                 warn "Script aborted by user"
             ;;
             200)
-                fatal "${fatal_message:-}"
+                fatal "Internal error! - ${fatal_message:-}"
             ;;
             *)
                 warn "Script failed with exit code: $exit_code"
