@@ -168,24 +168,26 @@ purgeRuntimeDir() {
 # =============================================================================
 # SIGNAL HANDLERS
 # =============================================================================
-declare -g exit_message=""
+declare -g fatal_message=""
 crash() {
-    echo 1233333
-    exit_message="$1"
+    fatal_message="$1"
     exit 200
 }
 
 # shellcheck disable=SC2329
 _main_stopHandler() {
     local exit_code=$?
-    echo "(DEBUG) Exit code: $exit_code - $exit_message"
+    echo "(DEBUG) Exit code: $exit_code - $fatal_message"
 
     # Get custom exit message if exists
     local exit_msg=""
     exit_msg=$(_nds_callHook "exit_msg" "$exit_code")
+    echo 111
     if [[ -n "$exit_msg" ]]; then
+        echo 222
         console "$exit_msg"
     else
+    echo 333
         case "${exit_code}" in
             0)
                 success "Script completed successfully"
@@ -194,7 +196,7 @@ _main_stopHandler() {
                 warn "Script aborted by user"
             ;;
             200)
-                fatal "${exit_message:-}"
+                fatal "${fatal_message:-}"
             ;;
             *)
                 warn "Script failed with exit code: $exit_code"
@@ -202,7 +204,7 @@ _main_stopHandler() {
         esac
         
     fi
-
+echo 444
     # Bootstrapper cleanup
     info "Cleaning up session"
     purgeRuntimeDir
