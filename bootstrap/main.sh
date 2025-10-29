@@ -151,9 +151,9 @@ setupRuntimeDir() {
 purgeRuntimeDir() {
     if [[ -d "${RUNTIME_DIR:-}" ]]; then
         if rm -rf "$RUNTIME_DIR"; then
-            success " > Runtime directory cleaned up: $RUNTIME_DIR"
+            success " > Removed runtime directory: $RUNTIME_DIR"
         else
-            error " > Failed to clean up runtime directory: $RUNTIME_DIR"
+            error " > Failed to remove runtime directory: $RUNTIME_DIR"
         fi
     fi
 
