@@ -201,11 +201,45 @@ _main_stopHandler() {
 # =============================================================================
 # ACTION DISCOVERY
 # =============================================================================
-discover_actions() {
-    local action_count=0
+
+# Validate action structure
+_nds_validate_action() {
+    local action_name="$1"
+    local action_path="$2"
+    local setup_script="${action_path}/setup.sh"
     
+    # Check setup.sh exists
+    if [[ ! -f "$setup_script" ]]; then
+        debug "Action '$action_name': Missing setup.sh"
+        return 1
+    fi
+    
+    # Check for required functions (without sourcing)
+    if ! grep -q "^action_config()" "$setup_script"; then
+        debug "Action '$action_name': Missing action_config() function"
+        return 1
+    fi
+    
+    if ! grep -q "^action_setup()" "$setup_script"; then
+        debug "Action '$action_name': Missing action_setup() function"
+        return 1
+    fi
+    
+    # Check for description in header
+    local description
+    description=$(head -n 20 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null)
+    if [[ -z "$description" ]]; then
+        debug "Action '$action_name': Missing description in header"
+        return 1
+    fi
+    
+    return 0
+}
+
+_nds_discover_actions() {
     if [[ ! -d "$ACTIONS_DIR" ]]; then
         error "Actions directory not found: $ACTIONS_DIR"
+        return 1
     fi
     
     for action_dir in "$ACTIONS_DIR"/*/; do
@@ -213,121 +247,122 @@ discover_actions() {
         
         local action_name
         action_name=$(basename "$action_dir")
-        local setup_script="${action_dir}setup.sh"
         
         # Skip test action unless DPS_TEST=true
         if [[ "$action_name" == "test" && "${DPS_TEST:-false}" != "true" ]]; then
-            debug "Skipping test action (DPS_TEST not set to true)"
+            debug "Skipping test action (DPS_TEST not set)"
             continue
         fi
         
-        if [[ -f "$setup_script" ]]; then
-            # Parse description from header (first 10 lines only, no sourcing)
-            local description
-            description=$(head -n 10 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null || echo "No description available")
-            
-            ((++action_count))
-            ACTIONS[$action_count]="$action_name"
-            ACTION_DESCRIPTIONS[$action_count]="$description"
-            
-            debug "Discovered action: $action_name - $description"
-        else
-            debug "Skipping $action_name: no setup.sh found"
+        # Validate action structure
+        if ! _nds_validate_action "$action_name" "$action_dir"; then
+            warn "Skipping invalid action: $action_name"
+            continue
         fi
+        
+        # Extract metadata
+        local description
+        description=$(head -n 20 "${action_dir}setup.sh" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//')
+        
+        # Store in arrays
+        ACTION_NAMES+=("$action_name")
+        ACTION_DATA["${action_name}_path"]="$action_dir"
+        ACTION_DATA["${action_name}_description"]="$description"
+        
+        debug "Validated action: $action_name"
     done
     
-    if [[ $action_count -eq 0 ]]; then
+    if [[ ${#ACTION_NAMES[@]} -eq 0 ]]; then
         error "No valid actions found in $ACTIONS_DIR"
+        return 1
     fi
     
-    info "Discovered $action_count available actions"
+    info "Discovered ${#ACTION_NAMES[@]} valid actions"
+    return 0
 }
 
 # =============================================================================
 # ACTION SELECTION
 # =============================================================================
-select_action() {
+_nds_select_action() {
     new_section
-    section_header "Choose bootstrap action"
-    
-    # Display available actions in correct order (sorted by key)
-    local sorted_keys
-    mapfile -t sorted_keys < <(printf '%s\n' "${!ACTIONS[@]}" | sort -n)
+    section_header "Choose Bootstrap Action"
     
     console "  0) Abort - Exit the script"
-    for i in "${sorted_keys[@]}"; do
-        console "  $i) ${ACTIONS[$i]} - ${ACTION_DESCRIPTIONS[$i]}"
+    
+    local i=1
+    for action_name in "${ACTION_NAMES[@]}"; do
+        local description="${ACTION_DATA[${action_name}_description]}"
+        console "  $i) $action_name - $description"
+        ((i++))
     done
     
-    local choice validOptions max_choice
-    max_choice="${#ACTIONS[@]}"
-    validOptions="0 $(seq -s ' ' 1 "$max_choice")"
+    local choice max_choice
+    max_choice="${#ACTION_NAMES[@]}"
     
-    # Loop until valid choice is made
+    # Loop until valid choice
     while true; do
-        # printf "Select action [0-$max_choice]: "
-        read -rsn1 -p "     -> Select action: " choice < /dev/tty
+        read -rsn1 -p "     -> Select action [0-$max_choice]: " choice < /dev/tty
+        echo
         
-        # Handle empty input (Enter key)
-        if [[ -z "$choice" ]]; then
-            console "Please select a valid option ($validOptions)"
-            continue
-        fi
-        
-        # Check for abort option
+        # Handle abort
         if [[ "$choice" == "0" ]]; then
             console "Operation aborted"
-            break
+            exit 130
         fi
-                
-        # Validate choice exists
-        if [[ "${ACTIONS[$choice]:-}" ]]; then
-            console "${ACTIONS[$choice]}"
-            break
+        
+        # Validate choice is a number and in range
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
+            local selected_action="${ACTION_NAMES[$((choice-1))]}"
+            echo "$selected_action"
+            return 0
         fi
-
+        
         # Invalid selection
-        console "Invalid selection '$choice' - Valid options: ($validOptions)"
-        continue
+        console "Invalid selection. Choose 0-$max_choice"
     done
-
-    # Handle valid selection
-    if ((choice == 0)); then exit 1; fi # Abort
-    echo "$choice"
 }
 
 # =============================================================================
 # ACTION EXECUTION
 # =============================================================================
-execute_action() {
-    local action_number="$1"
-    local action_name="${ACTIONS[$action_number]}"
-    local setup_script="${ACTIONS_DIR}/${action_name}/setup.sh"
-        
-    # Source the setup script
-    if [[ -f "$setup_script" ]]; then
-        # shellcheck disable=SC1090
-        if ! source "$setup_script"; then
-            error "Failed to source setup script: $setup_script"
-            exit 2
-        fi
-        success "Setup script sourced successfully"
-    else
+_nds_execute_action() {
+    local action_name="$1"
+    local action_path="${ACTION_DATA[${action_name}_path]}"
+    local setup_script="${action_path}setup.sh"
+    
+    if [[ ! -f "$setup_script" ]]; then
         error "Setup script not found: $setup_script"
+        return 1
     fi
     
-    # Check if setup function exists
-    if ! declare -f setup >/dev/null; then
-        error "Setup function not found in $setup_script"
+    # Source the setup script
+    info "Loading $action_name action..."
+    # shellcheck disable=SC1090
+    if ! source "$setup_script"; then
+        error "Failed to source setup script: $setup_script"
+        return 1
+    fi
+    
+    # Call action_config to setup fields and defaults
+    if declare -f action_config &>/dev/null; then
+        info "Configuring $action_name..."
+        action_config
+    else
+        error "action_config() not found in $setup_script"
+        return 1
     fi
     
     # Execute the setup function
-    info "Executing $action_name setup..."
+    info "Executing $action_name..."
     section_title "Action: $action_name"
-    if ! setup; then
+    if ! action_setup; then
         error "Action setup failed for: $action_name"
+        return 1
     fi
-    success "Action completed successfully: $action_name"
+    
+    success "Action completed: $action_name"
+    return 0
 }
 
 # =============================================================================
@@ -353,18 +388,30 @@ fi
 
 # Discover available actions
 readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
-declare -A ACTIONS
-declare -A ACTION_DESCRIPTIONS
-discover_actions
+declare -a ACTION_NAMES=()
+declare -gA ACTION_DATA=()
+
+if ! _nds_discover_actions; then
+    error "Failed to discover actions"
+    exit 1
+fi
 
 # Select action
-selected_action=$(select_action)
+selected_action=$(_nds_select_action)
 
-# Init configuration modules
-_nds_config_init_modules
+# Init configuration system
+if declare -f nds_config_init_system &>/dev/null; then
+    info "Initializing configuration system..."
+    nds_config_init_system || {
+        error "Failed to initialize configuration system"
+        exit 1
+    }
+else
+    warn "Configuration system not available (nds_config_init_system not found)"
+fi
 
 # Execute selected action
-execute_action "$selected_action"
+_nds_execute_action "$selected_action" || exit 1
 
 # =============================================================================
 # END
