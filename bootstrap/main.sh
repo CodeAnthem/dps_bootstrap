@@ -51,7 +51,9 @@ nds_source_dir() {
         [[ "${basename:0:1}" == "_" ]] && continue
 
         if [[ -d "$item" ]]; then
-            [[ "$recursive" == "true" ]] && nds_source_dir "$item" "$recursive" || return 1
+            if [[ "$recursive" == "true" ]]; then
+    nds_source_dir "$item" "$recursive" || return 1
+fi
             continue
         fi
 
