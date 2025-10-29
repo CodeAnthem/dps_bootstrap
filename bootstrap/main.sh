@@ -170,6 +170,7 @@ purgeRuntimeDir() {
 # =============================================================================
 declare -g exit_message=""
 crash() {
+    echo 1233333
     exit_message="$1"
     exit 200
 }
@@ -400,7 +401,7 @@ if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
 # Select action
 selected_action=$(_nds_select_action)
-echo 123
+
 # Init configuration system
 if declare -f nds_config_init_system &>/dev/null; then
     info "Initializing configuration system..."
@@ -408,7 +409,7 @@ if declare -f nds_config_init_system &>/dev/null; then
 else
     crash "Configuration system not available (nds_config_init_system not found)"
 fi
-echo 444
+
 # Execute selected action
 _nds_execute_action "$selected_action" || crash "Failed to execute action"
 
