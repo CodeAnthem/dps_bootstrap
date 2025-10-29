@@ -185,7 +185,7 @@ _main_stopHandler() {
     # Get custom exit message if exists
     local exit_msg=""
     echo 000
-    exit_msg=$(_nds_callHook "exit_msg" "$exit_code")
+    exit_msg=$(_nds_callHook "exit_msg" "$exit_code" || true)
     console "exit msg: $exit_msg"
     echo 111
     if [[ -n "$exit_msg" ]]; then
@@ -215,7 +215,7 @@ echo 444
     purgeRuntimeDir
     
     # Call cleanup hook
-    _nds_callHook "exit_cleanup" "$exit_code"
+    _nds_callHook "exit_cleanup" "$exit_code" || true
 }
 
 
