@@ -19,6 +19,7 @@ readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 # Script Path - declare and assign separately to avoid masking return values
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
 readonly SCRIPT_DIR="${currentPath}"
+readonly LIB_DIR="${currentPath}/lib"
 
 # Declare global associative array for hook function names
 declare -gA DPS_HOOK_FUCNTIONS=(
@@ -113,13 +114,6 @@ nds_source_dir() {
     return 0
 }
 
-# Load libraries
-nds_source_dir "${SCRIPT_DIR}/lib" false || exit 1
-
-# Display script header
-section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
-success "Bootstrapper 'NDS' libraries loaded"
-
 
 # =============================================================================
 # HOOK FUNCTIONS
@@ -148,29 +142,31 @@ _nds_callHook() {
 # ROOT CHECK
 # =============================================================================
 # Root privilege check with sudo fallback
-if [[ $EUID -ne 0 ]]; then
-    new_section
-    section_header "Root Privilege Required"
-    warn "This script requires root privileges."
-    info "Attempting to restart with sudo..."
+runWithRoot() {
+    if [[ $EUID -ne 0 ]]; then
+        new_section
+        section_header "Root Privilege Required"
+        warn "This script requires root privileges."
+        info "Attempting to restart with sudo..."
 
-    # Preserve DPS_* environment variables through sudo
-    dps_vars=()
-    while IFS='=' read -r name value; do
-        if [[ "$name" =~ ^DPS_ ]]; then
-            dps_vars+=("$name=$value")
+        # Preserve DPS_* environment variables through sudo
+        dps_vars=()
+        while IFS='=' read -r name value; do
+            if [[ "$name" =~ ^DPS_ ]]; then
+                dps_vars+=("$name=$value")
+            fi
+        done < <(env)
+
+        # Restart with sudo, preserving DPS_* and DEBUG variables
+        if [[ ${#dps_vars[@]} -gt 0 ]]; then
+            exec sudo "${dps_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
+        else
+            exec sudo bash "${BASH_SOURCE[0]}" "$@"
         fi
-    done < <(env)
-
-    # Restart with sudo, preserving DPS_* and DEBUG variables
-    if [[ ${#dps_vars[@]} -gt 0 ]]; then
-        exec sudo "${dps_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
     else
-        exec sudo bash "${BASH_SOURCE[0]}" "$@"
+        success "Root privileges confirmed"
     fi
-else
-    success "Root privileges confirmed"
-fi
+}
 
 
 # =============================================================================
@@ -249,10 +245,8 @@ _main_stopHandler() {
 
 
 # =============================================================================
-# ACTION DISCOVERY
+# ACTION DISCOVERY & SELECTION & EXECUTION
 # =============================================================================
-
-# Validate action structure
 _nds_validate_action() {
     local action_name="$1"
     local action_path="$2"
@@ -331,9 +325,6 @@ _nds_discover_actions() {
     return 0
 }
 
-# =============================================================================
-# ACTION SELECTION
-# =============================================================================
 _nds_select_action() {
     new_section
     section_header "Choose Bootstrap Action"
@@ -373,9 +364,6 @@ _nds_select_action() {
     done
 }
 
-# =============================================================================
-# ACTION EXECUTION
-# =============================================================================
 _nds_execute_action() {
     local action_name="$1"
     local action_path="${ACTION_DATA[${action_name}_path]}"
@@ -415,9 +403,20 @@ _nds_execute_action() {
     return 0
 }
 
+
 # =============================================================================
 # MAIN WORKFLOW
 # =============================================================================
+# Load libraries
+nds_source_dir "${LIB_DIR}" false || exit 1
+
+# Run with root
+runWithRoot "$@"
+
+# Display script header
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
+success "Bootstrapper 'NDS' libraries loaded"
+
 # Interrupt handler
 trap 'newline; exit 130' SIGINT
 
