@@ -415,13 +415,11 @@ runWithRoot "$@"
 
 # Display script header
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
-success "Bootstrapper 'NDS' libraries loaded"
 
-# Interrupt handler
-trap 'newline; exit 130' SIGINT
-
-# Setup cleanup trap
-trap _main_stopHandler EXIT
+# Signal handlers
+trap 'newline; exit 130' SIGINT # Interrupt handler
+trap _main_stopHandler EXIT # Setup cleanup trap
+success "Signal handlers initialized"
 
 # Setup runtime directory
 declare -g RUNTIME_DIR
@@ -448,6 +446,7 @@ else
     crash "Configuration activation not available (nds_config_activate_categories not found)"
 fi
 
+success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action
 selected_action=$(_nds_select_action)
