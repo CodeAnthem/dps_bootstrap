@@ -87,19 +87,19 @@ _nds_callHook() {
     local hookName="$1"
     shift
     local hookFunction="${DPS_HOOK_FUCNTIONS[$hookName]}"
-
+echo 01
     # Check if hook is valid
     if [[ -z "$hookFunction" ]]; then
         error "Hook '$hookName' not found"
         return 1
     fi
-
+    echo 02
     # Check and call if hook function exists
     if declare -f "$hookFunction" &>/dev/null; then
         "$hookFunction" "$@"
         return 0
     fi
-
+    echo 03
     # Hook not active
     return 1
 }
