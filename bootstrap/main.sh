@@ -7,7 +7,7 @@
 # Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
 # shellcheck disable=SC2162
-set -euo pipefail
+set -euox pipefail
 
 # =============================================================================
 # SCRIPT VARIABLES
