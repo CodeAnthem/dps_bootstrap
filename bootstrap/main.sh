@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="4.0.0"
+readonly SCRIPT_VERSION="4.0.1"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -323,7 +323,6 @@ _nds_select_action() {
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
             console "$selected_action"
-            newline
             return 0
         fi
         
