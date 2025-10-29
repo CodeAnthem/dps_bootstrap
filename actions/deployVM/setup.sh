@@ -8,8 +8,6 @@
 # Author:        DPS Project
 # ==================================================================================================
 
-set -euo pipefail
-
 # =============================================================================
 # ACTION METADATA
 # =============================================================================
@@ -18,7 +16,8 @@ set -euo pipefail
 # =============================================================================
 # ACTION CONFIGURATION
 # =============================================================================
-deploy_init_callback() {
+# @AI - This is  where the setup setups all its required configuration
+action_config() {
     # Declare action-specific fields
     nds_field_declare GIT_REPO_URL \
         display="Private Git Repository" \
@@ -68,232 +67,154 @@ deploy_init_callback() {
     nds_config_set_default "quick" "COUNTRY" ""
 }
 
-# deploy_get_active_fields() {
+# @AI - Optional function to return fields (similar to deploy_get_active_fields)
+# action_config_get_active() {
 #     echo "GIT_REPO_URL"
 #     echo "DEPLOY_SSH_KEY_PATH"
 # }
 
-# deploy_validate_extra() {
+# @AI - Optional function to validate configuration (similar to deploy_validate_extra)
+# action_config_validate() {
 #     return 0
 # }
 
-
-
 # =============================================================================
-# INSTALLATION WORKFLOW
+# GENERATE OVERRIDES
 # =============================================================================
-
-# Install system - disk partitioning, encryption, NixOS installation
-install_system() {
-    section_header "System Installation"
-
-    # Phase 1: Run disk preparation (partition, encryption, mount, hardware config)
-    step_start "Preparing disk and filesystems"
-    if ! nds_nixinstall_auto; then
-        step_fail "Disk preparation failed"
-        return 1
-    fi
-    step_complete "Disk preparation complete"
+action_generate_overrides() {
+    local hostname timezone locale keyboard_layout keyboard_variant
     
-    # Phase 3: Copy generated config to mounted system
-    step_start "Copying configuration to installed system"
-    if ! cp /tmp/dps_configuration.nix /mnt/etc/nixos/configuration.nix; then
-        step_fail "Failed to copy configuration"
-        return 1
-    fi
-    step_complete "Configuration copied"
-
-    # Phase 4: Copy nixosConfiguration files if they exist
-    local nixos_config_src
-    nixos_config_src="$(dirname "$(realpath "$0")")/nixosConfiguration"
-    if [[ -d "$nixos_config_src" ]]; then
-        step_start "Merging custom NixOS configuration"
-        # TODO: Implement merging of custom NixOS config
-        # For now, just note it exists
-        console "   Custom config found at: $nixos_config_src"
-        console "   TODO: Merge with generated config"
-        step_complete "Custom config noted"
-    fi
-
-    # Phase 5: Run NixOS installation
-    step_start "Installing NixOS system"
-    if ! _nixinstall_install_nixos; then
-        step_fail "NixOS installation failed"
-        return 1
-    fi
-    step_complete "NixOS installed"
-
-    success "System installation complete"
-    return 0
-}
-
-# =============================================================================
-# POST-INSTALL SETUP
-# =============================================================================
-
-# Post-install configuration - keys, repository, tools
-post_install_setup() {
-    section_header "Post-Install Configuration"
-
-    local git_repo admin_user
-    git_repo=$(nds_config_get "deploy" "GIT_REPO_URL")
-    admin_user=$(nds_config_get "system" "ADMIN_USER")
-
-    # Generate SSH keys for admin user
-    step_start "Generating SSH keys for $admin_user"
-    local ssh_key_path="/mnt/home/${admin_user}/.ssh/id_ed25519"
-    mkdir -p "$(dirname "$ssh_key_path")"
-    if ! generate_ssh_key "$ssh_key_path" "" "$(nds_config_get "network" "HOSTNAME")"; then
-        warn "SSH key generation failed (non-critical)"
-    else
-        step_complete "SSH keys generated"
-    fi
-
-    # Generate Age encryption key for SOPS
-    step_start "Generating Age encryption key"
-    local age_key_path="/mnt/home/${admin_user}/.config/sops/age/keys.txt"
-    mkdir -p "$(dirname "$age_key_path")"
-    if ! generate_age_key "$age_key_path"; then
-        warn "Age key generation failed (non-critical)"
-    else
-        step_complete "Age keys generated"
-    fi
-
-    # Set proper ownership for user files
-    step_start "Setting file permissions"
-    if [[ -d "/mnt/home/${admin_user}" ]]; then
-        chown -R 1000:1000 "/mnt/home/${admin_user}" 2>/dev/null || true
-    fi
-    step_complete "Permissions set"
-
-    success "Post-install configuration complete"
-    return 0
-}
-
-# =============================================================================
-# COMPLETION SUMMARY
-# =============================================================================
-
-# Show installation completion summary with next steps
-show_completion_summary() {
-    new_section
-    section_header "Installation Complete!"
-
-    local hostname encryption disk admin_user git_repo
     hostname=$(nds_config_get "network" "HOSTNAME")
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
-    disk=$(nds_config_get "disk" "DISK_TARGET")
-    admin_user=$(nds_config_get "system" "ADMIN_USER")
-    git_repo=$(nds_config_get "deploy" "GIT_REPO_URL")
-
-    console ""
-    console "╭─────────────────────────────────────────────╮"
-    console "│  Deploy VM Ready: $hostname"
-    console "╰─────────────────────────────────────────────╯"
-    console ""
-
-    # Show encryption key backup warning
-    if [[ "$encryption" == "true" ]]; then
-        warn "ENCRYPTION KEY BACKUP REQUIRED!"
-        console "   Encryption is enabled on $disk"
-        console "   ⚠️  Backup LUKS key before rebooting!"
-        console "   Key location: /tmp/luks_key.txt (if saved)"
-        console ""
-    fi
-
-    console "📋 Next Steps:"
-    console "   1️⃣  Reboot the system"
-    console "   2️⃣  Login as: $admin_user"
-    console "   3️⃣  Clone private repository: $git_repo"
-    console "   4️⃣  Configure SOPS with Age keys"
-    console "   5️⃣  Setup SSH keys for node deployment"
-    console "   6️⃣  Begin deploying managed nodes"
-    console ""
-
-    console "📚 Documentation:"
-    console "   - README: /etc/nixos/README.md"
-    console "   - SSH Key: /home/${admin_user}/.ssh/id_ed25519.pub"
-    console "   - Age Key: /home/${admin_user}/.config/sops/age/keys.txt"
-    console ""
+    timezone=$(nds_config_get "region" "TIMEZONE")
+    locale=$(nds_config_get "region" "LOCALE_MAIN")
+    keyboard_layout=$(nds_config_get "region" "KEYBOARD_LAYOUT")
+    keyboard_variant=$(nds_config_get "region" "KEYBOARD_VARIANT")
+    
+    cat <<EOF
+# NDS Bootstrap Overrides - Generated $(date)
+{ config, lib, ... }:
+{
+  networking.hostName = "$hostname";
+  time.timeZone = "$timezone";
+  i18n.defaultLocale = "$locale";
+  
+  services.xserver.xkb = {
+    layout = "$keyboard_layout";
+$([ -n "$keyboard_variant" ] && echo "    variant = \"$keyboard_variant\";")
+  };
+}
+EOF
 }
 
 # =============================================================================
-# MAIN SETUP FUNCTION
+# GENERATE MAIN CONFIG
 # =============================================================================
-setup() {
+action_generate_config() {
+    local nixos_version
+    nixos_version=$(nixos-version | cut -d. -f1-2)
+    
+    cat <<EOF
+# Generated by NDS Bootstrap - $(date)
+{ config, lib, pkgs, ... }:
+{
+  imports = [
+    ./hardware-configuration.nix
+    ./nds_overrides.nix
+    ./deployVM.nix
+  ];
+  
+  system.stateVersion = "$nixos_version";
+}
+EOF
+}
+
+# =============================================================================
+# MAIN WORKFLOW
+# =============================================================================
+action_setup() {
+    # Set action config paths
+    NDS_ACTION_CONFIG_FILE="deployVM.nix"
+    NDS_ACTION_CONFIG_SOURCE="$(dirname "$0")/nixosConfiguration/deployVM.nix"
+    
+    # Description
     section_header "Deploy VM Installation"
-    console "This will install a deploy VM to manage NixOS nodes"
-
-    # Configuration workflow
-    if ! nds_config_workflow "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
-        error "Configuration cancelled or failed validation"
-        return 1
-    fi
-
-    # Generate NixOS configuration from modules
+    console "This will install a Deploy VM for managing NixOS nodes."
+    console ""
+    console "The Deploy VM includes:"
+    console "  • Deployment tools (nixos-anywhere, deploy-rs)"
+    console "  • Container management (Docker)"
+    console "  • Monitoring tools (Prometheus, Grafana)"
+    console "  • Secrets management (age, sops)"
+    console ""
+    
+    nds_askUserToProceed "Ready to begin configuration?" || exit 10
+    
+    # Configuration phase
     new_section
-    section_header "Generating NixOS Configuration"
+    section_header "Configuration"
     
-    # Clear any previous config
-    nds_nixcfg_clear
-    
-    # Generate all module configs (they register themselves)
-    step_start "Generating module configurations"
-    nds_nixcfg_access_auto
-    nds_nixcfg_network_auto
-    nds_nixcfg_boot_auto
-    nds_nixcfg_security_auto
-    nds_nixcfg_region_auto
-    step_complete "Modules configured"
-    
-    # Write config to temp file
-    step_start "Writing configuration"
-    if ! nds_nixcfg_write "/tmp/dps_configuration.nix"; then
-        step_fail "Failed to write config"
-        return 1
-    fi
-    step_complete "Configuration written"
-    
-    # Show config and ask for confirmation
-    new_section
-    section_header "Generated NixOS Configuration"
-    cat /tmp/dps_configuration.nix
-    echo ""
-    prompt "Review the configuration above. Continue with installation? (y/n): "
-    read -r confirm
-    if [[ "${confirm,,}" != "y" ]]; then
-        warn "Installation cancelled by user"
-        return 0
+    if ! nds_config_validate "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
+        nds_config_prompt_missing "quick" "access" "network" "disk" "boot" "security" "region" "deploy"
+        
+        if ! nds_config_validate "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
+            error "Configuration validation failed"
+            exit 11
+        fi
     fi
     
-    # System installation
+    # Optional: Show interactive menu
+    # nds_config_menu "quick" "access" "network" "disk" "boot" "security" "region" "deploy" || exit 12
+    
+    nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
+    
+    # Pre-install phase
     new_section
-    if ! install_system; then
-        error "System installation failed"
-        return 1
-    fi
-
-    # Copy deployTools to user home
+    section_header "Pre-Install Preparation"
+    
+    step_start "Generating configurations"
+    action_generate_overrides > "$NDS_RUNTIME_DIR/config/nds_overrides.nix"
+    action_generate_config > "$NDS_RUNTIME_DIR/config/configuration.nix"
+    step_complete "Configurations ready"
+    
+    step_start "Preparing secrets"
+    _prepare_secrets
+    step_complete "Secrets prepared"
+    
+    # Call pre-install hook if exists
+    type action_pre &>/dev/null && action_pre
+    
+    # Install phase
     new_section
-    if ! install_deploy_tools; then
-        warn "Deploy tools installation had issues (non-critical)"
-    fi
-
-    # Collect and show secrets
+    section_header "NixOS Installation"
+    nds_nixos_install || exit 14
+    
+    # Post-install phase
     new_section
-    if ! collect_and_show_secrets; then
-        warn "Secrets collection had issues (non-critical)"
-    fi
-
-    # Show completion summary
-    show_completion_summary
-
-    success "Deploy VM installation complete!"
-    return 0
+    section_header "Post-Install Setup"
+    type action_postInstall &>/dev/null && action_postInstall
+    
+    # Completion
+    new_section
+    _show_secrets_info
+    action_show_completion
+    
+    console ""
+    nds_askUserToProceed "Installation complete. Reboot now?" && reboot
 }
 
 # =============================================================================
-# DEPLOY TOOLS INSTALLATION
+# HOOKS
+# =============================================================================
+action_pre() {
+    
+}
+
+action_postInstall() {
+    
+}
+
+# =============================================================================
+# CUSTOM FUNCTIONS
 # =============================================================================
 install_deploy_tools() {
     section_header "Installing Deploy Tools"
@@ -335,69 +256,60 @@ install_deploy_tools() {
 }
 
 # =============================================================================
-# SECRETS COLLECTION AND WARNING
+# COMPLETION MESSAGE
 # =============================================================================
-collect_and_show_secrets() {
-    section_header "Secrets and Keys"
-    
-    local secrets_dir encryption ssh_key_type admin_user
-    secrets_dir="/tmp/dps_secrets_$(date +%s)"
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
-    ssh_key_type=$(nds_config_get "access" "SSH_KEY_TYPE")
-    admin_user=$(nds_config_get "access" "ADMIN_USER")
-    
-    mkdir -p "$secrets_dir"
-    
+action_show_completion() {
     console ""
-    console "╭───────────────────────────────────────────────────╮"
-    console "│  ⚠️  IMPORTANT: Backup These Secrets!            │"
-    console "╰───────────────────────────────────────────────────╯"
+    console "╭─────────────────────────────────────────────╮"
+    console "│  Deploy VM Installation Complete! 🎉        │"
+    console "╰─────────────────────────────────────────────╯"
     console ""
-    
-    # Collect LUKS key if encryption enabled
-    if [[ "$encryption" == "true" ]]; then
-        local luks_key="/tmp/luks_key.txt"
-        if [[ -f "$luks_key" ]]; then
-            cp "$luks_key" "$secrets_dir/"
-            console "🔐 LUKS Encryption Key:"
-            console "   Location: $secrets_dir/luks_key.txt"
-            console "   ⚠️  Required to unlock encrypted disk!"
-            console ""
-        fi
-    fi
-    
-    # Show SSH key locations
-    console "🔑 SSH Keys ($ssh_key_type):"
-    console "   Private: /home/${admin_user}/.ssh/id_${ssh_key_type}"
-    console "   Public:  /home/${admin_user}/.ssh/id_${ssh_key_type}.pub"
-    console "   ⚠️  Required for remote node deployment!"
+    console "Next steps:"
+    console "  1. Reboot into installed system"
+    console "  2. Login as admin (check secrets for password)"
+    console "  3. SSH key will be auto-generated on first boot"
+    console "  4. Clone your private repo and begin deploying"
     console ""
-    
-    # Show Age key location
-    console "🔐 Age Encryption Key (for SOPS):"
-    console "   Location: /home/${admin_user}/.config/sops/age/keys.txt"
-    console "   ⚠️  Required for secrets management!"
-    console ""
-    
-    # Show private repo SSH key if configured
-    local deploy_ssh_key
-    deploy_ssh_key=$(nds_config_get "deploy" "DEPLOY_SSH_KEY_PATH")
-    if [[ -n "$deploy_ssh_key" ]]; then
-        console "🔑 Private Repository SSH Key:"
-        console "   Path: $deploy_ssh_key"
-        console "   ⚠️  Required for private git repository access!"
-        console ""
-    fi
-    
-    warn "Secrets directory: $secrets_dir"
-    warn "This directory is in /tmp and will be DELETED on reboot!"
-    warn "Back up all secrets BEFORE rebooting!"
-    console ""
-    
-    return 0
 }
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
-# Helper functions for Deploy VM specific operations can be added here
+
+# Prepare secrets in runtime directory
+_prepare_secrets() {
+    # Admin password
+    local admin_pass
+    admin_pass=$(openssl rand -base64 16)
+    echo "$admin_pass" > "$NDS_RUNTIME_DIR/secrets/admin_initial_password.txt"
+    
+    # Move encryption key if exists
+    if [[ -f /tmp/luks_key.txt ]]; then
+        mv /tmp/luks_key.txt "$NDS_RUNTIME_DIR/secrets/"
+    fi
+    
+    # Create secrets.env
+    cat > "$NDS_RUNTIME_DIR/secrets/secrets.env" <<EOF
+ADMIN_INITIAL_PASSWORD=$admin_pass
+GIT_REPO_URL=$(nds_config_get "deploy" "GIT_REPO_URL")
+EOF
+    
+    chmod 600 "$NDS_RUNTIME_DIR/secrets/"*
+}
+
+# Show secrets backup information
+_show_secrets_info() {
+    section_header "🔐 Secrets Backup Required"
+    console ""
+    console "Location: $NDS_RUNTIME_DIR/secrets/"
+    console ""
+    console "⚠️  CRITICAL: Back up these files before rebooting!"
+    console ""
+    
+    if [[ -f "$NDS_RUNTIME_DIR/secrets/luks_key.txt" ]]; then
+        console "   • Encryption key"
+    fi
+    console "   • Admin initial password"
+    console "   • Environment variables"
+    console ""
+}

@@ -8,6 +8,69 @@
 # ==================================================================================================
 
 # =============================================================================
+# MODULE INITIALIZATION (Called by main.sh)
+# =============================================================================
+
+# Initialize modules - called by main.sh BEFORE sourcing setup.sh
+# Usage: nds_config_init_modules "module1" "module2" ...
+nds_config_init_modules() {
+    local modules=("$@")
+    
+    for module in "${modules[@]}"; do
+        # Check if module has fields declared already
+        local has_fields=false
+        for key in "${!FIELD_REGISTRY[@]}"; do
+            if [[ "$key" =~ ^${module}__.*__display$ ]]; then
+                has_fields=true
+                break
+            fi
+        done
+        
+        # Initialize if no fields found
+        if [[ "$has_fields" == "false" ]]; then
+            debug "Initializing module: $module"
+            nds_config_init_module "$module" || {
+                error "Failed to initialize module: $module"
+                return 1
+            }
+        fi
+    done
+}
+
+# =============================================================================
+# PUBLIC API FOR SETUP.SH
+# =============================================================================
+
+# Validate all modules - returns 0 if valid, 1 if errors
+# Usage: nds_config_validate "module1" "module2" ...
+nds_config_validate() {
+    local modules=("$@")
+    local has_errors=false
+    
+    for module in "${modules[@]}"; do
+        if ! nds_module_validate "$module" 2>/dev/null; then
+            has_errors=true
+        fi
+    done
+    
+    if $has_errors; then
+        return 1
+    fi
+    return 0
+}
+
+# Prompt for missing/invalid fields only
+# Usage: nds_config_prompt_missing "module1" "module2" ...
+nds_config_prompt_missing() {
+    local modules=("$@")
+    section_header "Configuration Required"
+    
+    for module in "${modules[@]}"; do
+        nds_module_prompt_errors "$module"
+    done
+}
+
+# =============================================================================
 # HIGH-LEVEL WORKFLOWS
 # =============================================================================
 
@@ -101,63 +164,24 @@ nds_config_menu() {
     done
 }
 
-# Complete configuration workflow
+# Complete configuration workflow (convenience function)
 # Usage: nds_config_workflow "module1" "module2" ...
 nds_config_workflow() {
     local modules=("$@")
 
-    # Auto-initialize any modules that haven't been initialized yet
-    for module in "${modules[@]}"; do
-        # Check if module has any fields declared (if not, it needs initialization)
-        local has_fields=false
-        for key in "${!FIELD_REGISTRY[@]}"; do
-            if [[ "$key" =~ ^${module}__.*__display$ ]]; then
-                has_fields=true
-                break
-            fi
-        done
+    # Validate
+    if ! nds_config_validate "${modules[@]}"; then
+        # Prompt for missing/invalid
+        nds_config_prompt_missing "${modules[@]}"
         
-        # Initialize if no fields found
-        if [[ "$has_fields" == "false" ]]; then
-            debug "Auto-initializing module: $module"
-            nds_config_init_module "$module" || {
-                error "Failed to initialize module: $module"
-                return 1
-            }
-        fi
-    done
-
-    # Check if any fields are missing (silent check)
-    local needs_input=false
-    for module in "${modules[@]}"; do
-        if ! nds_module_validate "$module" 2>/dev/null; then
-            needs_input=true
-            break
-        fi
-    done
-
-    # If validation fails, prompt for required fields
-    if [[ "$needs_input" == "true" ]]; then
-        nds_config_fix_errors "${modules[@]}"
-
-        # Re-validate after input
-        local validation_errors=0
-        for module in "${modules[@]}"; do
-            if ! nds_module_validate "$module"; then
-                ((validation_errors++))
-            fi
-        done
-
-        if [[ "$validation_errors" -gt 0 ]]; then
-            error "Configuration validation still has $validation_errors error(s)"
+        # Re-validate
+        if ! nds_config_validate "${modules[@]}"; then
+            error "Configuration validation failed"
             return 1
         fi
-
-        success "Configuration completed"
     fi
 
-    # Show interactive configuration menu directly
-    # (it includes a summary and lets user press X to proceed or select categories to edit)
+    # Show interactive menu
     nds_config_menu "${modules[@]}"
     return $?
 }

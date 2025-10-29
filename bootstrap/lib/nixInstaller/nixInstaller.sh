@@ -59,3 +59,51 @@ nds_nixinstall() {
     success "NixOS disk preparation completed successfully"
     log "Configuration must be written to /mnt/etc/nixos/configuration.nix before running nixos-install"
 }
+
+# =============================================================================
+# COMPLETE INSTALLATION WORKFLOW
+# =============================================================================
+
+# Complete NixOS installation including disk prep and nixos-install
+# Expects configs to be in $NDS_RUNTIME_DIR/config/
+# Usage: nds_nixos_install
+nds_nixos_install() {
+    # 1. Disk preparation (partition, encrypt, mount, hardware config)
+    step_start "Preparing disk and filesystems"
+    if ! nds_nixinstall_auto; then
+        step_fail "Disk preparation failed"
+        return 1
+    fi
+    step_complete "Disk ready"
+    
+    # 2. Copy hardware config to runtime directory
+    if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+        cp /mnt/etc/nixos/hardware-configuration.nix "$NDS_RUNTIME_DIR/config/"
+    fi
+    
+    # 3. Copy all configs from runtime to /mnt
+    step_start "Installing configuration files"
+    cp "$NDS_RUNTIME_DIR/config/"*.nix /mnt/etc/nixos/ || {
+        step_fail "Failed to copy configuration"
+        return 1
+    }
+    
+    # Copy action's predefined config if specified
+    if [[ -n "$NDS_ACTION_CONFIG_SOURCE" ]] && [[ -f "$NDS_ACTION_CONFIG_SOURCE" ]]; then
+        cp "$NDS_ACTION_CONFIG_SOURCE" /mnt/etc/nixos/"${NDS_ACTION_CONFIG_FILE}" || {
+            step_fail "Failed to copy action config"
+            return 1
+        }
+    fi
+    step_complete "Configuration installed"
+    
+    # 4. Run nixos-install
+    step_start "Installing NixOS"
+    if ! _nixinstall_install_nixos; then
+        step_fail "NixOS installation failed"
+        return 1
+    fi
+    step_complete "NixOS installed"
+    
+    return 0
+}

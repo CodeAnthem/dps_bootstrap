@@ -67,7 +67,9 @@ _nixcfg_network_static() {
     local dns_secondary="$6"
     
     local block
-    block=$(cat <<EOF
+    # Only include nameservers if at least one is set
+    if [[ -n "$dns_primary" || -n "$dns_secondary" ]]; then
+        block=$(cat <<EOF
 networking = {
   hostName = "$hostname";
   interfaces.eth0.ipv4.addresses = [{
@@ -79,6 +81,19 @@ networking = {
 };
 EOF
 )
+    else
+        block=$(cat <<EOF
+networking = {
+  hostName = "$hostname";
+  interfaces.eth0.ipv4.addresses = [{
+    address = "$ip";
+    prefixLength = $mask;
+  }];
+  defaultGateway = "$gateway";
+};
+EOF
+)
+    fi
     
     nds_nixcfg_register "network" "$block" 20
 }
@@ -89,7 +104,9 @@ _nixcfg_network_dhcp() {
     local dns_secondary="$3"
     
     local block
-    block=$(cat <<EOF
+    # Only include nameservers if at least one is set
+    if [[ -n "$dns_primary" || -n "$dns_secondary" ]]; then
+        block=$(cat <<EOF
 networking = {
   hostName = "$hostname";
   networkmanager.enable = true;
@@ -97,6 +114,15 @@ networking = {
 };
 EOF
 )
+    else
+        block=$(cat <<EOF
+networking = {
+  hostName = "$hostname";
+  networkmanager.enable = true;
+};
+EOF
+)
+    fi
     
     nds_nixcfg_register "network" "$block" 20
 }
