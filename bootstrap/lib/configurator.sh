@@ -10,7 +10,7 @@
 # =============================================================================
 # INITIALIZE CONFIGURATION FEATURE
 # =============================================================================
-
+badComand
 # Initialize configuration system - called by main.sh
 # This loads all config components and prepares the system
 nds_config_init() {

@@ -387,9 +387,6 @@ declare -g RUNTIME_DIR
 if ! setupRuntimeDir; then crash "Failed to setup runtime directory"; fi
 info "Runtime directory: $RUNTIME_DIR"
 
-# test
-badCommand
-
 # Discover available actions
 readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
 declare -a ACTION_NAMES=()
