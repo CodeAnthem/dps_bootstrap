@@ -30,15 +30,14 @@ declare -gA DPS_HOOK_FUCNTIONS=(
 # IMPORT LIBRARIES
 # =============================================================================
 nds_source_dir() {
-    local directory recursive item basename
+    local directory recursive item basename err_output
 
-    # Validate parameters
     directory="$1"
     [[ -d "$directory" ]] || {
         echo "Error: Directory not found: $directory" >&2
         return 1
     }
-    
+
     recursive="${2:-false}"
     [[ "$recursive" == "true" || "$recursive" == "false" ]] || {
         echo "Error: Invalid recursive parameter: $recursive" >&2
@@ -46,27 +45,25 @@ nds_source_dir() {
     }
 
     for item in "$directory"/*; do
-        [[ -e "$item" ]] || continue # Skip if no match (e.g. empty dir)
+        [[ -e "$item" ]] || continue
 
-        # Skip files/folders starting with underscore
         basename=$(basename "$item")
         [[ "${basename:0:1}" == "_" ]] && continue
 
-        # If directory, recurse if enabled
         if [[ -d "$item" ]]; then
-            if [[ "$recursive" == "true" ]]; then
-                nds_source_dir "$item" "$recursive" || return 1
-            fi
+            [[ "$recursive" == "true" ]] && nds_source_dir "$item" "$recursive" || return 1
             continue
         fi
 
-        # Only source .sh files
         if [[ "${basename: -3}" == ".sh" ]]; then
-            # check file
-            if ! bash -euo pipefail "$item"; then
+            # Validate file by running it in a safe subshell and capture stderr
+            local err_output
+            if ! err_output=$(bash -euo pipefail "$item" 2>&1); then
                 echo "Error: Failed to source: $item" >&2
+                echo " -> ${err_output}" >&2
                 return 1
             fi
+
             # shellcheck disable=SC1090
             if ! source "$item"; then
                 echo "Error: Failed to source: $item" >&2
@@ -116,7 +113,7 @@ if [[ $EUID -ne 0 ]]; then
     section_header "Root Privilege Required"
     warn "This script requires root privileges."
     info "Attempting to restart with sudo..."
-    
+
     # Preserve DPS_* environment variables through sudo
     dps_vars=()
     while IFS='=' read -r name value; do
@@ -124,7 +121,7 @@ if [[ $EUID -ne 0 ]]; then
             dps_vars+=("$name=$value")
         fi
     done < <(env)
-    
+
     # Restart with sudo, preserving DPS_* and DEBUG variables
     if [[ ${#dps_vars[@]} -gt 0 ]]; then
         exec sudo "${dps_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
@@ -205,7 +202,7 @@ _main_stopHandler() {
     # Bootstrapper cleanup
     info "Cleaning up session"
     purgeRuntimeDir
-    
+
     # Call cleanup hook
     _nds_callHook "exit_cleanup" "$exit_code" || true
 }
@@ -220,24 +217,24 @@ _nds_validate_action() {
     local action_name="$1"
     local action_path="$2"
     local setup_script="${action_path}/setup.sh"
-    
+
     # Check setup.sh exists
     if [[ ! -f "$setup_script" ]]; then
         debug "Action '$action_name': Missing setup.sh"
         return 1
     fi
-    
+
     # Check for required functions (without sourcing)
     if ! grep -q "^action_config()" "$setup_script"; then
         debug "Action '$action_name': Missing action_config() function"
         return 1
     fi
-    
+
     if ! grep -q "^action_setup()" "$setup_script"; then
         debug "Action '$action_name': Missing action_setup() function"
         return 1
     fi
-    
+
     # Check for description in header
     local description
     description=$(head -n 20 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null)
@@ -245,7 +242,7 @@ _nds_validate_action() {
         debug "Action '$action_name': Missing description in header"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -254,42 +251,42 @@ _nds_discover_actions() {
         error "Actions directory not found: $ACTIONS_DIR"
         return 1
     fi
-    
+
     for action_dir in "$ACTIONS_DIR"/*/; do
         [[ -d "$action_dir" ]] || continue
-        
+
         local action_name
         action_name=$(basename "$action_dir")
-        
+
         # Skip test action unless DPS_TEST=true
         if [[ "$action_name" == "test" && "${DPS_TEST:-false}" != "true" ]]; then
             debug "Skipping test action (DPS_TEST not set)"
             continue
         fi
-        
+
         # Validate action structure
         if ! _nds_validate_action "$action_name" "$action_dir"; then
             warn "Skipping invalid action: $action_name"
             continue
         fi
-        
+
         # Extract metadata
         local description
         description=$(head -n 20 "${action_dir}setup.sh" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//')
-        
+
         # Store in arrays
         ACTION_NAMES+=("$action_name")
         ACTION_DATA["${action_name}_path"]="$action_dir"
         ACTION_DATA["${action_name}_description"]="$description"
-        
+
         debug "Validated action: $action_name"
     done
-    
+
     if [[ ${#ACTION_NAMES[@]} -eq 0 ]]; then
         error "No valid actions found in $ACTIONS_DIR"
         return 1
     fi
-    
+
     info "Discovered ${#ACTION_NAMES[@]} valid actions"
     return 0
 }
@@ -300,37 +297,37 @@ _nds_discover_actions() {
 _nds_select_action() {
     new_section
     section_header "Choose Bootstrap Action"
-    
+
     console "  0) Abort - Exit the script"
-    
+
     local i=1
     for action_name in "${ACTION_NAMES[@]}"; do
         local description="${ACTION_DATA[${action_name}_description]}"
         console "  $i) $action_name - $description"
         ((i++))
     done
-    
+
     local choice max_choice
     max_choice="${#ACTION_NAMES[@]}"
-    
+
     # Loop until valid choice
     while true; do
         read -rsn1 -p "     -> Select action [0-$max_choice]: " choice < /dev/tty
         echo
-        
+
         # Handle abort
         if [[ "$choice" == "0" ]]; then
             console "Operation aborted"
             exit 130
         fi
-        
+
         # Validate choice is a number and in range
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
             console "$selected_action"
             return 0
         fi
-        
+
         # Invalid selection
         console "Invalid selection. Choose 0-$max_choice"
     done
@@ -343,12 +340,12 @@ _nds_execute_action() {
     local action_name="$1"
     local action_path="${ACTION_DATA[${action_name}_path]}"
     local setup_script="${action_path}setup.sh"
-    
+
     if [[ ! -f "$setup_script" ]]; then
         error "Setup script not found: $setup_script"
         return 1
     fi
-    
+
     # Source the setup script
     info "Loading $action_name action..."
     # shellcheck disable=SC1090
@@ -356,7 +353,7 @@ _nds_execute_action() {
         error "Failed to source setup script: $setup_script"
         return 1
     fi
-    
+
     # Call action_config to setup fields and defaults
     if declare -f action_config &>/dev/null; then
         info "Configuring $action_name..."
@@ -365,7 +362,7 @@ _nds_execute_action() {
         error "action_config() not found in $setup_script"
         return 1
     fi
-    
+
     # Execute the setup function
     info "Executing $action_name..."
     section_title "Action: $action_name"
@@ -373,7 +370,7 @@ _nds_execute_action() {
         error "Action setup failed for: $action_name"
         return 1
     fi
-    
+
     success "Action completed: $action_name"
     return 0
 }
