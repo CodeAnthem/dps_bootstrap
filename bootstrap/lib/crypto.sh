@@ -60,12 +60,12 @@ generate_passphrase_openssl() {
 generate_passphrase_words() {
     local word_count="${1:-6}"
     local dict_file="/usr/share/dict/words"
-    
+
     if [[ ! -f "$dict_file" ]]; then
         error "Dictionary file not found: $dict_file"
         return 1
     fi
-    
+
     # Filter to words between 4-8 characters, lowercase only
     local words=()
     while IFS= read -r word; do
@@ -73,12 +73,12 @@ generate_passphrase_words() {
             words+=("$word")
         fi
     done < "$dict_file"
-    
+
     if [[ ${#words[@]} -eq 0 ]]; then
         error "No suitable words found in dictionary"
         return 1
     fi
-    
+
     # Select random words
     local passphrase=""
     for ((i = 0; i < word_count; i++)); do
@@ -86,7 +86,7 @@ generate_passphrase_words() {
         [[ -n "$passphrase" ]] && passphrase+="-"
         passphrase+="${words[$random_index]}"
     done
-    
+
     echo "$passphrase"
 }
 
@@ -129,23 +129,23 @@ generate_password_alnum() {
 validate_entropy() {
     local string="$1"
     local min_bits="${2:-64}"
-    
+
     # Simple entropy calculation based on character set size and length
     local charset_size=0
     [[ "$string" =~ [a-z] ]] && ((charset_size += 26))
     [[ "$string" =~ [A-Z] ]] && ((charset_size += 26))
     [[ "$string" =~ [0-9] ]] && ((charset_size += 10))
     [[ "$string" =~ [^a-zA-Z0-9] ]] && ((charset_size += 32))
-    
+
     if [[ "$charset_size" -eq 0 ]]; then
         return 1
     fi
-    
+
     # Entropy = length * log2(charset_size)
     local length=${#string}
     local entropy
     entropy=$(awk "BEGIN { print int($length * log($charset_size) / log(2)) }")
-    
+
     [[ "$entropy" -ge "$min_bits" ]]
 }
 
@@ -158,20 +158,20 @@ validate_entropy() {
 display_secret() {
     local secret="$1"
     local output_file="${2:-}"
-    
+
     console ""
     console "=== Generated Secret ==="
     console "$secret"
     console "========================"
     console ""
     console "⚠️  Copy this secret NOW - it will not be shown again!"
-    
+
     if [[ -n "$output_file" ]]; then
         echo "$secret" > "$output_file"
         chmod 600 "$output_file"
         console "✓ Secret saved to: $output_file (permissions: 600)"
     fi
-    
+
     console ""
 }
 
@@ -193,20 +193,20 @@ generate_ssh_key() {
     local key_file="$1"
     local passphrase="${2:-}"
     local hostname="${3:-$(hostname)}"
-    
+
     log "Generating SSH key: $key_file"
-    
+
     mkdir -p "$(dirname "$key_file")"
-    
+
     if [[ -n "$passphrase" ]]; then
         with_nix_shell "openssh" "ssh-keygen -t ed25519 -f '$key_file' -N '$passphrase' -C 'dps-admin@$hostname'"
     else
         with_nix_shell "openssh" "ssh-keygen -t ed25519 -f '$key_file' -N '' -C 'dps-admin@$hostname'"
     fi
-    
+
     chmod 600 "$key_file"
     chmod 644 "${key_file}.pub"
-    
+
     # Return public key
     cat "${key_file}.pub"
 }
@@ -214,17 +214,17 @@ generate_ssh_key() {
 # =============================================================================
 # AGE KEY MANAGEMENT
 # =============================================================================
-anotherBadCommand
+
 # Generate Age key for SOPS encryption
 # Usage: generate_age_key "key_file"
 generate_age_key() {
     local key_file="$1"
     log "Generating Age key: $key_file"
-    
+
     mkdir -p "$(dirname "$key_file")"
     with_nix_shell "age" "age-keygen -o '$key_file'"
     chmod 600 "$key_file"
-    
+
     # Extract public key
     local public_key
     public_key=$(grep "public key:" "$key_file" | cut -d: -f2 | tr -d ' ')

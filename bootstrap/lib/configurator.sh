@@ -10,7 +10,6 @@
 # =============================================================================
 # INITIALIZE CONFIGURATION FEATURE
 # =============================================================================
-badComand
 # Initialize configuration system - called by main.sh
 # This loads all config components and prepares the system
 nds_config_init() {
@@ -37,7 +36,7 @@ nds_config_init() {
             }
         fi
     done
-    
+
     success "Configuration feature initialized"
     return 0
 }
@@ -52,12 +51,12 @@ nds_config_activate_categories() {
     # Auto-discover categories from loaded files (find all *_init_callback functions)
     local category_callbacks
     category_callbacks=$(declare -F | grep -oP '(?<=declare -f )\w+(?=_init_callback)')
-    
+
     if [[ -z "$category_callbacks" ]]; then
         warn "No categories found"
         return 0
     fi
-    
+
     # Initialize each discovered category
     while IFS= read -r category; do
         _nds_config_init_category "$category" || {
@@ -65,7 +64,7 @@ nds_config_activate_categories() {
             return 1
         }
     done <<< "$category_callbacks"
-    
+
     info "Configuration system initialized ($(echo "$category_callbacks" | wc -l) categories)"
     return 0
 }
@@ -77,10 +76,10 @@ nds_config_activate_categories() {
 # Initialize a single category by calling its init callback
 _nds_config_init_category() {
     local category="$1"
-    
+
     # Set context
     MODULE_CONTEXT="$category"
-    
+
     # Call init callback (category file already loaded above)
     local init_callback="${category}_init_callback"
     if type "$init_callback" &>/dev/null; then
@@ -92,9 +91,9 @@ _nds_config_init_category() {
         error "Init callback not found: $init_callback"
         return 1
     fi
-    
+
     # Clear context
     MODULE_CONTEXT=""
-    
+
     return 0
 }
