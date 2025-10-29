@@ -101,7 +101,6 @@ nds_source_dir() {
 
     if [[ "$had_error" == "true" ]]; then
         # Print collected errors to stderr and return non-zero
-        echo >&2
         echo "$all_errors" >&2
         return 1
     fi
