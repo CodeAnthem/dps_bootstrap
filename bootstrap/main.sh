@@ -432,18 +432,11 @@ declare -a ACTION_NAMES=()
 declare -gA ACTION_DATA=()
 if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
-# Initialize configuration feature
-if declare -f nds_config_init &>/dev/null; then
-    nds_config_init || crash "Failed to initialize configuration feature"
+# Initialize configurator feature
+if declare -f nds_configurator_init &>/dev/null; then
+    nds_configurator_init || crash "Failed to initialize configurator"
 else
-    crash "Configuration feature not available (nds_config_init not found)"
-fi
-
-# Activate configuration categories
-if declare -f nds_config_activate_categories &>/dev/null; then
-    nds_config_activate_categories || crash "Failed to activate categories"
-else
-    crash "Configuration activation not available (nds_config_activate_categories not found)"
+    crash "Configurator not available (nds_configurator_init not found)"
 fi
 
 success "Bootstrapper 'NDS' libraries loaded"

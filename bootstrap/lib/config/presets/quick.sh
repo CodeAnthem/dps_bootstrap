@@ -10,9 +10,9 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-quick_init_callback() {
+quick_init() {
     # Country selection for auto-defaults
-    nds_field_declare COUNTRY \
+    nds_configurator_var_declare COUNTRY \
         display="Country (Quick Setup)" \
         input=country \
         default="" \

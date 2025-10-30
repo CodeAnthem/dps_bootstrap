@@ -10,30 +10,30 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-security_init_callback() {
-    nds_field_declare SECURE_BOOT \
+security_init() {
+    nds_configurator_var_declare SECURE_BOOT \
         display="Enable Secure Boot" \
         input=toggle \
         default=false
     
-    nds_field_declare SECURE_BOOT_METHOD \
+    nds_configurator_var_declare SECURE_BOOT_METHOD \
         display="Secure Boot Method" \
         input=choice \
         default="lanzaboote" \
         options="lanzaboote|sbctl"
     
-    nds_field_declare FIREWALL_ENABLE \
+    nds_configurator_var_declare FIREWALL_ENABLE \
         display="Enable Firewall" \
         input=toggle \
         required=true \
         default=true
     
-    nds_field_declare HARDENING_ENABLE \
+    nds_configurator_var_declare HARDENING_ENABLE \
         display="Apply Security Hardening" \
         input=toggle \
         default=true
     
-    nds_field_declare FAIL2BAN_ENABLE \
+    nds_configurator_var_declare FAIL2BAN_ENABLE \
         display="Enable Fail2Ban" \
         input=toggle \
         default=false
@@ -42,9 +42,9 @@ security_init_callback() {
 # =============================================================================
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
-security_get_active_fields() {
+security_get_active() {
     local secure_boot
-    secure_boot=$(nds_config_get "security" "SECURE_BOOT")
+    secure_boot=$(nds_configurator_config_get "SECURE_BOOT")
     
     echo "SECURE_BOOT"
     

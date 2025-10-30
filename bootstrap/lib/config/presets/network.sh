@@ -10,42 +10,42 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-network_init_callback() {
-    nds_field_declare HOSTNAME \
+network_init() {
+    nds_configurator_var_declare HOSTNAME \
         display="Hostname" \
         input=hostname \
         required=true
     
-    nds_field_declare NETWORK_METHOD \
+    nds_configurator_var_declare NETWORK_METHOD \
         display="Network Method" \
         input=choice \
         default="dhcp" \
         required=true \
         options="dhcp|static"
     
-    nds_field_declare NETWORK_IP \
+    nds_configurator_var_declare NETWORK_IP \
         display="IP Address" \
         required=true \
         input=ip
     
-    nds_field_declare NETWORK_MASK \
+    nds_configurator_var_declare NETWORK_MASK \
         display="Network Mask" \
         required=true \
         input=mask \
         default="255.255.255.0"
     
-    nds_field_declare NETWORK_GATEWAY \
+    nds_configurator_var_declare NETWORK_GATEWAY \
         display="Gateway" \
         required=true \
         input=ip
     
-    nds_field_declare NETWORK_DNS_PRIMARY \
+    nds_configurator_var_declare NETWORK_DNS_PRIMARY \
         display="Primary DNS" \
         input=ip \
         required=true \
         default="1.1.1.1"
     
-    nds_field_declare NETWORK_DNS_SECONDARY \
+    nds_configurator_var_declare NETWORK_DNS_SECONDARY \
         display="Secondary DNS" \
         input=ip \
         required=true \
@@ -55,9 +55,9 @@ network_init_callback() {
 # =============================================================================
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
-network_get_active_fields() {
+network_get_active() {
     local method
-    method=$(nds_config_get "network" "NETWORK_METHOD")
+    method=$(nds_configurator_config_get "NETWORK_METHOD")
     
     # Base fields always active
     echo "HOSTNAME"
@@ -78,16 +78,16 @@ network_get_active_fields() {
 # =============================================================================
 network_validate_extra() {
     local method
-    method=$(nds_config_get "network" "NETWORK_METHOD")
+    method=$(nds_configurator_config_get "NETWORK_METHOD")
     
     if [[ "$method" == "static" ]]; then
         local ip
         local mask
         local gateway
         
-        ip=$(nds_config_get "network" "NETWORK_IP")
-        mask=$(nds_config_get "network" "NETWORK_MASK")
-        gateway=$(nds_config_get "network" "NETWORK_GATEWAY")
+        ip=$(nds_configurator_config_get "NETWORK_IP")
+        mask=$(nds_configurator_config_get "NETWORK_MASK")
+        gateway=$(nds_configurator_config_get "NETWORK_GATEWAY")
         
         # Check if Gateway is same as IP
         if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then

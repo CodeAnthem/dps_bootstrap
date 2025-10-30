@@ -10,14 +10,14 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-boot_init_callback() {
-    nds_field_declare UEFI_MODE \
+boot_init() {
+    nds_configurator_var_declare UEFI_MODE \
         display="UEFI Mode" \
         input=toggle \
         required=true \
         default=true
     
-    nds_field_declare BOOTLOADER \
+    nds_configurator_var_declare BOOTLOADER \
         display="Bootloader" \
         input=choice \
         required=true \
@@ -28,7 +28,7 @@ boot_init_callback() {
 # =============================================================================
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
-boot_get_active_fields() {
+boot_get_active() {
     # UEFI_MODE must come first as BOOTLOADER selection may depend on it
     echo "UEFI_MODE"
     echo "BOOTLOADER"

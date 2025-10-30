@@ -10,55 +10,55 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-disk_init_callback() {
+disk_init() {
     # Auto-detect first disk if not provided
     local first_disk=""
     first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
     
-    nds_field_declare DISK_TARGET \
+    nds_configurator_var_declare DISK_TARGET \
         display="Target Disk" \
         input=disk \
         default="$first_disk" \
         required=true
     
-    nds_field_declare ENCRYPTION \
+    nds_configurator_var_declare ENCRYPTION \
         display="Enable Encryption" \
         input=toggle \
         default=true \
         required=true
     
-    nds_field_declare ENCRYPTION_KEY_METHOD \
+    nds_configurator_var_declare ENCRYPTION_KEY_METHOD \
         display="Encryption Key Method" \
         input=choice \
         default="urandom" \
         options="urandom|openssl|manual"
     
-    nds_field_declare ENCRYPTION_KEY_LENGTH \
+    nds_configurator_var_declare ENCRYPTION_KEY_LENGTH \
         display="Encryption Key Length" \
         input=int \
         default="64" \
         min=32 \
         max=512
     
-    nds_field_declare ENCRYPTION_USE_PASSPHRASE \
+    nds_configurator_var_declare ENCRYPTION_USE_PASSPHRASE \
         display="Use Passphrase" \
         input=toggle \
         default=false
     
-    nds_field_declare ENCRYPTION_PASSPHRASE_METHOD \
+    nds_configurator_var_declare ENCRYPTION_PASSPHRASE_METHOD \
         display="Passphrase Generation Method" \
         input=choice \
         default="urandom" \
         options="urandom|openssl|manual"
     
-    nds_field_declare ENCRYPTION_PASSPHRASE_LENGTH \
+    nds_configurator_var_declare ENCRYPTION_PASSPHRASE_LENGTH \
         display="Passphrase Length" \
         input=int \
         default="32" \
         min=16 \
         max=512
     
-    nds_field_declare PARTITION_SCHEME \
+    nds_configurator_var_declare PARTITION_SCHEME \
         display="Partition Scheme" \
         input=choice \
         default="auto" \
@@ -68,12 +68,12 @@ disk_init_callback() {
 # =============================================================================
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
-disk_get_active_fields() {
+disk_get_active() {
     local encryption
     local use_passphrase
     
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
-    use_passphrase=$(nds_config_get "disk" "ENCRYPTION_USE_PASSPHRASE")
+    encryption=$(nds_configurator_config_get "ENCRYPTION")
+    use_passphrase=$(nds_configurator_config_get "ENCRYPTION_USE_PASSPHRASE")
     
     # Base fields always active
     echo "DISK_TARGET"

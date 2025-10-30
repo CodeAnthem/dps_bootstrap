@@ -1,213 +1,151 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Configuration System - Field Operations
+# DPS Project - Configurator - ConfigVar Operations
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-24
-# Description:   Field-level validation and prompting
-# Dependencies:  1_core.sh, 1_inputs/**
+# Date:          Created: 2025-10-24 | Modified: 2025-10-30
+# Description:   ConfigVar validation and prompting
+# Dependencies:  storage.sh, inputs/**
 # ==================================================================================================
 
 # =============================================================================
-# FIELD VALIDATION
+# CONFIGVAR VALIDATION
 # =============================================================================
 
-# Validate one field
-# Usage: nds_field_validate "module" "field"
-nds_field_validate() {
-    local module="$1"
-    local field="$2"
-    
-    local input
+nds_configurator_var_validate() {
+    local varname="$1"
     local value
     local required
+    local input
     local display
     
-    input=$(nds_field_get "$module" "$field" "input")
-    value=$(nds_config_get "$module" "$field")
-    required=$(nds_field_get "$module" "$field" "required")
-    display=$(nds_field_get "$module" "$field" "display")
+    value=$(nds_configurator_config_get "$varname")
+    required=$(nds_configurator_var_get_meta "$varname" "required")
+    input=$(nds_configurator_var_get_meta "$varname" "input")
+    display=$(nds_configurator_var_get_meta "$varname" "display")
     
-    # Check if required and empty
+    # Check required
     if [[ "$required" == "true" && -z "$value" ]]; then
         validation_error "$display is required"
         return 1
     fi
     
-    # Skip validation if empty and optional
+    # Skip if empty and optional
     [[ -z "$value" ]] && return 0
     
-    # Set context for validator
-    set_input_context "$module" "$field"
+    # Set context and validate
+    _nds_configurator_set_validator_context "$varname"
     
-    # Run validator and capture error code
     local error_code
     "validate_${input}" "$value"
     error_code=$?
     
+    _nds_configurator_clear_validator_context
+    
     if [[ "$error_code" -ne 0 ]]; then
-        # Get custom error or use error_msg_* function with error code
         local error_msg
-        error_msg=$(nds_field_get "$module" "$field" "error")
+        error_msg=$(nds_configurator_var_get_meta "$varname" "error")
+        
         if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
             error_msg=$("error_msg_${input}" "$value" "$error_code")
         fi
+        
         validation_error "${error_msg:-Invalid $display}"
-        clear_input_context
         return 1
     fi
-    
-    # Clear context
-    clear_input_context
     
     return 0
 }
 
 # =============================================================================
-# GENERIC INPUT LOOP
+# PROMPTING
 # =============================================================================
 
-# Generic input loop - handles read, empty, validation, normalization
-generic_input_loop() {
+_nds_configurator_prompt_generic() {
     local display="$1"
     local current="$2"
-    local input_name="$3"
+    local input="$3"
     
-    # Get prompt hint if exists
     local hint=""
-    if type "prompt_hint_${input_name}" &>/dev/null; then
-        hint=$("prompt_hint_${input_name}")
-    fi
+    type "prompt_hint_${input}" &>/dev/null && hint=$("prompt_hint_${input}")
     
-    # Get read type (default: string with enter)
     local read_type
-    read_type=$(input_opt "read_type" "string")
+    read_type=$(_nds_configurator_get_validator_opt "read_type" "string")
     
     while true; do
-        # Display prompt
         if [[ -n "$hint" ]]; then
             printf "  %-20s [%s] %s: " "$display" "$current" "$hint" >&2
         else
             printf "  %-20s [%s]: " "$display" "$current" >&2
         fi
         
-        # Read based on type
         local value
         if [[ "$read_type" == "char" ]]; then
             read -r -n 1 value < /dev/tty
-            echo >&2  # Newline after single char
+            echo >&2
         else
             read -r value < /dev/tty
         fi
         
-        # Empty handling - keep current
-        if [[ -z "$value" ]]; then
-            return 0
-        fi
+        [[ -z "$value" ]] && echo "$current" && return 0
         
-        # Validate and capture error code
-        local error_code
-        "validate_${input_name}" "$value"
-        error_code=$?
-        
-        if [[ "$error_code" -eq 0 ]]; then
-            # Normalize if function exists
-            if type "normalize_${input_name}" &>/dev/null; then
-                value=$("normalize_${input_name}" "$value")
-            fi
+        if "validate_${input}" "$value" 2>/dev/null; then
+            type "normalize_${input}" &>/dev/null && value=$("normalize_${input}" "$value")
             echo "$value"
             return 0
-        else
-            # Get error message with error code
-            local error
-            if type "error_msg_${input_name}" &>/dev/null; then
-                error=$("error_msg_${input_name}" "$value" "$error_code")
-            else
-                error="Invalid input"
-            fi
-            console "    Error: $error"
         fi
+        
+        local error="Invalid input"
+        type "error_msg_${input}" &>/dev/null && error=$("error_msg_${input}" "$value")
+        console "    Error: $error"
     done
 }
 
-# =============================================================================
-# FIELD PROMPTING
-# =============================================================================
-
-# Prompt user for a single field (with validation loop)
-# Usage: nds_field_prompt "module" "field"
-nds_field_prompt() {
-    local module="$1"
-    local field="$2"
-    
+nds_configurator_var_prompt() {
+    local varname="$1"
     local input
     local display
     local current
     local required
     
-    input=$(nds_field_get "$module" "$field" "input")
-    display=$(nds_field_get "$module" "$field" "display")
-    current=$(nds_config_get "$module" "$field")
-    required=$(nds_field_get "$module" "$field" "required")
+    input=$(nds_configurator_var_get_meta "$varname" "input")
+    display=$(nds_configurator_var_get_meta "$varname" "display")
+    current=$(nds_configurator_config_get "$varname")
+    required=$(nds_configurator_var_get_meta "$varname" "required")
     
-    # Loop until we get valid input or user provides valid current value
     while true; do
-        # Set context and cache options
-        set_input_context "$module" "$field"
+        _nds_configurator_set_validator_context "$varname"
         
         local new_value
-        
-        # Check if input has custom prompt
         if type "prompt_${input}" &>/dev/null; then
-            # Use custom prompt
             new_value=$("prompt_${input}" "$display" "$current")
         else
-            # Use generic loop
-            new_value=$(generic_input_loop "$display" "$current" "$input")
+            new_value=$(_nds_configurator_prompt_generic "$display" "$current" "$input")
         fi
         
-        # Clear context
-        clear_input_context
+        _nds_configurator_clear_validator_context
         
-        # Empty input means keep current value
+        # Empty = keep current
         if [[ -z "$new_value" ]]; then
-            # Check if current value is valid
             if [[ "$required" == "true" && -z "$current" ]]; then
                 validation_error "$display is required"
-                continue  # Re-prompt
+                continue
             fi
-            
-            # Validate current value
-            if [[ -n "$current" ]]; then
-                set_input_context "$module" "$field"
-                if ! "validate_${input}" "$current"; then
-                    # Get error message
-                    local error_msg
-                    error_msg=$(nds_field_get "$module" "$field" "error")
-                    if [[ -z "$error_msg" ]] && type "error_msg_${input}" &>/dev/null; then
-                        error_msg=$("error_msg_${input}" "$current")
-                    fi
-                    validation_error "${error_msg:-Invalid $display}"
-                    clear_input_context
-                    continue  # Re-prompt
-                fi
-                clear_input_context
-            fi
-            
-            # Current value is valid, keep it
             return 0
         fi
         
-        # New value provided - update
-        nds_config_set "$module" "$field" "$new_value"
-        if [[ "$current" == "$new_value" ]]; then return 0; fi # Skip if same value
-        if [[ -n "$current" ]]; then
-            console "    -> Updated: $current -> $new_value"
-        else
-            console "    -> Set: $new_value"
+        # Update value
+        nds_configurator_config_set "$varname" "$new_value"
+        
+        if [[ "$current" != "$new_value" ]]; then
+            if [[ -n "$current" ]]; then
+                console "    -> Updated: $current -> $new_value"
+            else
+                console "    -> Set: $new_value"
+            fi
         fi
         
-        # Special hook: If quick module and COUNTRY field, apply defaults
-        if [[ "$module" == "quick" && "$field" == "COUNTRY" && -n "$new_value" ]]; then
+        # Special hook for COUNTRY field
+        if [[ "$varname" == "COUNTRY" && -n "$new_value" ]]; then
             if type apply_country_defaults &>/dev/null; then
                 apply_country_defaults "$new_value" && console "    -> Applied country defaults"
             fi

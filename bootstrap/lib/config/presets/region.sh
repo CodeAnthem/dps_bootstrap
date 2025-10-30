@@ -10,31 +10,31 @@
 # =============================================================================
 # CONFIGURATION - Field Declarations
 # =============================================================================
-region_init_callback() {
-    nds_field_declare TIMEZONE \
+region_init() {
+    nds_configurator_var_declare TIMEZONE \
         display="Timezone" \
         input=timezone \
         required=true \
         default="UTC"
     
-    nds_field_declare LOCALE_MAIN \
+    nds_configurator_var_declare LOCALE_MAIN \
         display="Primary Locale" \
         input=locale \
         required=true \
         default="en_US.UTF-8"
     
-    nds_field_declare LOCALE_EXTRA \
+    nds_configurator_var_declare LOCALE_EXTRA \
         display="Additional Locales" \
         input=string \
         default=""
     
-    nds_field_declare KEYBOARD_LAYOUT \
+    nds_configurator_var_declare KEYBOARD_LAYOUT \
         display="Keyboard Layout" \
         input=keyboard \
         required=true \
         default="us"
     
-    nds_field_declare KEYBOARD_VARIANT \
+    nds_configurator_var_declare KEYBOARD_VARIANT \
         display="Keyboard Variant (optional)" \
         input=keyboard_variant \
         default="" \
@@ -45,7 +45,7 @@ region_init_callback() {
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
 # Used to have another sorting
-region_get_active_fields() {
+region_get_active() {
     echo "TIMEZONE"
     echo "LOCALE_MAIN"
     echo "LOCALE_EXTRA"
