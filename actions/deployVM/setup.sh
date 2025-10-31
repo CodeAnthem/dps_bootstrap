@@ -151,10 +151,7 @@ action_setup() {
     
     nds_askUserToProceed "Ready to begin configuration?" || exit 130
     
-    # Configuration phase
-    new_section
-    section_header "Configuration"
-    
+    # Configuration phase    
     if ! nds_configurator_validate_all "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
         nds_configurator_prompt_errors "quick" "access" "network" "disk" "boot" "security" "region" "deploy"
         
@@ -165,7 +162,7 @@ action_setup() {
     fi
     
     # Optional: Show interactive menu
-    # nds_configurator_menu "quick" "access" "network" "disk" "boot" "security" "region" "deploy" || exit 12
+    nds_configurator_menu "quick" "access" "network" "disk" "boot" "security" "region" "deploy" || exit 12
     
     nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
     
