@@ -417,7 +417,9 @@ _nds_execute_action() {
 # MAIN WORKFLOW
 # =============================================================================
 # Load libraries
+echo "calling source dir"
 nds_source_dir "${LIB_DIR}" false || exit 1
+echo "called source dir"
 
 # Run with root
 runWithRoot "$@"
