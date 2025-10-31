@@ -356,7 +356,7 @@ _nds_select_action() {
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
             console "$selected_action"
-            echo "$selected_action" # return value
+            current_action="$selected_action" # return value
             return 0
         fi
 
@@ -448,10 +448,11 @@ fi
 success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action
-selected_action=$(_nds_select_action)
+declare -g current_action
+_nds_select_action
 
 # Execute selected action
-_nds_execute_action "$selected_action" || crash "Failed to execute action"
+_nds_execute_action "$current_action" || crash "Failed to execute action"
 
 # =============================================================================
 # END
