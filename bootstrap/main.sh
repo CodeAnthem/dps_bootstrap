@@ -196,19 +196,19 @@ runWithRoot() {
         warn "This script requires root privileges."
         info "Attempting to restart with sudo..."
 
-        # Preserve DPS_* environment variables through sudo
-        dps_vars=()
+        # Preserve NDS_* and DPS_* environment variables through sudo
+        nds_vars=()
         while IFS='=' read -r name value; do
-            if [[ "$name" =~ ^DPS_ ]]; then
-                dps_vars+=("$name=$value")
+            if [[ "$name" =~ ^(NDS_|DPS_) ]]; then
+                nds_vars+=("$name=$value")
             fi
         done < <(env)
 
-        # Restart with sudo, preserving DPS_* and DEBUG variables
-        if [[ ${#dps_vars[@]} -gt 0 ]]; then
-            exec sudo "${dps_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
+        # Restart with sudo, preserving NDS_*, DPS_*, and DEBUG variables
+        if [[ ${#nds_vars[@]} -gt 0 ]]; then
+            exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
         else
-            exec sudo bash "${BASH_SOURCE[0]}" "$@"
+            exec sudo DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
         fi
     else
         success "Root privileges confirmed"
@@ -451,13 +451,46 @@ _nds_execute_action() {
 
 
 # =============================================================================
+# COMMAND-LINE ARGUMENTS
+# =============================================================================
+# Save original arguments for sudo restart
+declare -a ORIGINAL_ARGS=("$@")
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --auto-confirm)
+            export NDS_AUTO_CONFIRM=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --auto-confirm    Skip all user confirmation prompts"
+            echo "  --help, -h        Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# =============================================================================
 # MAIN WORKFLOW
 # =============================================================================
 # Load libraries
 nds_import_dir "${LIB_DIR}" false || exit 1
 
-# Run with root
-runWithRoot "$@"
+# Run with root (pass original args for sudo restart)
+if [[ ${#ORIGINAL_ARGS[@]} -gt 0 ]]; then
+    runWithRoot "${ORIGINAL_ARGS[@]}"
+else
+    runWithRoot
+fi
 
 # Display script header
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"

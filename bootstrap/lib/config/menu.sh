@@ -68,7 +68,11 @@ nds_configurator_menu() {
             
             while true; do
                 console ""
-                section_header "$(nds_configurator_preset_get_display "$preset") Configuration"
+                local display
+                display=$(nds_configurator_preset_get_display "$preset")
+                # Only add Configuration suffix if display name doesn't already contain it
+                [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
+                section_header "$display"
                 console " Press ENTER to keep current value, or type new value"
                 console ""
                 

@@ -55,15 +55,13 @@ _nds_configurator_preset_is_enabled() {
     [[ "${PRESET_REGISTRY[$1]:-}" == "enabled" ]]
 }
 
-nds_configurator_preset_get_all_enabled() {
-    local presets=()
-    for preset in "${!PRESET_REGISTRY[@]}"; do
-        if [[ "${PRESET_REGISTRY[$preset]}" == "enabled" ]]; then
-            presets+=("$preset")
-        fi
-    done
+# Sort presets by priority (ascending), then alphabetically
+# Usage: _nds_configurator_sort_presets preset1 preset2 ...
+# Returns: sorted preset names (one per line)
+_nds_configurator_sort_presets() {
+    local presets=("$@")
+    [[ ${#presets[@]} -eq 0 ]] && return 0
     
-    # Sort by priority (ascending), then alphabetically
     # Format: priority:preset_name
     local sorted=()
     for preset in "${presets[@]}"; do
@@ -74,6 +72,18 @@ nds_configurator_preset_get_all_enabled() {
     
     # Sort and extract preset names
     printf '%s\n' "${sorted[@]}" | sort -t: -k1,1n -k2,2 | cut -d: -f2
+}
+
+nds_configurator_preset_get_all_enabled() {
+    local presets=()
+    for preset in "${!PRESET_REGISTRY[@]}"; do
+        if [[ "${PRESET_REGISTRY[$preset]}" == "enabled" ]]; then
+            presets+=("$preset")
+        fi
+    done
+    
+    # Use dedicated sort function
+    _nds_configurator_sort_presets "${presets[@]}"
 }
 
 nds_configurator_preset_set_priority() {
@@ -174,6 +184,21 @@ nds_configurator_config_set() {
 
 nds_configurator_config_get() {
     echo "${CONFIG_DATA[$1]:-${2:-}}"
+}
+
+# Get config value with env variable fallback (checks NDS_<varname>)
+# Usage: nds_configurator_config_get_env varname [default]
+nds_configurator_config_get_env() {
+    local varname="$1"
+    local default="${2:-}"
+    local env_var="NDS_${varname}"
+    
+    # Check env variable first
+    if [[ -n "${!env_var:-}" ]]; then
+        echo "${!env_var}"
+    else
+        echo "${CONFIG_DATA[$varname]:-$default}"
+    fi
 }
 
 nds_configurator_config_export_script() {
