@@ -78,9 +78,9 @@ _nds_import_and_validate_file() {
 }
 
 # Display collected import errors and clear the error buffer
-# Usage: nds_import_showErrors
+# Usage: _nds_import_showErrors
 # Returns: 0 if no errors, 1 if errors were present
-nds_import_showErrors() {
+_nds_import_showErrors() {
     if [[ -n "$NDS_IMPORT_ERRORS" ]]; then
         echo "$NDS_IMPORT_ERRORS" >&2
         NDS_IMPORT_ERRORS=""  # Clear errors after showing
@@ -102,7 +102,7 @@ nds_import_file() {
     
     NDS_IMPORT_ERRORS=""  # Clear previous errors
     _nds_import_and_validate_file "$filepath"
-    nds_import_showErrors
+    _nds_import_showErrors
 }
 
 # Import all .sh files from a directory
@@ -154,7 +154,7 @@ nds_import_dir() {
 
     # Show collected errors and return status
     if [[ "$had_error" == "true" ]]; then
-        nds_import_showErrors
+        _nds_import_showErrors
         return 1
     fi
 
