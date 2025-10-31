@@ -14,13 +14,13 @@ nds_configurator_init() {
     info "Initializing configurator..."
     
     # 1. Load config logic files (storage, var, preset, menu)
-    nds_source_dir "${SCRIPT_DIR}/lib/config" false || {
+    nds_import_dir "${SCRIPT_DIR}/lib/config" false || {
         fatal "Failed to load configurator logic"
         return 1
     }
     
     # 2. Load input validators (recursive)
-    nds_source_dir "${SCRIPT_DIR}/lib/config/inputs" true || {
+    nds_import_dir "${SCRIPT_DIR}/lib/config/inputs" true || {
         fatal "Failed to load input validators"
         return 1
     }
@@ -32,8 +32,8 @@ nds_configurator_init() {
         local preset_name
         preset_name=$(basename "$preset_file" .sh)
         
-        # Load preset file (nds_source_dir validates bash)
-        nds_source_dir "$(dirname "$preset_file")" false || {
+        # Load preset file (nds_import_dir validates bash)
+        nds_import_dir "$(dirname "$preset_file")" false || {
             error "Failed to load preset: $preset_name"
             return 1
         }
