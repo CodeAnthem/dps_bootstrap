@@ -21,6 +21,10 @@ action_config() {
     # Set context for action-specific vars
     PRESET_CONTEXT="deploy"
     
+    # Set preset metadata
+    nds_configurator_preset_set_display "deploy" "Deploy VM"
+    nds_configurator_preset_set_priority "deploy" 60
+    
     # Declare action-specific fields
     nds_configurator_var_declare GIT_REPO_URL \
         display="Private Git Repository" \

@@ -11,6 +11,10 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 disk_init() {
+    # Set preset metadata
+    nds_configurator_preset_set_display "disk" "Disk"
+    nds_configurator_preset_set_priority "disk" 20
+    
     # Auto-detect first disk if not provided
     local first_disk=""
     first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)

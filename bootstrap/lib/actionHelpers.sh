@@ -14,8 +14,16 @@
 # Ask user to proceed with yes/no prompt
 # Usage: nds_askUserToProceed ["custom prompt"]
 # Returns: 0 if user confirmed, 1 if declined
+# Set NDS_AUTO_CONFIRM=true to auto-skip all prompts
 nds_askUserToProceed() {
     local prompt="${1:-Do you want to proceed?}"
+    
+    # Auto-confirm if NDS_AUTO_CONFIRM is set to true
+    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+        console "$prompt (y/n): y (auto-confirmed)"
+        return 0
+    fi
+    
     read -rsp "$prompt (y/n): " -n 1 confirm < /dev/tty
     if [[ "${confirm,,}" != "y" ]]; then
         console "No!"

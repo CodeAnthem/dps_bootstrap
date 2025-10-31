@@ -11,6 +11,10 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 security_init() {
+    # Set preset metadata
+    nds_configurator_preset_set_display "security" "Security"
+    nds_configurator_preset_set_priority "security" 40
+    
     nds_configurator_var_declare SECURE_BOOT \
         display="Enable Secure Boot" \
         input=toggle \

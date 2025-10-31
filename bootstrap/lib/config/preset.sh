@@ -70,7 +70,7 @@ nds_configurator_preset_prompt_errors() {
     done
     
     if [[ ${#vars_to_prompt[@]} -gt 0 ]]; then
-        console "$(echo "${preset^}" | tr '_' ' ') Configuration:"
+        console "$(nds_configurator_preset_get_display "$preset") Configuration:"
         for varname in "${vars_to_prompt[@]}"; do
             nds_configurator_var_prompt "$varname"
         done
@@ -81,7 +81,7 @@ nds_configurator_preset_prompt_errors() {
 nds_configurator_preset_prompt_all() {
     local preset="$1"
     
-    console "$(echo "${preset^}" | tr '_' ' ') Configuration:"
+    console "$(nds_configurator_preset_get_display "$preset") Configuration:"
     console ""
     
     for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
@@ -98,7 +98,7 @@ nds_configurator_preset_display() {
     local number="${2:-}"
     
     local header
-    header="$(echo "${preset^}" | tr '_' ' ') Configuration:"
+    header="$(nds_configurator_preset_get_display "$preset") Configuration:"
     [[ -n "$number" ]] && header="$number. $header"
     console "$header"
     

@@ -43,7 +43,7 @@ nds_configurator_menu() {
     
     while true; do
         section_header "Configuration Menu"
-        [[ -n "$last_status" ]] && echo "$last_status"
+        [[ -n "$last_status" ]] && console "$last_status"
         
         local i=0
         for preset in "${presets[@]}"; do
@@ -68,14 +68,14 @@ nds_configurator_menu() {
             
             while true; do
                 console ""
-                section_header "$(echo "${preset^}" | tr '_' ' ') Configuration"
+                section_header "$(nds_configurator_preset_get_display "$preset") Configuration"
                 console " Press ENTER to keep current value, or type new value"
                 console ""
                 
                 nds_configurator_preset_prompt_all "$preset"
                 
                 if nds_configurator_preset_validate "$preset" 2>/dev/null; then
-                    last_status=$(success "$(echo "${preset^}" | tr '_' ' ') updated")
+                    last_status=$(success "$(nds_configurator_preset_get_display "$preset") updated")
                     break
                 fi
             done

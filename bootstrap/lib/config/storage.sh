@@ -62,8 +62,18 @@ nds_configurator_preset_get_all_enabled() {
             presets+=("$preset")
         fi
     done
-    # Sort by priority
-    printf '%s\n' "${presets[@]}" | sort
+    
+    # Sort by priority (ascending), then alphabetically
+    # Format: priority:preset_name
+    local sorted=()
+    for preset in "${presets[@]}"; do
+        local priority
+        priority=$(nds_configurator_preset_get_priority "$preset")
+        sorted+=("${priority}:${preset}")
+    done
+    
+    # Sort and extract preset names
+    printf '%s\n' "${sorted[@]}" | sort -t: -k1,1n -k2,2 | cut -d: -f2
 }
 
 nds_configurator_preset_set_priority() {
@@ -72,6 +82,20 @@ nds_configurator_preset_set_priority() {
 
 nds_configurator_preset_get_priority() {
     echo "${PRESET_META[${1}__priority]:-50}"
+}
+
+nds_configurator_preset_set_display() {
+    PRESET_META["${1}__display"]="$2"
+}
+
+nds_configurator_preset_get_display() {
+    local preset="$1"
+    local display="${PRESET_META[${preset}__display]:-}"
+    # Auto-generate from preset name if not set
+    if [[ -z "$display" ]]; then
+        display="$(echo "${preset^}" | tr '_' ' ')"
+    fi
+    echo "$display"
 }
 
 # Check if preset has cached function

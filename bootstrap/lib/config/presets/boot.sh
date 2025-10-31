@@ -11,6 +11,10 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 boot_init() {
+    # Set preset metadata
+    nds_configurator_preset_set_display "boot" "Boot"
+    nds_configurator_preset_set_priority "boot" 30
+    
     nds_configurator_var_declare UEFI_MODE \
         display="UEFI Mode" \
         input=toggle \

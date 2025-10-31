@@ -11,24 +11,14 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 quick_init() {
+    # Set preset metadata
+    nds_configurator_preset_set_display "quick" "Quick Setup"
+    nds_configurator_preset_set_priority "quick" 1
+    
     # Country selection for auto-defaults
     nds_configurator_var_declare COUNTRY \
         display="Country (Quick Setup)" \
         input=country \
         default="" \
         help="Select your country to automatically configure timezone, locale, and keyboard. This is the fastest way to get started! Leave empty to configure manually in other modules."
-}
-
-# =============================================================================
-# MODULE METADATA
-# =============================================================================
-quick_module_info() {
-    cat <<EOF
-{
-  "name": "quick",
-  "display": "Quick Setup",
-  "description": "Fast deployment with country-based smart defaults",
-  "priority": 1
-}
-EOF
 }

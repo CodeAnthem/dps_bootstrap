@@ -11,6 +11,10 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 network_init() {
+    # Set preset metadata
+    nds_configurator_preset_set_display "network" "Network"
+    nds_configurator_preset_set_priority "network" 10
+    
     nds_configurator_var_declare HOSTNAME \
         display="Hostname" \
         input=hostname \

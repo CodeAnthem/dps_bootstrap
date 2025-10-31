@@ -11,6 +11,10 @@
 # CONFIGURATION - Field Declarations
 # =============================================================================
 region_init() {
+    # Set preset metadata
+    nds_configurator_preset_set_display "region" "Region"
+    nds_configurator_preset_set_priority "region" 50
+    
     nds_configurator_var_declare TIMEZONE \
         display="Timezone" \
         input=timezone \
