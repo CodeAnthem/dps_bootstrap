@@ -28,7 +28,7 @@ quick_module_info() {
   "name": "quick",
   "display": "Quick Setup",
   "description": "Fast deployment with country-based smart defaults",
-  "priority": 5
+  "priority": 1
 }
 EOF
 }
