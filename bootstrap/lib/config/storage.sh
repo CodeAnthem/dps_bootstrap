@@ -55,6 +55,17 @@ _nds_configurator_preset_is_enabled() {
     [[ "${PRESET_REGISTRY[$1]:-}" == "enabled" ]]
 }
 
+nds_configurator_preset_get_all_enabled() {
+    local presets=()
+    for preset in "${!PRESET_REGISTRY[@]}"; do
+        if [[ "${PRESET_REGISTRY[$preset]}" == "enabled" ]]; then
+            presets+=("$preset")
+        fi
+    done
+    # Sort by priority
+    printf '%s\n' "${presets[@]}" | sort
+}
+
 nds_configurator_preset_set_priority() {
     PRESET_META["${1}__priority"]="$2"
 }

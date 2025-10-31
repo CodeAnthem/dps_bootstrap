@@ -151,18 +151,18 @@ action_setup() {
     
     nds_askUserToProceed "Ready to begin configuration?" || exit 130
     
-    # Configuration phase    
-    if ! nds_configurator_validate_all "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
-        nds_configurator_prompt_errors "quick" "access" "network" "disk" "boot" "security" "region" "deploy"
+    # Configuration phase - uses all enabled presets from registry
+    if ! nds_configurator_validate_all; then
+        nds_configurator_prompt_errors
         
-        if ! nds_configurator_validate_all "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
+        if ! nds_configurator_validate_all; then
             error "Configuration validation failed"
             exit 11
         fi
     fi
     
     # Optional: Show interactive menu
-    nds_configurator_menu "quick" "access" "network" "disk" "boot" "security" "region" "deploy" || exit 12
+    nds_configurator_menu || exit 12
     
     nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
     

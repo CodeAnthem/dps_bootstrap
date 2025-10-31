@@ -12,21 +12,38 @@
 # =============================================================================
 
 nds_configurator_validate_all() {
-    nds_configurator_preset_validate_all "$@"
+    local presets=("$@")
+    # If no presets specified, get all enabled from registry
+    if [[ ${#presets[@]} -eq 0 ]]; then
+        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+    fi
+    nds_configurator_preset_validate_all "${presets[@]}"
 }
 
 nds_configurator_prompt_errors() {
+    local presets=("$@")
+    # If no presets specified, get all enabled from registry
+    if [[ ${#presets[@]} -eq 0 ]]; then
+        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+    fi
     section_header "Configuration Required"
-    for preset in "$@"; do
+    for preset in "${presets[@]}"; do
         nds_configurator_preset_prompt_errors "$preset"
     done
 }
 
 nds_configurator_menu() {
     local presets=("$@")
+    local last_status=""
+    
+    # If no presets specified, get all enabled from registry
+    if [[ ${#presets[@]} -eq 0 ]]; then
+        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+    fi
     
     while true; do
         section_header "Configuration Menu"
+        [[ -n "$last_status" ]] && echo "$last_status"
         
         local i=0
         for preset in "${presets[@]}"; do
@@ -58,11 +75,12 @@ nds_configurator_menu() {
                 nds_configurator_preset_prompt_all "$preset"
                 
                 if nds_configurator_preset_validate "$preset" 2>/dev/null; then
-                    success "$(echo "${preset^}" | tr '_' ' ') updated"
+                    last_status=$(success "$(echo "${preset^}" | tr '_' ' ') updated")
                     break
                 fi
             done
         else
+            last_status=""
             warn "Invalid selection"
             read -p "Press ENTER..." -r
         fi
