@@ -52,44 +52,49 @@ nds_configurator_menu() {
             console ""
         done
         
-        read -sr -n 1 -p "Select preset (1-$i or X to proceed): " sel < /dev/tty
-        echo
-        
-        # Handle empty input (just ENTER) - re-prompt without error
-        if [[ -z "$sel" ]]; then
-            continue
-        fi
-        
-        if [[ "${sel,,}" == "x" ]]; then
-            if ! nds_configurator_validate_all "${presets[@]}"; then
-                last_status=$(warn "Configuration has errors. Fix before proceeding.")
+        # Inner loop for re-prompting without redrawing menu
+        while true; do
+            read -sr -n 1 -p "Select preset (1-$i or X to proceed): " sel < /dev/tty
+            echo
+            
+            # Handle empty input (just ENTER) - re-prompt
+            if [[ -z "$sel" ]]; then
                 continue
             fi
-            success "Configuration confirmed"
-            return 0
-        elif [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 ]] && [[ "$sel" -le "$i" ]]; then
-            local preset="${presets[$((sel-1))]}"
             
-            while true; do
-                console ""
-                local display
-                display=$(nds_configurator_preset_get_display "$preset")
-                # Only add Configuration suffix if display name doesn't already contain it
-                [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
-                section_header "$display"
-                console " Press ENTER to keep current value, or type new value"
-                console ""
-                
-                nds_configurator_preset_prompt_all "$preset"
-                
-                if nds_configurator_preset_validate "$preset" 2>/dev/null; then
-                    last_status=$(success "$(nds_configurator_preset_get_display "$preset") updated")
-                    break
+            if [[ "${sel,,}" == "x" ]]; then
+                if ! nds_configurator_validate_all "${presets[@]}"; then
+                    last_status=$(warn "Configuration has errors. Fix before proceeding.")
+                    break  # Break to redraw menu with error
                 fi
-            done
-        else
-            last_status=$(warn "Invalid selection")
-        fi
+                success "Configuration confirmed"
+                return 0
+            elif [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 ]] && [[ "$sel" -le "$i" ]]; then
+                local preset="${presets[$((sel-1))]}"
+                
+                while true; do
+                    console ""
+                    local display
+                    display=$(nds_configurator_preset_get_display "$preset")
+                    # Only add Configuration suffix if display name doesn't already contain it
+                    [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
+                    section_header "$display"
+                    console " Press ENTER to keep current value, or type new value"
+                    console ""
+                    
+                    nds_configurator_preset_prompt_all "$preset"
+                    
+                    if nds_configurator_preset_validate "$preset" 2>/dev/null; then
+                        last_status=$(success "$(nds_configurator_preset_get_display "$preset") updated")
+                        break
+                    fi
+                done
+                break  # Break to redraw menu with success status
+            else
+                warn "Invalid selection"
+                # Continue inner loop to re-prompt
+            fi
+        done
     done
 }
 
