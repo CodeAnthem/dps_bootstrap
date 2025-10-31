@@ -355,8 +355,8 @@ _nds_select_action() {
         # Validate choice is a number and in range
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
-            echo "$selected_action" # return value
             console "$selected_action"
+            echo "$selected_action" # return value
             return 0
         fi
 
