@@ -344,7 +344,6 @@ _nds_select_action() {
     # Loop until valid choice
     while true; do
         read -rsn1 -p "     -> Select action [0-$max_choice]: " choice < /dev/tty
-        echo
 
         # Handle abort
         if [[ "$choice" == "0" ]]; then
