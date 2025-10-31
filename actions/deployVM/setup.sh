@@ -143,7 +143,6 @@ action_setup() {
     NDS_ACTION_CONFIG_SOURCE="$(dirname "$0")/nixosConfiguration/deployVM.nix"
     
     # Description
-    section_header "Deploy VM Installation"
     console "This will install a Deploy VM for managing NixOS nodes."
     console ""
     console "The Deploy VM includes:"
