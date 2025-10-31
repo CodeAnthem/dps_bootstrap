@@ -16,7 +16,7 @@
 # Returns: 0 if user confirmed, 1 if declined
 nds_askUserToProceed() {
     local prompt="${1:-Do you want to proceed?}"
-    read -rsp "$prompt (y/n): " -n 1 confirm
+    read -rsp "$prompt (y/n): " -n 1 confirm < /dev/tty
     if [[ "${confirm,,}" != "y" ]]; then
         console "No!"
         return 1
