@@ -35,9 +35,11 @@ declare -gA DPS_HOOK_FUCNTIONS=(
 # Usage: _nds_source_file <filepath>
 # Returns: 0 on success, 1 on failure (with error message on stderr)
 _nds_source_file() {
+    echo "Entry()1 - $filepath" >&2
     local filepath="$1"
+    echo "Entry()2 - $filepath" >&2
     local err_output
-    echo "Entry() - $filepath" >&2
+    echo "Entry()3 - $filepath" >&2
     # Validate by running in a strict subshell and capture stderr output
     if ! err_output=$(bash -euo pipefail "$filepath" 2>&1); then
         # Clean the path prefix "$filepath: " from each line
