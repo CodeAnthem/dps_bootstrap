@@ -55,10 +55,14 @@ nds_configurator_menu() {
         read -sr -n 1 -p "Select preset (1-$i or X to proceed): " sel < /dev/tty
         echo
         
+        # Handle empty input (just ENTER) - re-prompt without error
+        if [[ -z "$sel" ]]; then
+            continue
+        fi
+        
         if [[ "${sel,,}" == "x" ]]; then
             if ! nds_configurator_validate_all "${presets[@]}"; then
-                warn "Configuration has errors. Fix before proceeding."
-                read -p "Press ENTER..." -r
+                last_status=$(warn "Configuration has errors. Fix before proceeding.")
                 continue
             fi
             success "Configuration confirmed"
@@ -84,9 +88,7 @@ nds_configurator_menu() {
                 fi
             done
         else
-            last_status=""
-            warn "Invalid selection"
-            read -p "Press ENTER..." -r
+            last_status=$(warn "Invalid selection")
         fi
     done
 }
