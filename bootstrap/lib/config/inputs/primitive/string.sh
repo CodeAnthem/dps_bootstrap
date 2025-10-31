@@ -13,8 +13,8 @@
 
 prompt_hint_string() {
     local minlen maxlen
-    minlen=$(input_opt "minlen" "")
-    maxlen=$(input_opt "maxlen" "")
+    minlen=$(_nds_configurator_get_validator_opt "minlen" "")
+    maxlen=$(_nds_configurator_get_validator_opt "maxlen" "")
     
     if [[ -n "$minlen" && -n "$maxlen" ]]; then
         echo "(length: $minlen-$maxlen chars)"
@@ -28,9 +28,9 @@ prompt_hint_string() {
 validate_string() {
     local value="$1"
     local minlen maxlen pattern
-    minlen=$(input_opt "minlen" "")
-    maxlen=$(input_opt "maxlen" "")
-    pattern=$(input_opt "pattern" "")
+    minlen=$(_nds_configurator_get_validator_opt "minlen" "")
+    maxlen=$(_nds_configurator_get_validator_opt "maxlen" "")
+    pattern=$(_nds_configurator_get_validator_opt "pattern" "")
     
     # Check pattern if specified
     if [[ -n "$pattern" ]]; then
@@ -49,9 +49,9 @@ error_msg_string() {
     local value="$1"
     local code="${2:-0}"
     local minlen maxlen pattern
-    minlen=$(input_opt "minlen" "")
-    maxlen=$(input_opt "maxlen" "")
-    pattern=$(input_opt "pattern" "")
+    minlen=$(_nds_configurator_get_validator_opt "minlen" "")
+    maxlen=$(_nds_configurator_get_validator_opt "maxlen" "")
+    pattern=$(_nds_configurator_get_validator_opt "pattern" "")
     
     case "$code" in
         1)

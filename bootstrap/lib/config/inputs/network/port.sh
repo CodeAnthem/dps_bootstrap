@@ -13,16 +13,16 @@
 
 prompt_hint_port() {
     local min max
-    min=$(input_opt "min" "1")
-    max=$(input_opt "max" "65535")
+    min=$(_nds_configurator_get_validator_opt "min" "1")
+    max=$(_nds_configurator_get_validator_opt "max" "65535")
     echo "($min-$max)"
 }
 
 validate_port() {
     local value="$1"
     local min max
-    min=$(input_opt "min" "1")
-    max=$(input_opt "max" "65535")
+    min=$(_nds_configurator_get_validator_opt "min" "1")
+    max=$(_nds_configurator_get_validator_opt "max" "65535")
     
     # Must be numeric
     [[ "$value" =~ ^[0-9]+$ ]] || return 1
@@ -37,8 +37,8 @@ error_msg_port() {
     local value="$1"
     local code="${2:-0}"
     local min max
-    min=$(input_opt "min" "1")
-    max=$(input_opt "max" "65535")
+    min=$(_nds_configurator_get_validator_opt "min" "1")
+    max=$(_nds_configurator_get_validator_opt "max" "65535")
     
     case "$code" in
         1)

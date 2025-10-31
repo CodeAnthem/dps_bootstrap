@@ -76,35 +76,35 @@ nds_configurator_var_declare() {
     local varname="$1"
     shift
     local preset="${PRESET_CONTEXT}"
-    
+
     # Validate unique
     if _nds_configurator_var_exists "$varname"; then
         error "ConfigVar already declared: $varname"
         return 1
     fi
-    
+
     # Store preset ownership
     VAR_META["${varname}__preset"]="$preset"
-    
+
     # Parse attributes
     for attr in "$@"; do
         local key="${attr%%=*}"
         local value="${attr#*=}"
         VAR_META["${varname}__${key}"]="$value"
     done
-    
+
     # Set default
     CONFIG_DATA["$varname"]="${VAR_META[${varname}__default]:-}"
 }
 
 nds_configurator_var_modify() {
     local varname="$1" attribute="$2" value="$3"
-    
+
     if ! _nds_configurator_var_exists "$varname"; then
         error "ConfigVar not found: $varname"
         return 1
     fi
-    
+
     VAR_META["${varname}__${attribute}"]="$value"
 }
 
@@ -118,7 +118,7 @@ _nds_configurator_var_exists() {
 
 nds_configurator_var_list() {
     local preset="${1:-}"
-    
+
     for key in "${!VAR_META[@]}"; do
         if [[ "$key" =~ ^(.+)__display$ ]]; then
             local var="${BASH_REMATCH[1]}"
@@ -154,7 +154,7 @@ nds_configurator_config_export_script() {
 _nds_configurator_set_validator_context() {
     local varname="$1"
     VALIDATOR_CONTEXT="$varname"
-    
+
     # Cache all options
     VALIDATOR_OPTIONS=()
     for key in "${!VAR_META[@]}"; do

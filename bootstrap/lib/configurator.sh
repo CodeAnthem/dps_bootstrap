@@ -32,8 +32,8 @@ nds_configurator_init() {
         local preset_name
         preset_name=$(basename "$preset_file" .sh)
         
-        # Load preset file (nds_import_dir validates bash)
-        nds_import_dir "$(dirname "$preset_file")" false || {
+        # Load preset file with validation
+        nds_import_file "$preset_file" || {
             error "Failed to load preset: $preset_name"
             return 1
         }

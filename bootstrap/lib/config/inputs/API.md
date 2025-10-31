@@ -172,7 +172,7 @@ prompt_timezone() {
 #### `prompt_hint_{input}()`
 
 **Purpose:** Provide hint text for generic prompt  
-**Parameters:** None (uses `INPUT_OPTIONS_CACHE` via `input_opt`)  
+**Parameters:** None (uses `INPUT_OPTIONS_CACHE` via `_nds_configurator_get_validator_opt`)  
 **Returns:** Hint string via stdout  
 **When to implement:** To show examples or format hints
 
@@ -185,8 +185,8 @@ prompt_hint_toggle() {
 prompt_hint_int() {
     local min
     local max
-    min=$(input_opt "min" "")
-    max=$(input_opt "max" "")
+    min=$(_nds_configurator_get_validator_opt "min" "")
+    max=$(_nds_configurator_get_validator_opt "max" "")
     
     if [[ -n "$min" && -n "$max" ]]; then
         echo "($min-$max)"
@@ -239,15 +239,15 @@ prompt_hint_int() {
 
 ## Context System
 
-Input functions can access field options through the `input_opt` function:
+Input functions can access field options through the `_nds_configurator_get_validator_opt` function:
 
 ```bash
 validate_port() {
     local value="$1"
     local min
     local max
-    min=$(input_opt "min" "1")      # Get min option, default 1
-    max=$(input_opt "max" "65535")  # Get max option, default 65535
+    min=$(_nds_configurator_get_validator_opt "min" "1")      # Get min option, default 1
+    max=$(_nds_configurator_get_validator_opt "max" "65535")  # Get max option, default 65535
     
     [[ "$value" =~ ^[0-9]+$ ]] && (( value >= min && value <= max ))
 }

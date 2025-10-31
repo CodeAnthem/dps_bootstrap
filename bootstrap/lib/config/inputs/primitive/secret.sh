@@ -14,7 +14,7 @@
 validate_secret() {
     local value="$1"
     local minlen
-    minlen=$(input_opt "minlen" "8")
+    minlen=$(_nds_configurator_get_validator_opt "minlen" "8")
     
     # Must meet minimum length
     [[ ${#value} -ge "$minlen" ]] || return 2
@@ -89,7 +89,7 @@ error_msg_secret() {
     local value="$1"
     local code="${2:-0}"
     local minlen
-    minlen=$(input_opt "minlen" "8")
+    minlen=$(_nds_configurator_get_validator_opt "minlen" "8")
     
     case "$code" in
         2)

@@ -13,7 +13,7 @@
 
 prompt_hint_choice() {
     local options
-    options=$(input_opt "options" "")
+    options=$(_nds_configurator_get_validator_opt "options" "")
     if [[ -n "$options" ]]; then
         echo "(${options//|/, })"
     fi
@@ -22,7 +22,7 @@ prompt_hint_choice() {
 validate_choice() {
     local value="$1"
     local options
-    options=$(input_opt "options" "")
+    options=$(_nds_configurator_get_validator_opt "options" "")
     
     # No options configured
     [[ -z "$options" ]] && return 3
@@ -40,7 +40,7 @@ error_msg_choice() {
     local value="$1"
     local code="${2:-0}"
     local options
-    options=$(input_opt "options" "")
+    options=$(_nds_configurator_get_validator_opt "options" "")
     
     case "$code" in
         1)

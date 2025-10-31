@@ -13,8 +13,8 @@
 
 prompt_hint_int() {
     local min max
-    min=$(input_opt "min" "")
-    max=$(input_opt "max" "")
+    min=$(_nds_configurator_get_validator_opt "min" "")
+    max=$(_nds_configurator_get_validator_opt "max" "")
     
     if [[ -n "$min" && -n "$max" ]]; then
         echo "($min-$max)"
@@ -28,8 +28,8 @@ prompt_hint_int() {
 validate_int() {
     local value="$1"
     local min max
-    min=$(input_opt "min" "")
-    max=$(input_opt "max" "")
+    min=$(_nds_configurator_get_validator_opt "min" "")
+    max=$(_nds_configurator_get_validator_opt "max" "")
     
     # Must be integer
     [[ "$value" =~ ^-?[0-9]+$ ]] || return 1
@@ -45,8 +45,8 @@ error_msg_int() {
     local value="$1"
     local code="${2:-0}"
     local min max
-    min=$(input_opt "min" "")
-    max=$(input_opt "max" "")
+    min=$(_nds_configurator_get_validator_opt "min" "")
+    max=$(_nds_configurator_get_validator_opt "max" "")
     
     case "$code" in
         1)
