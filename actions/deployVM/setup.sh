@@ -18,53 +18,59 @@
 # =============================================================================
 # @AI - This is  where the setup setups all its required configuration
 action_config() {
+    # Set context for action-specific vars
+    PRESET_CONTEXT="deploy"
+    
     # Declare action-specific fields
-    nds_field_declare GIT_REPO_URL \
+    nds_configurator_var_declare GIT_REPO_URL \
         display="Private Git Repository" \
         input=url \
         default="https://github.com/user/repo.git" \
         required=true
 
-    nds_field_declare DEPLOY_SSH_KEY_PATH \
+    nds_configurator_var_declare DEPLOY_SSH_KEY_PATH \
         display="Deploy SSH Key Path" \
         input=path \
         default="/root/.ssh/deploy_key" \
         required=true
     
-    nds_field_declare DEPLOY_TOOLS_PATH \
+    nds_configurator_var_declare DEPLOY_TOOLS_PATH \
         display="Deploy Tools Installation Path" \
         input=path \
         default="~/deployTools"
+    
+    # Clear context
+    PRESET_CONTEXT=""
 
-    # Default Values for modules
+    # Set default values for preset vars (if not already set by env)
     # Access - Admin user and SSH
-    nds_config_set_default "access" "ADMIN_USER" "admin"
-    nds_config_set_default "access" "SUDO_PASSWORD_REQUIRED" "true"
-    nds_config_set_default "access" "SSH_ENABLE" "true"
-    nds_config_set_default "access" "SSH_PORT" "22"
-    nds_config_set_default "access" "SSH_USE_KEY" "true"
-    nds_config_set_default "access" "SSH_KEY_TYPE" "ed25519"
-    nds_config_set_default "access" "SSH_KEY_PASSPHRASE" "false"
+    nds_configurator_config_set "ADMIN_USER" "admin"
+    nds_configurator_config_set "SUDO_PASSWORD_REQUIRED" "true"
+    nds_configurator_config_set "SSH_ENABLE" "true"
+    nds_configurator_config_set "SSH_PORT" "22"
+    nds_configurator_config_set "SSH_USE_KEY" "true"
+    nds_configurator_config_set "SSH_KEY_TYPE" "ed25519"
+    nds_configurator_config_set "SSH_KEY_PASSPHRASE" "false"
 
     # Network
-    nds_config_set_default "network" "NETWORK_METHOD" "dhcp"
+    nds_configurator_config_set "NETWORK_METHOD" "dhcp"
 
     # Disk & Encryption
-    nds_config_set_default "disk" "ENCRYPTION" "true"
-    nds_config_set_default "disk" "ENCRYPTION_KEY_METHOD" "urandom"
-    nds_config_set_default "disk" "ENCRYPTION_KEY_LENGTH" "64"
+    nds_configurator_config_set "ENCRYPTION" "true"
+    nds_configurator_config_set "ENCRYPTION_KEY_METHOD" "urandom"
+    nds_configurator_config_set "ENCRYPTION_KEY_LENGTH" "64"
 
     # Boot
-    nds_config_set_default "boot" "BOOTLOADER" "systemd-boot"
+    nds_configurator_config_set "BOOTLOADER" "systemd-boot"
 
     # Security
-    nds_config_set_default "security" "SECURE_BOOT" "false"
-    nds_config_set_default "security" "FIREWALL_ENABLE" "true"
-    nds_config_set_default "security" "HARDENING_ENABLE" "true"
-    nds_config_set_default "security" "FAIL2BAN_ENABLE" "true"
+    nds_configurator_config_set "SECURE_BOOT" "false"
+    nds_configurator_config_set "FIREWALL_ENABLE" "true"
+    nds_configurator_config_set "HARDENING_ENABLE" "true"
+    nds_configurator_config_set "FAIL2BAN_ENABLE" "true"
     
     # Quick Setup
-    nds_config_set_default "quick" "COUNTRY" ""
+    nds_configurator_config_set "COUNTRY" ""
 }
 
 # @AI - Optional function to return fields (similar to deploy_get_active_fields)
@@ -84,11 +90,11 @@ action_config() {
 action_generate_overrides() {
     local hostname timezone locale keyboard_layout keyboard_variant
     
-    hostname=$(nds_config_get "network" "HOSTNAME")
-    timezone=$(nds_config_get "region" "TIMEZONE")
-    locale=$(nds_config_get "region" "LOCALE_MAIN")
-    keyboard_layout=$(nds_config_get "region" "KEYBOARD_LAYOUT")
-    keyboard_variant=$(nds_config_get "region" "KEYBOARD_VARIANT")
+    hostname=$(nds_configurator_config_get "HOSTNAME")
+    timezone=$(nds_configurator_config_get "TIMEZONE")
+    locale=$(nds_configurator_config_get "LOCALE_MAIN")
+    keyboard_layout=$(nds_configurator_config_get "KEYBOARD_LAYOUT")
+    keyboard_variant=$(nds_configurator_config_get "KEYBOARD_VARIANT")
     
     cat <<EOF
 # NDS Bootstrap Overrides - Generated $(date)
@@ -153,17 +159,17 @@ action_setup() {
     new_section
     section_header "Configuration"
     
-    if ! nds_config_validate "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
-        nds_config_prompt_missing "quick" "access" "network" "disk" "boot" "security" "region" "deploy"
+    if ! nds_configurator_validate_all "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
+        nds_configurator_prompt_errors "quick" "access" "network" "disk" "boot" "security" "region" "deploy"
         
-        if ! nds_config_validate "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
+        if ! nds_configurator_validate_all "quick" "access" "network" "disk" "boot" "security" "region" "deploy"; then
             error "Configuration validation failed"
             exit 11
         fi
     fi
     
     # Optional: Show interactive menu
-    # nds_config_menu "quick" "access" "network" "disk" "boot" "security" "region" "deploy" || exit 12
+    # nds_configurator_menu "quick" "access" "network" "disk" "boot" "security" "region" "deploy" || exit 12
     
     nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
     
@@ -205,13 +211,13 @@ action_setup() {
 # =============================================================================
 # HOOKS
 # =============================================================================
-action_pre() {
+# action_pre() {
     
-}
+# }
 
-action_postInstall() {
+# action_postInstall() {
     
-}
+# }
 
 # =============================================================================
 # CUSTOM FUNCTIONS
@@ -220,12 +226,12 @@ install_deploy_tools() {
     section_header "Installing Deploy Tools"
     
     local admin_user deploy_tools_src deploy_tools_dest
-    admin_user=$(nds_config_get "access" "ADMIN_USER")
+    admin_user=$(nds_configurator_config_get "ADMIN_USER")
     
     local script_dir
     script_dir="$(dirname "$(realpath "$0")")"
     deploy_tools_src="${script_dir}/deployTools"
-    deploy_tools_dest=$(nds_config_get "deploy" "DEPLOY_TOOLS_PATH")
+    deploy_tools_dest=$(nds_configurator_config_get "DEPLOY_TOOLS_PATH")
     
     # Expand tilde to actual home path
     deploy_tools_dest="${deploy_tools_dest/#\~//home/${admin_user}}"
@@ -291,7 +297,7 @@ _prepare_secrets() {
     # Create secrets.env
     cat > "$NDS_RUNTIME_DIR/secrets/secrets.env" <<EOF
 ADMIN_INITIAL_PASSWORD=$admin_pass
-GIT_REPO_URL=$(nds_config_get "deploy" "GIT_REPO_URL")
+GIT_REPO_URL=$(nds_configurator_config_get "GIT_REPO_URL")
 EOF
     
     chmod 600 "$NDS_RUNTIME_DIR/secrets/"*
