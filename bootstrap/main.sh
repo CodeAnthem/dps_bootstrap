@@ -113,6 +113,7 @@ nds_source_dir() {
                 fi
                 continue
             fi
+            echo "Sourced file: $item"
         fi
     done
 
