@@ -367,6 +367,7 @@ _nds_select_action() {
 
 _nds_execute_action() {
     local action_name="$1"
+    console "Selected action: $action_name"
     local action_path="${ACTION_DATA[${action_name}_path]}"
     local setup_script="${action_path}setup.sh"
 
