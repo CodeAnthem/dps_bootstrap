@@ -58,6 +58,8 @@ _nds_source_file() {
     if ! source "$filepath"; then
         echo "Error: Failed to source (during source): $filepath" >&2
         return 1
+    else
+        echo "Sourced file: $filepath"
     fi
 
     return 0
@@ -113,7 +115,6 @@ nds_source_dir() {
                 fi
                 continue
             fi
-            echo "Sourced file: $item"
         fi
     done
 
