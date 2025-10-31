@@ -367,9 +367,9 @@ _nds_select_action() {
 
 _nds_execute_action() {
     local action_name="$1"
-    echo "action name '$action_name'"
+ü
     if [[ -z "$action_name" ]]; then
-        error "No action selected"
+        error "No action given"
         return 1
     fi
     local action_path="${ACTION_DATA[${action_name}_path]}"
