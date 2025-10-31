@@ -31,15 +31,16 @@ declare -gA DPS_HOOK_FUCNTIONS=(
 # IMPORT LIBRARIES
 # =============================================================================
 
-# Source a single file with validation and error handling
-# Usage: _nds_source_file <filepath>
-# Returns: 0 on success, 1 on failure (with error message on stderr)
-_nds_source_file() {
-    echo "Entry()1 - $1" >&2
+# Global variable to store import errors
+declare -g NDS_IMPORT_ERRORS=""
+
+# Internal function: Validate and import a single file
+# Usage: _nds_import_and_validate_file <filepath>
+# Returns: 0 on success, 1 on failure (errors stored in NDS_IMPORT_ERRORS)
+_nds_import_and_validate_file() {
     local filepath="$1"
-    echo "Entry()2 - $filepath" >&2
     local err_output
-    echo "Entry()3 - $filepath" >&2
+
     # Validate by running in a strict subshell and capture stderr output
     if ! err_output=$(bash -euo pipefail "$filepath" 2>&1); then
         # Clean the path prefix "$filepath: " from each line
@@ -52,31 +53,65 @@ _nds_source_file() {
             cleaned+=$'\n'" -> $line"
         done <<< "$err_output"
 
-        echo "Error: Failed to source: $filepath${cleaned}" >&2
+        # Store error in global variable
+        if [[ -z "$NDS_IMPORT_ERRORS" ]]; then
+            NDS_IMPORT_ERRORS="Error: Failed to validate: $filepath${cleaned}"
+        else
+            NDS_IMPORT_ERRORS+=$'\n'"Error: Failed to validate: $filepath${cleaned}"
+        fi
         return 1
-    else
-        echo "Bash sourced file: $filepath"
     fi
 
+    # Source in current shell (affects parent environment)
     # shellcheck disable=SC1090
     if ! source "$filepath"; then
-        echo "Error: Failed to source (during source): $filepath" >&2
+        # Store source error in global variable
+        if [[ -z "$NDS_IMPORT_ERRORS" ]]; then
+            NDS_IMPORT_ERRORS="Error: Failed to source: $filepath"
+        else
+            NDS_IMPORT_ERRORS+=$'\n'"Error: Failed to source: $filepath"
+        fi
         return 1
-    else
-        echo "Sourced file: $filepath"
     fi
 
     return 0
 }
 
-# Source all .sh files from a directory
-# Usage: nds_source_dir <directory> [recursive]
+# Display collected import errors and clear the error buffer
+# Usage: nds_import_showErrors
+# Returns: 0 if no errors, 1 if errors were present
+nds_import_showErrors() {
+    if [[ -n "$NDS_IMPORT_ERRORS" ]]; then
+        echo "$NDS_IMPORT_ERRORS" >&2
+        NDS_IMPORT_ERRORS=""  # Clear errors after showing
+        return 1
+    fi
+    return 0
+}
+
+# Import a single file with validation
+# Usage: nds_import_file <filepath>
+# Returns: 0 on success, 1 on failure (with errors displayed)
+nds_import_file() {
+    local filepath="$1"
+    
+    [[ -f "$filepath" ]] || {
+        echo "Error: File not found: $filepath" >&2
+        return 1
+    }
+    
+    NDS_IMPORT_ERRORS=""  # Clear previous errors
+    _nds_import_and_validate_file "$filepath"
+    nds_import_showErrors
+}
+
+# Import all .sh files from a directory
+# Usage: nds_import_dir <directory> [recursive]
 # If recursive is "true" will descend into subdirectories (skipping names beginning with "_").
-# Collects errors from all files and prints them before returning non-zero.
-nds_source_dir() {
+# Returns: 0 on success, 1 if any file failed
+nds_import_dir() {
     local directory recursive item basename
     local had_error=false
-    local all_errors=""
 
     directory="${1:-}"
     [[ -d "$directory" ]] || {
@@ -90,6 +125,9 @@ nds_source_dir() {
         return 1
     }
 
+    NDS_IMPORT_ERRORS=""  # Clear previous errors
+    local had_error=false
+
     for item in "$directory"/*; do
         [[ -e "$item" ]] || continue   # Skip when glob doesn't match (empty dir)
 
@@ -101,29 +139,22 @@ nds_source_dir() {
         # If directory, maybe recurse
         if [[ -d "$item" ]]; then
             if [[ "$recursive" == "true" ]]; then
-                nds_source_dir "$item" "$recursive" || return 1
+                nds_import_dir "$item" "$recursive" || return 1
             fi
             continue
         fi
 
         # Only consider .sh files
         if [[ "${basename: -3}" == ".sh" ]]; then
-            # Use the extracted function for sourcing
-            local file_error
-            if ! file_error=$(_nds_source_file "$item" 2>&1); then
+            if ! _nds_import_and_validate_file "$item"; then
                 had_error=true
-                if [[ -z "$all_errors" ]]; then
-                    all_errors="$file_error"
-                else
-                    all_errors+=$'\n'"$file_error"
-                fi
-                continue
             fi
         fi
     done
 
+    # Show collected errors and return status
     if [[ "$had_error" == "true" ]]; then
-        echo "$all_errors" >&2
+        nds_import_showErrors
         return 1
     fi
 
@@ -390,10 +421,10 @@ _nds_execute_action() {
         return 1
     fi
 
-    # Source the setup script with validation
+    # Import the setup script with validation
     info "Loading $action_name action..."
-    if ! _nds_source_file "$setup_script"; then
-        error "Failed to load action setup script"
+    if ! nds_import_file "$setup_script"; then
+        error "Failed to import action setup script"
         return 1
     fi
 
@@ -423,9 +454,7 @@ _nds_execute_action() {
 # MAIN WORKFLOW
 # =============================================================================
 # Load libraries
-echo "calling source dir"
-nds_source_dir "${LIB_DIR}" false || exit 1
-echo "called source dir"
+nds_import_dir "${LIB_DIR}" false || exit 1
 
 # Run with root
 runWithRoot "$@"
