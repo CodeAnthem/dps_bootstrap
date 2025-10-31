@@ -81,4 +81,4 @@ checkUntrackedFiles
 
 # Execute target script
 printf " %(%Y-%m-%d %H:%M:%S)T %s\n" -1 "Quickstart | Starting ${REPO_TARGET_SCRIPT} script" >&2
-exec bash "${REPO_PATH_BOOTSTRAPPER}/${REPO_TARGET_SCRIPT}" "$@"
+exec bash -euo pipefail "${REPO_PATH_BOOTSTRAPPER}/${REPO_TARGET_SCRIPT}" "$@"
