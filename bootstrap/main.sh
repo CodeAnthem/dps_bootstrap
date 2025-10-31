@@ -30,11 +30,44 @@ declare -gA DPS_HOOK_FUCNTIONS=(
 # =============================================================================
 # IMPORT LIBRARIES
 # =============================================================================
+
+# Source a single file with validation and error handling
+# Usage: _nds_source_file <filepath>
+# Returns: 0 on success, 1 on failure (with error message on stderr)
+_nds_source_file() {
+    local filepath="$1"
+    local err_output
+
+    # Validate by running in a strict subshell and capture stderr output
+    if ! err_output=$(bash -euo pipefail "$filepath" 2>&1); then
+        # Clean the path prefix "$filepath: " from each line
+        local cleaned=""
+        local line
+        while IFS= read -r line; do
+            if [[ "$line" == "$filepath:"* ]]; then
+                line="${line#"$filepath: "}"
+            fi
+            cleaned+=$'\n'" -> $line"
+        done <<< "$err_output"
+
+        echo "Error: Failed to source: $filepath${cleaned}" >&2
+        return 1
+    fi
+
+    # shellcheck disable=SC1090
+    if ! source "$filepath"; then
+        echo "Error: Failed to source (during source): $filepath" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# Source all .sh files from a directory
+# Usage: nds_source_dir <directory> [recursive]
+# If recursive is "true" will descend into subdirectories (skipping names beginning with "_").
+# Collects errors from all files and prints them before returning non-zero.
 nds_source_dir() {
-    # Imports .sh files from a directory.
-    # If recursive is "true" will descend into subdirectories (skipping names beginning with "_").
-    # Collects errors from validating libraries (running them in a safe subshell) and
-    # prints them all before returning non-zero (so user sees everything at once).
     local directory recursive item basename
     local had_error=false
     local all_errors=""
@@ -69,44 +102,21 @@ nds_source_dir() {
 
         # Only consider .sh files
         if [[ "${basename: -3}" == ".sh" ]]; then
-            # Validate by running in a strict subshell and capture stderr output
-            local err_output
-            if ! err_output=$(bash -euo pipefail "$item" 2>&1); then
+            # Use the extracted function for sourcing
+            local file_error
+            if ! file_error=$(_nds_source_file "$item" 2>&1); then
                 had_error=true
-
-                # Clean the path prefix "$item: " from each line (pure bash)
-                local cleaned=""
-                local line
-                while IFS= read -r line; do
-                    if [[ "$line" == "$item:"* ]]; then
-                        # Remove exactly "$item: " prefix if present
-                        line="${line#"$item: "}"
-                    fi
-                    # prefix each line with " -> " for nicer formatting
-                    cleaned+=$'\n'" -> $line"
-                done <<< "$err_output"
-
                 if [[ -z "$all_errors" ]]; then
-                    all_errors="Error: Failed to source: $item${cleaned}"
+                    all_errors="$file_error"
                 else
-                    all_errors+=$'\n'"Error: Failed to source: $item${cleaned}"
+                    all_errors+=$'\n'"$file_error"
                 fi
-
-                # do not return immediately — collect other errors too
-                continue
-            fi
-
-            # shellcheck disable=SC1090
-            if ! source "$item"; then
-                had_error=true
-                all_errors+=$'\n'"Error: Failed to source (during source): $item"
                 continue
             fi
         fi
     done
 
     if [[ "$had_error" == "true" ]]; then
-        # Print collected errors to stderr and return non-zero
         echo "$all_errors" >&2
         return 1
     fi
@@ -374,11 +384,10 @@ _nds_execute_action() {
         return 1
     fi
 
-    # Source the setup script
+    # Source the setup script with validation
     info "Loading $action_name action..."
-    # shellcheck disable=SC1090
-    if ! source "$setup_script"; then
-        error "Failed to source setup script: $setup_script"
+    if ! _nds_source_file "$setup_script"; then
+        error "Failed to load action setup script"
         return 1
     fi
 
