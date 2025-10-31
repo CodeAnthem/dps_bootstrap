@@ -52,6 +52,8 @@ _nds_source_file() {
 
         echo "Error: Failed to source: $filepath${cleaned}" >&2
         return 1
+    else
+        echo "Bash sourced file: $filepath"
     fi
 
     # shellcheck disable=SC1090
