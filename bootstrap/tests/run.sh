@@ -50,10 +50,7 @@ assert_invalid() {
 # Test runner
 run_test() {
     local test_name="$1"
-    
-    TEST_CURRENT="$test_name"
     console "Testing: $test_name"
-    
     "$test_name"
 }
 
