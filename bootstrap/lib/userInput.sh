@@ -131,5 +131,5 @@ with_nix_shell() {
     local packages="$1"
     shift
     debug "Running with nix-shell packages: $packages"
-    nix-shell -p $packages --run "$*"
+    nix-shell -p "$packages" --run "$*"
 }
