@@ -103,7 +103,7 @@ select_branch() {
 # =============================================================================
 cloneRepo() {
     if git clone --quiet --branch "$TARGET_BRANCH" "$REPO_URL" "$REPO_PATH" 2>/dev/null; then
-        log "Successfully cloned repository (branch: $TARGET_BRANCH)"
+        log "Successfully cloned repository"
     else
         log "Failed to clone repository"
         console " -> Please check your internet connection and try again"
@@ -132,7 +132,7 @@ resetRepo() {
     if git -C "$REPO_PATH" fetch origin --quiet \
     && git -C "$REPO_PATH" reset --hard origin/"$TARGET_BRANCH" --quiet
     then
-        log "Successfully reset repository (branch: $TARGET_BRANCH)"
+        log "Successfully reset repository"
     else
         log "Failed to reset repository"
         exit 1
