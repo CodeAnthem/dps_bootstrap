@@ -98,6 +98,10 @@ Your private NixOS flake repository must include:
 ```bash
 curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
 ```
+**DEV**: Run the one-liner
+```bash
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash -s -- --dev
+```
 
 3. **Manual**: Clone and run the main script
 ```bash
