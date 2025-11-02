@@ -402,7 +402,9 @@ _nds_select_action() {
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
             console "$selected_action"
-            current_action="$selected_action" # return value
+            action_name="$selected_action" # return value
+            action_description="${ACTION_DATA[${action_name}_description]}"
+            action_path="${ACTION_DATA[${action_name}_path]}"
             return 0
         fi
 
@@ -412,9 +414,7 @@ _nds_select_action() {
 }
 
 _nds_execute_action() {
-    local action_name="$1"
-    local action_path="${ACTION_DATA[${action_name}_path]}"
-    local setup_script="${action_path}setup.sh"
+    local setup_script="${action_path}/setup.sh"
 
     if [[ ! -f "$setup_script" ]]; then
         error "Setup script not found: $setup_script"
@@ -521,11 +521,17 @@ fi
 success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action
-declare -g current_action
+declare -g action_name
+declare -g action_description
+declare -g action_path
 _nds_select_action
+# shellcheck disable=SC2034
+action_description="${ACTION_DATA[${action_name}_description]}"
+action_path="${ACTION_DATA[${action_name}_path]}"
+
 
 # Execute selected action
-_nds_execute_action "$current_action" || crash "Failed to execute action"
+_nds_execute_action || crash "Failed to execute action"
 
 # =============================================================================
 # END

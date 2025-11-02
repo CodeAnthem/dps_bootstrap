@@ -147,10 +147,10 @@ action_setup() {
     NDS_ACTION_CONFIG_SOURCE="$(dirname "$0")/nixosConfiguration/deployVM.nix"
     
     # Description
-    console "This will install a Deploy VM for managing NixOS nodes and include the following features:"
+    console "${action_description}"
+    console "This will install a NixOS for managing NixOS nodes and include the following features:"
     console "  • Deployment tools (nixos-anywhere, deploy-rs)"
-    console "  • Container management (Docker)"
-    console "  • Monitoring tools (Prometheus, Grafana)"
+    console "  • Deployment tools (nixos-anywhere, deploy-rs)"
     console "  • Secrets management (age, sops)"
     
     nds_askUserToProceed "Ready to begin configuration?" || exit 130
