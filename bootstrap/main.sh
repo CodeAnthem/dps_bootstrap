@@ -14,7 +14,7 @@ set -euo pipefail
 # =============================================================================
 # Meta Data
 readonly SCRIPT_VERSION="4.0.1"
-readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
+readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper) *dev*"
 
 # Script Path - declare and assign separately to avoid masking return values
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
