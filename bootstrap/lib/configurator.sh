@@ -53,7 +53,7 @@ nds_configurator_init() {
         fi
     done
     
-    # 4. Apply environment overrides (DPS_*)
+    # 4. Apply environment overrides (NDS_*)
     _nds_configurator_apply_env
     
     success "Configurator initialized (${#PRESET_REGISTRY[@]} presets)"
@@ -104,12 +104,12 @@ _nds_configurator_preset_init() {
     return 0
 }
 
-# Apply DPS_* environment variable overrides
+# Apply NDS_* environment variable overrides
 _nds_configurator_apply_env() {
     for key in "${!VAR_META[@]}"; do
         if [[ "$key" =~ ^(.+)__display$ ]]; then
             local varname="${BASH_REMATCH[1]}"
-            local env_var="DPS_${varname}"
+            local env_var="NDS_${varname}"
             if [[ -n "${!env_var:-}" ]]; then
                 CONFIG_DATA["$varname"]="${!env_var}"
                 debug "Env override: $env_var=${!env_var}"

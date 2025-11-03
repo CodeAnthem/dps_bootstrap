@@ -22,7 +22,7 @@ readonly SCRIPT_DIR="${currentPath}"
 readonly LIB_DIR="${currentPath}/lib"
 
 # Declare global associative array for hook function names
-declare -gA DPS_HOOK_FUCNTIONS=(
+declare -gA NDS_HOOK_FUCNTIONS=(
     ["exit_msg"]="hook_exit_msg" # Message to display on exit
     ["exit_cleanup"]="hook_exit_cleanup" # Cleanup to perform on exit
 )
@@ -169,7 +169,7 @@ nds_import_dir() {
 _nds_callHook() {
     local hookName="$1"
     shift
-    local hookFunction="${DPS_HOOK_FUCNTIONS[$hookName]}"
+    local hookFunction="${NDS_HOOK_FUCNTIONS[$hookName]}"
     # Check if hook is valid
     if [[ -z "$hookFunction" ]]; then
         error "Hook '$hookName' not found"
@@ -196,15 +196,15 @@ runWithRoot() {
         warn "This script requires root privileges."
         info "Attempting to restart with sudo..."
 
-        # Preserve NDS_* and DPS_* environment variables through sudo
+        # Preserve NDS_* and NDS_* environment variables through sudo
         nds_vars=()
         while IFS='=' read -r name value; do
-            if [[ "$name" =~ ^(NDS_|DPS_) ]]; then
+            if [[ "$name" =~ ^(NDS_|NDS_) ]]; then
                 nds_vars+=("$name=$value")
             fi
         done < <(env)
 
-        # Restart with sudo, preserving NDS_*, DPS_*, and DEBUG variables
+        # Restart with sudo, preserving NDS_*, NDS_*, and DEBUG variables
         if [[ ${#nds_vars[@]} -gt 0 ]]; then
             exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
         else
@@ -224,7 +224,7 @@ setupRuntimeDir() {
     local timestamp=""
     printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
     [[ -z "$timestamp" ]] && return 1
-    RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
+    RUNTIME_DIR="/tmp/nds_runtime_${timestamp}_$$"
 
     # Create runtime directory
     mkdir -p "$RUNTIME_DIR" || return 1
@@ -339,9 +339,9 @@ _nds_discover_actions() {
         local action_name
         action_name=$(basename "$action_dir")
 
-        # Skip test action unless DPS_TEST=true
-        if [[ "$action_name" == "test" && "${DPS_TEST:-false}" != "true" ]]; then
-            debug "Skipping test action (DPS_TEST not set)"
+        # Skip test action unless NDS_TEST=true
+        if [[ "$action_name" == "test" && "${NDS_TEST:-false}" != "true" ]]; then
+            debug "Skipping test action (NDS_TEST not set)"
             continue
         fi
 

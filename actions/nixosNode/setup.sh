@@ -22,15 +22,15 @@ readonly ACTION_DESCRIPTION="NixOS Node setup for infrastructure deployment with
 # =============================================================================
 # NixOS Node specific defaults
 setup_node_defaults() {
-    export DPS_HOSTNAME="${DPS_HOSTNAME:-}"
-    export DPS_ROLE="${DPS_ROLE:-}"
-    export DPS_IP_ADDRESS="${DPS_IP_ADDRESS:-}"
-    export DPS_NETWORK_GATEWAY="${DPS_NETWORK_GATEWAY:-192.168.1.1}"
-    export DPS_NETWORK_DNS_PRIMARY="${DPS_NETWORK_DNS_PRIMARY:-1.1.1.1}"
-    export DPS_NETWORK_DNS_SECONDARY="${DPS_NETWORK_DNS_SECONDARY:-1.0.0.1}"
-    export DPS_ENCRYPTION="${DPS_ENCRYPTION:-n}"  # Performance-focused by default
-    export DPS_DISK_TARGET="${DPS_DISK_TARGET:-/dev/sda}"
-    export DPS_ADMIN_USER="${DPS_ADMIN_USER:-admin}"
+    export NDS_HOSTNAME="${NDS_HOSTNAME:-}"
+    export NDS_ROLE="${NDS_ROLE:-}"
+    export NDS_IP_ADDRESS="${NDS_IP_ADDRESS:-}"
+    export NDS_NETWORK_GATEWAY="${NDS_NETWORK_GATEWAY:-192.168.1.1}"
+    export NDS_NETWORK_DNS_PRIMARY="${NDS_NETWORK_DNS_PRIMARY:-1.1.1.1}"
+    export NDS_NETWORK_DNS_SECONDARY="${NDS_NETWORK_DNS_SECONDARY:-1.0.0.1}"
+    export NDS_ENCRYPTION="${NDS_ENCRYPTION:-n}"  # Performance-focused by default
+    export NDS_DISK_TARGET="${NDS_DISK_TARGET:-/dev/sda}"
+    export NDS_ADMIN_USER="${NDS_ADMIN_USER:-admin}"
     
     log "NixOS Node defaults configured"
 }
@@ -72,20 +72,20 @@ setup() {
 # =============================================================================
 collect_node_configuration() {
     # Prompt for required values if not set
-    if [[ -z "$DPS_ROLE" ]]; then
+    if [[ -z "$NDS_ROLE" ]]; then
         console "Available roles: worker, gateway, gpu-worker, custom"
-        read -p "Enter node role: " DPS_ROLE
-        export DPS_ROLE
+        read -p "Enter node role: " NDS_ROLE
+        export NDS_ROLE
     fi
     
-    if [[ -z "$DPS_HOSTNAME" ]]; then
-        read -p "Enter hostname: " DPS_HOSTNAME
-        export DPS_HOSTNAME
+    if [[ -z "$NDS_HOSTNAME" ]]; then
+        read -p "Enter hostname: " NDS_HOSTNAME
+        export NDS_HOSTNAME
     fi
     
-    if [[ -z "$DPS_IP_ADDRESS" ]]; then
-        read -p "Enter IP address: " DPS_IP_ADDRESS
-        export DPS_IP_ADDRESS
+    if [[ -z "$NDS_IP_ADDRESS" ]]; then
+        read -p "Enter IP address: " NDS_IP_ADDRESS
+        export NDS_IP_ADDRESS
     fi
     
     log "Node configuration collected"
@@ -96,13 +96,13 @@ show_configuration_preview() {
     
     console ""
     console "=== NixOS Node Configuration Preview ==="
-    console "Role: ${DPS_ROLE}"
-    console "Hostname: ${DPS_HOSTNAME}"
-    console "IP Address: ${DPS_IP_ADDRESS}"
-    console "Network Gateway: ${DPS_NETWORK_GATEWAY}"
-    console "Encryption: ${DPS_ENCRYPTION}"
-    console "Disk Target: ${DPS_DISK_TARGET}"
-    console "Admin User: ${DPS_ADMIN_USER}"
+    console "Role: ${NDS_ROLE}"
+    console "Hostname: ${NDS_HOSTNAME}"
+    console "IP Address: ${NDS_IP_ADDRESS}"
+    console "Network Gateway: ${NDS_NETWORK_GATEWAY}"
+    console "Encryption: ${NDS_ENCRYPTION}"
+    console "Disk Target: ${NDS_DISK_TARGET}"
+    console "Admin User: ${NDS_ADMIN_USER}"
     console "======================================="
     console ""
     

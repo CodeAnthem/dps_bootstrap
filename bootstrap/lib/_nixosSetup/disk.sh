@@ -17,8 +17,8 @@ setup_encryption() {
     echo
     echo "=== Encryption Configuration ==="
     
-    local key_length="${DPS_DISK_ENCRYPTION_KEY_LENGTH:-64}"
-    local use_passphrase="${DPS_DISK_ENCRYPTION_USE_PASSPHRASE:-n}"
+    local key_length="${NDS_DISK_ENCRYPTION_KEY_LENGTH:-64}"
+    local use_passphrase="${NDS_DISK_ENCRYPTION_USE_PASSPHRASE:-n}"
     
     log "Setting up encryption with key length: $key_length bytes"
     
@@ -60,8 +60,8 @@ setup_encryption() {
     
     prompt_yes_no "Have you backed up the encryption key?" || error "Please backup the encryption key before continuing"
     
-    export DPS_ENCRYPTION_KEY="$encryption_key"
-    export DPS_KEY_FILE="$key_file"
+    export NDS_ENCRYPTION_KEY="$encryption_key"
+    export NDS_KEY_FILE="$key_file"
 }
 
 # =============================================================================
@@ -72,7 +72,7 @@ setup_encryption() {
 # Usage: partition_disk "use_encryption" ["disk_target"]
 partition_disk() {
     local use_encryption="$1"
-    local disk="${2:-${DPS_DISK_TARGET:-/dev/sda}}"
+    local disk="${2:-${NDS_DISK_TARGET:-/dev/sda}}"
     
     # Check if disk exists
     if [[ ! -b "$disk" ]]; then
@@ -104,13 +104,13 @@ setup_encrypted_root() {
     
     log "Setting up encrypted root partition"
     
-    if [[ -z "${DPS_ENCRYPTION_KEY:-}" ]]; then
+    if [[ -z "${NDS_ENCRYPTION_KEY:-}" ]]; then
         error "Encryption key not available"
     fi
     
     # Setup LUKS
-    echo -n "$DPS_ENCRYPTION_KEY" | cryptsetup luksFormat --type luks2 "$partition" -
-    echo -n "$DPS_ENCRYPTION_KEY" | cryptsetup open "$partition" cryptroot -
+    echo -n "$NDS_ENCRYPTION_KEY" | cryptsetup luksFormat --type luks2 "$partition" -
+    echo -n "$NDS_ENCRYPTION_KEY" | cryptsetup open "$partition" cryptroot -
     
     # Format encrypted partition
     mkfs.ext4 -L nixos /dev/mapper/cryptroot

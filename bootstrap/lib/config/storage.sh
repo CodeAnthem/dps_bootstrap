@@ -203,7 +203,7 @@ nds_configurator_config_get_env() {
 
 nds_configurator_config_export_script() {
     for varname in "${!CONFIG_DATA[@]}"; do
-        echo "export DPS_${varname}=\"${CONFIG_DATA[$varname]}\""
+        echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
     done
 }
 

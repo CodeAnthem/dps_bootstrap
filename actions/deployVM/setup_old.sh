@@ -43,25 +43,25 @@ trap cleanup EXIT
 # =============================================================================
 setup_deploy_defaults() {
     # Deploy VM defaults
-    export DPS_HOSTNAME="${DPS_HOSTNAME:-deploy-01}"
-    export DPS_NETWORK_METHOD="${DPS_NETWORK_METHOD:-dhcp}"
-    export DPS_NETWORK_GATEWAY="${DPS_NETWORK_GATEWAY:-192.168.1.1}"
-    export DPS_ENCRYPTION="${DPS_ENCRYPTION:-y}"
-    export DPS_DISK_TARGET="${DPS_DISK_TARGET:-/dev/sda}"
-    export DPS_ADMIN_USER="${DPS_ADMIN_USER:-admin}"
+    export NDS_HOSTNAME="${NDS_HOSTNAME:-deploy-01}"
+    export NDS_NETWORK_METHOD="${NDS_NETWORK_METHOD:-dhcp}"
+    export NDS_NETWORK_GATEWAY="${NDS_NETWORK_GATEWAY:-192.168.1.1}"
+    export NDS_ENCRYPTION="${NDS_ENCRYPTION:-y}"
+    export NDS_DISK_TARGET="${NDS_DISK_TARGET:-/dev/sda}"
+    export NDS_ADMIN_USER="${NDS_ADMIN_USER:-admin}"
 }
 
 setup_node_defaults() {
     # Managed node defaults
-    export DPS_HOSTNAME="${DPS_HOSTNAME:-}"
-    export DPS_ROLE="${DPS_ROLE:-}"
-    export DPS_IP_ADDRESS="${DPS_IP_ADDRESS:-}"
-    export DPS_NETWORK_GATEWAY="${DPS_NETWORK_GATEWAY:-192.168.1.1}"
-    export DPS_NETWORK_DNS_PRIMARY="${DPS_NETWORK_DNS_PRIMARY:-1.1.1.1}"
-    export DPS_NETWORK_DNS_SECONDARY="${DPS_NETWORK_DNS_SECONDARY:-1.0.0.1}"
-    export DPS_ENCRYPTION="${DPS_ENCRYPTION:-n}"
-    export DPS_DISK_TARGET="${DPS_DISK_TARGET:-/dev/sda}"
-    export DPS_ADMIN_USER="${DPS_ADMIN_USER:-admin}"
+    export NDS_HOSTNAME="${NDS_HOSTNAME:-}"
+    export NDS_ROLE="${NDS_ROLE:-}"
+    export NDS_IP_ADDRESS="${NDS_IP_ADDRESS:-}"
+    export NDS_NETWORK_GATEWAY="${NDS_NETWORK_GATEWAY:-192.168.1.1}"
+    export NDS_NETWORK_DNS_PRIMARY="${NDS_NETWORK_DNS_PRIMARY:-1.1.1.1}"
+    export NDS_NETWORK_DNS_SECONDARY="${NDS_NETWORK_DNS_SECONDARY:-1.0.0.1}"
+    export NDS_ENCRYPTION="${NDS_ENCRYPTION:-n}"
+    export NDS_DISK_TARGET="${NDS_DISK_TARGET:-/dev/sda}"
+    export NDS_ADMIN_USER="${NDS_ADMIN_USER:-admin}"
 }
 
 
@@ -89,28 +89,28 @@ deploy_vm_workflow() {
     
     # Setup encryption if enabled
     step_start "Setting up disk encryption"
-    setup_encryption "$DPS_ENCRYPTION"
+    setup_encryption "$NDS_ENCRYPTION"
     step_complete "Disk encryption setup"
     
     # Partition and mount disk
     step_start "Partitioning and mounting disk"
-    partition_disk "$DPS_ENCRYPTION"
-    mount_filesystems "$DPS_ENCRYPTION"
+    partition_disk "$NDS_ENCRYPTION"
+    mount_filesystems "$NDS_ENCRYPTION"
     step_complete "Disk partitioning and mounting"
     
     # Generate hardware config
     step_start "Generating hardware configuration"
-    generate_hardware_config "$DPS_HOSTNAME"
+    generate_hardware_config "$NDS_HOSTNAME"
     step_complete "Hardware configuration generation"
     
     # Create Deploy VM configuration
     step_start "Creating Deploy VM configuration"
-    create_deploy_vm_config "$DPS_HOSTNAME" "$DPS_ENCRYPTION"
+    create_deploy_vm_config "$NDS_HOSTNAME" "$NDS_ENCRYPTION"
     step_complete "Deploy VM configuration creation"
     
     # Install NixOS (no flake needed for Deploy VM)
     step_start "Installing NixOS system"
-    install_deploy_vm "$DPS_HOSTNAME"
+    install_deploy_vm "$NDS_HOSTNAME"
     step_complete "NixOS system installation"
     
     new_section
@@ -136,12 +136,12 @@ managed_node_workflow() {
     setup_node_defaults
     
     # Prompt for required values if not set
-    [[ -z "$DPS_ROLE" ]] && read -p "Enter node role (worker/gateway/gpu-worker): " DPS_ROLE
-    [[ -z "$DPS_HOSTNAME" ]] && read -p "Enter hostname: " DPS_HOSTNAME
-    [[ -z "$DPS_IP_ADDRESS" ]] && read -p "Enter IP address: " DPS_IP_ADDRESS
+    [[ -z "$NDS_ROLE" ]] && read -p "Enter node role (worker/gateway/gpu-worker): " NDS_ROLE
+    [[ -z "$NDS_HOSTNAME" ]] && read -p "Enter hostname: " NDS_HOSTNAME
+    [[ -z "$NDS_IP_ADDRESS" ]] && read -p "Enter IP address: " NDS_IP_ADDRESS
     
     # Export the values
-    export DPS_ROLE DPS_HOSTNAME DPS_IP_ADDRESS
+    export NDS_ROLE NDS_HOSTNAME NDS_IP_ADDRESS
     
     validate_node_config
     
@@ -156,24 +156,24 @@ managed_node_workflow() {
     read -p "Enter your private NixOS flake repository URL: " private_repo
     
     # Setup encryption if enabled
-    setup_encryption "$DPS_ENCRYPTION"
+    setup_encryption "$NDS_ENCRYPTION"
     
     # Partition and mount disk
-    partition_disk "$DPS_ENCRYPTION"
-    mount_filesystems "$DPS_ENCRYPTION"
+    partition_disk "$NDS_ENCRYPTION"
+    mount_filesystems "$NDS_ENCRYPTION"
     
     # Clone private repository
     local private_repo_path="/mnt/etc/nixos-flake"
     clone_repository "$private_repo" "$private_repo_path" "$github_token"
     
     # Generate hardware config
-    generate_hardware_config "$DPS_HOSTNAME"
+    generate_hardware_config "$NDS_HOSTNAME"
     
     # Create node configuration
-    create_node_config "$DPS_ROLE" "$DPS_HOSTNAME" "$DPS_ENCRYPTION" "$private_repo_path"
+    create_node_config "$NDS_ROLE" "$NDS_HOSTNAME" "$NDS_ENCRYPTION" "$private_repo_path"
     
     # Install NixOS with flake and hardware override
-    install_managed_node "$DPS_HOSTNAME" "$private_repo_path"
+    install_managed_node "$NDS_HOSTNAME" "$private_repo_path"
     
     success "Managed node installation completed successfully!"
     echo
@@ -214,9 +214,9 @@ main() {
     esac
     
     # Show encryption key backup reminder if encryption was used
-    if [[ "${DPS_ENCRYPTION:-}" == "y" && -n "${DPS_KEY_FILE:-}" ]]; then
+    if [[ "${NDS_ENCRYPTION:-}" == "y" && -n "${NDS_KEY_FILE:-}" ]]; then
         echo
-        echo "IMPORTANT: Encryption key saved to: ${DPS_KEY_FILE}"
+        echo "IMPORTANT: Encryption key saved to: ${NDS_KEY_FILE}"
         echo "Make sure to backup this key before rebooting!"
     fi
 }
