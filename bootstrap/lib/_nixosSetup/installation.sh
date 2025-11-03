@@ -77,7 +77,7 @@ create_deploy_vm_config() {
     # Hardware config (local only)
     ./hardware-configuration.nix
     # Deploy VM configuration from bootstrap repository
-    /tmp/dps_bootstrap/deployVM/configuration.nix
+    $NDS_BOOTSTRAP_DIR/deployVM/configuration.nix
   ];
 
 $(create_deploy_network_config "$hostname")
