@@ -224,21 +224,21 @@ setupRuntimeDir() {
     local timestamp=""
     printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
     [[ -z "$timestamp" ]] && return 1
-    RUNTIME_DIR="/tmp/nds_runtime_${timestamp}_$$"
+    NDS_RUNTIME_DIR="/tmp/nds_runtime_${timestamp}_$$"
 
     # Create runtime directory
-    mkdir -p "$RUNTIME_DIR" || return 1
-    chmod 700 "$RUNTIME_DIR" || return 1
+    mkdir -p "$NDS_RUNTIME_DIR" || return 1
+    chmod 700 "$NDS_RUNTIME_DIR" || return 1
     return 0
 }
 
 # shellcheck disable=SC2329
 purgeRuntimeDir() {
-    if [[ -d "${RUNTIME_DIR:-}" ]]; then
-        if rm -rf "$RUNTIME_DIR"; then
-            success " > Removed runtime directory: $RUNTIME_DIR"
+    if [[ -d "${NDS_RUNTIME_DIR:-}" ]]; then
+        if rm -rf "$NDS_RUNTIME_DIR"; then
+            success " > Removed runtime directory: $NDS_RUNTIME_DIR"
         else
-            error " > Failed to remove runtime directory: $RUNTIME_DIR"
+            error " > Failed to remove runtime directory: $NDS_RUNTIME_DIR"
         fi
     fi
 
@@ -501,9 +501,9 @@ trap _main_stopHandler EXIT # Setup cleanup trap
 success "Signal handlers initialized"
 
 # Setup runtime directory
-declare -g RUNTIME_DIR
+declare -g NDS_RUNTIME_DIR
 if ! setupRuntimeDir; then crash "Failed to setup runtime directory"; fi
-info "Runtime directory: $RUNTIME_DIR"
+info "Runtime directory: $NDS_RUNTIME_DIR"
 
 # Discover available actions
 readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
