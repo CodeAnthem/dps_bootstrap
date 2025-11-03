@@ -12,24 +12,11 @@
 # =============================================================================
 
 # Check if nix command is available and working
-nds_nixos_isNixCommandFeatureEnabled() { nix config show > /dev/null 2>&1; }
-
-# Check if a specific experimental feature is enabled
-nds_nixos_isExperimentalFeatureEnabled() {
-    local feature="$1"
-    local features
-
-    features="$(nds_nixos_getExperimentalFeatures)" || return 1
-
-    for f in $features; do
-        if [[ "$f" == "$feature" ]]; then
-            return 0
-        fi
-    done
-    return 1
+nds_nixos_isNixCommandFeatureEnabled() {
+    nix config show > /dev/null 2>&1
 }
 
-# Get all enabled experimental features - Returns a space-separated list of experimental features or nothing
+# Get all enabled experimental features - returns a space-separated list
 nds_nixos_getExperimentalFeatures() {
     if ! nds_nixos_isNixCommandFeatureEnabled; then
         return 1
@@ -41,11 +28,24 @@ nds_nixos_getExperimentalFeatures() {
     return 0
 }
 
+# Check if a specific experimental feature is enabled
+nds_nixos_isExperimentalFeatureEnabled() {
+    local feature="$1"
+    local features
+
+    features="$(nds_nixos_getExperimentalFeatures)" || return 1
+    for f in $features; do
+        if [[ "$f" == "$feature" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 # Show all enabled experimental features
 nds_nixos_showExperimentalFeatures() {
     local features
-    features=$(nds_nixos_getExperimentalFeatures) || {
+    features="$(nds_nixos_getExperimentalFeatures)" || {
         echo "No experimental features found or nix-command disabled."
         return 1
     }
@@ -55,12 +55,12 @@ nds_nixos_showExperimentalFeatures() {
     done
 }
 
-# Enable experimental features
+# Enable a specific experimental feature in current session
 nds_nixos_enableExperimentalFeature() {
     local feature="$1"
     local current="${NIX_CONFIG:-experimental-features =}"
     case "$current" in
-        *"$feature"*) ;; # already present, do nothing
+        *"$feature"*) ;; # already present
         *) export NIX_CONFIG="$current $feature" ;;
     esac
 }
