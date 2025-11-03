@@ -62,11 +62,54 @@ disk_init() {
         min=16 \
         max=512
     
-    nds_configurator_var_declare PARTITION_SCHEME \
-        display="Partition Scheme" \
+    # Partition strategy: fast (manual tools) or disko (template/user file)
+    nds_configurator_var_declare PARTITION_STRATEGY \
+        display="Partition Strategy" \
         input=choice \
-        default="auto" \
-        options="auto|manual"
+        default="fast" \
+        options="fast|disko"
+
+    # Auto-approve destructive purge without additional prompt (guarded in code too)
+    nds_configurator_var_declare AUTO_APPROVE_DISK_PURGE \
+        display="Auto-approve Disk Purge" \
+        input=toggle \
+        default=false
+
+    # Filesystem and layout knobs (fast path supports btrfs/ext4, simple options)
+    nds_configurator_var_declare FS_TYPE \
+        display="Filesystem Type" \
+        input=choice \
+        default="btrfs" \
+        options="btrfs|ext4"
+
+    nds_configurator_var_declare SWAP_SIZE_MIB \
+        display="Swap Size (MiB)" \
+        input=int \
+        default="0" \
+        min=0 
+
+    nds_configurator_var_declare SEPARATE_HOME \
+        display="Separate /home" \
+        input=toggle \
+        default=false
+
+    nds_configurator_var_declare HOME_SIZE \
+        display="/home Size (if separate)" \
+        input=string \
+        default="20G"
+
+    # Unlock mode (partitioning only needs to know if dropbear influences /boot encryption)
+    nds_configurator_var_declare ENCRYPTION_UNLOCK_MODE \
+        display="Encryption Unlock Mode" \
+        input=choice \
+        default="manual" \
+        options="manual|dropbear|tpm|keyfile"
+
+    # Disko user file path (disables other disk options when provided)
+    nds_configurator_var_declare DISKO_USER_FILE \
+        display="Disko File (override)" \
+        input=path \
+        default=""
 }
 
 # =============================================================================
@@ -75,14 +118,42 @@ disk_init() {
 disk_get_active() {
     local encryption
     local use_passphrase
+    local strategy
+    local user_file
     
     encryption=$(nds_configurator_config_get "ENCRYPTION")
     use_passphrase=$(nds_configurator_config_get "ENCRYPTION_USE_PASSPHRASE")
+    strategy=$(nds_configurator_config_get "PARTITION_STRATEGY")
+    user_file=$(nds_configurator_config_get "DISKO_USER_FILE")
     
     # Base fields always active
     echo "DISK_TARGET"
     echo "ENCRYPTION"
-    echo "PARTITION_SCHEME"
+    echo "PARTITION_STRATEGY"
+    echo "AUTO_APPROVE_DISK_PURGE"
+
+    # If disko user file provided, lock down other disk options
+    if [[ -n "$user_file" ]]; then
+        echo "DISKO_USER_FILE"
+        return 0
+    fi
+
+    # Fast vs Disko option exposure
+    if [[ "$strategy" == "fast" ]]; then
+        echo "FS_TYPE"
+        echo "SWAP_SIZE_MIB"
+        echo "SEPARATE_HOME"
+        echo "HOME_SIZE"
+        echo "ENCRYPTION_UNLOCK_MODE"
+    else
+        # disko: exposing knobs still useful for template; hidden if user file is set
+        echo "FS_TYPE"
+        echo "SWAP_SIZE_MIB"
+        echo "SEPARATE_HOME"
+        echo "HOME_SIZE"
+        echo "ENCRYPTION_UNLOCK_MODE"
+        echo "DISKO_USER_FILE"
+    fi
     
     # Encryption settings only if encryption enabled (toggle normalizes to "true")
     if [[ "$encryption" == "true" ]]; then
