@@ -11,7 +11,7 @@
 # PARAM GENERATION
 # =============================================================================
 
-pt_disko_generate_params() {
+nds_partition_disko_generate_params() {
     local out="$1"; [[ -n "$out" ]] || { error "Missing params path"; return 1; }
 
     local disk fs_type swap_mib separate_home home_size enc unlock keyfile passphrase
@@ -39,7 +39,7 @@ EOF
 # =============================================================================
 # TEMPLATE SELECTION
 # =============================================================================
-pt_disko_pick_template() {
+_nds_partition_disko_pick_template() {
     # Single universal template for now
     local this_dir; this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     echo "$this_dir/diskoTemplates/default.nix"
@@ -48,7 +48,7 @@ pt_disko_pick_template() {
 # =============================================================================
 # APPLY DISKO
 # =============================================================================
-pt_disko_apply() {
+nds_partition_disko_apply() {
     local user_file; user_file=$(nds_configurator_config_get_env "DISKO_USER_FILE" "")
     local params_path; params_path="$(pwd)/params.nix"
 
@@ -61,8 +61,8 @@ pt_disko_apply() {
         return $?
     fi
 
-    local tmpl; tmpl=$(pt_disko_pick_template)
-    pt_disko_generate_params "$params_path" || return 1
+    local tmpl; tmpl=$(_nds_partition_disko_pick_template)
+    nds_partition_disko_generate_params "$params_path" || return 1
 
     nds_askUserToProceed "Apply disko template to target disk? This is destructive." || return 1
     nix run github:nix-community/disko -- --mode disko "$tmpl"

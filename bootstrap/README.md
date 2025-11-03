@@ -66,7 +66,7 @@ bootstrap/
 **Key Features**:
 - Conditional fields (e.g., IP only shown for static networking)
 - Cross-field validation (e.g., gateway must differ from IP)
-- Environment variable overrides (`DPS_*`)
+- Environment variable overrides (`NDS_*`)
 - Interactive menu with validation loop
 - See [lib/2_configuration/README.md](lib/2_configuration/README.md) for details
 
@@ -127,24 +127,24 @@ bootstrap/
 
 ### Environment Variables
 
-**Any configuration key can be set via `DPS_*` environment variables!**
+**Any configuration key can be set via `NDS_*` environment variables!**
 
 Common variables:
-- `DPS_HOSTNAME` - System hostname
-- `DPS_DISK_TARGET` - Target disk (e.g., `/dev/sda`)
-- `DPS_ENCRYPTION` - Enable encryption (`y`/`n`)
-- `DPS_NETWORK_METHOD` - Network mode (`dhcp`/`static`)
-- `DPS_IP_ADDRESS`, `DPS_NETWORK_MASK`, `DPS_NETWORK_GATEWAY` - Static IP config
-- `DPS_ADMIN_USER` - Admin username
-- `DPS_SSH_PORT` - SSH port number
+- `NDS_HOSTNAME` - System hostname
+- `NDS_DISK_TARGET` - Target disk (e.g., `/dev/sda`)
+- `NDS_ENCRYPTION` - Enable encryption (`y`/`n`)
+- `NDS_NETWORK_METHOD` - Network mode (`dhcp`/`static`)
+- `NDS_IP_ADDRESS`, `NDS_NETWORK_MASK`, `NDS_NETWORK_GATEWAY` - Static IP config
+- `NDS_ADMIN_USER` - Admin username
+- `NDS_SSH_PORT` - SSH port number
 - `DEBUG` - Enable debug logging (`1`/`0`)
 
 **Example:**
 ```bash
-export DPS_HOSTNAME="myserver"
-export DPS_ADMIN_USER="admin"
-export DPS_ENCRYPTION="y"
-export DPS_NETWORK_METHOD="dhcp"
+export NDS_HOSTNAME="myserver"
+export NDS_ADMIN_USER="admin"
+export NDS_ENCRYPTION="y"
+export NDS_NETWORK_METHOD="dhcp"
 ./main.sh
 ```
 
@@ -173,8 +173,9 @@ curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.
 
 **With environment variables:**
 ```bash
-export DPS_HOSTNAME="myserver"
-export DPS_NETWORK_METHOD="dhcp"
+export NDS_HOSTNAME="myserver"
+export NDS_NETWORK_METHOD="dhcp"
+export NDS_AUTO_CONFIRM="true"
 curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
 ```
 

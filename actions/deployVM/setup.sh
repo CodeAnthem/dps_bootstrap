@@ -174,6 +174,7 @@ action_setup() {
     section_header "Pre-Install Preparation"
     
     step_start "Generating configurations"
+    _nds_runtime_ensure_dirs || exit 10
     action_generate_overrides > "$NDS_RUNTIME_DIR/config/nds_overrides.nix"
     action_generate_config > "$NDS_RUNTIME_DIR/config/configuration.nix"
     step_complete "Configurations ready"
@@ -185,10 +186,15 @@ action_setup() {
     # Call pre-install hook if exists
     type action_pre &>/dev/null && action_pre
     
+    # Partitioning phase
+    new_section
+    section_header "Disk Partitioning"
+    _nds_partition_run || exit 13
+
     # Install phase
     new_section
     section_header "NixOS Installation"
-    nds_nixos_install || exit 14
+    install_deploy_vm || exit 14
     
     # Post-install phase
     new_section
@@ -280,22 +286,24 @@ action_show_completion() {
 
 # Prepare secrets in runtime directory
 _prepare_secrets() {
-    # Admin password
+    mkdir -p "$NDS_RUNTIME_DIR/secrets"
     local admin_pass
-    admin_pass=$(openssl rand -base64 16)
+    if command -v openssl >/dev/null 2>&1; then
+        admin_pass=$(openssl rand -base64 16)
+    else
+        admin_pass=$(head -c 24 /dev/urandom | base64 | tr -d '\n=')
+    fi
     echo "$admin_pass" > "$NDS_RUNTIME_DIR/secrets/admin_initial_password.txt"
-    
-    # Move encryption key if exists
+
     if [[ -f /tmp/luks_key.txt ]]; then
         mv /tmp/luks_key.txt "$NDS_RUNTIME_DIR/secrets/"
     fi
-    
-    # Create secrets.env
+
     cat > "$NDS_RUNTIME_DIR/secrets/secrets.env" <<EOF
 ADMIN_INITIAL_PASSWORD=$admin_pass
 GIT_REPO_URL=$(nds_configurator_config_get "GIT_REPO_URL")
 EOF
-    
+
     chmod 600 "$NDS_RUNTIME_DIR/secrets/"*
 }
 
@@ -314,4 +322,38 @@ _show_secrets_info() {
     console "   • Admin initial password"
     console "   • Environment variables"
     console ""
+}
+
+# =============================================================================
+# RUNTIME & PARTITION HELPERS
+# =============================================================================
+
+_nds_runtime_ensure_dirs() {
+    mkdir -p "$NDS_RUNTIME_DIR/config" || return 1
+    mkdir -p "$NDS_RUNTIME_DIR/secrets" || return 1
+    return 0
+}
+
+_nds_partition_select_strategy() {
+    local strat
+    strat=$(nds_configurator_config_get_env "PARTITION_STRATEGY" "fast")
+    echo "$strat"
+}
+
+_nds_partition_run() {
+    local strat
+    strat=$(_nds_partition_select_strategy)
+    case "$strat" in
+        fast)
+            nds_partition_manual_partition_and_mount || return 1
+            ;;
+        disko)
+            nds_partition_disko_apply || return 1
+            ;;
+        *)
+            error "Unknown PARTITION_STRATEGY: $strat"
+            return 1
+            ;;
+    esac
+    return 0
 }

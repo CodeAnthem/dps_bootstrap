@@ -11,7 +11,7 @@
 # MANUAL PARTITIONING (FAST PATH)
 # =============================================================================
 
-pt_manual_partition_and_mount() {
+nds_partition_manual_partition_and_mount() {
     local disk fs_type swap_mib separate_home home_size enc unlock
     disk=$(nds_configurator_config_get_env "DISK_TARGET") || return 1
     fs_type=$(nds_configurator_config_get_env "FS_TYPE" "btrfs")
@@ -21,7 +21,7 @@ pt_manual_partition_and_mount() {
     enc=$(nds_configurator_config_get_env "ENCRYPTION" "true")
     unlock=$(nds_configurator_config_get_env "ENCRYPTION_UNLOCK_MODE" "manual")
 
-    pt_is_disk_ready_to_format "$disk" || return 1
+    nds_partition_is_disk_ready_to_format "$disk" || return 1
 
     section_header "Partitioning (fast)"
     info "Creating GPT on $disk"
