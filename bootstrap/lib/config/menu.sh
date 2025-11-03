@@ -51,6 +51,12 @@ nds_configurator_menu() {
             nds_configurator_preset_display "$preset" "$i"
             console ""
         done
+
+        # Auto-confirm if NDS_AUTO_CONFIRM is set to true
+        if nds_autoSkip; then
+            console "Auto-confirming configuration"
+            return 0
+        fi
         
         # Inner loop for re-prompting without redrawing menu
         while true; do

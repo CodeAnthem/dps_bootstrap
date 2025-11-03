@@ -11,6 +11,14 @@
 # USER INTERACTION HELPERS
 # =============================================================================
 
+# Auto-skip if NDS_AUTO_CONFIRM is set to true
+nds_autoSkip() {
+    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+        return 0
+    fi
+    return 1
+}
+
 # Ask user to proceed with yes/no prompt
 # Usage: nds_askUserToProceed ["custom prompt"]
 # Returns: 0 if user confirmed, 1 if declined
@@ -19,7 +27,7 @@ nds_askUserToProceed() {
     local prompt="${1:-Do you want to proceed?}"
     
     # Auto-confirm if NDS_AUTO_CONFIRM is set to true
-    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+    if nds_autoSkip; then
         console "$prompt (y/n): y (auto-confirmed)"
         return 0
     fi
