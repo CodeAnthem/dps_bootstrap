@@ -28,7 +28,7 @@ nds_askUserToProceed() {
     
     # Auto-confirm if NDS_AUTO_CONFIRM is set to true
     if nds_autoSkip; then
-        console "$prompt (y/n): y (auto-confirmed)"
+        console "$prompt (y/n): Yes! (auto-confirmed)"
         return 0
     fi
     
