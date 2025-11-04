@@ -298,6 +298,9 @@ _prepare_secrets() {
     if [[ -f /tmp/luks_key.txt ]]; then
         mv /tmp/luks_key.txt "$NDS_RUNTIME_DIR/secrets/"
     fi
+    if [[ -f /tmp/luks_key.bin ]]; then
+        mv /tmp/luks_key.bin "$NDS_RUNTIME_DIR/secrets/"
+    fi
 
     cat > "$NDS_RUNTIME_DIR/secrets/secrets.env" <<EOF
 ADMIN_INITIAL_PASSWORD=$admin_pass

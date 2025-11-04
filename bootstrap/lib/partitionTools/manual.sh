@@ -39,19 +39,44 @@ _nds_partition_manual_root_device() {
 _nds_partition_manual_encrypt_root() {
     local root_part="$1" unlock="$2"
     local mapper="cryptroot"
+    # Tune KDF for broader compatibility on low-memory systems (~64MiB)
+    local kdf_opts=(--type luks2 --pbkdf argon2id --pbkdf-memory 65536 --pbkdf-parallel 1 --iter-time 2000)
+    # Clean previous mappings and signatures to avoid conflicts
+    cryptsetup close "$mapper" >/dev/null 2>&1 || true
+    wipefs -a "$root_part" >/dev/null 2>&1 || true
+    if command -v blkdiscard >/dev/null 2>&1; then
+        blkdiscard -f "$root_part" >/dev/null 2>&1 || true
+    fi
+
     if [[ "$unlock" == "keyfile" ]]; then
-        local keyfile="/tmp/luks_key.txt"
-        local key
-        key=$(generate_key_hex 64)
-        echo "$key" > "$keyfile"
+        local keyfile="/tmp/luks_key.bin"
+        # Create a raw 64-byte keyfile (binary)
+        dd if=/dev/urandom of="$keyfile" bs=64 count=1 status=none || return 1
         chmod 600 "$keyfile"
-        cryptsetup luksFormat --batch-mode "$root_part" --key-file "$keyfile" || return 1
-        cryptsetup open "$root_part" "$mapper" --key-file "$keyfile" || return 1
+        cryptsetup luksFormat --batch-mode "${kdf_opts[@]}" "$root_part" --key-file "$keyfile" --keyfile-size 64 >/dev/null 2>&1 || return 1
+        cryptsetup open "$root_part" "$mapper" --key-file "$keyfile" --keyfile-size 64 >/dev/null 2>&1 || return 1
     else
-        cryptsetup luksFormat --batch-mode "$root_part" || return 1
-        cryptsetup open "$root_part" "$mapper" || return 1
+        cryptsetup luksFormat --batch-mode "${kdf_opts[@]}" "$root_part" >/dev/null 2>&1 || return 1
+        cryptsetup open "$root_part" "$mapper" >/dev/null 2>&1 || return 1
+    fi
+    _nds_partition_wait_mapper "$mapper" || return 1
+    if command -v cryptsetup >/dev/null 2>&1; then
+        cryptsetup status "$mapper" >/dev/null 2>&1 || true
     fi
     echo "/dev/mapper/$mapper"
+}
+
+_nds_partition_wait_mapper() {
+    local name="$1"; local timeout=20; local i
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm settle || true
+    fi
+    for ((i=0; i<timeout; i++)); do
+        [[ -e "/dev/mapper/$name" ]] && return 0
+        sleep 1
+    done
+    error "Timeout waiting for /dev/mapper/$name"
+    return 1
 }
 
 _nds_partition_manual_format_and_mount() {
