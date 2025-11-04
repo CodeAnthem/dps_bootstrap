@@ -189,7 +189,7 @@ action_setup() {
     # Partitioning phase
     new_section
     section_header "Disk Partitioning"
-    _nds_partition_run || exit 13
+    nds_partition_run_from_config || exit 13
 
     # Install phase
     new_section

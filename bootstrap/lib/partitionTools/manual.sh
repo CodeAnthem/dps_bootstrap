@@ -8,72 +8,74 @@
 # ==================================================================================================
 
 # =============================================================================
-# MANUAL PARTITIONING (FAST PATH)
+# MANUAL PARTITIONING (FAST PATH) - INTERNAL APPLY
 # =============================================================================
 
-nds_partition_manual_partition_and_mount() {
-    local disk fs_type swap_mib separate_home home_size enc unlock
-    disk=$(nds_configurator_config_get_env "DISK_TARGET") || return 1
-    fs_type=$(nds_configurator_config_get_env "FS_TYPE" "btrfs")
-    swap_mib=$(nds_configurator_config_get_env "SWAP_SIZE_MIB" "0")
-    separate_home=$(nds_configurator_config_get_env "SEPARATE_HOME" "false")
-    home_size=$(nds_configurator_config_get_env "HOME_SIZE" "20G")
-    enc=$(nds_configurator_config_get_env "ENCRYPTION" "true")
-    unlock=$(nds_configurator_config_get_env "ENCRYPTION_UNLOCK_MODE" "manual")
+_nds_partition_manual_apply() {
+    local disk="$1" fs_type="$2" swap_mib="$3" separate_home="$4" home_size="$5" enc="$6" unlock="$7"
+    _nds_partition_manual_create_layout "$disk" "$swap_mib" || return 1
 
-    nds_partition_is_disk_ready_to_format "$disk" || return 1
-
-    section_header "Partitioning (fast)"
-    info "Creating GPT on $disk"
-    parted -s "$disk" mklabel gpt || return 1
-
-    info "Creating ESP (512MiB)"
-    parted -s "$disk" mkpart ESP fat32 1MiB 513MiB || return 1
-    parted -s "$disk" set 1 boot on || true
-
-    local boot_end="1025MiB"
-    info "Creating /boot (512MiB)"
-    parted -s "$disk" mkpart BOOT ext4 513MiB "$boot_end" || return 1
-
-    local root_start="$boot_end"
-    # Optional swap as partition before root
-    local have_swap=false
-    if [[ "$swap_mib" != "0" ]]; then
-        have_swap=true
-        local root_start_mib; root_start_mib=1025
-        local root_start_mib_plus_swap
-        root_start_mib_plus_swap=$((root_start_mib + swap_mib))
-        root_start="${root_start_mib_plus_swap}MiB"
-        info "Creating swap (${swap_mib}MiB)"
-        parted -s "$disk" mkpart SWAP linux-swap 1025MiB "$root_start" || return 1
-    fi
-
-    info "Creating ROOT (rest of disk)"
-    parted -s "$disk" mkpart ROOT  "$root_start" 100% || return 1
-
-    # Determine partition names
-    local p1 p2 p3 p4; p1=1; p2=2; p3=3; p4=4
-    if [[ "$disk" == *nvme* || "$disk" == *mmcblk* ]]; then p1=p1; p2=p2; p3=p3; p4=p4; else p1=1; p2=2; p3=3; p4=4; fi
-
-    # Format ESP
-    mkfs.fat -F32 "${disk}${p1}" || return 1
-    # Format /boot unencrypted
-    mkfs.ext4 -F "${disk}${p2}" || return 1
-
-    local root_dev="${disk}${p3}"
-    local mapper=root
-    if [[ "$have_swap" == true ]]; then
-        # If swap exists, root partition index shifts to p4
-        root_dev="${disk}${p4}"
-    fi
+    local root_dev; root_dev=$(_nds_partition_manual_root_device "$disk" "$swap_mib")
 
     if [[ "$enc" == "true" ]]; then
-        section_header "Encrypting root"
-        # Key/passphrase creation expected to be handled elsewhere; here we do passphrase mode
-        cryptsetup luksFormat "$root_dev" || return 1
-        cryptsetup open "$root_dev" "$mapper" || return 1
-        root_dev="/dev/mapper/$mapper"
+        root_dev=$(_nds_partition_manual_encrypt_root "$root_dev" "$unlock") || return 1
     fi
+
+    _nds_partition_manual_format_and_mount "$disk" "$root_dev" "$fs_type" "$separate_home" || return 1
+    _nds_partition_manual_setup_swap "$disk" "$swap_mib" || true
+    success "Partitioning and mounting (fast) complete"
+}
+
+_nds_partition_manual_create_layout() {
+    local disk="$1" swap_mib="$2"
+    parted -s "$disk" mklabel gpt || return 1
+    parted -s "$disk" mkpart ESP fat32 1MiB 513MiB || return 1
+    parted -s "$disk" set 1 boot on || true
+    parted -s "$disk" mkpart BOOT ext4 513MiB 1025MiB || return 1
+    local root_start="1025MiB"
+    if [[ "$swap_mib" != "0" ]]; then
+        local root_start_mib_plus_swap=$((1025 + swap_mib))
+        parted -s "$disk" mkpart SWAP linux-swap 1025MiB "${root_start_mib_plus_swap}MiB" || return 1
+        root_start="${root_start_mib_plus_swap}MiB"
+    fi
+    parted -s "$disk" mkpart ROOT "$root_start" 100% || return 1
+}
+
+_nds_partition_manual_root_device() {
+    local disk="$1" swap_mib="$2"
+    local idx_root=3
+    if [[ "$swap_mib" != "0" ]]; then idx_root=4; fi
+    if [[ "$disk" == *nvme* || "$disk" == *mmcblk* ]]; then
+        echo "${disk}p${idx_root}"
+    else
+        echo "${disk}${idx_root}"
+    fi
+}
+
+_nds_partition_manual_encrypt_root() {
+    local root_part="$1" unlock="$2"
+    local mapper="cryptroot"
+    if [[ "$unlock" == "keyfile" ]]; then
+        local keyfile="/tmp/luks_key.txt"
+        local key
+        key=$(generate_key_hex 64)
+        echo "$key" > "$keyfile"
+        chmod 600 "$keyfile"
+        cryptsetup luksFormat "$root_part" --key-file "$keyfile" || return 1
+        cryptsetup open "$root_part" "$mapper" --key-file "$keyfile" || return 1
+    else
+        cryptsetup luksFormat "$root_part" || return 1
+        cryptsetup open "$root_part" "$mapper" || return 1
+    fi
+    echo "/dev/mapper/$mapper"
+}
+
+_nds_partition_manual_format_and_mount() {
+    local disk="$1" root_dev="$2" fs_type="$3" separate_home="$4"
+    local p1 p2
+    if [[ "$disk" == *nvme* || "$disk" == *mmcblk* ]]; then p1="${disk}p1"; p2="${disk}p2"; else p1="${disk}1"; p2="${disk}2"; fi
+    mkfs.fat -F32 "$p1" || return 1
+    mkfs.ext4 -F "$p2" || return 1
 
     if [[ "$fs_type" == "btrfs" ]]; then
         mkfs.btrfs -f "$root_dev" || return 1
@@ -87,29 +89,23 @@ nds_partition_manual_partition_and_mount() {
         mkdir -p /mnt/{nix,var,home,boot,boot/efi}
         mount -o subvol=@nix "$root_dev" /mnt/nix
         mount -o subvol=@var "$root_dev" /mnt/var
-        if [[ "$separate_home" == "true" ]]; then
-            # separate_home via partition not implemented in fast path; keep subvolume to avoid overcomplexity
-            info "Using btrfs @home subvolume (fast path keeps simplicity)"
-            mount -o subvol=@home "$root_dev" /mnt/home
-        else
-            mount -o subvol=@home "$root_dev" /mnt/home
-        fi
+        mount -o subvol=@home "$root_dev" /mnt/home
     else
         mkfs.ext4 -F "$root_dev" || return 1
         mount "$root_dev" /mnt || return 1
-        mkdir -p /mnt/{boot,boot/efi}
-        if [[ "$separate_home" == "true" ]]; then
-            warn "SEPARATE_HOME not implemented for ext4 fast path yet (kept inside /)."
-        fi
+        mkdir -p /mnt/{boot,boot/efi,home}
+        # Note: SEPARATE_HOME as separate partition not implemented in fast path.
     fi
 
-    mount "${disk}${p2}" /mnt/boot || return 1
-    mount "${disk}${p1}" /mnt/boot/efi || return 1
+    mount "$p2" /mnt/boot || return 1
+    mount "$p1" /mnt/boot/efi || return 1
+}
 
-    if [[ "$have_swap" == true ]]; then
-        mkswap "${disk}${p3}" || return 1
-        swapon "${disk}${p3}" || true
-    fi
-
-    success "Partitioning and mounting (fast) complete"
+_nds_partition_manual_setup_swap() {
+    local disk="$1" swap_mib="$2"
+    [[ "$swap_mib" == "0" ]] && return 0
+    local p3
+    if [[ "$disk" == *nvme* || "$disk" == *mmcblk* ]]; then p3="${disk}p3"; else p3="${disk}3"; fi
+    mkswap "$p3" || return 1
+    swapon "$p3" || true
 }
