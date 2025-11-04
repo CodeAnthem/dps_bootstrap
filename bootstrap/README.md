@@ -174,8 +174,8 @@ curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.
 **With environment variables:**
 ```bash
 export NDS_HOSTNAME="myserver"
-export NDS_NETWORK_METHOD="dhcp"
 export NDS_AUTO_CONFIRM="true"
+export NDS_COUNTRY="CH"
 curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
 ```
 

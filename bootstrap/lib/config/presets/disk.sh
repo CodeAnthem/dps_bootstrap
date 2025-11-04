@@ -138,28 +138,20 @@ disk_get_active() {
         return 0
     fi
 
+    echo "FS_TYPE"
+    echo "SWAP_SIZE_MIB"
+    echo "SEPARATE_HOME"
+    [[ "$SEPARATE_HOME" == "true" ]] && echo "HOME_SIZE"
+    
     # Fast vs Disko option exposure
-    if [[ "$strategy" == "fast" ]]; then
-        echo "FS_TYPE"
-        echo "SWAP_SIZE_MIB"
-        echo "SEPARATE_HOME"
-        echo "HOME_SIZE"
-        echo "ENCRYPTION_UNLOCK_MODE"
-    else
-        # disko: exposing knobs still useful for template; hidden if user file is set
-        echo "FS_TYPE"
-        echo "SWAP_SIZE_MIB"
-        echo "SEPARATE_HOME"
-        echo "HOME_SIZE"
-        echo "ENCRYPTION_UNLOCK_MODE"
-        echo "DISKO_USER_FILE"
-    fi
+    [[ "$strategy" != "fast" ]] && echo "DISKO_USER_FILE"
     
     # Encryption settings only if encryption enabled (toggle normalizes to "true")
     if [[ "$encryption" == "true" ]]; then
         echo "ENCRYPTION_KEY_METHOD"
         echo "ENCRYPTION_KEY_LENGTH"
         echo "ENCRYPTION_USE_PASSPHRASE"
+        echo "ENCRYPTION_UNLOCK_MODE"
         
         # Passphrase settings only if passphrase enabled (toggle normalizes to "true")
         if [[ "$use_passphrase" == "true" ]]; then
