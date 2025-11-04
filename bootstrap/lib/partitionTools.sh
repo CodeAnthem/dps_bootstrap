@@ -43,7 +43,7 @@ nds_partition_is_disk_ready_to_format() {
     local state
     state=$(_nds_partition_check_disk_state "$disk") || state="unknown"
 
-    section_header "Disk Summary"
+    section_header "Current Disk Layout"
     _nds_partition_summarize_disk "$disk"
 
     local auto_purge
