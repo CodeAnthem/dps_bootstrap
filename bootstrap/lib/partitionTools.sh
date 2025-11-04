@@ -97,24 +97,24 @@ nds_partition_run_from_config() {
     nds_partition_is_disk_ready_to_format "$disk" || return 1
 
     if [[ "$strat" == "fast" ]]; then
-        info "Running fast partitioning strategy"
-        _nds_partition_manual_create_layout "$disk" "$swap_mib" || return 1
+        run_step "Running fast partitioning strategy" \
+            _nds_partition_manual_create_layout "$disk" "$swap_mib" || return 1
 
         local root_dev; root_dev=$(_nds_partition_manual_root_device "$disk" "$swap_mib")
 
         if [[ "$enc" == "true" ]]; then
-            info "Encrypting root partition"
-            root_dev=$(_nds_partition_manual_encrypt_root "$root_dev" "$unlock") || return 1
+            run_step "Encrypting root partition" \
+                _nds_partition_manual_encrypt_root "$root_dev" "$unlock" || return 1
         fi
 
-        info "Formatting and mounting root partition"
-        _nds_partition_manual_format_and_mount "$disk" "$root_dev" "$fs_type" "$separate_home" || return 1
-        info "Setting up swap"
-        _nds_partition_manual_setup_swap "$disk" "$swap_mib" || true
+        run_step "Formatting and mounting root partition" \
+            _nds_partition_manual_format_and_mount "$disk" "$root_dev" "$fs_type" "$separate_home" || return 1
+        run_step "Setting up swap" \
+            _nds_partition_manual_setup_swap "$disk" "$swap_mib" || true
         success "Partitioning and mounting (fast) complete"
     else
-        info "Running Disko partitioning strategy"
-        nds_partition_disko "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"
+        run_step "Running Disko partitioning strategy" \
+            nds_partition_disko "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"
     fi
 }
 
