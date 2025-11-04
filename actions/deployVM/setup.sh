@@ -146,6 +146,13 @@ action_setup() {
     NDS_ACTION_CONFIG_FILE="deployVM.nix"
     NDS_ACTION_CONFIG_SOURCE="$(dirname "$0")/nixosConfiguration/deployVM.nix"
     
+    # Testing progress
+    console "Testing progress display"
+    run_step "Testing progress display1" echo "Testing progress display"
+    run_step "Testing progress display2" sleep 5
+    run_step "Testing progress display3" sleep 5; return 1
+
+
     # Description
     console " ${action_description}"
     console " This will install a NixOS for managing NixOS nodes and include the following features:"
