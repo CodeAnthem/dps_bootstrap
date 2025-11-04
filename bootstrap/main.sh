@@ -518,6 +518,13 @@ else
     crash "Configurator not available (nds_configurator_init not found)"
 fi
 
+# Initialize partition feature
+if declare -f nds_partition_init &>/dev/null; then
+    nds_partition_init || crash "Failed to initialize partition feature"
+else
+    crash "Partition feature not available (nds_partition_init not found)"
+fi
+
 success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action

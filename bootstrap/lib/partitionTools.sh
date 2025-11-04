@@ -8,12 +8,17 @@
 # ==================================================================================================
 
 # =============================================================================
-# LOADER (validated imports)
+# FEATURE INITIALIZATION
 # =============================================================================
-# Import with validation
-ds_import_dir "${SCRIPT_DIR}/lib/partitionTools" true || {
-    fatal "Failed to load partition tools"
-    return 1
+nds_partition_init() {
+    # Import with validation
+    nds_import_dir "${SCRIPT_DIR}/lib/partitionTools" true || {
+        fatal "Failed to load partition tools"
+        return 1
+    }
+    
+    success "Partition tools initialized"
+    return 0
 }
 
 
