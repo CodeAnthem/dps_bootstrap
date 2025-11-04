@@ -139,7 +139,7 @@ disk_get_active() {
     echo "FS_TYPE"
     echo "SWAP_SIZE_MIB"
     echo "SEPARATE_HOME"
-    [[ "$SEPARATE_HOME" == "true" ]] && echo "HOME_SIZE"
+    [[ "$separate_home" == "true" ]] && echo "HOME_SIZE"
     
     # Fast vs Disko option exposure
     [[ "$strategy" != "fast" ]] && echo "DISKO_USER_FILE"
