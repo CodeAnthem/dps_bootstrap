@@ -77,7 +77,7 @@ nds_partition_is_disk_ready_to_format() {
 
 # High-level: run based on configurator values
 nds_partition_run_from_config() {
-    local strat disk fs_type swap_mib separate_home home_size enc unlock disko_user
+    local strat disk fs_type swap_mib separate_home home_size enc unlock disko_user use_pass
     strat=$(nds_configurator_config_get_env "PARTITION_STRATEGY" "fast")
     disk=$(nds_configurator_config_get_env "DISK_TARGET") || return 1
     fs_type=$(nds_configurator_config_get_env "FS_TYPE" "btrfs")
@@ -86,13 +86,34 @@ nds_partition_run_from_config() {
     home_size=$(nds_configurator_config_get_env "HOME_SIZE" "20G")
     enc=$(nds_configurator_config_get_env "ENCRYPTION" "true")
     unlock=$(nds_configurator_config_get_env "ENCRYPTION_UNLOCK_MODE" "manual")
+    use_pass=$(nds_configurator_config_get_env "ENCRYPTION_USE_PASSPHRASE" "false")
     disko_user=$(nds_configurator_config_get_env "DISKO_USER_FILE" "")
+
+    # Prefer keyfile when passphrase is disabled
+    if [[ "$enc" == "true" && "$use_pass" != "true" ]]; then
+        unlock="keyfile"
+    fi
 
     nds_partition_is_disk_ready_to_format "$disk" || return 1
 
     if [[ "$strat" == "fast" ]]; then
-        nds_partition_fast "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock"
+        info "Running fast partitioning strategy"
+        _nds_partition_manual_create_layout "$disk" "$swap_mib" || return 1
+
+        local root_dev; root_dev=$(_nds_partition_manual_root_device "$disk" "$swap_mib")
+
+        if [[ "$enc" == "true" ]]; then
+            info "Encrypting root partition"
+            root_dev=$(_nds_partition_manual_encrypt_root "$root_dev" "$unlock") || return 1
+        fi
+
+        info "Formatting and mounting root partition"
+        _nds_partition_manual_format_and_mount "$disk" "$root_dev" "$fs_type" "$separate_home" || return 1
+        info "Setting up swap"
+        _nds_partition_manual_setup_swap "$disk" "$swap_mib" || true
+        success "Partitioning and mounting (fast) complete"
     else
+        info "Running Disko partitioning strategy"
         nds_partition_disko "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"
     fi
 }

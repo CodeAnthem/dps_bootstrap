@@ -10,22 +10,6 @@
 # =============================================================================
 # MANUAL PARTITIONING (FAST PATH) - INTERNAL APPLY
 # =============================================================================
-
-_nds_partition_manual_apply() {
-    local disk="$1" fs_type="$2" swap_mib="$3" separate_home="$4" home_size="$5" enc="$6" unlock="$7"
-    _nds_partition_manual_create_layout "$disk" "$swap_mib" || return 1
-
-    local root_dev; root_dev=$(_nds_partition_manual_root_device "$disk" "$swap_mib")
-
-    if [[ "$enc" == "true" ]]; then
-        root_dev=$(_nds_partition_manual_encrypt_root "$root_dev" "$unlock") || return 1
-    fi
-
-    _nds_partition_manual_format_and_mount "$disk" "$root_dev" "$fs_type" "$separate_home" || return 1
-    _nds_partition_manual_setup_swap "$disk" "$swap_mib" || true
-    success "Partitioning and mounting (fast) complete"
-}
-
 _nds_partition_manual_create_layout() {
     local disk="$1" swap_mib="$2"
     parted -s "$disk" mklabel gpt || return 1
@@ -61,10 +45,10 @@ _nds_partition_manual_encrypt_root() {
         key=$(generate_key_hex 64)
         echo "$key" > "$keyfile"
         chmod 600 "$keyfile"
-        cryptsetup luksFormat "$root_part" --key-file "$keyfile" || return 1
+        cryptsetup luksFormat --batch-mode "$root_part" --key-file "$keyfile" || return 1
         cryptsetup open "$root_part" "$mapper" --key-file "$keyfile" || return 1
     else
-        cryptsetup luksFormat "$root_part" || return 1
+        cryptsetup luksFormat --batch-mode "$root_part" || return 1
         cryptsetup open "$root_part" "$mapper" || return 1
     fi
     echo "/dev/mapper/$mapper"
