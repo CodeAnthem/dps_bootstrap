@@ -178,17 +178,17 @@ nds_configurator_var_list() {
 # CONFIG DATA ACCESS
 # =============================================================================
 
-nds_configurator_config_set() {
+nds_cfg_set() {
     CONFIG_DATA["$1"]="$2"
 }
 
-nds_configurator_config_get() {
+nds_cfg_get() {
     echo "${CONFIG_DATA[$1]:-${2:-}}"
 }
 
 # Get config value with env variable fallback (checks NDS_<varname>)
-# Usage: nds_configurator_config_get_env varname [default]
-nds_configurator_config_get_env() {
+# Usage: nds_cfg_get_env varname [default]
+nds_cfg_get_env() {
     local varname="$1"
     local default="${2:-}"
     local env_var="NDS_${varname}"

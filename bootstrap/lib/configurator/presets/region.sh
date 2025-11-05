@@ -38,5 +38,3 @@ nds_cfg_setting_create KEYBOARD_VARIANT \
     --display "Keyboard Variant (optional)" \
     --default ""
 
-# Clear context
-CFG_CONTEXT_PRESET=""

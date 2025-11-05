@@ -18,7 +18,7 @@ nds_configurator_var_validate() {
     local input
     local display
     
-    value=$(nds_configurator_config_get "$varname")
+    value=$(nds_cfg_get "$varname")
     required=$(nds_configurator_var_get_meta "$varname" "required")
     input=$(nds_configurator_var_get_meta "$varname" "input")
     display=$(nds_configurator_var_get_meta "$varname" "display")
@@ -109,7 +109,7 @@ nds_configurator_var_prompt() {
     
     input=$(nds_configurator_var_get_meta "$varname" "input")
     display=$(nds_configurator_var_get_meta "$varname" "display")
-    current=$(nds_configurator_config_get "$varname")
+    current=$(nds_cfg_get "$varname")
     required=$(nds_configurator_var_get_meta "$varname" "required")
     
     while true; do
@@ -134,7 +134,7 @@ nds_configurator_var_prompt() {
         fi
         
         # Update value
-        nds_configurator_config_set "$varname" "$new_value"
+        nds_cfg_set "$varname" "$new_value"
         
         if [[ "$current" != "$new_value" ]]; then
             if [[ -n "$current" ]]; then

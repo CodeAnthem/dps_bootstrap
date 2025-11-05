@@ -112,5 +112,3 @@ nds_cfg_setting_create ENCRYPTION_PASSPHRASE_LENGTH \
     --max 512 \
     --visible_all "ENCRYPTION==true ENCRYPTION_USE_PASSPHRASE==true"
 
-# Clear context
-CFG_CONTEXT_PRESET=""

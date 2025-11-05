@@ -77,8 +77,8 @@ lib/
 | Old Function | New Function | Notes |
 |-------------|--------------|-------|
 | `nds_configurator_var_declare` | `nds_cfg_setting_create` | Uses `--flag value` syntax |
-| `nds_configurator_config_get` | `nds_cfg_get` | Simpler name |
-| `nds_configurator_config_set` | `nds_cfg_set` | Simpler name |
+| `nds_cfg_get` | `nds_cfg_get` | Simpler name |
+| `nds_cfg_set` | `nds_cfg_set` | Simpler name |
 | `nds_configurator_preset_validate` | `nds_cfg_preset_validate` | Same functionality |
 | `nds_configurator_init` | `nds_cfg_init` | Also available for backward compat |
 

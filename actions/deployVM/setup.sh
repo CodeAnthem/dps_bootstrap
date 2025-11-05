@@ -18,63 +18,61 @@
 # =============================================================================
 # @AI - This is  where the setup setups all its required configuration
 action_config() {
-    # Set context for action-specific vars
-    PRESET_CONTEXT="deploy"
-    
-    # Set preset metadata
-    nds_configurator_preset_set_display "deploy" "Deploy VM"
-    nds_configurator_preset_set_priority "deploy" 60
-    
-    # Declare action-specific fields
-    nds_configurator_var_declare GIT_REPO_URL \
-        display="Private Git Repository" \
-        input=url \
-        default="https://github.com/user/repo.git" \
-        required=true
+    # Create preset
+    nds_cfg_preset_create "deploy" \
+        --display "Deploy" \
+        --priority 60
 
-    nds_configurator_var_declare DEPLOY_SSH_KEY_PATH \
-        display="Deploy SSH Key Path" \
-        input=path \
-        default="/root/.ssh/deploy_key" \
-        required=true
-    
-    nds_configurator_var_declare DEPLOY_TOOLS_PATH \
-        display="Deploy Tools Installation Path" \
-        input=path \
-        default="~/deployTools"
-    
-    # Clear context
-    PRESET_CONTEXT=""
+    # Declare settings
+    nds_cfg_setting_create UEFI_MODE \
+        --type toggle \
+        --display "UEFI Mode" \
+        --default "true"
+
+    nds_cfg_setting_create GIT_REPO_URL \
+        --type url \
+        --display "Private Git Repository" \
+        --default "https://github.com/user/repo.git"
+
+    nds_cfg_setting_create DEPLOY_SSH_KEY_PATH \
+        --type path \
+        --display "Deploy SSH Key Path" \
+        --default "/root/.ssh/deploy_key"
+
+    nds_cfg_setting_create DEPLOY_TOOLS_PATH \
+        --type path \
+        --display "Deploy Tools Installation Path" \
+        --default "${HOME}/deployTools"
 
     # Set default values for preset vars (if not already set by env)
     # Access - Admin user and SSH
-    nds_configurator_config_set "ADMIN_USER" "admin"
-    nds_configurator_config_set "SUDO_PASSWORD_REQUIRED" "true"
-    nds_configurator_config_set "SSH_ENABLE" "true"
-    nds_configurator_config_set "SSH_PORT" "22"
-    nds_configurator_config_set "SSH_USE_KEY" "true"
-    nds_configurator_config_set "SSH_KEY_TYPE" "ed25519"
-    nds_configurator_config_set "SSH_KEY_PASSPHRASE" "false"
+    nds_cfg_set ADMIN_USER "admin"
+    nds_cfg_set SUDO_PASSWORD_REQUIRED true
+    nds_cfg_set SSH_ENABLE true
+    nds_cfg_set SSH_PORT 22
+    nds_cfg_set SSH_USE_KEY true
+    nds_cfg_set SSH_KEY_TYPE "ed25519"
+    nds_cfg_set SSH_KEY_PASSPHRASE false
 
     # Network
-    nds_configurator_config_set "NETWORK_METHOD" "dhcp"
+    nds_cfg_set NETWORK_METHOD "dhcp"
 
     # Disk & Encryption
-    nds_configurator_config_set "ENCRYPTION" "true"
-    nds_configurator_config_set "ENCRYPTION_KEY_METHOD" "urandom"
-    nds_configurator_config_set "ENCRYPTION_KEY_LENGTH" "64"
+    nds_cfg_set ENCRYPTION true
+    nds_cfg_set ENCRYPTION_KEY_METHOD "urandom"
+    nds_cfg_set ENCRYPTION_KEY_LENGTH 64
 
     # Boot
-    nds_configurator_config_set "BOOTLOADER" "systemd-boot"
+    nds_cfg_set BOOTLOADER "systemd-boot"
 
     # Security
-    nds_configurator_config_set "SECURE_BOOT" "false"
-    nds_configurator_config_set "FIREWALL_ENABLE" "true"
-    nds_configurator_config_set "HARDENING_ENABLE" "true"
-    nds_configurator_config_set "FAIL2BAN_ENABLE" "true"
-    
+    nds_cfg_set SECURE_BOOT false
+    nds_cfg_set FIREWALL_ENABLE true
+    nds_cfg_set HARDENING_ENABLE true
+    nds_cfg_set FAIL2BAN_ENABLE true
+
     # Quick Setup
-    nds_configurator_config_set "COUNTRY" ""
+    # nds_cfg_set COUNTRY ""
 }
 
 # @AI - Optional function to return fields (similar to deploy_get_active_fields)
@@ -93,13 +91,13 @@ action_config() {
 # =============================================================================
 action_generate_overrides() {
     local hostname timezone locale keyboard_layout keyboard_variant
-    
-    hostname=$(nds_configurator_config_get "HOSTNAME")
-    timezone=$(nds_configurator_config_get "TIMEZONE")
-    locale=$(nds_configurator_config_get "LOCALE_MAIN")
-    keyboard_layout=$(nds_configurator_config_get "KEYBOARD_LAYOUT")
-    keyboard_variant=$(nds_configurator_config_get "KEYBOARD_VARIANT")
-    
+
+    hostname=$(nds_cfg_get "HOSTNAME")
+    timezone=$(nds_cfg_get "TIMEZONE")
+    locale=$(nds_cfg_get "LOCALE_MAIN")
+    keyboard_layout=$(nds_cfg_get "KEYBOARD_LAYOUT")
+    keyboard_variant=$(nds_cfg_get "KEYBOARD_VARIANT")
+
     cat <<EOF
 # NDS Bootstrap Overrides - Generated $(date)
 { config, lib, ... }:
@@ -107,7 +105,7 @@ action_generate_overrides() {
   networking.hostName = "$hostname";
   time.timeZone = "$timezone";
   i18n.defaultLocale = "$locale";
-  
+
   services.xserver.xkb = {
     layout = "$keyboard_layout";
 $([ -n "$keyboard_variant" ] && echo "    variant = \"$keyboard_variant\";")
@@ -122,7 +120,7 @@ EOF
 action_generate_config() {
     local nixos_version
     nixos_version=$(nixos-version | cut -d. -f1-2)
-    
+
     cat <<EOF
 # Generated by NDS Bootstrap - $(date)
 { config, lib, pkgs, ... }:
@@ -132,7 +130,7 @@ action_generate_config() {
     ./nds_overrides.nix
     ./deployVM.nix
   ];
-  
+
   system.stateVersion = "$nixos_version";
 }
 EOF
@@ -151,41 +149,41 @@ action_setup() {
     console " This will install a NixOS for managing NixOS nodes and include the following features:"
     console "  • Deployment tools (nixos-anywhere, deploy-rs)"
     console "  • Secrets management (age, sops)"
-    
+
     nds_askUserToProceed " Ready to begin configuration?" || exit 130
-    
+
     # Configuration phase - uses all enabled presets from registry
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
-        
+
         if ! nds_configurator_validate_all; then
             error "Configuration validation failed"
             exit 11
         fi
     fi
-    
+
     # Optional: Show interactive menu
     nds_configurator_menu || exit 12
-    
+
     nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
-    
+
     # Pre-install phase
     new_section
     section_header "Pre-Install Preparation"
-    
+
     step_start "Generating configurations"
     _nds_runtime_ensure_dirs || exit 10
     action_generate_overrides > "$NDS_RUNTIME_DIR/config/nds_overrides.nix"
     action_generate_config > "$NDS_RUNTIME_DIR/config/configuration.nix"
     step_complete "Configurations ready"
-    
+
     step_start "Preparing secrets"
     _prepare_secrets
     step_complete "Secrets prepared"
-    
+
     # Call pre-install hook if exists
     type action_pre &>/dev/null && action_pre
-    
+
     # Partitioning phase
     new_section
     section_header "Disk Partitioning"
@@ -195,17 +193,17 @@ action_setup() {
     new_section
     section_header "NixOS Installation"
     install_deploy_vm || exit 14
-    
+
     # Post-install phase
     new_section
     section_header "Post-Install Setup"
     type action_postInstall &>/dev/null && action_postInstall
-    
+
     # Completion
     new_section
     _show_secrets_info
     action_show_completion
-    
+
     console ""
     nds_askUserToProceed "Installation complete. Reboot now?" && reboot
 }
@@ -214,11 +212,11 @@ action_setup() {
 # HOOKS
 # =============================================================================
 # action_pre() {
-    
+
 # }
 
 # action_postInstall() {
-    
+
 # }
 
 # =============================================================================
@@ -226,38 +224,38 @@ action_setup() {
 # =============================================================================
 install_deploy_tools() {
     section_header "Installing Deploy Tools"
-    
+
     local admin_user deploy_tools_src deploy_tools_dest
-    admin_user=$(nds_configurator_config_get "ADMIN_USER")
-    
+    admin_user=$(nds_cfg_get "ADMIN_USER")
+
     local script_dir
     script_dir="$(dirname "$(realpath "$0")")"
     deploy_tools_src="${script_dir}/deployTools"
-    deploy_tools_dest=$(nds_configurator_config_get "DEPLOY_TOOLS_PATH")
-    
+    deploy_tools_dest=$(nds_cfg_get "DEPLOY_TOOLS_PATH")
+
     # Expand tilde to actual home path
     deploy_tools_dest="${deploy_tools_dest/#\~//home/${admin_user}}"
-    
+
     step_start "Copying deploy tools to $deploy_tools_dest"
-    
+
     if [[ ! -d "$deploy_tools_src" ]]; then
         warn "Deploy tools source not found: $deploy_tools_src"
         return 1
     fi
-    
+
     # Create destination on mounted filesystem
     local mnt_dest="/mnt${deploy_tools_dest}"
     mkdir -p "$mnt_dest"
-    
+
     # Copy tools
     if ! cp -r "$deploy_tools_src"/* "$mnt_dest/"; then
         step_fail "Failed to copy deploy tools"
         return 1
     fi
-    
+
     # Set ownership
     chown -R 1000:1000 "$mnt_dest" 2>/dev/null || true
-    
+
     step_complete "Deploy tools installed"
     success "Deploy tools installed to: $deploy_tools_dest"
     return 0
@@ -304,7 +302,7 @@ _prepare_secrets() {
 
     cat > "$NDS_RUNTIME_DIR/secrets/secrets.env" <<EOF
 ADMIN_INITIAL_PASSWORD=$admin_pass
-GIT_REPO_URL=$(nds_configurator_config_get "GIT_REPO_URL")
+GIT_REPO_URL=$(nds_cfg_get "GIT_REPO_URL")
 EOF
 
     chmod 600 "$NDS_RUNTIME_DIR/secrets/"*
@@ -318,7 +316,7 @@ _show_secrets_info() {
     console ""
     console "⚠️  CRITICAL: Back up these files before rebooting!"
     console ""
-    
+
     if [[ -f "$NDS_RUNTIME_DIR/secrets/luks_key.txt" ]]; then
         console "   • Encryption key"
     fi
@@ -339,7 +337,7 @@ _nds_runtime_ensure_dirs() {
 
 _nds_partition_select_strategy() {
     local strat
-    strat=$(nds_configurator_config_get_env "PARTITION_STRATEGY" "fast")
+    strat=$(nds_cfg_get_env "PARTITION_STRATEGY" "fast")
     echo "$strat"
 }
 

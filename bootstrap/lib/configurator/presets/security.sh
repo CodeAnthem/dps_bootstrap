@@ -40,5 +40,3 @@ nds_cfg_setting_create FAIL2BAN_ENABLE \
     --display "Enable Fail2Ban" \
     --default "false"
 
-# Clear context
-CFG_CONTEXT_PRESET=""

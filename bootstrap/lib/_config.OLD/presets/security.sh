@@ -48,7 +48,7 @@ security_init() {
 # =============================================================================
 security_get_active() {
     local secure_boot
-    secure_boot=$(nds_configurator_config_get "SECURE_BOOT")
+    secure_boot=$(nds_cfg_get "SECURE_BOOT")
     
     echo "SECURE_BOOT"
     

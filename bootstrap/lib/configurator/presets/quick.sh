@@ -24,5 +24,3 @@ nds_cfg_setting_create HOSTNAME \
     --display "System Hostname" \
     --default "nixos"
 
-# Clear context
-CFG_CONTEXT_PRESET=""

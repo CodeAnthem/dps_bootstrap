@@ -47,7 +47,7 @@ nds_partition_is_disk_ready_to_format() {
     _nds_partition_summarize_disk "$disk"
 
     local auto_purge
-    auto_purge=$(nds_configurator_config_get_env "AUTO_APPROVE_DISK_PURGE" "false")
+    auto_purge=$(nds_cfg_get_env "AUTO_APPROVE_DISK_PURGE" "false")
 
     case "$state" in
         wiped)
@@ -78,16 +78,16 @@ nds_partition_is_disk_ready_to_format() {
 # High-level: run based on configurator values
 nds_partition_run_from_config() {
     local strat disk fs_type swap_mib separate_home home_size enc unlock disko_user use_pass
-    strat=$(nds_configurator_config_get_env "PARTITION_STRATEGY" "fast")
-    disk=$(nds_configurator_config_get_env "DISK_TARGET") || return 1
-    fs_type=$(nds_configurator_config_get_env "FS_TYPE" "btrfs")
-    swap_mib=$(nds_configurator_config_get_env "SWAP_SIZE_MIB" "0")
-    separate_home=$(nds_configurator_config_get_env "SEPARATE_HOME" "false")
-    home_size=$(nds_configurator_config_get_env "HOME_SIZE" "20G")
-    enc=$(nds_configurator_config_get_env "ENCRYPTION" "true")
-    unlock=$(nds_configurator_config_get_env "ENCRYPTION_UNLOCK_MODE" "manual")
-    use_pass=$(nds_configurator_config_get_env "ENCRYPTION_USE_PASSPHRASE" "false")
-    disko_user=$(nds_configurator_config_get_env "DISKO_USER_FILE" "")
+    strat=$(nds_cfg_get_env "PARTITION_STRATEGY" "fast")
+    disk=$(nds_cfg_get_env "DISK_TARGET") || return 1
+    fs_type=$(nds_cfg_get_env "FS_TYPE" "btrfs")
+    swap_mib=$(nds_cfg_get_env "SWAP_SIZE_MIB" "0")
+    separate_home=$(nds_cfg_get_env "SEPARATE_HOME" "false")
+    home_size=$(nds_cfg_get_env "HOME_SIZE" "20G")
+    enc=$(nds_cfg_get_env "ENCRYPTION" "true")
+    unlock=$(nds_cfg_get_env "ENCRYPTION_UNLOCK_MODE" "manual")
+    use_pass=$(nds_cfg_get_env "ENCRYPTION_USE_PASSPHRASE" "false")
+    disko_user=$(nds_cfg_get_env "DISKO_USER_FILE" "")
 
     # Prefer keyfile when passphrase is disabled
     if [[ "$enc" == "true" && "$use_pass" != "true" ]]; then

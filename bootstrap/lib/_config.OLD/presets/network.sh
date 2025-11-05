@@ -61,7 +61,7 @@ network_init() {
 # =============================================================================
 network_get_active() {
     local method
-    method=$(nds_configurator_config_get "NETWORK_METHOD")
+    method=$(nds_cfg_get "NETWORK_METHOD")
     
     # Base fields always active
     echo "HOSTNAME"
@@ -82,16 +82,16 @@ network_get_active() {
 # =============================================================================
 network_validate_extra() {
     local method
-    method=$(nds_configurator_config_get "NETWORK_METHOD")
+    method=$(nds_cfg_get "NETWORK_METHOD")
     
     if [[ "$method" == "static" ]]; then
         local ip
         local mask
         local gateway
         
-        ip=$(nds_configurator_config_get "NETWORK_IP")
-        mask=$(nds_configurator_config_get "NETWORK_MASK")
-        gateway=$(nds_configurator_config_get "NETWORK_GATEWAY")
+        ip=$(nds_cfg_get "NETWORK_IP")
+        mask=$(nds_cfg_get "NETWORK_MASK")
+        gateway=$(nds_cfg_get "NETWORK_GATEWAY")
         
         # Check if Gateway is same as IP
         if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then

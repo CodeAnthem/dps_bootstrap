@@ -264,8 +264,8 @@ nds_cfg_setting_isVisible() {
 
 - [ ] Update any code that calls old API:
   - `nds_configurator_var_declare` → `nds_cfg_setting_create`
-  - `nds_configurator_config_get` → `nds_cfg_get`
-  - `nds_configurator_config_set` → `nds_cfg_set`
+  - `nds_cfg_get` → `nds_cfg_get`
+  - `nds_cfg_set` → `nds_cfg_set`
   - etc.
 
 ### Optional Enhancements

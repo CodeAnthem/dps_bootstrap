@@ -118,11 +118,11 @@ disk_init() {
 disk_get_active() {
     local encryption use_passphrase strategy user_file separate_home
     
-    encryption=$(nds_configurator_config_get "ENCRYPTION")
-    use_passphrase=$(nds_configurator_config_get "ENCRYPTION_USE_PASSPHRASE")
-    strategy=$(nds_configurator_config_get "PARTITION_STRATEGY")
-    user_file=$(nds_configurator_config_get "DISKO_USER_FILE")
-    separate_home=$(nds_configurator_config_get "SEPARATE_HOME")
+    encryption=$(nds_cfg_get "ENCRYPTION")
+    use_passphrase=$(nds_cfg_get "ENCRYPTION_USE_PASSPHRASE")
+    strategy=$(nds_cfg_get "PARTITION_STRATEGY")
+    user_file=$(nds_cfg_get "DISKO_USER_FILE")
+    separate_home=$(nds_cfg_get "SEPARATE_HOME")
     
     # Base fields always active
     echo "DISK_TARGET"

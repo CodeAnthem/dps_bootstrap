@@ -198,8 +198,8 @@ lib/configurator/
 |----------------|----------------|-------|
 | `nds_configurator_init` | `nds_cfg_init` | Backward compat alias exists |
 | `nds_configurator_var_declare` | `nds_cfg_setting_create` | New `--flag value` syntax |
-| `nds_configurator_config_get` | `nds_cfg_get` | Simpler name |
-| `nds_configurator_config_set` | `nds_cfg_set` | Simpler name |
+| `nds_cfg_get` | `nds_cfg_get` | Simpler name |
+| `nds_cfg_set` | `nds_cfg_set` | Simpler name |
 | `nds_configurator_preset_validate` | `nds_cfg_preset_validate` | Consistent naming |
 | `nds_configurator_preset_get_all_enabled` | `nds_cfg_preset_getAllSorted` | Returns sorted by priority |
 | `nds_configurator_var_validate` | `nds_cfg_setting_validate` | Consistent naming |
@@ -300,8 +300,8 @@ The menu system (`menu.sh`) is updated but may need additional integration testi
 ### 3. Legacy Code References
 Any external code that references old API functions needs updating. Search for:
 - `nds_configurator_var_declare`
-- `nds_configurator_config_get`
-- `nds_configurator_config_set`
+- `nds_cfg_get`
+- `nds_cfg_set`
 
 ### 4. Custom Prompt Functions
 The `_netmask_prompt` and `_disk_prompt` functions use custom interactive logic. Ensure terminal I/O works correctly in your deployment environment.

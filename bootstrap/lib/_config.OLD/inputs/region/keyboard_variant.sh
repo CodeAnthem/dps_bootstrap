@@ -14,7 +14,7 @@
 prompt_hint_keyboard_variant() {
     # Get current keyboard layout to show relevant variants
     local layout
-    layout=$(nds_configurator_config_get "KEYBOARD_LAYOUT" 2>/dev/null || echo "us")
+    layout=$(nds_cfg_get "KEYBOARD_LAYOUT" 2>/dev/null || echo "us")
     
     case "$layout" in
         us)

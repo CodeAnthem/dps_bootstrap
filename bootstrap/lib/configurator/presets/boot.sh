@@ -24,5 +24,3 @@ nds_cfg_setting_create BOOTLOADER \
     --default "systemd-boot" \
     --options "systemd-boot|grub|refind"
 
-# Clear context
-CFG_CONTEXT_PRESET=""

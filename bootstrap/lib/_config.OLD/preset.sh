@@ -119,7 +119,7 @@ nds_configurator_preset_display() {
         local input
         
         display=$(nds_configurator_var_get_meta "$varname" "display")
-        value=$(nds_configurator_config_get "$varname")
+        value=$(nds_cfg_get "$varname")
         input=$(nds_configurator_var_get_meta "$varname" "input")
         
         # Transform for display if function exists

@@ -57,16 +57,16 @@ nds_cfg_setting_create NETWORK_GATEWAY \
 _network_validate() {
     local method
     method=$(nds_cfg_get NETWORK_METHOD)
-    
+
     if [[ "$method" == "static" ]]; then
         local ip
         local mask
         local gateway
-        
+
         ip=$(nds_cfg_get NETWORK_IP)
         mask=$(nds_cfg_get NETWORK_MASK)
         gateway=$(nds_cfg_get NETWORK_GATEWAY)
-        
+
         # Check if Gateway is same as IP
         if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then
             error "Gateway cannot be the same as IP address"
@@ -82,7 +82,7 @@ _network_validate() {
             fi
         fi
     fi
-    
+
     return 0
 }
 
@@ -99,21 +99,19 @@ _network_validate_subnet() {
     local ip="$1"
     local mask="$2"
     local gateway="$3"
-    
+
     local ip_int
     local gateway_int
     local mask_int
-    
+
     ip_int=$(_network_ip_to_int "$ip")
     gateway_int=$(_network_ip_to_int "$gateway")
     mask_int=$(_network_ip_to_int "$mask")
-    
+
     # Apply mask to both IPs and compare
     local ip_network=$((ip_int & mask_int))
     local gateway_network=$((gateway_int & mask_int))
-    
+
     [[ "$ip_network" -eq "$gateway_network" ]]
 }
 
-# Clear context
-CFG_CONTEXT_PRESET=""
