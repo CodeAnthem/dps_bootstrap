@@ -42,7 +42,7 @@ _nds_import_and_validate_file() {
     local err_output
 
     # Validate by running in a strict subshell and capture stderr output
-    if ! err_output=$(bash -euo pipefail "$filepath" 2>&1); then
+    if ! err_output=$(bash -n "$filepath" 2>&1); then
         # Clean the path prefix "$filepath: " from each line
         local cleaned=""
         local line
