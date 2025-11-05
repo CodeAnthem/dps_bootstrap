@@ -17,7 +17,6 @@ nds_cfg_validate_all() {
     if [[ ${#presets[@]} -eq 0 ]]; then
         readarray -t presets < <(nds_cfg_preset_getAllSorted)
     fi
-    declare -p | grep presets
     nds_cfg_preset_validate_all
 }
 

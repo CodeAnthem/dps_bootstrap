@@ -107,6 +107,7 @@ nds_cfg_preset_validate_all() {
     local errors=0
     
     for preset in "${CFG_ALL_PRESETS[@]}"; do
+        debug "Validating preset: $preset"
         if ! nds_cfg_preset_validate "$preset"; then
             ((errors++))
         fi
