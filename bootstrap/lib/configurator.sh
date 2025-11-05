@@ -13,27 +13,36 @@
 
 nds_cfg_init() {
     info "Initializing configurator v4.1..."
-    
     # 1. Load logic (foundation)
-    nds_import_dir "${SCRIPT_DIR}/lib/configurator/logic" false || {
+    nds_import_dir "${SCRIPT_DIR}/lib/configurator" true || {
         fatal "Failed to load logic"
         return 1
     }
     info "Loaded logic"
+
+
+
+
+    # # 1. Load logic (foundation)
+    # nds_import_dir "${SCRIPT_DIR}/lib/configurator/logic" false || {
+    #     fatal "Failed to load logic"
+    #     return 1
+    # }
+    # info "Loaded logic"
     
-    # 2. Load all settingTypes (auto-register)
-    nds_import_dir "${SCRIPT_DIR}/lib/configurator/settingTypes" false || {
-        fatal "Failed to load settingTypes"
-        return 1
-    }
-    info "Loaded settingTypes"
+    # # 2. Load all settingTypes (auto-register)
+    # nds_import_dir "${SCRIPT_DIR}/lib/configurator/settingTypes" false || {
+    #     fatal "Failed to load settingTypes"
+    #     return 1
+    # }
+    # info "Loaded settingTypes"
     
-    # 3. Load all presets (auto-register settings)
-    nds_import_dir "${SCRIPT_DIR}/lib/configurator/presets" false || {
-        fatal "Failed to load presets"
-        return 1
-    }
-    info "Loaded presets"
+    # # 3. Load all presets (auto-register settings)
+    # nds_import_dir "${SCRIPT_DIR}/lib/configurator/presets" false || {
+    #     fatal "Failed to load presets"
+    #     return 1
+    # }
+    # info "Loaded presets"
     
     # 4. Apply environment variable overrides
     nds_cfg_env_import "NDS_"
