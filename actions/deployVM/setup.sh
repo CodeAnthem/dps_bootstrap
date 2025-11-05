@@ -45,31 +45,31 @@ action_config() {
         --default "${HOME}/deployTools"
 
     # Set default values for preset vars (if not already set by env)
-    # Access - Admin user and SSH
-    nds_cfg_set ADMIN_USER "admin"
-    nds_cfg_set SUDO_PASSWORD_REQUIRED true
-    nds_cfg_set SSH_ENABLE true
-    nds_cfg_set SSH_PORT 22
-    nds_cfg_set SSH_USE_KEY true
-    nds_cfg_set SSH_KEY_TYPE "ed25519"
-    nds_cfg_set SSH_KEY_PASSPHRASE false
+    # # Access - Admin user and SSH
+    # nds_cfg_set ADMIN_USER "admin"
+    # nds_cfg_set SUDO_PASSWORD_REQUIRED true
+    # nds_cfg_set SSH_ENABLE true
+    # nds_cfg_set SSH_PORT 22
+    # nds_cfg_set SSH_USE_KEY true
+    # nds_cfg_set SSH_KEY_TYPE "ed25519"
+    # nds_cfg_set SSH_KEY_PASSPHRASE false
 
-    # Network
-    nds_cfg_set NETWORK_METHOD "dhcp"
+    # # Network
+    # nds_cfg_set NETWORK_METHOD "dhcp"
 
-    # Disk & Encryption
-    nds_cfg_set ENCRYPTION true
-    nds_cfg_set ENCRYPTION_KEY_METHOD "urandom"
-    nds_cfg_set ENCRYPTION_KEY_LENGTH 64
+    # # Disk & Encryption
+    # nds_cfg_set ENCRYPTION true
+    # nds_cfg_set ENCRYPTION_KEY_METHOD "urandom"
+    # nds_cfg_set ENCRYPTION_KEY_LENGTH 64
 
-    # Boot
-    nds_cfg_set BOOTLOADER "systemd-boot"
+    # # Boot
+    # nds_cfg_set BOOTLOADER "systemd-boot"
 
-    # Security
-    nds_cfg_set SECURE_BOOT false
-    nds_cfg_set FIREWALL_ENABLE true
-    nds_cfg_set HARDENING_ENABLE true
-    nds_cfg_set FAIL2BAN_ENABLE true
+    # # Security
+    # nds_cfg_set SECURE_BOOT false
+    # nds_cfg_set FIREWALL_ENABLE true
+    # nds_cfg_set HARDENING_ENABLE true
+    # nds_cfg_set FAIL2BAN_ENABLE true
 
     # Quick Setup
     # nds_cfg_set COUNTRY ""
