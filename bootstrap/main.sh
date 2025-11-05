@@ -512,10 +512,10 @@ declare -gA ACTION_DATA=()
 if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
 # Initialize configurator feature
-if declare -f nds_configurator_init &>/dev/null; then
-    nds_configurator_init || crash "Failed to initialize configurator"
+if declare -f nds_cfg_init &>/dev/null; then
+    nds_cfg_init || crash "Failed to initialize configurator"
 else
-    crash "Configurator not available (nds_configurator_init not found)"
+    crash "Configurator not available (nds_cfg_init not found)"
 fi
 
 # Initialize partition feature
