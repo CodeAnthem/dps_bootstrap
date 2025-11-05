@@ -19,25 +19,21 @@ nds_cfg_init() {
         fatal "Failed to load logic"
         return 1
     }
-    info "Loaded logic"
     
     # 2. Load all settingTypes (auto-register)
     nds_import_dir "${SCRIPT_DIR}/lib/configurator/settingTypes" false || {
         fatal "Failed to load settingTypes"
         return 1
     }
-    info "Loaded settingTypes"
     
     # 3. Load all presets (auto-register settings)
     nds_import_dir "${SCRIPT_DIR}/lib/configurator/presets" false || {
         fatal "Failed to load presets"
         return 1
     }
-    info "Loaded presets"
     
     # 4. Apply environment variable overrides
     nds_cfg_env_import "NDS_"
-    info "Applied environment variable overrides"
     
     success "Configurator v4.1 initialized (${#CFG_ALL_SETTINGTYPES[@]} types, ${#CFG_ALL_PRESETS[@]} presets, ${#CFG_ALL_SETTINGS[@]} settings)"
     return 0
