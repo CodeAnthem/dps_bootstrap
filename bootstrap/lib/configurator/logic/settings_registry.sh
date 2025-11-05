@@ -35,6 +35,9 @@ declare -gx CFG_CONTEXT_PRESET=""
 # Current validator context (set during validation)
 declare -gx CFG_VALIDATOR_CONTEXT=""
 
+# Apply hook reentrancy stack (prevents infinite loops)
+declare -gA CFG_APPLY_STACK=()
+
 # =============================================================================
 # SETTINGS REGISTRY API
 # =============================================================================

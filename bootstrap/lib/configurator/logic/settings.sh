@@ -80,6 +80,15 @@ nds_cfg_setting_create() {
         preset="$CFG_CONTEXT_PRESET"
     fi
     
+    # Prevent duplicate declarations in different presets
+    if ! $is_new; then
+        local existing_preset="${CFG_SETTINGS["${varname}::preset"]:-}"
+        if [[ -n "$preset" && -n "$existing_preset" && "$preset" != "$existing_preset" ]]; then
+            error "Setting '$varname' already declared in preset '$existing_preset', cannot redeclare in preset '$preset'"
+            return 1
+        fi
+    fi
+    
     # Validate required fields for new settings
     if $is_new; then
         if [[ -z "$type" ]]; then
@@ -174,6 +183,17 @@ nds_cfg_setting_validate() {
 # SETTINGS VALUE OPERATIONS
 # =============================================================================
 
+# Helper: Get origin precedence score
+# manual/prompt (3) > env (2) > auto (1) > default (0)
+_nds_cfg_origin_score() {
+    case "$1" in
+        manual|prompt) echo 3 ;;
+        env) echo 2 ;;
+        auto) echo 1 ;;
+        default|"") echo 0 ;;
+    esac
+}
+
 # Apply a value to a setting (normalize, validate, store, apply hook)
 # Usage: nds_cfg_apply_setting VARNAME VALUE [ORIGIN]
 nds_cfg_apply_setting() {
@@ -187,7 +207,31 @@ nds_cfg_apply_setting() {
         return 1
     fi
     
+    # Reentrancy guard: prevent infinite apply loops (A→B→A)
+    local apply_depth="${CFG_APPLY_STACK["$var"]:-0}"
+    if (( apply_depth >= 1 )); then
+        debug "Reentrant apply for $var (depth=$apply_depth) - skipping to prevent loop"
+        return 0
+    fi
+    CFG_APPLY_STACK["$var"]=$((apply_depth + 1))
+    
+    # Origin precedence check: don't overwrite higher-precedence values
+    local current_origin="${CFG_SETTINGS["${var}::origin"]:-default}"
+    local new_score
+    local cur_score
+    new_score=$(_nds_cfg_origin_score "$origin")
+    cur_score=$(_nds_cfg_origin_score "$current_origin")
+    
+    if (( cur_score > new_score )); then
+        debug "Skipping update of $var: existing origin '$current_origin' (score $cur_score) has precedence over '$origin' (score $new_score)"
+        CFG_APPLY_STACK["$var"]=$((apply_depth))
+        return 0
+    fi
+    
     local type="${CFG_SETTINGS["${var}::type"]}"
+    
+    # Set validator context so validators can access attributes
+    CFG_VALIDATOR_CONTEXT="$var"
     
     # Normalize
     local normalizeFunc="${CFG_SETTINGS["${var}::hook::normalize"]:-}"
@@ -204,6 +248,8 @@ nds_cfg_apply_setting() {
         else
             error "Invalid value for $var: $value" >&2
         fi
+        CFG_VALIDATOR_CONTEXT=""
+        CFG_APPLY_STACK["$var"]=$((apply_depth))
         return 1
     fi
     
@@ -216,6 +262,10 @@ nds_cfg_apply_setting() {
     if [[ -n "$applyFunc" ]]; then
         "$applyFunc" "$value"
     fi
+    
+    # Clear context and decrement apply stack
+    CFG_VALIDATOR_CONTEXT=""
+    CFG_APPLY_STACK["$var"]=$((apply_depth))
     
     return 0
 }

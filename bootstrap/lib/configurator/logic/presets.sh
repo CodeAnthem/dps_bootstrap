@@ -231,6 +231,12 @@ nds_cfg_preset_prompt_errors() {
         console "${display} Configuration:"
         
         for varname in "${vars_to_prompt[@]}"; do
+            # Re-check visibility (earlier prompts may have changed conditions)
+            if ! nds_cfg_setting_isVisible "$varname"; then
+                debug "Skipping $varname — not visible after previous changes"
+                continue
+            fi
+            
             _nds_cfg_setting_prompt "$varname"
         done
         
