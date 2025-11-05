@@ -175,8 +175,17 @@ nds_cfg_setting_validate() {
         return 0
     fi
     
+    # Set context so validators can access attributes (e.g., choice needs --options)
+    CFG_VALIDATOR_CONTEXT="$varname"
+    
     # Execute validation
     "$validateFunc" "$value"
+    local result=$?
+    
+    # Clear context
+    CFG_VALIDATOR_CONTEXT=""
+    
+    return $result
 }
 
 # =============================================================================

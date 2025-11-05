@@ -23,12 +23,7 @@ action_config() {
         --display "Deploy" \
         --priority 60
 
-    # Declare settings
-    nds_cfg_setting_create UEFI_MODE \
-        --type toggle \
-        --display "UEFI Mode" \
-        --default "true"
-
+    # Declare settings (deploy-specific)
     nds_cfg_setting_create GIT_REPO_URL \
         --type url \
         --display "Private Git Repository" \
