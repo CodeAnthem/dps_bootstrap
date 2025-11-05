@@ -58,9 +58,9 @@ echo ""
 
 # Load configurator
 echo "1. Loading configurator..."
-echo "at ${SCRIPT_DIR}/lib/configurator.sh"
+echo "at ${SCRIPT_DIR}/configurator.sh"
 echo ""
-source "${SCRIPT_DIR}/lib/configurator.sh" || fatal "Failed to load configurator.sh"
+source "${SCRIPT_DIR}/configurator.sh" || fatal "Failed to load configurator.sh"
 
 # Initialize
 echo "2. Initializing configurator..."
