@@ -1,119 +1,79 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Configuration System
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-29 | Modified: 2025-10-30
-# Description:   Configurator master file - orchestrates config feature
-# Feature:       ConfigPreset-based configuration with field validation and interactive prompts
+# Date:          Created: 2025-10-29 | Modified: 2025-11-05
+# Description:   Configurator v4.1 - Master Orchestrator
+# Feature:       Modular configuration system with auto-discovery and hook-based architecture
 # ==================================================================================================
 
 # =============================================================================
-# FEATURE INITIALIZATION
+# CONFIGURATOR INITIALIZATION
 # =============================================================================
+
+nds_cfg_init() {
+    info "Initializing configurator v4.1..."
+    
+    # 1. Load registry (foundation)
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/settingsLogic/logic_registry.sh" || {
+        fatal "Failed to load registry"
+        return 1
+    }
+    
+    # 2. Load settingTypes logic
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/settingTypes/settingTypes.sh" || {
+        fatal "Failed to load settingTypes logic"
+        return 1
+    }
+    
+    # 3. Load all settingTypes (auto-register)
+    nds_import_dir "${SCRIPT_DIR}/lib/configurator/settingTypes" false || {
+        fatal "Failed to load settingTypes"
+        return 1
+    }
+    
+    # 4. Load settingsLogic components
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/settingsLogic/settings.sh" || {
+        fatal "Failed to load settings logic"
+        return 1
+    }
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/settingsLogic/logic_visibility.sh" || {
+        fatal "Failed to load visibility logic"
+        return 1
+    }
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/settingsLogic/logic_envImport.sh" || {
+        fatal "Failed to load env import logic"
+        return 1
+    }
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/settingsLogic/logic_export.sh" || {
+        fatal "Failed to load export logic"
+        return 1
+    }
+    
+    # 5. Load presetsLogic
+    nds_import_file "${SCRIPT_DIR}/lib/configurator/presetsLogic/presets.sh" || {
+        fatal "Failed to load presets logic"
+        return 1
+    }
+    
+    # 6. Load all presets (auto-register settings)
+    nds_import_dir "${SCRIPT_DIR}/lib/configurator/presets" false || {
+        fatal "Failed to load presets"
+        return 1
+    }
+    
+    # 7. Apply environment variable overrides
+    nds_cfg_env_import "NDS_"
+    
+    success "Configurator v4.1 initialized (${#CFG_ALL_SETTINGTYPES[@]} types, ${#CFG_ALL_PRESETS[@]} presets, ${#CFG_ALL_SETTINGS[@]} settings)"
+    return 0
+}
+
+# =============================================================================
+# BACKWARD COMPATIBILITY LAYER (Optional - can be removed later)
+# =============================================================================
+
+# Legacy initialization function (redirects to new)
 nds_configurator_init() {
-    info "Initializing configurator..."
-    
-    # 1. Load config logic files (storage, var, preset, menu)
-    nds_import_dir "${SCRIPT_DIR}/lib/config" false || {
-        fatal "Failed to load configurator logic"
-        return 1
-    }
-    
-    # 2. Load input validators (recursive)
-    nds_import_dir "${SCRIPT_DIR}/lib/config/inputs" true || {
-        fatal "Failed to load input validators"
-        return 1
-    }
-    
-    # 3. Discover, load and initialize presets (single pass)
-    for preset_file in "${SCRIPT_DIR}/lib/config/presets/"*.sh; do
-        [[ -f "$preset_file" ]] || continue
-        
-        local preset_name
-        preset_name=$(basename "$preset_file" .sh)
-        
-        # Load preset file with validation
-        nds_import_file "$preset_file" || {
-            error "Failed to load preset: $preset_name"
-            return 1
-        }
-        
-        # Register preset as enabled by default
-        _nds_configurator_preset_register "$preset_name"
-        
-        # Cache function existence for performance
-        _nds_configurator_cache_preset_functions "$preset_name"
-        
-        # Initialize if enabled
-        if _nds_configurator_preset_is_enabled "$preset_name"; then
-            _nds_configurator_preset_init "$preset_name" || {
-                error "Failed to init preset: $preset_name"
-                return 1
-            }
-        fi
-    done
-    
-    # 4. Apply environment overrides (NDS_*)
-    _nds_configurator_apply_env
-    
-    success "Configurator initialized (${#PRESET_REGISTRY[@]} presets)"
-    return 0
-}
-
-# =============================================================================
-# INTERNAL FUNCTIONS
-# =============================================================================
-
-# Register preset with default state
-_nds_configurator_preset_register() {
-    local preset="$1"
-    PRESET_REGISTRY["$preset"]="enabled"
-    PRESET_META["${preset}__priority"]="50"
-}
-
-# Cache which optional functions exist for this preset
-_nds_configurator_cache_preset_functions() {
-    local preset="$1"
-    
-    # Cache get_active function
-    if type "${preset}_get_active" &>/dev/null; then
-        PRESET_FUNCTIONS["${preset}__get_active"]="true"
-    fi
-    
-    # Cache validate_extra function
-    if type "${preset}_validate_extra" &>/dev/null; then
-        PRESET_FUNCTIONS["${preset}__validate_extra"]="true"
-    fi
-}
-
-# Initialize single preset
-_nds_configurator_preset_init() {
-    local preset="$1"
-    PRESET_CONTEXT="$preset"
-    
-    # Call init function
-    local init_func="${preset}_init"
-    if type "$init_func" &>/dev/null; then
-        $init_func || {
-            PRESET_CONTEXT=""
-            return 1
-        }
-    fi
-    
-    PRESET_CONTEXT=""
-    return 0
-}
-
-# Apply NDS_* environment variable overrides
-_nds_configurator_apply_env() {
-    for key in "${!VAR_META[@]}"; do
-        if [[ "$key" =~ ^(.+)__display$ ]]; then
-            local varname="${BASH_REMATCH[1]}"
-            local env_var="NDS_${varname}"
-            if [[ -n "${!env_var:-}" ]]; then
-                CONFIG_DATA["$varname"]="${!env_var}"
-                debug "Env override: $env_var=${!env_var}"
-            fi
-        fi
-    done
+    nds_cfg_init "$@"
 }

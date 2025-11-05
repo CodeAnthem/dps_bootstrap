@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Configurator - Workflows
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-30
-# Description:   High-level user workflows and interactive menu
-# Dependencies:  storage.sh, var.sh, preset.sh
+# Date:          Created: 2025-10-24 | Modified: 2025-11-05
+# Description:   Configurator v4.1 - Interactive Menu & Workflows
+# Feature:       High-level user workflows and interactive configuration menu
 # ==================================================================================================
 
 # =============================================================================
@@ -13,22 +13,22 @@
 
 nds_configurator_validate_all() {
     local presets=("$@")
-    # If no presets specified, get all enabled from registry
+    # If no presets specified, get all from registry (sorted by priority)
     if [[ ${#presets[@]} -eq 0 ]]; then
-        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+        readarray -t presets < <(nds_cfg_preset_getAllSorted)
     fi
-    nds_configurator_preset_validate_all "${presets[@]}"
+    nds_cfg_preset_validate_all
 }
 
 nds_configurator_prompt_errors() {
     local presets=("$@")
-    # If no presets specified, get all enabled from registry
+    # If no presets specified, get all from registry (sorted by priority)
     if [[ ${#presets[@]} -eq 0 ]]; then
-        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+        readarray -t presets < <(nds_cfg_preset_getAllSorted)
     fi
     section_header "Configuration Required"
     for preset in "${presets[@]}"; do
-        nds_configurator_preset_prompt_errors "$preset"
+        nds_cfg_preset_prompt_errors "$preset"
     done
 }
 
@@ -36,9 +36,9 @@ nds_configurator_menu() {
     local presets=("$@")
     local last_status=""
     
-    # If no presets specified, get all enabled from registry
+    # If no presets specified, get all from registry (sorted by priority)
     if [[ ${#presets[@]} -eq 0 ]]; then
-        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+        readarray -t presets < <(nds_cfg_preset_getAllSorted)
     fi
     
     while true; do
@@ -48,7 +48,7 @@ nds_configurator_menu() {
         local i=0
         for preset in "${presets[@]}"; do
             ((++i))
-            nds_configurator_preset_display "$preset" "$i"
+            nds_cfg_preset_display "$preset" "$i"
             console ""
         done
 
@@ -81,17 +81,17 @@ nds_configurator_menu() {
                 while true; do
                     console ""
                     local display
-                    display=$(nds_configurator_preset_get_display "$preset")
+                    display=$(nds_cfg_preset_get "$preset" "display")
                     # Only add Configuration suffix if display name doesn't already contain it
                     [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
                     section_header "$display"
                     console " Press ENTER to keep current value, or type new value"
                     console ""
                     
-                    nds_configurator_preset_prompt_all "$preset"
+                    nds_cfg_preset_prompt_all "$preset"
                     
-                    if nds_configurator_preset_validate "$preset" 2>/dev/null; then
-                        last_status=$(success "$(nds_configurator_preset_get_display "$preset") updated")
+                    if nds_cfg_preset_validate "$preset" 2>/dev/null; then
+                        last_status=$(success "$(nds_cfg_preset_get "$preset" "display") updated")
                         break
                     fi
                 done
