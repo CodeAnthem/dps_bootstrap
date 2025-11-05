@@ -148,14 +148,19 @@ action_setup() {
     nds_askUserToProceed " Ready to begin configuration?" || exit 130
 
     # Configuration phase - uses all enabled presets from registry
+    echo 1
     if ! nds_cfg_validate_all; then
+        echo 2
         nds_cfg_prompt_errors
-
+        echo 3
         if ! nds_cfg_validate_all; then
+            echo 4
             error "Configuration validation failed"
             exit 11
         fi
+        echo 5
     fi
+    echo 6
 
     # Optional: Show interactive menu
     nds_cfg_menu || exit 12
