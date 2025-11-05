@@ -12,7 +12,7 @@ error() { echo "ERROR: $*" >&2; }
 info() { echo "INFO: $*"; }
 success() { echo "SUCCESS: $*"; }
 debug() { [[ "${DEBUG:-}" == "1" ]] && echo "DEBUG: $*"; }
-fatal() { echo "FATAL: $*" >&2; exit 1; }
+fatal() { echo "FATAL: $*" >&2; }
 console() { echo "$*"; }
 
 # Import function (simplified)
