@@ -94,7 +94,7 @@ action_generate_overrides() {
 
     hostname=$(nds_cfg_get "HOSTNAME")
     timezone=$(nds_cfg_get "TIMEZONE")
-    locale=$(nds_cfg_get "LOCALE_MAIN")
+    locale=$(nds_cfg_get "LOCALE")
     keyboard_layout=$(nds_cfg_get "KEYBOARD_LAYOUT")
     keyboard_variant=$(nds_cfg_get "KEYBOARD_VARIANT")
 
@@ -153,17 +153,17 @@ action_setup() {
     nds_askUserToProceed " Ready to begin configuration?" || exit 130
 
     # Configuration phase - uses all enabled presets from registry
-    if ! nds_configurator_validate_all; then
-        nds_configurator_prompt_errors
+    if ! nds_cfg_validate_all; then
+        nds_cfg_prompt_errors
 
-        if ! nds_configurator_validate_all; then
+        if ! nds_cfg_validate_all; then
             error "Configuration validation failed"
             exit 11
         fi
     fi
 
     # Optional: Show interactive menu
-    nds_configurator_menu || exit 12
+    nds_cfg_menu || exit 12
 
     nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
 

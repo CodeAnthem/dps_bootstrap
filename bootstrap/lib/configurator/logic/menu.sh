@@ -11,7 +11,7 @@
 # WORKFLOWS
 # =============================================================================
 
-nds_configurator_validate_all() {
+nds_cfg_validate_all() {
     local presets=("$@")
     # If no presets specified, get all from registry (sorted by priority)
     if [[ ${#presets[@]} -eq 0 ]]; then
@@ -20,7 +20,7 @@ nds_configurator_validate_all() {
     nds_cfg_preset_validate_all
 }
 
-nds_configurator_prompt_errors() {
+nds_cfg_prompt_errors() {
     local presets=("$@")
     # If no presets specified, get all from registry (sorted by priority)
     if [[ ${#presets[@]} -eq 0 ]]; then
@@ -32,7 +32,7 @@ nds_configurator_prompt_errors() {
     done
 }
 
-nds_configurator_menu() {
+nds_cfg_menu() {
     local presets=("$@")
     local last_status=""
     
@@ -69,7 +69,7 @@ nds_configurator_menu() {
             fi
             
             if [[ "${sel,,}" == "x" ]]; then
-                if ! nds_configurator_validate_all "${presets[@]}"; then
+                if ! nds_cfg_validate_all "${presets[@]}"; then
                     last_status=$(warn "Configuration has errors. Fix before proceeding.")
                     break  # Break to redraw menu with error
                 fi
@@ -104,17 +104,17 @@ nds_configurator_menu() {
     done
 }
 
-nds_configurator_run() {
+nds_cfg_run() {
     local presets=("$@")
     
-    if ! nds_configurator_validate_all "${presets[@]}"; then
-        nds_configurator_prompt_errors "${presets[@]}"
+    if ! nds_cfg_validate_all "${presets[@]}"; then
+        nds_cfg_prompt_errors "${presets[@]}"
         
-        if ! nds_configurator_validate_all "${presets[@]}"; then
+        if ! nds_cfg_validate_all "${presets[@]}"; then
             error "Configuration validation failed"
             return 1
         fi
     fi
     
-    nds_configurator_menu "${presets[@]}"
+    nds_cfg_menu "${presets[@]}"
 }

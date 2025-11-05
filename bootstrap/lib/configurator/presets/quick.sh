@@ -18,9 +18,3 @@ nds_cfg_setting_create COUNTRY \
     --display "Country (quick setup)" \
     --default "" \
     --exportable false
-
-nds_cfg_setting_create HOSTNAME \
-    --type hostname \
-    --display "System Hostname" \
-    --default "nixos"
-
