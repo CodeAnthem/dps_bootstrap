@@ -181,6 +181,12 @@ nds_cfg_apply_setting() {
     local value="$2"
     local origin="${3:-auto}"
     
+    # Check if setting exists
+    if ! nds_cfg_setting_exists "$var"; then
+        error "Setting '$var' does not exist. Create it first with nds_cfg_setting_create"
+        return 1
+    fi
+    
     local type="${CFG_SETTINGS["${var}::type"]}"
     
     # Normalize
@@ -217,7 +223,15 @@ nds_cfg_apply_setting() {
 # Get setting value
 # Usage: nds_cfg_get VARNAME
 nds_cfg_get() {
-    echo "${CFG_SETTINGS["${1}::value"]:-}"
+    local var="$1"
+    
+    # Return empty string if setting doesn't exist (silent failure for flexibility)
+    if ! nds_cfg_setting_exists "$var"; then
+        echo ""
+        return 0
+    fi
+    
+    echo "${CFG_SETTINGS["${var}::value"]:-}"
 }
 
 # Set setting value directly (no validation)
