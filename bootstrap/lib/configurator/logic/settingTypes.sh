@@ -10,7 +10,7 @@
 # =============================================================================
 # SETTINGTYPE REGISTRATION
 # =============================================================================
-
+echo "loaded settingTypes"
 # Register a settingType by auto-detecting its hook functions
 # Usage: nds_cfg_settingType_register "diskSize"
 nds_cfg_settingType_register() {
