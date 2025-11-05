@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Simulated library functions for testing
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
 error() { echo "ERROR: $*" >&2; }
 info() { echo "INFO: $*"; }
@@ -58,9 +58,9 @@ echo ""
 
 # Load configurator
 echo "1. Loading configurator..."
-echo "at ${SCRIPT_DIR}/configurator.sh"
+echo "at ${SCRIPT_DIR}/lib/configurator/configurator.sh"
 echo ""
-source "${SCRIPT_DIR}/configurator.sh" || fatal "Failed to load configurator.sh"
+source "${SCRIPT_DIR}/lib/configurator.sh" || fatal "Failed to load configurator.sh"
 
 # Initialize
 echo "2. Initializing configurator..."
