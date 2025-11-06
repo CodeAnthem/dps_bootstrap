@@ -101,16 +101,14 @@ fi
 # Display script header
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
-echo "exit - echo ${NDS_RUNTIME_DIR}"
-exit
-
-
-
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "("test")" "true" || crash "Failed to discover actions"
 
 # Select action
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
+
+echo exit
+exit 0
 
 # Initialize configurator feature
 if declare -f nds_cfg_init &>/dev/null; then
