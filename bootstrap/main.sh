@@ -99,11 +99,10 @@ section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 # Select action
 # nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
-testfn() {
-    sleep 5
-}
+testfn() { sleep 3; }
+step_animated "Testing function" testfn
+step_animated "Testing external cmd" sleep 3
 
-step_animated "Testing" testfn
 
 echo exit
 exit 0

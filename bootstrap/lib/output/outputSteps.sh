@@ -41,22 +41,24 @@ step_animated() {
     shift
     step_start "$message"
 
-    # if it's a defined bash function
-    if declare -f "$1" >/dev/null 2>&1; then
+    local pid
+    # if it's a function we know, run directly
+    if declare -F "$1" >/dev/null 2>&1; then
         "$@" & pid=$!
     else
+        # external command
         bash -c "$*" & pid=$!
     fi
 
     nds_show_spinner "$pid"
+
     if wait "$pid"; then
         step_complete "$message"
-        return 0
     else
         step_fail "$message"
-        return 1
     fi
 }
+
 
 
 
