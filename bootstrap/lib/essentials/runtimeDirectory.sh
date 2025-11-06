@@ -48,6 +48,7 @@ nds_setupRuntimeDir() {
     }
 
     success "Created runtime directory: $NDS_RUNTIME_DIR"
+    nds_trap_registerCleanup "nds_purgeRuntimeDir"
     return 0
 }
 

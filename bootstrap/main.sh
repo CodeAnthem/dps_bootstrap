@@ -68,7 +68,6 @@ _main_onExit() {
 # shellcheck disable=SC2329
 _main_onCleanup() {
     info "Cleaning up session"
-    purgeRuntimeDir
     nds_hook_call "exit_cleanup" "$exit_code" || true # Call cleanup hook
 }; nds_trap_registerCleanup _main_onCleanup
 
@@ -79,6 +78,7 @@ _main_onCleanup() {
 nds_runAsSudo "$0" -p "NDS_" "$@"
 nds_trap_init && success "Signal handlers initialized"
 nds_arg_parse "$@" # Register arguments
+nds_setupRuntimeDir
 
 
 # ----------------------------------------------------------------------------------
