@@ -9,7 +9,7 @@
 
 declare -g NDS_FATAL_MESSAGE="" # Fatal message placeholder (set by nds_crash)
 declare -g NDS_EXIT_REGISTER="" # Function name to call on exit
-declare -a NDS_CLEANUP_REGISTER=() # Array of functions to call on exit
+declare -ga NDS_CLEANUP_REGISTER=() # Array of functions to call on exit
 
 # Public: initialize traps (call once from main)
 # Usage: nds_trap_init

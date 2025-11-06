@@ -10,8 +10,8 @@
 # --------------------------------------------------------------------------------------------------
 # Globals
 # --------------------------------------------------------------------------------------------------
-declare -Ag NDS_ARGS=()          # Stores parsed key-value pairs
-declare -ag NDS_POSITIONAL_ARGS=()  # Stores non-option positional args
+declare -gA NDS_ARGS=()          # Stores parsed key-value pairs
+declare -ga NDS_POSITIONAL_ARGS=()  # Stores non-option positional args
 
 # --------------------------------------------------------------------------------------------------
 # Public: Parse all script arguments into NDS_ARGS and NDS_POSITIONAL_ARGS
