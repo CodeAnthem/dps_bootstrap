@@ -7,9 +7,9 @@
 # Feature:       Orchestrates disk setup, encryption, mounting, and NixOS installation
 # ==================================================================================================
 
-# =============================================================================
+# ----------------------------------------------------------------------------------
 # NIXOS INSTALLATION - Public API
-# =============================================================================
+# ----------------------------------------------------------------------------------
 
 # Auto-mode: reads from configuration modules
 # Usage: nds_nixinstall_auto
@@ -60,9 +60,9 @@ nds_nixinstall() {
     log "Configuration must be written to /mnt/etc/nixos/configuration.nix before running nixos-install"
 }
 
-# =============================================================================
+# ----------------------------------------------------------------------------------
 # COMPLETE INSTALLATION WORKFLOW
-# =============================================================================
+# ----------------------------------------------------------------------------------
 
 # Complete NixOS installation including disk prep and nixos-install
 # Expects configs to be in $NDS_RUNTIME_DIR/config/

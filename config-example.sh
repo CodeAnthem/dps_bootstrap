@@ -10,9 +10,9 @@
 # Copy this file and modify the values for your environment
 # Source this file before running the bootstrap script
 
-# =============================================================================
+# ----------------------------------------------------------------------------------
 # GLOBAL CONFIGURATION (OPTIONAL - HAS DEFAULTS)
-# =============================================================================
+# ----------------------------------------------------------------------------------
 
 
 # Network Defaults
@@ -32,9 +32,9 @@ export NDS_DISK_ENCRYPTION_USE_PASSPHRASE="n"
 export NDS_DISK_ENCRYPTION_PASSPHRASE_LENGTH="32"
 export NDS_DISK_ENCRYPTION_GENERATE="urandom"
 
-# =============================================================================
+# ----------------------------------------------------------------------------------
 # REQUIRED HOST CONFIGURATION
-# =============================================================================
+# ----------------------------------------------------------------------------------
 
 # Required Configuration
 export NDS_GIT_REPO="https://github.com/YOUR_USERNAME/YOUR_REPO.git"  # Git repository URL
@@ -42,9 +42,9 @@ export NDS_NETWORK_HOSTNAME="worker-01"                          # Hostname for 
 export NDS_NETWORK_ADDRESS="192.168.0.100"                      # Static IP address
 export NDS_ROLE="worker"                                         # tooling, gateway, worker, gpu-worker
 
-# =============================================================================
+# ----------------------------------------------------------------------------------
 # USAGE EXAMPLES
-# =============================================================================
+# ----------------------------------------------------------------------------------
 
 # Example 1: Gateway Node
 # export NDS_ROLE="gateway"
