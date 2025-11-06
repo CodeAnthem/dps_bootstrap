@@ -52,14 +52,14 @@ nds_hook_register "exit_cleanup" "hook_exit_cleanup"
 
 # shellcheck disable=SC2329
 _main_onExit() {
-    local exit_code=$?
-    local exit_msg=""
-    exit_msg=$(nds_hook_call "exit_msg" "$exit_code" || true)
+    local exitCode=$?
+    local exitMsg=""
+    exitMsg=$(nds_hook_call "exit_msg" "$exitCode" || true)
 
-    if [[ -n "$exit_msg" ]]; then
-        console "$exit_msg"
+    if [[ -n "$exitMsg" ]]; then
+        console "$exitMsg"
     else
-        case "${exit_code}" in
+        case "${exitCode}" in
             2) success "Placeholder" ;;
         esac
     fi
@@ -67,8 +67,9 @@ _main_onExit() {
 
 # shellcheck disable=SC2329
 _main_onCleanup() {
+    local exitCode="$1"
     info "Cleaning up session"
-    nds_hook_call "exit_cleanup" "$exit_code" || true # Call cleanup hook
+    nds_hook_call "exit_cleanup" "$exitCode" || true # Call cleanup hook
 }; nds_trap_registerCleanup _main_onCleanup
 
 
