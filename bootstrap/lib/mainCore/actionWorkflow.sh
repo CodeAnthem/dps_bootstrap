@@ -51,7 +51,7 @@ _nds_action_register_and_validate() {
         debug "Action '$actionName': Missing description in header"
         return 1
     fi
-echo "1 $actionName"
+echo "1 '$actionName'"
     # Register action
     ACTION_NAMES+=("$actionName")
 echo "2 $actionPath"
