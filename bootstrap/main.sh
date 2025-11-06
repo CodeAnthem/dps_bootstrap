@@ -31,135 +31,13 @@ declare -gA NDS_HOOK_FUCNTIONS=(
 # IMPORT LIBRARIES
 # =============================================================================
 
-# Global variable to store import errors
-declare -g NDS_IMPORT_ERRORS=""
 
-# Internal function: Validate and import a single file
-# Usage: _nds_import_and_validate_file <filepath>
-# Returns: 0 on success, 1 on failure (errors stored in NDS_IMPORT_ERRORS)
-_nds_import_and_validate_file() {
-    local filepath="$1"
-    local err_output
 
-    # Validate by running in a strict subshell and capture stderr output
-    if ! err_output=$(bash -n "$filepath" 2>&1); then
-        # Clean the path prefix "$filepath: " from each line
-        local cleaned=""
-        local line
-        while IFS= read -r line; do
-            if [[ "$line" == "$filepath:"* ]]; then
-                line="${line#"$filepath: "}"
-            fi
-            cleaned+=$'\n'" -> $line"
-        done <<< "$err_output"
 
-        # Store error in global variable
-        if [[ -z "$NDS_IMPORT_ERRORS" ]]; then
-            NDS_IMPORT_ERRORS="Error: Failed to validate: $filepath${cleaned}"
-        else
-            NDS_IMPORT_ERRORS+=$'\n'"Error: Failed to validate: $filepath${cleaned}"
-        fi
-        return 1
-    fi
 
-    # Source in current shell (affects parent environment)
-    # shellcheck disable=SC1090
-    if ! source "$filepath"; then
-        # Store source error in global variable
-        if [[ -z "$NDS_IMPORT_ERRORS" ]]; then
-            NDS_IMPORT_ERRORS="Error: Failed to source: $filepath"
-        else
-            NDS_IMPORT_ERRORS+=$'\n'"Error: Failed to source: $filepath"
-        fi
-        return 1
-    fi
 
-    return 0
-}
 
-# Display collected import errors and clear the error buffer
-# Usage: _nds_import_showErrors
-# Returns: 0 if no errors, 1 if errors were present
-_nds_import_showErrors() {
-    if [[ -n "$NDS_IMPORT_ERRORS" ]]; then
-        echo "$NDS_IMPORT_ERRORS" >&2
-        NDS_IMPORT_ERRORS=""  # Clear errors after showing
-        return 1
-    fi
-    return 0
-}
 
-# Import a single file with validation
-# Usage: nds_import_file <filepath>
-# Returns: 0 on success, 1 on failure (with errors displayed)
-nds_import_file() {
-    local filepath="$1"
-    
-    [[ -f "$filepath" ]] || {
-        echo "Error: File not found: $filepath" >&2
-        return 1
-    }
-    
-    NDS_IMPORT_ERRORS=""  # Clear previous errors
-    _nds_import_and_validate_file "$filepath"
-    _nds_import_showErrors
-}
-
-# Import all .sh files from a directory
-# Usage: nds_import_dir <directory> [recursive]
-# If recursive is "true" will descend into subdirectories (skipping names beginning with "_").
-# Returns: 0 on success, 1 if any file failed
-nds_import_dir() {
-    local directory recursive item basename
-    local had_error=false
-
-    directory="${1:-}"
-    [[ -d "$directory" ]] || {
-        echo "Error: Directory not found: $directory" >&2
-        return 1
-    }
-
-    recursive="${2:-false}"
-    [[ "$recursive" == "true" || "$recursive" == "false" ]] || {
-        echo "Error: Invalid recursive parameter: $recursive" >&2
-        return 1
-    }
-
-    NDS_IMPORT_ERRORS=""  # Clear previous errors
-    local had_error=false
-
-    for item in "$directory"/*; do
-        [[ -e "$item" ]] || continue   # Skip when glob doesn't match (empty dir)
-
-        basename="$(basename "$item")"
-
-        # Skip files/folders starting with underscore
-        [[ "${basename:0:1}" == "_" ]] && continue
-
-        # If directory, maybe recurse
-        if [[ -d "$item" ]]; then
-            if [[ "$recursive" == "true" ]]; then
-                nds_import_dir "$item" "$recursive" || return 1
-            fi
-            continue
-        fi
-
-        # Only consider .sh files
-        if [[ "${basename: -3}" == ".sh" ]]; then
-            if ! _nds_import_and_validate_file "$item"; then
-                had_error=true
-            fi
-        fi
-    done
-
-    # Show collected errors and return status
-    if [[ "$had_error" == "true" ]]; then
-        _nds_import_showErrors
-        return 1
-    fi
-
-    return 0
-}
 
 
 # =============================================================================
@@ -196,24 +74,25 @@ runWithRoot() {
         warn "This script requires root privileges."
         info "Attempting to restart with sudo..."
 
-        # Preserve NDS_* and NDS_* environment variables through sudo
+        # Collect NDS_* environment variables to preserve
         nds_vars=()
         while IFS='=' read -r name value; do
-            if [[ "$name" =~ ^(NDS_|NDS_) ]]; then
+            if [[ $name == NDS_* ]]; then
                 nds_vars+=("$name=$value")
             fi
         done < <(env)
 
-        # Restart with sudo, preserving NDS_*, NDS_*, and DEBUG variables
+        # Restart script with sudo, preserving only NDS_* variables
         if [[ ${#nds_vars[@]} -gt 0 ]]; then
-            exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
+            exec sudo "${nds_vars[@]}" bash "${BASH_SOURCE[0]}" "$@"
         else
-            exec sudo DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
+            exec sudo bash "${BASH_SOURCE[0]}" "$@"
         fi
     else
         success "Root privileges confirmed"
     fi
 }
+
 
 
 # =============================================================================
@@ -292,165 +171,6 @@ _main_stopHandler() {
 
 
 # =============================================================================
-# ACTION DISCOVERY & SELECTION & EXECUTION
-# =============================================================================
-_nds_validate_action() {
-    local action_name="$1"
-    local action_path="$2"
-    local setup_script="${action_path}/setup.sh"
-
-    # Check setup.sh exists
-    if [[ ! -f "$setup_script" ]]; then
-        debug "Action '$action_name': Missing setup.sh"
-        return 1
-    fi
-
-    # Check for required functions (without sourcing)
-    if ! grep -q "^action_config()" "$setup_script"; then
-        debug "Action '$action_name': Missing action_config() function"
-        return 1
-    fi
-
-    if ! grep -q "^action_setup()" "$setup_script"; then
-        debug "Action '$action_name': Missing action_setup() function"
-        return 1
-    fi
-
-    # Check for description in header
-    local description
-    description=$(head -n 20 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null)
-    if [[ -z "$description" ]]; then
-        debug "Action '$action_name': Missing description in header"
-        return 1
-    fi
-
-    return 0
-}
-
-_nds_discover_actions() {
-    if [[ ! -d "$ACTIONS_DIR" ]]; then
-        error "Actions directory not found: $ACTIONS_DIR"
-        return 1
-    fi
-
-    for action_dir in "$ACTIONS_DIR"/*/; do
-        [[ -d "$action_dir" ]] || continue
-
-        local action_name
-        action_name=$(basename "$action_dir")
-
-        # Skip test action unless NDS_TEST=true
-        if [[ "$action_name" == "test" && "${NDS_TEST:-false}" != "true" ]]; then
-            debug "Skipping test action (NDS_TEST not set)"
-            continue
-        fi
-
-        # Validate action structure
-        if ! _nds_validate_action "$action_name" "$action_dir"; then
-            warn "Skipping invalid action: $action_name"
-            continue
-        fi
-
-        # Extract metadata
-        local description
-        description=$(head -n 20 "${action_dir}setup.sh" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//')
-
-        # Store in arrays
-        ACTION_NAMES+=("$action_name")
-        ACTION_DATA["${action_name}_path"]="$action_dir"
-        ACTION_DATA["${action_name}_description"]="$description"
-
-        debug "Validated action: $action_name"
-    done
-
-    if [[ ${#ACTION_NAMES[@]} -eq 0 ]]; then
-        error "No valid actions found in $ACTIONS_DIR"
-        return 1
-    fi
-
-    info "Discovered ${#ACTION_NAMES[@]} valid actions"
-    return 0
-}
-
-_nds_select_action() {
-    new_section
-    section_header "Choose Bootstrap Action"
-
-    console "  0) Abort - Exit the script"
-
-    local i=1
-    for action_name in "${ACTION_NAMES[@]}"; do
-        local description="${ACTION_DATA[${action_name}_description]}"
-        console "  $i) $action_name - $description"
-        ((i++))
-    done
-
-    local choice max_choice
-    max_choice="${#ACTION_NAMES[@]}"
-
-    # Loop until valid choice
-    while true; do
-        read -rsn1 -p "     -> Select action [0-$max_choice]: " choice < /dev/tty
-
-        # Handle abort
-        if [[ "$choice" == "0" ]]; then
-            console "Operation aborted"
-            exit 130
-        fi
-
-        # Validate choice is a number and in range
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
-            local selected_action="${ACTION_NAMES[$((choice-1))]}"
-            console "$selected_action"
-            action_name="$selected_action" # return value
-            action_description="${ACTION_DATA[${action_name}_description]}"
-            action_path="${ACTION_DATA[${action_name}_path]}"
-            return 0
-        fi
-
-        # Invalid selection
-        console "Invalid selection. Choose 0-$max_choice"
-    done
-}
-
-_nds_execute_action() {
-    local setup_script="${action_path}/setup.sh"
-
-    if [[ ! -f "$setup_script" ]]; then
-        error "Setup script not found: $setup_script"
-        return 1
-    fi
-
-    # Import the setup script with validation
-    info "Loading $action_name action..."
-    if ! nds_import_file "$setup_script"; then
-        error "Failed to import action setup script"
-        return 1
-    fi
-
-    # Call action_config to setup fields and defaults
-    if declare -f action_config &>/dev/null; then
-        info "Configuring $action_name..."
-        action_config
-    else
-        error "action_config() not found in $setup_script"
-        return 1
-    fi
-
-    # Execute the setup function
-    info "Executing $action_name..."
-    section_title "Action: $action_name"
-    if ! action_setup; then
-        error "Action setup failed for: $action_name"
-        return 1
-    fi
-
-    success "Action completed: $action_name"
-    return 0
-}
-
-
-# =============================================================================
 # COMMAND-LINE ARGUMENTS
 # =============================================================================
 # Save original arguments for sudo restart
@@ -507,8 +227,7 @@ info "Runtime directory: $NDS_RUNTIME_DIR"
 
 # Discover available actions
 readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
-declare -a ACTION_NAMES=()
-declare -gA ACTION_DATA=()
+
 if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
 # Initialize configurator feature
