@@ -57,7 +57,7 @@ _nds_trap_onExit() {
     local exitMsg=""
 
     if [[ -n "${NDS_EXIT_REGISTER:-}" ]]; then
-        exitMsg="$(NDS_EXIT_REGISTER "$exitCode")"
+        exitMsg="$($NDS_EXIT_REGISTER "$exitCode")"
     fi
 
     if [[ -n "$exitMsg" ]]; then
