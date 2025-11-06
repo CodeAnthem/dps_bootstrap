@@ -50,6 +50,6 @@ debug_is_enabled() { ((NDS_DEBUG)); }
 # Debug print — only prints when enabled
 debug() { ((NDS_DEBUG)) && log "🐛 [DEBUG] -" "$1"; }
 
-# # Debug ENV control
-# [[ "${NDS_DEBUG}" == "true" ]] && debug_enable
-# [[ "${NDS_DEBUG}" == "false" ]] && debug_disable
+# Debug ENV control
+[[ "${NDS_DEBUG}" == "true" ]] && debug_enable
+[[ "${NDS_DEBUG}" == "false" ]] && debug_disable

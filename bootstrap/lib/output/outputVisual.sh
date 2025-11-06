@@ -27,7 +27,7 @@ nds_draw_title() {
 # Section header (smaller box)
 # Usage: nds_section_header "Header title"
 # ------------------------------------------------------------------------------
-nds_section_header() {
+section_header() {
     new_section
     nds_draw_title "  $1" 50
 }
@@ -36,7 +36,7 @@ nds_section_header() {
 # Section title (large box)
 # Usage: nds_section_title "Main section"
 # ------------------------------------------------------------------------------
-nds_section_title() {
+section_title() {
     new_section
     nds_draw_title " === $1 === " 100
 }
