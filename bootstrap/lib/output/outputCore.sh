@@ -38,17 +38,17 @@ success() { log "✅ [PASS] -" "$1"; }
 warn()    { log "⚠️  [WARN] -" "$1"; }
 validation_error() { log "❌ [VALIDATION] -" "$1"; }
 
+# Debug print — only prints when enabled
+debug() { ((NDS_DEBUG)) && log "🚧 [DEBUG] -" "$1"; }
+
 # ------------------------------------------------------------------------------
-# Debugging controls and output
+# Debugging controls
 # ------------------------------------------------------------------------------
 # Usage: debug_enable, debug_disable, debug_toggle, debug_is_enabled
 debug_enable()  { NDS_DEBUG=1; debug "Debug enabled"; }
 debug_disable() { debug "Debug disabled"; NDS_DEBUG=0; }
 debug_set()  { if [[ "$1" == "true" ]]; then debug_enable; else debug_disable; fi; }
 debug_is_enabled() { ((NDS_DEBUG)); }
-
-# Debug print — only prints when enabled
-debug() { ((NDS_DEBUG)) && log "🐛 [DEBUG] -" "$1"; }
 
 # Debug ENV control
 if [[ "${NDS_DEBUG}" == "true" ]]; then debug_enable; fi
