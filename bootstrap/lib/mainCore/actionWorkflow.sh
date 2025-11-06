@@ -73,7 +73,7 @@ _nds_action_select() {
         return 0
     fi
 
-    error "Action '$actionName' not found"
+    warn "Action '$actionName' not found"
     return 1
 }
 
@@ -178,8 +178,7 @@ nds_action_autoSelectOrMenu() {
             info "Auto selected action: $autoSelection"
             return 0
         else
-            warn "Auto selection failed for action: $autoSelection"
-            new_line
+            error "Auto selection failed for action: $autoSelection"
         fi
     fi
 
