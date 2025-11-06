@@ -66,10 +66,10 @@ _nds_action_register_and_validate() {
 _nds_action_select() {
     local actionName="$1"
 
-    if [[ -n "${ACTION_DATA[${actionName}::_path]:-}" ]]; then
+    if [[ -n "${ACTION_DATA[${actionName}::path]:-}" ]]; then
         ACTION_CURRENT_NAME="$actionName"
-        ACTION_CURRENT_PATH="${ACTION_DATA[${actionName}::_path]}"
-        ACTION_CURRENT_DESCRIPTION="${ACTION_DATA[${actionName}::_description]}"
+        ACTION_CURRENT_PATH="${ACTION_DATA[${actionName}::path]}"
+        ACTION_CURRENT_DESCRIPTION="${ACTION_DATA[${actionName}::description]}"
         return 0
     fi
 
@@ -187,7 +187,7 @@ nds_action_autoSelectOrMenu() {
     console "  0) Abort - Exit the script"
     local i=1 actionName
     for actionName in "${ACTION_NAMES[@]}"; do
-        console "  $i) $actionName - ${ACTION_DATA[${actionName}::_description]}"
+        console "  $i) $actionName - ${ACTION_DATA[${actionName}::description]}"
         ((i++))
     done
 
