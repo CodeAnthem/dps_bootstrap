@@ -46,7 +46,6 @@ nds_import_dir "${LIB_DIR}/mainCore"
 # ----------------------------------------------------------------------------------
 # HANDLING EXIT AND CLEANUP
 # ----------------------------------------------------------------------------------
-nds_trap_init
 # Register exit hooks
 nds_hook_register "exit_msg" "hook_exit_msg"
 nds_hook_register "exit_cleanup" "hook_exit_cleanup"
@@ -73,26 +72,23 @@ _main_onCleanup() {
     nds_hook_call "exit_cleanup" "$exit_code" || true # Call cleanup hook
 }; nds_trap_registerCleanup _main_onCleanup
 
+
 # ----------------------------------------------------------------------------------
-# START UP & ARGUMENTS
+# INITIALIZE
 # ----------------------------------------------------------------------------------
 nds_runAsSudo "$0" -p "NDS_" "$@"
-
-# Handle arguments
+nds_trap_init && success "Signal handlers initialized"
 nds_arg_parse "$@" # Register arguments
 
-if nds_arg_has "--auto"; then
-    export NDS_AUTO_CONFIRM=true
-    echo "Auto confirm enabled"
-fi
+
+# ----------------------------------------------------------------------------------
+# ARGUMENTS
+# ----------------------------------------------------------------------------------
+if nds_arg_has "--auto"; then export NDS_AUTO_CONFIRM=true; fi
 if nds_arg_has "--help"; then
-    echo "Usage: $0 [OPTIONS]"
-    echo ""
     echo "Options:"
-    echo "  --auto-confirm    Skip all user confirmation prompts"
+    echo "  --auto            Skip all user confirmation prompts"
     echo "  --help, -h        Show this help message"
-    echo "auto value: $(nds_arg_value "--auto-confirm")"
-    echo "help value: $(nds_arg_value "--help")"
     exit 0
 fi
 
