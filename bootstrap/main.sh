@@ -76,7 +76,7 @@ _main_onCleanup() {
 # ----------------------------------------------------------------------------------
 # START UP & ARGUMENTS
 # ----------------------------------------------------------------------------------
-nds_runWithRoot NDS_
+nds_runAsSudo "$0" -p "NDS_" "$@"
 
 if nds_arg_has "--auto-confirm"; then
     export NDS_AUTO_CONFIRM=true

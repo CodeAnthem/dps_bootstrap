@@ -3,56 +3,98 @@
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-12 | Modified: 2025-11-06
-# Description:   Ensure script runs as root; optionally re-exec via sudo preserving selected env vars
-# Feature:       Root elevation helper with variable prefix preservation
+# Description:   Re-exec script with sudo while preserving selected environment variables
+# Feature:       Root privilege elevation with flexible variable prefix filtering
 # ==================================================================================================
 
-# Public: Ensure script runs with root privileges. If not, re-exec via sudo preserving matching env vars.
-# Usage: nds_runWithRoot [prefix1 prefix2 ...]
-# Example: nds_runWithRoot NDS_ DPS_
-# Notes:
-#   - Matching is case-sensitive by default.
-nds_runWithRoot() {
-    local -a prefixes=("$@")
-    local prefix name value envLine
+# --------------------------------------------------------------------------------------------------
+# Public: Run a script as root, preserving specific environment variable prefixes.
+# Usage:
+#   nds_runAsSudo <targetScript> [options]
+#
+# Options:
+#   -i | --ignore-case        Match prefixes case-insensitively (default: false)
+#   -p | --prefix <prefix>    Add a variable prefix to preserve (can repeat)
+#
+# Example:
+#   nds_runAsSudo "$0" -i -p "NDS_" -p "DPS_"
+# --------------------------------------------------------------------------------------------------
+nds_runAsSudo() {
+    local targetScript=""
+    local ignoreCase="false"
+    local -a prefixes=()
     local -a preservedVars=()
+    local prefix name value envLine
 
-    # Already root? nothing to do
+    # --- Argument Parsing -------------------------------------------------------
+    if [[ $# -lt 1 ]]; then
+        error "Usage: nds_runAsSudo <targetScript> [--ignore-case|-i] [--prefix|-p PREFIX ...]"
+        return 1
+    fi
+
+    targetScript="$1"
+    shift
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -i|--ignore-case)
+                ignoreCase="true"
+                ;;
+            -p|--prefix)
+                shift
+                [[ -z "${1:-}" ]] && { error "Missing value for --prefix"; return 1; }
+                prefixes+=("$1")
+                ;;
+            *)
+                # Forward any additional arguments to target script
+                break
+                ;;
+        esac
+        shift
+    done
+
+    # Remaining args go to the re-exec’d script
+    local -a scriptArgs=("$@")
+
+    # --- Root Check -------------------------------------------------------------
     if [[ $EUID -eq 0 ]]; then
         success "Root privileges confirmed"
         return 0
     fi
 
-    # Info
     new_section
     section_header "Root Privilege Required"
     warn "This script requires root privileges."
     info "Attempting to restart with sudo..."
 
-    # Preserve selected environment variables
-    if [[ ${#prefixes[@]} -gt 0 ]]; then
-        # Case-insensitive matching (optional, uncomment to enable)
-        # shopt -s nocasematch
+    # --- Prefix Handling --------------------------------------------------------
+    [[ ${#prefixes[@]} -eq 0 ]] && prefixes=("NDS_")
 
-        while IFS='=' read -r envLine; do
-            name="${envLine%%=*}"
-            value="${envLine#*=}"
-
-            for prefix in "${prefixes[@]}"; do
-                if [[ "$name" == ${prefix}* ]]; then
-                    preservedVars+=("${name}=${value}")
-                    break
-                fi
-            done
-        done < <(env)
-
-        # shopt -u nocasematch  # disable again if you enabled above
+    # Enable case-insensitive matching if requested
+    if [[ "$ignoreCase" == "true" ]]; then
+        shopt -s nocasematch
     fi
 
-    # Re-exec with sudo, preserving selected variables
+    # --- Collect Environment Variables ------------------------------------------
+    while IFS='=' read -r envLine; do
+        name="${envLine%%=*}"
+        value="${envLine#*=}"
+
+        for prefix in "${prefixes[@]}"; do
+            if [[ "$name" == ${prefix}* ]]; then
+                preservedVars+=("${name}=${value}")
+                break
+            fi
+        done
+    done < <(env)
+
+    [[ "$ignoreCase" == "true" ]] && shopt -u nocasematch
+
+    # --- Re-exec via sudo -------------------------------------------------------
     if [[ ${#preservedVars[@]} -gt 0 ]]; then
-        exec sudo "${preservedVars[@]}" bash "${BASH_SOURCE[0]}" "$@"
+        debug "Preserving variables: ${prefixes[*]}"
+        exec sudo "${preservedVars[@]}" bash "$targetScript" "${scriptArgs[@]}"
     else
-        exec sudo bash "${BASH_SOURCE[0]}" "$@"
+        exec sudo bash "$targetScript" "${scriptArgs[@]}"
     fi
 }
