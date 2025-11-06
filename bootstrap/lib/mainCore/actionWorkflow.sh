@@ -79,7 +79,7 @@ _nds_action_select() {
 # ----------------------------------------------------------------------------------
 # Discover all valid actions within directory
 # ----------------------------------------------------------------------------------
-_nds_action_discover() {
+nds_action_discover() {
     local dirActions="$1"
     local -a devActions=("${!2}")
     local allowDevActions="${3:-false}"
@@ -129,7 +129,7 @@ _nds_action_discover() {
 # ----------------------------------------------------------------------------------
 # Automatically select an action or display a selection menu
 # ----------------------------------------------------------------------------------
-_nds_action_autoSelectOrMenu() {
+nds_action_autoSelectOrMenu() {
     local autoSelection="${1:-}"
 
     new_section
@@ -184,7 +184,7 @@ _nds_action_autoSelectOrMenu() {
 # ----------------------------------------------------------------------------------
 # Execute the currently selected action
 # ----------------------------------------------------------------------------------
-_nds_action_execute() {
+nds_action_execute() {
     info "Loading $ACTION_CURRENT_NAME action..."
     if ! nds_import_file "$ACTION_CURRENT_PATH/$ACTION_TARGET_NAME"; then
         fatal "Failed to import action setup script"

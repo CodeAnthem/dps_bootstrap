@@ -14,7 +14,7 @@
 #   - Declares NDS_RUNTIME_DIR globally.
 #   - If NDS_RUNTIME_DIR already exists and is valid, it will be reused.
 nds_setupRuntimeDir() {
-    local baseFolder="${1:-/tmp/nds_runtime}"
+    local baseFolder="$1"
     local addTimestamp="${2:-true}"
     local timestamp=""
 

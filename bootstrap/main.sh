@@ -79,7 +79,7 @@ _main_onCleanup() {
 nds_runAsSudo "$0" -p "NDS_" "$@"
 nds_trap_init && success "Signal handlers initialized"
 nds_arg_parse "$@" # Register arguments
-nds_setupRuntimeDir
+nds_setupRuntimeDir "/tmp/nds_runtime" true || crash "Failed to setup runtime directory"
 
 
 # ----------------------------------------------------------------------------------
@@ -89,6 +89,7 @@ if nds_arg_has "--auto"; then export NDS_AUTO_CONFIRM=true; fi
 if nds_arg_has "--help"; then
     echo "Options:"
     echo "  --auto            Skip all user confirmation prompts"
+    echo "  --action,         Select action to run"
     echo "  --help, -h        Show this help message"
     exit 0
 fi
@@ -100,22 +101,16 @@ fi
 # Display script header
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
-echo exit
-exit 0
-# Signal handlers
-trap 'newline; exit 130' SIGINT # Interrupt handler
-trap _main_stopHandler EXIT # Setup cleanup trap
-success "Signal handlers initialized"
+echo "exit - echo ${NDS_RUNTIME_DIR}"
+exit
 
-# Setup runtime directory
-declare -g NDS_RUNTIME_DIR
-if ! setupRuntimeDir; then crash "Failed to setup runtime directory"; fi
-info "Runtime directory: $NDS_RUNTIME_DIR"
+
 
 # Discover available actions
-readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
+nds_action_discover "${SCRIPT_DIR}/../actions" "("test")" "true" || crash "Failed to discover actions"
 
-if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
+# Select action
+nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
 # Initialize configurator feature
 if declare -f nds_cfg_init &>/dev/null; then
