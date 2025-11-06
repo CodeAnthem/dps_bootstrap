@@ -42,8 +42,8 @@ validation_error() { log "❌ [VALIDATION] -" "$1"; }
 # Debugging controls and output
 # ------------------------------------------------------------------------------
 # Usage: debug_enable, debug_disable, debug_toggle, debug_is_enabled
-debug_enable()  { NDS_DEBUG=1; log "🐛 [DEBUG]" "Debug enabled"; }
-debug_disable() { NDS_DEBUG=0; log "🐛 [DEBUG]" "Debug disabled"; }
+debug_enable()  { NDS_DEBUG=1; debug "Debug enabled"; }
+debug_disable() { debug "Debug disabled"; NDS_DEBUG=0; }
 debug_set()  { if [[ "$1" == "true" ]]; then debug_enable; else debug_disable; fi; }
 debug_is_enabled() { ((NDS_DEBUG)); }
 
@@ -51,5 +51,5 @@ debug_is_enabled() { ((NDS_DEBUG)); }
 debug() { ((NDS_DEBUG)) && log "🐛 [DEBUG] -" "$1"; }
 
 # Debug ENV control
-# [[ "${NDS_DEBUG}" == "true" ]] && debug_enable
-[[ "${NDS_DEBUG}" == "false" ]] && debug_disable
+if [[ "${NDS_DEBUG}" == "true" ]]; then debug_enable; fi
+if [[ "${NDS_DEBUG}" == "false" ]]; then debug_disable; fi
