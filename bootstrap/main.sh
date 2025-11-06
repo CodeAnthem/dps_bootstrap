@@ -76,9 +76,11 @@ nds_setupRuntimeDir "/tmp/nds_runtime" true || crash "Failed to setup runtime di
 # ARGUMENTS
 # ----------------------------------------------------------------------------------
 if nds_arg_has "--auto"; then export NDS_AUTO_CONFIRM=true; fi
+if nds_arg_has "--debug"; then debug_set "true"; fi
 if nds_arg_has "--help"; then
     echo "Options:"
     echo "  --auto            Skip all user confirmation prompts"
+    echo "  --debug           Enable debug mode"
     echo "  --action,         Select action to run"
     echo "  --help, -h        Show this help message"
     exit 0
