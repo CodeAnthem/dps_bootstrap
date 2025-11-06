@@ -21,59 +21,58 @@ declare -g ACTION_CURRENT_PATH=""                # current action path
 # Validate and register a single action
 # ----------------------------------------------------------------------------------
 _nds_action_register_and_validate() {
-    local _action_name="$1"
-    local _action_path="$2"
-    local _action_file="${_action_path}/${ACTION_TARGET_NAME}"
+    local actionName="$1"
+    local actionPath="$2"
+    local actionFile="${actionPath}/${ACTION_TARGET_NAME}"
 
     # Check if target file exists
-    if [[ ! -f "$_action_file" ]]; then
-        debug "Action '$_action_name': Missing ${ACTION_TARGET_NAME}"
+    if [[ ! -f "$actionFile" ]]; then
+        debug "Action '$actionName': Missing ${ACTION_TARGET_NAME}"
         return 1
     fi
 
     # Check for required functions (without sourcing)
-    if ! grep -Eq '^action_config[[:space:]]*\(\)' "$_action_file"; then
-        debug "Action '$_action_name': Missing action_config() function"
+    if ! grep -Eq '^action_config[[:space:]]*\(\)' "$actionFile"; then
+        debug "Action '$actionName': Missing action_config() function"
         return 1
     fi
 
-    if ! grep -Eq '^action_setup[[:space:]]*\(\)' "$_action_file"; then
-        debug "Action '$_action_name': Missing action_setup() function"
+    if ! grep -Eq '^action_setup[[:space:]]*\(\)' "$actionFile"; then
+        debug "Action '$actionName': Missing action_setup() function"
         return 1
     fi
 
     # Extract and validate description
-    local _description
-    _description=$(grep -m1 "^# Description:" "$_action_file" | cut -d':' -f2- | xargs)
+    local description
+    description=$(grep -m1 "^# Description:" "$actionFile" | cut -d':' -f2- | xargs)
 
-    # _description=$(head -n 20 "$_action_file" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null)
-    if [[ -z "$_description" ]]; then
-        debug "Action '$_action_name': Missing description in header"
+    if [[ -z "$description" ]]; then
+        debug "Action '$actionName': Missing description in header"
         return 1
     fi
 
     # Register action
-    ACTION_NAMES+=("$_action_name")
-    ACTION_DATA["${_action_name}::_path"]="$_action_path"
-    ACTION_DATA["${_action_name}::_description"]="$_description"
+    ACTION_NAMES+=("$actionName")
+    ACTION_DATA["${actionName}::_path"]="$actionPath"
+    ACTION_DATA["${actionName}::_description"]="$description"
 
-    debug "Validated action: $_action_name"
+    debug "Validated action: $actionName"
 }
 
 # ----------------------------------------------------------------------------------
 # Select an action by name
 # ----------------------------------------------------------------------------------
 _nds_action_select() {
-    local _action_name="$1"
+    local actionName="$1"
 
-    if [[ -n "${ACTION_DATA[${_action_name}::_path]}" ]]; then
-        ACTION_CURRENT_NAME="$_action_name"
-        ACTION_CURRENT_PATH="${ACTION_DATA[${_action_name}::_path]}"
-        ACTION_CURRENT_DESCRIPTION="${ACTION_DATA[${_action_name}::_description]}"
+    if [[ -n "${ACTION_DATA[${actionName}::_path]}" ]]; then
+        ACTION_CURRENT_NAME="$actionName"
+        ACTION_CURRENT_PATH="${ACTION_DATA[${actionName}::_path]}"
+        ACTION_CURRENT_DESCRIPTION="${ACTION_DATA[${actionName}::_description]}"
         return 0
     fi
 
-    error "Action '$_action_name' not found"
+    error "Action '$actionName' not found"
     return 1
 }
 
@@ -81,46 +80,45 @@ _nds_action_select() {
 # Discover all valid actions within directory
 # ----------------------------------------------------------------------------------
 _nds_action_discover() {
-    local _dir_actions="$1"
-    local -a _dev_actions=("${!2}") # expect array name passed with "${_dev_actions[@]}"
-    local _allow_devActions="${3:-false}"
+    local dirActions="$1"
+    local -a devActions=("${!2}")
+    local allowDevActions="${3:-false}"
 
     # Validate inputs
-    if [[ ! -d "$_dir_actions" ]]; then
-        error "Actions directory not found: $_dir_actions"
+    if [[ ! -d "$dirActions" ]]; then
+        error "Actions directory not found: $dirActions"
         return 1
     fi
-    if [[ "${#_dev_actions[@]}" -eq 0 ]]; then
+    if [[ "${#devActions[@]}" -eq 0 ]]; then
         error "Dev actions list is empty"
         return 1
     fi
-    if [[ "$_allow_devActions" != "true" && "$_allow_devActions" != "false" ]]; then
-        error "Invalid _allow_devActions parameter: $_allow_devActions | expected true or false"
+    if [[ "$allowDevActions" != "true" && "$allowDevActions" != "false" ]]; then
+        error "Invalid allowDevActions parameter: $allowDevActions | expected true or false"
         return 1
     fi
 
-    # Build lookup map for dev actions (faster membership check)
-    declare -A _dev_action_map=()
-    for _da in "${_dev_actions[@]}"; do
-        _dev_action_map["$_da"]=1
+    declare -A devActionMap=()
+    for da in "${devActions[@]}"; do
+        devActionMap["$da"]=1
     done
 
-    local _actionFolder _action_name
-    for _actionFolder in "$_dir_actions"/*/; do
-        [[ -d "$_actionFolder" ]] || continue
-        _action_name=$(basename "$_actionFolder")
+    local actionFolder actionName
+    for actionFolder in "$dirActions"/*/; do
+        [[ -d "$actionFolder" ]] || continue
+        actionName=$(basename "$actionFolder")
 
         # Skip dev-only actions unless explicitly allowed
-        if [[ "$_allow_devActions" != "true" && -n "${_dev_action_map[$_action_name]}" ]]; then
-            debug "Skipping dev action: $_action_name (dev actions not allowed)"
+        if [[ "$allowDevActions" != "true" && -n "${devActionMap[$actionName]}" ]]; then
+            debug "Skipping dev action: $actionName (dev actions not allowed)"
             continue
         fi
 
-        _nds_action_register_and_validate "$_action_name" "$_actionFolder"
+        _nds_action_register_and_validate "$actionName" "$actionFolder"
     done
 
     if [[ ${#ACTION_NAMES[@]} -eq 0 ]]; then
-        error "No valid actions found in $_dir_actions"
+        error "No valid actions found in $dirActions"
         return 1
     fi
 
@@ -132,51 +130,51 @@ _nds_action_discover() {
 # Automatically select an action or display a selection menu
 # ----------------------------------------------------------------------------------
 _nds_action_autoSelectOrMenu() {
-    local _autoSelection="${1:-}"
+    local autoSelection="${1:-}"
 
     new_section
     section_header "Choose Bootstrap Action"
 
     # Auto-selection
-    if [[ -n "$_autoSelection" ]]; then
-        if _nds_action_select "$_autoSelection"; then
-            info "Auto selected action: $_autoSelection"
+    if [[ -n "$autoSelection" ]]; then
+        if _nds_action_select "$autoSelection"; then
+            info "Auto selected action: $autoSelection"
             return 0
         else
-            warn "Auto selection failed for action: $_autoSelection"
+            warn "Auto selection failed for action: $autoSelection"
             new_line
         fi
     fi
 
     # Manual selection menu
     console "  0) Abort - Exit the script"
-    local i=1 _action_name
-    for _action_name in "${ACTION_NAMES[@]}"; do
-        console "  $i) $_action_name - ${ACTION_DATA[${_action_name}::_description]}"
+    local i=1 actionName
+    for actionName in "${ACTION_NAMES[@]}"; do
+        console "  $i) $actionName - ${ACTION_DATA[${actionName}::_description]}"
         ((i++))
     done
 
-    local _choice _max_choice="${#ACTION_NAMES[@]}"
+    local choice maxChoice="${#ACTION_NAMES[@]}"
     while true; do
-        read -rp "     -> Select action [0-${_max_choice}]: " _choice < /dev/tty
+        read -rp "     -> Select action [0-${maxChoice}]: " choice < /dev/tty
 
-        case "$_choice" in
+        case "$choice" in
             0)
                 console "Operation aborted"
                 exit 130
                 ;;
             ''|*[!0-9]*)
-                console "Invalid input. Choose 0-${_max_choice}"
+                console "Invalid input. Choose 0-${maxChoice}"
                 ;;
             *)
-                if (( _choice >= 1 && _choice <= _max_choice )); then
-                    local _selected_action="${ACTION_NAMES[$((_choice - 1))]}"
-                    if _nds_action_select "$_selected_action"; then
-                        console "$_selected_action"
+                if (( choice >= 1 && choice <= maxChoice )); then
+                    local selectedAction="${ACTION_NAMES[$((choice - 1))]}"
+                    if _nds_action_select "$selectedAction"; then
+                        console "$selectedAction"
                         return 0
                     fi
                 else
-                    console "Invalid selection. Choose 0-${_max_choice}"
+                    console "Invalid selection. Choose 0-${maxChoice}"
                 fi
                 ;;
         esac
