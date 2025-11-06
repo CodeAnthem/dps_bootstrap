@@ -39,28 +39,31 @@ step_complete() {
 step_animated() {
     local message="$1"
     shift
+
     step_start "$message"
 
-    local pid
-    # if it's a function we know, run directly
-    if declare -F "$1" >/dev/null 2>&1; then
-        "$@" & pid=$!
-    else
-        # external command
-        bash -c "$*" & pid=$!
-    fi
+    # run in background, silencing job control output
+    (
+        set +euo pipefail
+        "$@"
+    ) & disown >/dev/null 2>&1
+    local pid=$!
 
+    # show spinner
     nds_show_spinner "$pid"
 
-    if wait "$pid"; then
+    # wait for completion and capture status
+    local status=0
+    if ! wait "$pid" 2>/dev/null; then
+        status=$?
+    fi
+
+    if (( status == 0 )); then
         step_complete "$message"
     else
         step_fail "$message"
     fi
 }
-
-
-
 
 
 # ------------------------------------------------------------------------------
