@@ -55,9 +55,9 @@ echo "1 $actionName"
     # Register action
     ACTION_NAMES+=("$actionName")
 echo "2 $actionPath"
-    ACTION_DATA["${actionName}::_path"]="$actionPath"
+    ACTION_DATA[${actionName}"::_path"]="$actionPath"
 echo "3 $description"
-    ACTION_DATA["${actionName}::_description"]="$description"
+    ACTION_DATA[${actionName}"::_description"]="$description"
 echo "4"
 
     debug "Validated action: $actionName"
