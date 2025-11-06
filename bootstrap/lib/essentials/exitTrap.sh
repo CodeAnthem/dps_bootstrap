@@ -16,7 +16,6 @@ declare -a NDS_CLEANUP_REGISTER=() # Array of functions to call on exit
 nds_trap_init() {
     trap _nds_trap_onInterrupt SIGINT
     trap _nds_trap_onExit EXIT
-    success "Signal handlers initialized"
 }
 
 # Public: Trigger a controlled fatal that sets a message and exits with code 200
