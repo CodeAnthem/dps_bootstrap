@@ -27,6 +27,7 @@ readonly LIB_DIR="${currentPath}/lib"
 # ----------------------------------------------------------------------------------
 # shellcheck disable=SC1091
 source "${LIB_DIR}/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
+nds_import_dir "${LIB_DIR}/output"
 nds_import_dir "${LIB_DIR}/essentials"
 nds_import_dir "${LIB_DIR}/mainCore"
 
