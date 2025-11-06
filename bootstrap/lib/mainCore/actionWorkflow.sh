@@ -46,6 +46,7 @@ _nds_action_register_and_validate() {
     local description
     description=$(grep -m1 "^# Description:" "$actionFile" | cut -d':' -f2- | xargs)
 
+    # Fallback: empty description -> invalid
     if [[ -z "$description" ]]; then
         debug "Action '$actionName': Missing description in header"
         return 1
@@ -57,6 +58,7 @@ _nds_action_register_and_validate() {
     ACTION_DATA["${actionName}::_description"]="$description"
 
     debug "Validated action: $actionName"
+    return 0
 }
 
 # ----------------------------------------------------------------------------------
@@ -65,7 +67,7 @@ _nds_action_register_and_validate() {
 _nds_action_select() {
     local actionName="$1"
 
-    if [[ -n "${ACTION_DATA[${actionName}::_path]}" ]]; then
+    if [[ -n "${ACTION_DATA[${actionName}::_path]:-}" ]]; then
         ACTION_CURRENT_NAME="$actionName"
         ACTION_CURRENT_PATH="${ACTION_DATA[${actionName}::_path]}"
         ACTION_CURRENT_DESCRIPTION="${ACTION_DATA[${actionName}::_description]}"
@@ -79,45 +81,81 @@ _nds_action_select() {
 # ----------------------------------------------------------------------------------
 # Discover all valid actions within directory
 # ----------------------------------------------------------------------------------
+# Flexible calling conventions:
+#   nds_action_discover <dir> <dev1> <dev2> ... <allowFlag?>
+#   nds_action_discover <dir> <allowFlag> <dev1> <dev2> ...
+# allowFlag is "true" or "false" and may be supplied as the last arg or the first after dir.
 nds_action_discover() {
     local dirActions="$1"
-    local -a devActions=("${!2}")
-    local allowDevActions="${3:-false}"
+    shift || true
 
-    # Validate inputs
+    # Gather args into array for easier handling
+    local args=("$@")
+    local argCount=${#args[@]}
+    local allowDevActions="false"
+    local -a devActions=()
+
+    # Determine allowDevActions if present as first or last positional argument
+    if (( argCount > 0 )); then
+        # If first arg is explicit true/false -> treat as allow flag, remainder are devActions
+        if [[ "${args[0]}" == "true" || "${args[0]}" == "false" ]]; then
+            allowDevActions="${args[0]}"
+            if (( argCount > 1 )); then
+                devActions=("${args[@]:1}")
+            fi
+        # Else if last arg is explicit true/false -> use it as allow flag, rest are devActions
+        elif [[ "${args[$((argCount-1))]}" == "true" || "${args[$((argCount-1))]}" == "false" ]]; then
+            allowDevActions="${args[$((argCount-1))]}"
+            if (( argCount > 1 )); then
+                devActions=("${args[@]:0:argCount-1}")
+            fi
+        else
+            # No explicit allow flag -> treat all remaining args as devActions
+            devActions=("${args[@]}")
+        fi
+    fi
+
+    # Validate directory
     if [[ ! -d "$dirActions" ]]; then
         error "Actions directory not found: $dirActions"
         return 1
     fi
-    if [[ "${#devActions[@]}" -eq 0 ]]; then
-        error "Dev actions list is empty"
-        return 1
-    fi
+
+    # Validate allowDevActions value
     if [[ "$allowDevActions" != "true" && "$allowDevActions" != "false" ]]; then
         error "Invalid allowDevActions parameter: $allowDevActions | expected true or false"
         return 1
     fi
 
+    # Build lookup map for dev actions (faster membership check), only if provided
     declare -A devActionMap=()
-    for da in "${devActions[@]}"; do
-        devActionMap["$da"]=1
-    done
+    if (( ${#devActions[@]} > 0 )); then
+        for da in "${devActions[@]}"; do
+            devActionMap["$da"]=1
+        done
+    else
+        debug "No dev actions provided (devActionMap will be empty)"
+    fi
 
-    local actionFolder actionName
+    local actionFolder actionName validationOk=false
     for actionFolder in "$dirActions"/*/; do
         [[ -d "$actionFolder" ]] || continue
         actionName=$(basename "$actionFolder")
 
         # Skip dev-only actions unless explicitly allowed
-        if [[ "$allowDevActions" != "true" && -n "${devActionMap[$actionName]}" ]]; then
+        if [[ "$allowDevActions" != "true" && -n "${devActionMap[$actionName]:-}" ]]; then
             debug "Skipping dev action: $actionName (dev actions not allowed)"
             continue
         fi
 
-        _nds_action_register_and_validate "$actionName" "$actionFolder"
+        if _nds_action_register_and_validate "$actionName" "$actionFolder"; then
+            validationOk=true
+        else
+            debug "Skipping invalid action: $actionName"
+        fi
     done
 
-    if [[ ${#ACTION_NAMES[@]} -eq 0 ]]; then
+    if [[ "${#ACTION_NAMES[@]}" -eq 0 || "$validationOk" = false ]]; then
         error "No valid actions found in $dirActions"
         return 1
     fi
