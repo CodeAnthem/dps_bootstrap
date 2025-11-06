@@ -39,7 +39,7 @@ warn()    { log "⚠️  [WARN] -" "$1"; }
 validation_error() { log "❌ [VALIDATION] -" "$1"; }
 
 # Debug print — only prints when enabled
-debug() { ((NDS_DEBUG)) && log "🚧 [DEBUG] -" "$1"; }
+debug() { ((NDS_DEBUG)) && log "🚧 [DEBUG] -" "$1" || true; }
 
 # ------------------------------------------------------------------------------
 # Debugging controls
