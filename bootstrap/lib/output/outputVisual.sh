@@ -28,7 +28,7 @@ nds_draw_title() {
 # Usage: nds_section_header "Header title"
 # ------------------------------------------------------------------------------
 nds_section_header() {
-    nds_new_section
+    new_section
     nds_draw_title "  $1" 50
 }
 
@@ -37,13 +37,13 @@ nds_section_header() {
 # Usage: nds_section_title "Main section"
 # ------------------------------------------------------------------------------
 nds_section_title() {
-    nds_new_section
+    new_section
     nds_draw_title " === $1 === " 100
 }
 
 # ------------------------------------------------------------------------------
 # Clear screen but keep scrollback history
 # ------------------------------------------------------------------------------
-nds_new_section() {
+new_section() {
     printf "\033[2J\033[H" >&2
 }
