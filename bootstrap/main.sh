@@ -88,7 +88,7 @@ if nds_arg_has "--help" "$@"; then
     echo "Options:"
     echo "  --auto-confirm    Skip all user confirmation prompts"
     echo "  --help, -h        Show this help message"
-    echo "value is: $(nds_arg_value "--auto-confirm")"
+    echo "value is: $(nds_arg_value "--auto-confirm" "$@")"
     exit 0
 fi
 
