@@ -52,7 +52,7 @@ _secret_prompt() {
         # Read silently (no echo)
         local value
         read -r -s value < /dev/tty
-        echo >&2  # Newline after hidden input
+        echo >&2  # new_line after hidden input
         
         # Empty = keep current
         if [[ -z "$value" ]]; then

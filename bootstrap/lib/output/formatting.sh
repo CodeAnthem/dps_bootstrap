@@ -16,8 +16,8 @@
 console() { echo "${1:-}" >&2; }
 consolef() { printf "%s\n" "${1:-}" >&2; }
 
-# Newline
-newline() { echo >&2; }
+# new_line
+new_line() { echo >&2; }
 
 # Log with timestamp
 # Usage: logDate "prefix" "message"

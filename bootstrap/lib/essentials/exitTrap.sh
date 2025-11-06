@@ -89,7 +89,7 @@ _nds_trap_onExit() {
 
 # Private: interrupt handler for SIGINT
 _nds_trap_onInterrupt() {
-    echo || true # print newline to keep UI tidy if user pressed ^C during a prompt
+    echo || true # print new_line to keep UI tidy if user pressed ^C during a prompt
     exit 130
 }
 
