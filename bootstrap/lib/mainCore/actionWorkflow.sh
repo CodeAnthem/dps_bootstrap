@@ -55,6 +55,7 @@ echo "1 '$actionName'"
     # Register action
     ACTION_NAMES+=("$actionName")
 echo "2 $actionPath"
+declare -p ACTION_DATA
     ACTION_DATA["DeployVM__path"]="$actionPath"
 echo "3 $description"
     ACTION_DATA["${actionName}__description"]="$description"
