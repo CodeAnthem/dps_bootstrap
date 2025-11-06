@@ -40,7 +40,7 @@ step_animated() {
     local message="$1"
     shift
     step_start "$message"
-    ("$@") & pid=$!
+    bash -c "$*" & pid=$!
     nds_show_spinner "$pid"
     if wait "$pid"; then
         step_complete "$message"
@@ -50,6 +50,7 @@ step_animated() {
         return 1
     fi
 }
+
 
 
 # ------------------------------------------------------------------------------
