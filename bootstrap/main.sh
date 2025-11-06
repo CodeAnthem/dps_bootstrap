@@ -97,9 +97,9 @@ nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || cra
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Select action
-nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
+# nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
-
+step_animated "Testing" sleep 5
 
 echo exit
 exit 0
