@@ -78,17 +78,21 @@ _main_onCleanup() {
 # ----------------------------------------------------------------------------------
 nds_runAsSudo "$0" -p "NDS_" "$@"
 
-if nds_arg_has "--auto-confirm" "$@"; then
+# Handle arguments
+nds_arg_parse "$@" # Register arguments
+
+if nds_arg_has "--auto"; then
     export NDS_AUTO_CONFIRM=true
     echo "Auto confirm enabled"
 fi
-if nds_arg_has "--help" "$@"; then
+if nds_arg_has "--help"; then
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
     echo "  --auto-confirm    Skip all user confirmation prompts"
     echo "  --help, -h        Show this help message"
-    echo "value is: $(nds_arg_value "--auto-confirm" "$@")"
+    echo "auto value: $(nds_arg_value "--auto-confirm")"
+    echo "help value: $(nds_arg_value "--help")"
     exit 0
 fi
 
