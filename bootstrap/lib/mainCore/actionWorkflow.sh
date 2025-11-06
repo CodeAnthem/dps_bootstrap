@@ -54,7 +54,7 @@ _nds_action_register_and_validate() {
 echo 1
     # Register action
     ACTION_NAMES+=("$actionName")
-echo 2
+echo "2 $actionPath"
     ACTION_DATA["${actionName}::_path"]="$actionPath"
 echo 3
     ACTION_DATA["${actionName}::_description"]="$description"
