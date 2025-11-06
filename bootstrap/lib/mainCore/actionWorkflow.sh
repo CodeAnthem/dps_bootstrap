@@ -193,7 +193,7 @@ nds_action_autoSelectOrMenu() {
 
     local choice maxChoice="${#ACTION_NAMES[@]}"
     while true; do
-        read -rn 1 -p "-> Select action [0-${maxChoice}]: " choice < /dev/tty
+        read -rn 1 -p "  -> Select action [0-${maxChoice}]: " choice < /dev/tty
 
         case "$choice" in
             0)
