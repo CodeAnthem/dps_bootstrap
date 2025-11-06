@@ -20,6 +20,7 @@ readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper) *dev*"
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
 readonly SCRIPT_DIR="${currentPath}"
 readonly LIB_DIR="${currentPath}/lib"
+readonly DEV_ACTIONS=("test")
 
 
 # ----------------------------------------------------------------------------------
@@ -102,7 +103,7 @@ fi
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Discover available actions
-nds_action_discover "${SCRIPT_DIR}/../actions" "test" "true" || crash "Failed to discover actions"
+nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
 
 # Select action
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
