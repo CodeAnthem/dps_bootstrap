@@ -78,10 +78,10 @@ _main_onCleanup() {
 # ----------------------------------------------------------------------------------
 nds_runAsSudo "$0" -p "NDS_" "$@"
 
-if nds_arg_has "--auto-confirm"; then
+if nds_arg_has "--auto-confirm" "$@"; then
     export NDS_AUTO_CONFIRM=true
 fi
-if nds_arg_has "--help"; then
+if nds_arg_has "--help" "$@"; then
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
