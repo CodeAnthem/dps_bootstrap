@@ -102,7 +102,7 @@ fi
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Discover available actions
-nds_action_discover "${SCRIPT_DIR}/../actions" "("test")" "true" || crash "Failed to discover actions"
+nds_action_discover "${SCRIPT_DIR}/../actions" "test" "true" || crash "Failed to discover actions"
 
 # Select action
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
