@@ -33,17 +33,6 @@ nds_import_dir "${LIB_DIR}/essentials"
 nds_import_dir "${LIB_DIR}/mainCore"
 
 
-
-
-
-
-
-
-
-
-
-
-
 # ----------------------------------------------------------------------------------
 # HANDLING EXIT AND CLEANUP
 # ----------------------------------------------------------------------------------
@@ -99,14 +88,16 @@ fi
 # ----------------------------------------------------------------------------------
 # MAIN WORKFLOW
 # ----------------------------------------------------------------------------------
-# Display script header
-section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
-
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
 
+# Display script header
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
+
 # Select action
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
+
+
 
 echo exit
 exit 0
@@ -127,14 +118,7 @@ fi
 
 success "Bootstrapper 'NDS' libraries loaded"
 
-# Select action
-declare -g action_name
-declare -g action_description
-declare -g action_path
-_nds_select_action
-# shellcheck disable=SC2034
-action_description="${ACTION_DATA[${action_name}_description]}"
-action_path="${ACTION_DATA[${action_name}_path]}"
+
 
 
 # Execute selected action
