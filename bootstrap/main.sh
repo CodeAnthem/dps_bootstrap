@@ -108,7 +108,7 @@ tui::draw_progress 3 5
 testfn() { sleep 3; }
 tui::run_with_spinner "Testing function" testfn
 
-pid=$(tui::task_start "Installing packages" bash -c 'sleep 4; echo "apt install done"')
+# pid=$(tui::task_start "Installing packages" bash -c 'sleep 4; echo "apt install done"')
 
 tui::draw_progress 5 5
 
