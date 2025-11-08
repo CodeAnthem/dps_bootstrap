@@ -321,6 +321,7 @@ tui::init() {
     echo 11
     TUI_TITLE="${1:-}"
     TUI_SUBTITLE="${2:-}"
+    echo 12
     tui::get_term_size
     echo 22
     tput_saved=$(stty -g 2>/dev/null) || tput_saved=""
