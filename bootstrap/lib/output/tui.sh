@@ -269,7 +269,6 @@ tui::init() {
     tui::draw_header
     tui::draw_footer "Idle"
     tui::redraw_body
-    trap 'tui::shutdown; exit 130' INT
     trap 'tui::on_resize' WINCH
 }
 
