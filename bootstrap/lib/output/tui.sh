@@ -319,14 +319,10 @@ tui::init() {
     shopt -s globstar nullglob checkwinsize
     (:) # Do NOT remove!
 
-    echo 11
     TUI_TITLE="${1:-}"
     TUI_SUBTITLE="${2:-}"
-    echo 12
     tui::get_term_size
-    echo 22
     tput_saved=$(stty -g 2>/dev/null) || tput_saved=""
-    echo 33
     # make sure we restore state on exit - but we prefer to register a cleanup externally
     [[ "$TUI_HIDE_CURSOR_ON_INIT" -eq 1 ]] && tui::hide_cursor
     # draw static elements
@@ -334,7 +330,6 @@ tui::init() {
     tui::draw_header
     tui::draw_footer "Idle"
     tui::redraw_body
-    echo 44
     # catch window resize
     trap 'tui::on_resize' SIGWINCH
 }
