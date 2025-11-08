@@ -44,6 +44,7 @@ nds_hook_register "exit_cleanup" "hook_exit_cleanup"
 _main_onExit() {
     local exitCode=$?
     local exitMsg=""
+    reset
     exitMsg=$(nds_hook_call "exit_msg" "$exitCode" || true)
 
     if [[ -n "$exitMsg" ]]; then
