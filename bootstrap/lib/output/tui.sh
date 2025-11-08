@@ -11,8 +11,6 @@
 # -----------------------------
 declare -g TUI_TITLE=""
 declare -g TUI_SUBTITLE=""
-declare -g TUI_ROWS=0
-declare -g TUI_COLS=0
 declare -g TUI_BODY_HEIGHT=0
 declare -ga TUI_BODY_LINES=()          # visible buffer lines (all appended lines)
 declare -g TUI_BODY_TOP=0              # index of top visible line (0-based)
@@ -33,15 +31,15 @@ _tui_escape() { printf '\033[%s' "$1"; } # convenience
 # -----------------------------
 tui::get_term_size() {
     # use stty size; fallback to 24x80
-    local s
-    if s=$(stty size 2>/dev/null); then
-        IFS=' ' read -r TUI_ROWS TUI_COLS <<<"$s"
-    else
-        TUI_ROWS=24
-        TUI_COLS=80
-    fi
+    # local s
+    # if s=$(stty size 2>/dev/null); then
+    #     IFS=' ' read -r LINES COLUMNS <<<"$s"
+    # else
+    #     LINES=24
+    #     COLUMNS=80
+    # fi
     # body height = rows minus 2 (header + footer)
-    TUI_BODY_HEIGHT=$(( TUI_ROWS - 2 ))
+    TUI_BODY_HEIGHT=$(( LINES - 2 ))
     (( TUI_BODY_HEIGHT < 1 )) && TUI_BODY_HEIGHT=1
 }
 
@@ -65,10 +63,10 @@ tui::print_row() {
     local text="${*:-}"
     tui::move_row "$row"
     # cut/pad to terminal width
-    if (( ${#text} > TUI_COLS )); then
-        printf '%.*s' "$TUI_COLS" "$text" >&2
+    if (( ${#text} > COLUMNS )); then
+        printf '%.*s' "$COLUMNS" "$text" >&2
     else
-        printf "%-${TUI_COLS}s" "$text" >&2
+        printf "%-${COLUMNS}s" "$text" >&2
     fi
 }
 
@@ -83,7 +81,7 @@ tui::draw_header() {
     if [[ -n "$TUI_SUBTITLE" ]]; then
         headertext+=" — ${TUI_SUBTITLE}"
     fi
-    printf "%-${TUI_COLS}s" "$headertext" >&2
+    printf "%-${COLUMNS}s" "$headertext" >&2
     printf '\033[0m' >&2
 }
 
@@ -91,18 +89,18 @@ tui::draw_header() {
 # usage: tui::draw_footer "Progress: 34% [###....]"
 tui::draw_footer() {
     local right="${1:-}"
-    tui::move_row "$TUI_ROWS"
+    tui::move_row "$LINES"
     printf '\033[7m' >&2
     # build left/right with space between
     local left="  Press Ctrl-C to abort"
     # if right too long, truncate
-    local max_right=$(( TUI_COLS - ${#left} - 2 ))
+    local max_right=$(( COLUMNS - ${#left} - 2 ))
     if (( max_right < 0 )); then max_right=0; fi
     if (( ${#right} > max_right )); then
         right="${right:0:max_right}"
     fi
     # pad so left + right fit
-    local fill_len=$(( TUI_COLS - ${#left} - ${#right} ))
+    local fill_len=$(( COLUMNS - ${#left} - ${#right} ))
     (( fill_len < 0 )) && fill_len=0
     printf "%s%${fill_len}s%s" "$left" "" "$right" >&2
     printf '\033[0m' >&2
@@ -343,7 +341,7 @@ tui::shutdown() {
     tui::stop_ticker
     tui::show_cursor
     # move cursor below UI so subsequent logs don't overwrite
-    tui::move_row $(( TUI_ROWS + 1 ))
+    tui::move_row $(( LINES + 1 ))
     printf "\n" >&2
 }
 
@@ -356,7 +354,7 @@ tui::draw_progress() {
     local total="$2"
     local pct=0
     (( total > 0 )) && pct=$(( (done * 100) / total ))
-    local barwidth=$(( TUI_COLS - 20 ))
+    local barwidth=$(( COLUMNS - 20 ))
     (( barwidth < 10 )) && barwidth=10
     local filled=$(( (barwidth * pct) / 100 ))
     local empty=$(( barwidth - filled ))
