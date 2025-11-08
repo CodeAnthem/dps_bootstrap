@@ -42,6 +42,7 @@ tui::get_term_size() {
     
     TUI_BODY_HEIGHT=$(( LINES - 2 ))
     (( TUI_BODY_HEIGHT < 1 )) && TUI_BODY_HEIGHT=1
+    return 0
 }
 
 # -----------------------------
