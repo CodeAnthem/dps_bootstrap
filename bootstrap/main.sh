@@ -43,6 +43,7 @@ nds_hook_register "exit_cleanup" "hook_exit_cleanup"
 # shellcheck disable=SC2329
 _main_onExit() {
     local exitCode=$?
+    echo "is this ever executed: _main_onExit()"
     local exitMsg=""
     reset
     exitMsg=$(nds_hook_call "exit_msg" "$exitCode" || true)
@@ -59,6 +60,7 @@ _main_onExit() {
 # shellcheck disable=SC2329
 _main_onCleanup() {
     local exitCode="$1"
+    echo "is this ever executed: _main_onCleanup()"
     info "Cleaning up session"
     nds_hook_call "exit_cleanup" "$exitCode" || true # Call cleanup hook
 }; nds_trap_registerCleanup _main_onCleanup
