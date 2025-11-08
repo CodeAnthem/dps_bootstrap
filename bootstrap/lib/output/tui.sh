@@ -262,11 +262,6 @@ tui::_start_coproc_ticker() {
     # but array name is TUI_COPROC; get its PID:
     TUI_COPROC_PID=${TUI_COPROC_PID:-${TUI_COPROC_PID}}
     # actually, bash provides the pid in ${TUI_COPROC_PID}? Ensure we capture:
-    if [[ -n "${TUI_COPROC_PID}" && "${TUI_COPROC_PID}" -eq 0 2>/dev/null ]]; then
-        # fallback: try to read from /proc of the fd - not portable; we simply capture parent's $!
-        :
-    fi
-    # NOTE: after coproc, the parent's handle is in "${TUI_COPROC[1]}" for writing
 }
 
 # wrapper to send a control-line to coproc
