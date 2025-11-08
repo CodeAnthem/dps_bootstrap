@@ -316,7 +316,7 @@ tui::run_with_spinner() {
 tui::init() {
     # Enable checkwinsize
     shopt -s globstar nullglob checkwinsize
-    (:)
+    (:) # Do NOT remove!
 
     TUI_TITLE="${1:-}"
     TUI_SUBTITLE="${2:-}"
