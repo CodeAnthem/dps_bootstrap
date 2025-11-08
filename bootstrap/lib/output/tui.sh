@@ -39,6 +39,7 @@ tui::get_term_size() {
     #     COLUMNS=80
     # fi
     # body height = rows minus 2 (header + footer)
+    
     TUI_BODY_HEIGHT=$(( LINES - 2 ))
     (( TUI_BODY_HEIGHT < 1 )) && TUI_BODY_HEIGHT=1
 }
@@ -313,6 +314,10 @@ tui::run_with_spinner() {
 # -----------------------------
 # usage: tui::init "Main title" "subtitle (optional)"
 tui::init() {
+    # Enable checkwinsize
+    shopt -s globstar nullglob checkwinsize
+    (:)
+
     TUI_TITLE="${1:-}"
     TUI_SUBTITLE="${2:-}"
     tui::get_term_size
