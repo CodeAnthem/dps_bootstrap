@@ -37,6 +37,7 @@ nds_import_dir "${LIB_DIR}/mainCore"
 # Initialize TUI
 # ----------------------------------------------------------------------------------
 tui::init "$SCRIPT_NAME v$SCRIPT_VERSION" "Waiting for action"
+exit
 
 # ----------------------------------------------------------------------------------
 # HANDLING EXIT AND CLEANUP
