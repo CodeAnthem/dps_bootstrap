@@ -452,7 +452,6 @@ tui::init() {
     tui::redraw_body
 
     # ensure coproc exists lazily only when needed; register safety traps
-    trap 'tui::shutdown; exit 130' INT TERM
     trap 'tui::on_resize' WINCH
 }
 
@@ -478,6 +477,6 @@ tui::shutdown() {
 
 # Emergency fallback to restore terminal if something went terribly wrong.
 # This trap ensures the cursor is visible again on EXIT.
-trap 'tui::show_cursor; stty sane 2>/dev/null || true' EXIT
+# trap 'tui::show_cursor; stty sane 2>/dev/null || true' EXIT
 
 # end of tui.sh
