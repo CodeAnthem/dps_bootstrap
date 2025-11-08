@@ -34,13 +34,6 @@ nds_import_dir "${LIB_DIR}/mainCore"
 
 
 # ----------------------------------------------------------------------------------
-# Initialize TUI
-# ----------------------------------------------------------------------------------
-nds_trap_registerCleanup "tui::shutdown"
-tui::init "$SCRIPT_NAME v$SCRIPT_VERSION" "Waiting for action"
-
-
-# ----------------------------------------------------------------------------------
 # HANDLING EXIT AND CLEANUP
 # ----------------------------------------------------------------------------------
 # Register exit hooks
@@ -77,7 +70,8 @@ nds_runAsSudo "$0" -p "NDS_" "$@"
 nds_trap_init && success "Signal handlers initialized"
 nds_arg_parse "$@" # Register arguments
 nds_setupRuntimeDir "/tmp/nds_runtime" true || crash "Failed to setup runtime directory"
-
+nds_trap_registerCleanup "tui::shutdown"
+tui::init "$SCRIPT_NAME v$SCRIPT_VERSION" "Waiting for action"
 
 # ----------------------------------------------------------------------------------
 # ARGUMENTS
