@@ -37,6 +37,7 @@ nds_import_dir "${LIB_DIR}/mainCore"
 # Initialize TUI
 # ----------------------------------------------------------------------------------
 echo 1
+nds_trap_registerCleanup "tui::shutdown"
 tui::init "$SCRIPT_NAME v$SCRIPT_VERSION" "Waiting for action"
 echo 2
 
