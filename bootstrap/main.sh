@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # ----------------------------------------------------------------------------------
 # Meta Data
-readonly SCRIPT_VERSION="4.0.1"
+readonly SCRIPT_VERSION="4.0.2"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper) *dev*"
 
 # Script Path - declare and assign separately to avoid masking return values
