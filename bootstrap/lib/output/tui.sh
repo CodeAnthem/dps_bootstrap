@@ -280,6 +280,7 @@ tui::on_resize() {
 }
 
 tui::shutdown() {
+    echo "is this ever executed?"
     tui::stop_ticker
     tui::show_cursor
     tui::move_row "$((LINES + 1))"
