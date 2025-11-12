@@ -38,6 +38,7 @@ declare -g __DEBUG_USE_TIMESTAMP=1                            # Show timestamp (
 declare -g __DEBUG_USE_DATESTAMP=1                            # Show date in timestamp (1=yes, 0=no)
 declare -g __DEBUG_EMOJI=" 🚧"                                # Emoji prefix
 declare -g __DEBUG_TAG=" [DEBUG] -"                           # Tag prefix
+declare -g __DEBUG_INDENT=1                                   # Number of leading spaces (default: 1)
 
 # ==================================================================================================
 # PUBLIC FUNCTIONS
@@ -198,6 +199,21 @@ debug_set_tag() {
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
+# Public: Set indent (number of leading spaces)
+# Usage: debug_set_indent <number>
+# Note: Calls debug_init() automatically
+debug_set_indent() {
+    local indent="$1"
+    if [[ ! "$indent" =~ ^[0-9]+$ ]]; then
+        echo "Error: Invalid indent '$indent' (must be a number)" >&2
+        return 1
+    fi
+    __DEBUG_INDENT="$indent"
+    debug_init
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
 # Public: Get current debug variable name
 # Usage: var_name=$(debug_get_var_name)
 debug_get_var_name() {
@@ -223,48 +239,43 @@ debug_get_state() {
 # Usage: debug_init
 # Note: Called automatically on source, call again after changing settings
 debug_init() {
-    local func_body var_ref ts_code file_code output_line
+    local var_ref indent_str ts_fmt console_printf file_printf
 
-    # Direct variable reference (no indirection for performance)
+    # Direct variable reference
     var_ref="\${$__DEBUG_VAR_NAME}"
 
-    # Build timestamp code
-    # shellcheck disable=SC2016
+    # Build indent string
+    printf -v indent_str '%*s' "$__DEBUG_INDENT" ''
+
+    # Build timestamp format
     if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__DEBUG_USE_DATESTAMP -eq 1 ]]; then
-            ts_code='local ts; printf -v ts "%(%Y-%m-%d %H:%M:%S)T" -1 2>/dev/null'
-            output_line='printf " %s%s%s %s\\n" "$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
+            ts_fmt='%(%Y-%m-%d %H:%M:%S)T'
         else
-            ts_code='local ts; printf -v ts "%(%H:%M:%S)T" -1 2>/dev/null'
-            output_line='printf " %s%s%s %s\\n" "$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
+            ts_fmt='%(%H:%M:%S)T'
+        fi
+        console_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >&2'
+    else
+        console_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >&2'
+    fi
+
+    # Build file output
+    if [[ -n "$__DEBUG_OUTPUT_FILE" ]]; then
+        if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
+            file_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >> "'"$__DEBUG_OUTPUT_FILE"'"'
+        else
+            file_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >> "'"$__DEBUG_OUTPUT_FILE"'"'
         fi
     else
-        ts_code=''
-        output_line='printf "%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
+        file_printf=''
     fi
 
-    # Build file output code
-    if [[ -n "$__DEBUG_OUTPUT_FILE" ]]; then
-        file_code="$output_line >> \"$__DEBUG_OUTPUT_FILE\""
+    # Generate optimized one-liner function
+    if [[ -n "$file_printf" ]]; then
+        source /dev/stdin <<<"debug() { (($var_ref)) && { $console_printf; $file_printf; }; }"
     else
-        file_code=''
+        source /dev/stdin <<<"debug() { (($var_ref)) && $console_printf; }"
     fi
-
-    # Generate optimized function
-    func_body="debug() {"
-    func_body+=$'\n'"    [[ $var_ref -eq 0 ]] && return 0"
-    if [[ -n "$ts_code" ]]; then
-        func_body+=$'\n'"    $ts_code"
-    fi
-    func_body+=$'\n'"    $output_line >&2"
-    if [[ -n "$file_code" ]]; then
-        func_body+=$'\n'"    $file_code"
-    fi
-    func_body+=$'\n'"}"
-
-    # Source the function definition (no eval needed)
-    # shellcheck disable=SC1091
-    source /dev/stdin <<<"$func_body"
 }
 # --------------------------------------------------------------------------------------------------
 

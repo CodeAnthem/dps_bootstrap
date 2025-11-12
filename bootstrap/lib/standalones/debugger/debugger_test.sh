@@ -63,6 +63,7 @@ main() {
     test_11_timestamp_toggle
     test_12_datestamp_toggle
     test_13_combined_settings
+    test_14_indent_customization
 
     test_summary
 }
@@ -365,6 +366,46 @@ test_13_combined_settings() {
     debug_set_datestamp 1
     debug_set_emoji " 🚧"
     debug_set_tag " [DEBUG] -"
+    debug_disable
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+test_14_indent_customization() {
+    test_start "Indent Customization"
+
+    debug_enable
+
+    # Test default indent (1 space)
+    local output_default
+    output_default=$(debug "Default indent" 2>&1)
+    # Default has 1 leading space before timestamp
+    assert_contains "$output_default" " " "Has leading space by default"
+
+    # Set to 0 (no indent)
+    debug_set_indent 0
+    local output_no_indent
+    output_no_indent=$(debug "No indent" 2>&1)
+    # Should start immediately with date or timestamp
+    if [[ "$output_no_indent" =~ ^[0-9] ]]; then
+        assert "true" "No indent - starts with timestamp"
+    else
+        assert "false" "No indent - starts with timestamp"
+    fi
+
+    # Set to 5 spaces
+    debug_set_indent 5
+    local output_five
+    output_five=$(debug "Five spaces" 2>&1)
+    # Should have 5 leading spaces
+    if [[ "$output_five" =~ ^[[:space:]]{5} ]]; then
+        assert "true" "Five spaces indent applied"
+    else
+        assert "false" "Five spaces indent applied"
+    fi
+
+    # Reset to default
+    debug_set_indent 1
     debug_disable
 }
 # --------------------------------------------------------------------------------------------------

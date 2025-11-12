@@ -26,6 +26,7 @@ declare -g __LOG_OUTPUT_FILE=""                               # Optional file pa
 declare -g __LOG_TO_STDERR=1                                  # 1=log to stderr, 0=stdout
 declare -g __LOG_USE_TIMESTAMP=1                              # Show timestamp (1=yes, 0=no)
 declare -g __LOG_USE_DATESTAMP=1                              # Show date in timestamp (1=yes, 0=no)
+declare -g __LOG_INDENT=1                                     # Number of leading spaces (default: 1)
 
 # Default emojis and tags per level
 declare -g __LOG_INFO_EMOJI=" ℹ️ "
@@ -112,17 +113,20 @@ new_line() { printf "\n" >&2; }
 # Usage: log_init
 # Note: Called automatically on source, call again after changing settings
 log_init() {
-    local ts_code output_line file_code stream_redir func_body
+    local indent_str ts_fmt stream_redir console_printf file_printf
 
-    # Build timestamp code
+    # Build indent string
+    printf -v indent_str '%*s' "$__LOG_INDENT" ''
+
+    # Build timestamp format
     if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__LOG_USE_DATESTAMP -eq 1 ]]; then
-            ts_code='local ts; printf -v ts "%(%Y-%m-%d %H:%M:%S)T" -1 2>/dev/null'
+            ts_fmt='%(%Y-%m-%d %H:%M:%S)T'
         else
-            ts_code='local ts; printf -v ts "%(%H:%M:%S)T" -1 2>/dev/null'
+            ts_fmt='%(%H:%M:%S)T'
         fi
     else
-        ts_code=''
+        ts_fmt=''
     fi
 
     # Determine output redirection
@@ -145,33 +149,21 @@ log_init() {
     for level_spec in "${levels[@]}"; do
         IFS=: read -r func_name emoji tag <<< "$level_spec"
 
-        # Build output line
-        if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
-            output_line='printf " %s%s%s %s\n" "$ts" "'"$emoji"'" "'"$tag"'" "$1"'
+        # Build printf statements
+        if [[ -n "$ts_fmt" ]]; then
+            console_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
+            file_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
         else
-            output_line='printf "%s%s %s\n" "'"$emoji"'" "'"$tag"'" "$1"'
+            console_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
+            file_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
         fi
 
-        # Build file output code
+        # Generate optimized one-liner function
         if [[ -n "$__LOG_OUTPUT_FILE" ]]; then
-            file_code="$output_line >> \"$__LOG_OUTPUT_FILE\""
+            source /dev/stdin <<<"${func_name}() { $console_printf; $file_printf; }"
         else
-            file_code=''
+            source /dev/stdin <<<"${func_name}() { $console_printf; }"
         fi
-
-        # Generate function
-        func_body="${func_name}() {"
-        if [[ -n "$ts_code" ]]; then
-            func_body+=$'\n'"    $ts_code"
-        fi
-        func_body+=$'\n'"    $output_line $stream_redir"
-        if [[ -n "$file_code" ]]; then
-            func_body+=$'\n'"    $file_code"
-        fi
-        func_body+=$'\n'"}"
-
-        # Source the function definition (no eval needed)
-        source /dev/stdin <<<"$func_body"
     done
 }
 # --------------------------------------------------------------------------------------------------
@@ -280,6 +272,21 @@ log_set_emoji() {
         validation) __LOG_VALIDATION_EMOJI="$emoji" ;;
         *) echo "Error: Invalid level '$level'" >&2; return 1 ;;
     esac
+    log_init
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Public: Set indent (number of leading spaces)
+# Usage: log_set_indent <number>
+# Note: Calls log_init() automatically
+log_set_indent() {
+    local indent="$1"
+    if [[ ! "$indent" =~ ^[0-9]+$ ]]; then
+        echo "Error: Invalid indent '$indent' (must be a number)" >&2
+        return 1
+    fi
+    __LOG_INDENT="$indent"
     log_init
 }
 # --------------------------------------------------------------------------------------------------
