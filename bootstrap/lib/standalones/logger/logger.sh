@@ -113,21 +113,10 @@ new_line() { printf "\n" >&2; }
 # Usage: log_init
 # Note: Called automatically on source, call again after changing settings
 log_init() {
-    local indent_str ts_fmt stream_redir console_printf file_printf
+    local indent_str fmt_str stream_redir console_printf file_printf
 
     # Build indent string
     printf -v indent_str '%*s' "$__LOG_INDENT" ''
-
-    # Build timestamp format
-    if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
-        if [[ $__LOG_USE_DATESTAMP -eq 1 ]]; then
-            ts_fmt='%(%Y-%m-%d %H:%M:%S)T'
-        else
-            ts_fmt='%(%H:%M:%S)T'
-        fi
-    else
-        ts_fmt=''
-    fi
 
     # Determine output redirection
     if [[ $__LOG_TO_STDERR -eq 1 ]]; then
@@ -149,13 +138,19 @@ log_init() {
     for level_spec in "${levels[@]}"; do
         IFS=: read -r func_name emoji tag <<< "$level_spec"
 
-        # Build printf statements
-        if [[ -n "$ts_fmt" ]]; then
-            console_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
-            file_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
+        # Build format string (indent + timestamp + placeholders)
+        if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
+            if [[ $__LOG_USE_DATESTAMP -eq 1 ]]; then
+                fmt_str="${indent_str}%(%Y-%m-%d %H:%M:%S)T%s%s %s\\n"
+            else
+                fmt_str="${indent_str}%(%H:%M:%S)T%s%s %s\\n"
+            fi
+            console_printf='printf "'"$fmt_str"'" "-1" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
+            file_printf='printf "'"$fmt_str"'" "-1" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
         else
-            console_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
-            file_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
+            fmt_str="${indent_str}%s%s %s\\n"
+            console_printf='printf "'"$fmt_str"'" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
+            file_printf='printf "'"$fmt_str"'" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
         fi
 
         # Generate optimized one-liner function

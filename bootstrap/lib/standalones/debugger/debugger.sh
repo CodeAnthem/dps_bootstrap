@@ -239,7 +239,7 @@ debug_get_state() {
 # Usage: debug_init
 # Note: Called automatically on source, call again after changing settings
 debug_init() {
-    local var_ref indent_str ts_fmt console_printf file_printf
+    local var_ref indent_str fmt_str console_printf file_printf
 
     # Direct variable reference
     var_ref="\${$__DEBUG_VAR_NAME}"
@@ -247,31 +247,23 @@ debug_init() {
     # Build indent string
     printf -v indent_str '%*s' "$__DEBUG_INDENT" ''
 
-    # Build timestamp format
+    # Build format string (indent + timestamp + placeholders)
     if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__DEBUG_USE_DATESTAMP -eq 1 ]]; then
-            ts_fmt='%(%Y-%m-%d %H:%M:%S)T'
+            fmt_str="${indent_str}%(%Y-%m-%d %H:%M:%S)T%s%s %s\\n"
         else
-            ts_fmt='%(%H:%M:%S)T'
+            fmt_str="${indent_str}%(%H:%M:%S)T%s%s %s\\n"
         fi
-        console_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >&2'
+        console_printf='printf "'"$fmt_str"'" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >&2'
+        file_printf='printf "'"$fmt_str"'" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >> "'"$__DEBUG_OUTPUT_FILE"'"'
     else
-        console_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >&2'
-    fi
-
-    # Build file output
-    if [[ -n "$__DEBUG_OUTPUT_FILE" ]]; then
-        if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
-            file_printf='printf "'"$indent_str"'"'"$ts_fmt"'%s%s %s\\n" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >> "'"$__DEBUG_OUTPUT_FILE"'"'
-        else
-            file_printf='printf "'"$indent_str"'%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >> "'"$__DEBUG_OUTPUT_FILE"'"'
-        fi
-    else
-        file_printf=''
+        fmt_str="${indent_str}%s%s %s\\n"
+        console_printf='printf "'"$fmt_str"'" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >&2'
+        file_printf='printf "'"$fmt_str"'" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1" >> "'"$__DEBUG_OUTPUT_FILE"'"'
     fi
 
     # Generate optimized one-liner function
-    if [[ -n "$file_printf" ]]; then
+    if [[ -n "$__DEBUG_OUTPUT_FILE" ]]; then
         source /dev/stdin <<<"debug() { (($var_ref)) && { $console_printf; $file_printf; }; }"
     else
         source /dev/stdin <<<"debug() { (($var_ref)) && $console_printf; }"
