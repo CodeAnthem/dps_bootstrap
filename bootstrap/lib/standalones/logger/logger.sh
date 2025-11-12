@@ -113,7 +113,7 @@ new_line() { printf "\n" >&2; }
 # Note: Called automatically on source, call again after changing settings
 log_init() {
     local ts_code output_line file_code stream_redir func_body
-    
+
     # Build timestamp code
     if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__LOG_USE_DATESTAMP -eq 1 ]]; then
@@ -124,14 +124,14 @@ log_init() {
     else
         ts_code=''
     fi
-    
+
     # Determine output redirection
     if [[ $__LOG_TO_STDERR -eq 1 ]]; then
         stream_redir='>&2'
     else
         stream_redir=''
     fi
-    
+
     # Generate each logging function
     local levels=(
         "info:$__LOG_INFO_EMOJI:$__LOG_INFO_TAG"
@@ -141,24 +141,24 @@ log_init() {
         "success:$__LOG_SUCCESS_EMOJI:$__LOG_SUCCESS_TAG"
         "validation_error:$__LOG_VALIDATION_EMOJI:$__LOG_VALIDATION_TAG"
     )
-    
+
     for level_spec in "${levels[@]}"; do
         IFS=: read -r func_name emoji tag <<< "$level_spec"
-        
+
         # Build output line
         if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
             output_line='printf " %s%s%s %s\n" "$ts" "'"$emoji"'" "'"$tag"'" "$1"'
         else
             output_line='printf "%s%s %s\n" "'"$emoji"'" "'"$tag"'" "$1"'
         fi
-        
+
         # Build file output code
         if [[ -n "$__LOG_OUTPUT_FILE" ]]; then
             file_code="$output_line >> \"$__LOG_OUTPUT_FILE\""
         else
             file_code=''
         fi
-        
+
         # Generate function
         func_body="${func_name}() {"
         if [[ -n "$ts_code" ]]; then
@@ -169,7 +169,7 @@ log_init() {
             func_body+=$'\n'"    $file_code"
         fi
         func_body+=$'\n'"}"
-        
+
         # Source the function definition (no eval needed)
         source /dev/stdin <<<"$func_body"
     done
@@ -182,7 +182,7 @@ log_init() {
 # Note: Set to empty string to disable file output. Calls log_init() automatically.
 log_set_output_file() {
     local file_path="$1"
-    
+
     if [[ -n "$file_path" ]]; then
         # Create directory if it doesn't exist
         local dir
@@ -193,13 +193,13 @@ log_set_output_file() {
                 return 1
             }
         fi
-        
+
         # Test if file is writable
         if ! touch "$file_path" 2>/dev/null; then
             printf "[ERROR] Cannot write to log output file: %s\n" "$file_path" >&2
             return 1
         fi
-        
+
         __LOG_OUTPUT_FILE="$file_path"
         log_init
         info "Log output file set: $file_path"
@@ -312,7 +312,7 @@ log_clear_file() {
         echo "Warning: No log output file configured" >&2
         return 1
     fi
-    
+
     if [[ -f "$__LOG_OUTPUT_FILE" ]]; then
         : > "$__LOG_OUTPUT_FILE"
         # Don't use info() here - it would write to the file we just cleared
