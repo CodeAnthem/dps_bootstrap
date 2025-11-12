@@ -87,7 +87,7 @@ debug_state() {
                 return 0
             fi
             declare -g "$__DEBUG_VAR_NAME=1"
-            __debug_defineFN_status
+            __debug_defineFN
             [[ -z "${silent}" ]] && debug "Debug enabled"
         ;;
         false|0|off|disabled)
@@ -96,10 +96,10 @@ debug_state() {
                 return 0
             fi
             declare -g "$__DEBUG_VAR_NAME=0"
-            __debug_defineFN_status
+            __debug_defineFN
             [[ -z "${silent}" ]] && debug "Debug disabled"
         ;;
-        *) 
+        *)
             echo "Wrong usage of debug_state() function" >&2
             echo " -> Usage: debug_state <state> [silent]" >&2
             echo " -> State: true|1|on|enabled or false|0|off|disabled" >&2
@@ -125,7 +125,7 @@ debug_state() {
 # Example: debug_set --file "./debug.log" --timestamp 0 --indent 3
 debug_set() {
     local needs_reinit=0
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -199,9 +199,9 @@ debug_set() {
                 ;;
         esac
     done
-    
+
     # Only reinitialize once after all changes
-    [[ $needs_reinit -eq 1 ]] && __debug_defineFN_debug
+    [[ $needs_reinit -eq 1 ]] && __debug_defineFN
 }
 # --------------------------------------------------------------------------------------------------
 
