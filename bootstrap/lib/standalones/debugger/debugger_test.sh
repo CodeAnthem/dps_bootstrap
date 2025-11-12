@@ -118,22 +118,22 @@ test_3_toggle() {
 test_4_debug_set() {
     test_start "Set State with Various Values"
 
-    debug_set false
+    debug_state false
     assert "! debug_is_enabled" "Set to false"
 
-    debug_set true
+    debug_state true
     assert "debug_is_enabled" "Set to true"
 
-    debug_set 0
+    debug_state 0
     assert "! debug_is_enabled" "Set to 0"
 
-    debug_set 1
+    debug_state 1
     assert "debug_is_enabled" "Set to 1"
 
-    debug_set off
+    debug_state off
     assert "! debug_is_enabled" "Set to off"
 
-    debug_set on
+    debug_state on
     assert "debug_is_enabled" "Set to on"
 }
 # --------------------------------------------------------------------------------------------------
@@ -186,7 +186,7 @@ test_7_file_output() {
     tmpfile=$(mktemp)
 
     # Set output file
-    debug_set_output_file "$tmpfile"
+    debug_set --file "$tmpfile"
 
     # Enable debug and write message
     debug_enable
@@ -200,7 +200,7 @@ test_7_file_output() {
     assert_contains "$content" "[DEBUG]" "Contains DEBUG prefix"
 
     # Disable file output
-    debug_set_output_file ""
+    debug_set --file ""
 
     # Clean up
     rm -f "$tmpfile"
@@ -232,7 +232,7 @@ test_9_emoji_customization() {
     debug_enable
 
     # Set custom emoji
-    debug_set_emoji " 🔧"
+    debug_set --emoji " 🔧"
 
     # Capture output
     local output
@@ -242,7 +242,7 @@ test_9_emoji_customization() {
     assert_contains "$output" "Test custom emoji" "Message present"
 
     # Reset to default
-    debug_set_emoji " 🚧"
+    debug_set --emoji " 🚧"
     debug_disable
 }
 # --------------------------------------------------------------------------------------------------
@@ -254,7 +254,7 @@ test_10_tag_customization() {
     debug_enable
 
     # Set custom tag
-    debug_set_tag " [CUSTOM] -"
+    debug_set --tag " [CUSTOM] -"
 
     # Capture output
     local output
@@ -264,7 +264,7 @@ test_10_tag_customization() {
     assert_contains "$output" "Test custom tag" "Message present"
 
     # Reset to default
-    debug_set_tag " [DEBUG] -"
+    debug_set --tag " [DEBUG] -"
     debug_disable
 }
 # --------------------------------------------------------------------------------------------------
@@ -276,7 +276,7 @@ test_11_timestamp_toggle() {
     debug_enable
 
     # Disable timestamp
-    debug_set_timestamp 0
+    debug_set --timestamp 0
     local output_no_ts
     output_no_ts=$(debug "No timestamp" 2>&1)
 
@@ -288,7 +288,7 @@ test_11_timestamp_toggle() {
     fi
 
     # Enable timestamp
-    debug_set_timestamp 1
+    debug_set --timestamp 1
     local output_with_ts
     output_with_ts=$(debug "With timestamp" 2>&1)
 
@@ -310,7 +310,7 @@ test_12_datestamp_toggle() {
     debug_enable
 
     # Disable datestamp (time only)
-    debug_set_datestamp 0
+    debug_set --datestamp 0
     local output_time_only
     output_time_only=$(debug "Time only" 2>&1)
 
@@ -322,7 +322,7 @@ test_12_datestamp_toggle() {
     fi
 
     # Enable datestamp (full datetime)
-    debug_set_datestamp 1
+    debug_set --datestamp 1
     local output_full
     output_full=$(debug "Full datetime" 2>&1)
 
@@ -342,9 +342,9 @@ test_13_combined_settings() {
     test_start "Combined Settings (No Timestamp, Custom Emoji/Tag)"
 
     debug_enable
-    debug_set_timestamp 0
-    debug_set_emoji " ⚡"
-    debug_set_tag " [TEST] -"
+    
+    # Test setting multiple options at once
+    debug_set --timestamp 0 --emoji " ⚡" --tag " [TEST] -"
 
     local output
     output=$(debug "Combined test" 2>&1)
@@ -361,11 +361,8 @@ test_13_combined_settings() {
         assert "true" "No timestamp in combined mode"
     fi
 
-    # Reset all to defaults
-    debug_set_timestamp 1
-    debug_set_datestamp 1
-    debug_set_emoji " 🚧"
-    debug_set_tag " [DEBUG] -"
+    # Reset all to defaults (using single call)
+    debug_set --timestamp 1 --datestamp 1 --emoji " 🚧" --tag " [DEBUG] -"
     debug_disable
 }
 # --------------------------------------------------------------------------------------------------
@@ -383,7 +380,7 @@ test_14_indent_customization() {
     assert_contains "$output_default" " " "Has leading space by default"
 
     # Set to 0 (no indent)
-    debug_set_indent 0
+    debug_set --indent 0
     local output_no_indent
     output_no_indent=$(debug "No indent" 2>&1)
     # Should start immediately with date or timestamp
@@ -394,7 +391,7 @@ test_14_indent_customization() {
     fi
 
     # Set to 5 spaces
-    debug_set_indent 5
+    debug_set --indent 5
     local output_five
     output_five=$(debug "Five spaces" 2>&1)
     # Should have 5 leading spaces
@@ -405,7 +402,7 @@ test_14_indent_customization() {
     fi
 
     # Reset to default
-    debug_set_indent 1
+    debug_set --indent 1
     debug_disable
 }
 # --------------------------------------------------------------------------------------------------

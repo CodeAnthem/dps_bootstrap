@@ -10,7 +10,6 @@
 # ==================================================================================================
 # VALIDATION & INITIALIZATION
 # ==================================================================================================
-
 # Prevent execution - this file must be sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "Error: This script must be sourced, not executed" >&2
@@ -18,10 +17,10 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
-# ==================================================================================================
-# ARGUMENT PROCESSING
-# ==================================================================================================
 
+# ==================================================================================================
+# GLOBAL VARIABLES - Configuration (using associative array to avoid pollution)
+# ==================================================================================================
 # Get debug variable name from first argument (default: DEBUG)
 declare -g __DEBUG_VAR_NAME="${1:-DEBUG}"
 
@@ -29,128 +28,180 @@ declare -g __DEBUG_VAR_NAME="${1:-DEBUG}"
 # Default to disabled (0) - environment can override via string values later
 declare -g "$__DEBUG_VAR_NAME=0"
 
-# ==================================================================================================
-# GLOBAL VARIABLES - Configuration
-# ==================================================================================================
+# Initialize debug configuration
+declare -gA __DEBUG_CFG=(
+    [output_file]=""
+    [use_timestamp]=1
+    [use_datestamp]=1
+    [emoji]=" 🚧"
+    [tag]=" [DEBUG] -"
+    [indent]=1
+)
 
-declare -g __DEBUG_OUTPUT_FILE=""                             # Optional file path for debug output
-declare -g __DEBUG_USE_TIMESTAMP=1                            # Show timestamp (1=yes, 0=no)
-declare -g __DEBUG_USE_DATESTAMP=1                            # Show date in timestamp (1=yes, 0=no)
-declare -g __DEBUG_EMOJI=" 🚧"                                # Emoji prefix
-declare -g __DEBUG_TAG=" [DEBUG] -"                           # Tag prefix
-declare -g __DEBUG_INDENT=1                                   # Number of leading spaces (default: 1)
 
 # ==================================================================================================
 # PUBLIC FUNCTIONS
 # ==================================================================================================
 
 # --------------------------------------------------------------------------------------------------
-# Public: Print debug message (dynamically generated at init)
+# Public: Print debug message (dynamically generated)
 # Usage: debug <message>
-# Note: This function is a placeholder, overwritten by debug_init()
 debug() { :; }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
 # Public: Enable debug output (with optional silent mode)
 # Usage: debug_enable [silent]
-debug_enable() {
-    declare -g "$__DEBUG_VAR_NAME=1"
-    __debug_init_state
-    [[ "${1:-}" != "silent" ]] && debug "Debug enabled"
-}
+debug_enable() { debug_state 1 "${1:-}"; }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
 # Public: Disable debug output (with optional silent mode)
 # Usage: debug_disable [silent]
-debug_disable() {
-    [[ "${1:-}" != "silent" ]] && debug "Debug disabled"
-    declare -g "$__DEBUG_VAR_NAME=0"
-    __debug_init_state
-}
+debug_disable() { debug_state 0 "${1:-}"; }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
 # Public: Toggle debug state
-# Usage: debug_toggle
+# Usage: debug_toggle [silent]
 debug_toggle() {
     if [[ "${!__DEBUG_VAR_NAME}" -eq 1 ]]; then
-        debug_disable
+        debug_state 0 "${1:-}"
     else
-        debug_enable
+        debug_state 1 "${1:-}"
     fi
 }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Consolidated setter for all debug options
-# Usage: debug_set <option> <value>
-# Options: state, output, timestamp, datestamp, emoji, tag, indent
-# Example: debug_set timestamp 0; debug_set emoji " 🔧"; debug_set indent 5
-debug_set() {
-    local option="$1" value="$2"
+# Public: Set debug state
+# Usage: debug_state state [silent]
+debug_state() {
+    local value silent
+    value="${1:-}"
+    silent="${2:-}"
+    case "$value" in
+        true|1|on|enabled)
+            if [[ "${!__DEBUG_VAR_NAME}" -eq 1 ]]; then
+                [[ -n "${silent}" ]] || debug "Debug already enabled"
+                return 0
+            fi
+            declare -g "$__DEBUG_VAR_NAME=1"
+            __debug_defineFN_status
+            [[ -z "${silent}" ]] && debug "Debug enabled"
+        ;;
+        false|0|off|disabled)
+            if [[ "${!__DEBUG_VAR_NAME}" -eq 0 ]]; then
+                [[ -n "${silent}" ]] || debug "Debug already disabled"
+                return 0
+            fi
+            declare -g "$__DEBUG_VAR_NAME=0"
+            __debug_defineFN_status
+            [[ -z "${silent}" ]] && debug "Debug disabled"
+        ;;
+        *) 
+            echo "Wrong usage of debug_state() function" >&2
+            echo " -> Usage: debug_state <state> [silent]" >&2
+            echo " -> State: true|1|on|enabled or false|0|off|disabled" >&2
+            echo " -> Silent: any value to suppress output" >&2
+            return 1
+        ;;
+    esac
+    return 0
+}
+# --------------------------------------------------------------------------------------------------
 
-    case "$option" in
-        state)
-            case "$value" in
-                true|1|on|enabled) debug_enable ;;
-                false|0|off|disabled) debug_disable ;;
-                *) echo "Error: Invalid state '$value'" >&2; return 1 ;;
-            esac
-            ;;
-        output|file)
-            if [[ -n "$value" ]]; then
-                local dir
-                dir="$(dirname "$value")"
-                [[ ! -d "$dir" ]] && mkdir -p "$dir" 2>/dev/null
-                if ! touch "$value" 2>/dev/null; then
-                    echo "Error: Cannot write to: $value" >&2
+
+# --------------------------------------------------------------------------------------------------
+# Public: Consolidated setter for debug options with argument parsing
+# Usage: debug_set [options]
+# Options:
+#   --file PATH           Set output file path (directory must exist or be creatable)
+#   --timestamp BOOL      Enable/disable timestamp (1/0, true/false, on/off)
+#   --datestamp BOOL      Enable/disable datestamp (1/0, true/false, on/off)
+#   --emoji STRING        Set emoji prefix
+#   --tag STRING          Set tag prefix
+#   --indent NUMBER       Set number of leading spaces (must be >= 0)
+# Example: debug_set --file "./debug.log" --timestamp 0 --indent 3
+debug_set() {
+    local needs_reinit=0
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --file|--output)
+                [[ -z "${2:-}" ]] && { echo "Error: --file requires a value" >&2; return 1; }
+                local value="$2"
+                if [[ -n "$value" ]]; then
+                    # Validate path - directory must exist or be creatable
+                    local dir
+                    dir="$(dirname "$value")" || { echo "Error: Invalid file path '$value'" >&2; return 1; }
+                    if [[ ! -d "$dir" ]]; then
+                        mkdir -p "$dir" 2>/dev/null || {
+                            echo "Error: Cannot create directory: $dir" >&2
+                            return 1
+                        }
+                    fi
+                    # Don't create file yet - will be created on first write
+                fi
+                __DEBUG_CFG[output_file]="$value"
+                needs_reinit=1
+                shift 2
+                ;;
+            --timestamp)
+                [[ -z "${2:-}" ]] && { echo "Error: --timestamp requires a value" >&2; return 1; }
+                case "$2" in
+                    1|true|on|enabled) __DEBUG_CFG[use_timestamp]=1 ;;
+                    0|false|off|disabled) __DEBUG_CFG[use_timestamp]=0 ;;
+                    *) echo "Error: Invalid --timestamp value '$2' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                esac
+                needs_reinit=1
+                shift 2
+                ;;
+            --datestamp)
+                [[ -z "${2:-}" ]] && { echo "Error: --datestamp requires a value" >&2; return 1; }
+                case "$2" in
+                    1|true|on|enabled) __DEBUG_CFG[use_datestamp]=1 ;;
+                    0|false|off|disabled) __DEBUG_CFG[use_datestamp]=0 ;;
+                    *) echo "Error: Invalid --datestamp value '$2' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                esac
+                needs_reinit=1
+                shift 2
+                ;;
+            --emoji)
+                [[ -z "${2:-}" ]] && { echo "Error: --emoji requires a value" >&2; return 1; }
+                __DEBUG_CFG[emoji]="$2"
+                needs_reinit=1
+                shift 2
+                ;;
+            --tag)
+                [[ -z "${2:-}" ]] && { echo "Error: --tag requires a value" >&2; return 1; }
+                __DEBUG_CFG[tag]="$2"
+                needs_reinit=1
+                shift 2
+                ;;
+            --indent)
+                [[ -z "${2:-}" ]] && { echo "Error: --indent requires a value" >&2; return 1; }
+                if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: Invalid --indent value '$2' (must be a number >= 0)" >&2
                     return 1
                 fi
-            fi
-            __DEBUG_OUTPUT_FILE="$value"
-            __debug_init_functions
-            ;;
-        timestamp)
-            case "$value" in
-                1|true|on|enabled) __DEBUG_USE_TIMESTAMP=1 ;;
-                0|false|off|disabled) __DEBUG_USE_TIMESTAMP=0 ;;
-                *) echo "Error: Invalid value '$value'" >&2; return 1 ;;
-            esac
-            __debug_init_functions
-            ;;
-        datestamp)
-            case "$value" in
-                1|true|on|enabled) __DEBUG_USE_DATESTAMP=1 ;;
-                0|false|off|disabled) __DEBUG_USE_DATESTAMP=0 ;;
-                *) echo "Error: Invalid value '$value'" >&2; return 1 ;;
-            esac
-            __debug_init_functions
-            ;;
-        emoji)
-            __DEBUG_EMOJI="$value"
-            __debug_init_functions
-            ;;
-        tag)
-            __DEBUG_TAG="$value"
-            __debug_init_functions
-            ;;
-        indent)
-            if [[ ! "$value" =~ ^[0-9]+$ ]]; then
-                echo "Error: Invalid indent '$value'" >&2
+                __DEBUG_CFG[indent]="$2"
+                needs_reinit=1
+                shift 2
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                echo "Usage: debug_set [options]" >&2
+                echo "Options: --file PATH, --timestamp BOOL, --datestamp BOOL," >&2
+                echo "         --emoji STRING, --tag STRING, --indent NUMBER" >&2
                 return 1
-            fi
-            __DEBUG_INDENT="$value"
-            __debug_init_functions
-            ;;
-        *)
-            echo "Error: Unknown option '$option'" >&2
-            echo "Usage: debug_set <option> <value>" >&2
-            echo "Options: state, output, timestamp, datestamp, emoji, tag, indent" >&2
-            return 1
-            ;;
-    esac
+                ;;
+        esac
+    done
+    
+    # Only reinitialize once after all changes
+    [[ $needs_reinit -eq 1 ]] && __debug_defineFN_debug
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -160,31 +211,16 @@ debug_set() {
 debug_get_var_name() { echo "$__DEBUG_VAR_NAME"; }
 # --------------------------------------------------------------------------------------------------
 
-# --------------------------------------------------------------------------------------------------
-# Public: Get current debug state (dynamically generated)
-# Usage: state=$(debug_get_state)
-# Returns: "enabled" or "disabled"
-# Note: Rewritten by __debug_init_state()
-debug_get_state() { echo "disabled"; }
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Check if debug is enabled (dynamically generated)
-# Usage: debug_is_enabled && echo "Debug is on"
-# Returns: 0 if enabled, 1 if disabled
-# Note: Rewritten by __debug_init_state()
-debug_is_enabled() { return 1; }
-# --------------------------------------------------------------------------------------------------
 
 # ==================================================================================================
 # INTERNAL FUNCTIONS
 # ==================================================================================================
 
 # --------------------------------------------------------------------------------------------------
-# Internal: Initialize state-dependent functions (debug_is_enabled, debug_get_state)
-# Usage: __debug_init_state
-# Note: Called by debug_enable/debug_disable
-__debug_init_state() {
+# Internal: Define debug functions
+# Usage: __debug_defineFN
+__debug_defineFN() {
+    # Define debug_is_enabled and debug_get_state
     if [[ "${!__DEBUG_VAR_NAME}" -eq 1 ]]; then
         # Enabled: no checks needed
         source /dev/stdin <<<'debug_is_enabled() { return 0; }'
@@ -194,51 +230,63 @@ __debug_init_state() {
         source /dev/stdin <<<'debug_is_enabled() { return 1; }'
         source /dev/stdin <<<'debug_get_state() { echo "disabled"; }'
     fi
-    __debug_init_functions
+
+    # Define debug function
+    __debug_defineFN_debug
 }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
 # Internal: Initialize debug function based on current format settings
-# Usage: __debug_init_functions
-# Note: Called by __debug_init_state and debug_set
-__debug_init_functions() {
-    local var_name indent_str ts_fmt fmt_str
+# Usage: __debug_defineFN_debug
+# Note: Called by __debug_defineFN_status and debug_set
+__debug_defineFN_debug() {
+    local var_name indent_str ts_fmt fmt_str ts_arg
 
     var_name="$__DEBUG_VAR_NAME"
 
     # Build indent
-    printf -v indent_str '%*s' "$__DEBUG_INDENT" ''
+    printf -v indent_str '%*s' "${__DEBUG_CFG[indent]}" ''
 
-    # Build timestamp format
-    if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
-        if [[ $__DEBUG_USE_DATESTAMP -eq 1 ]]; then
-            printf -v ts_fmt '%s' '%(%Y-%m-%d %H:%M:%S)T'
+    # Build timestamp format (no trailing \n - printf will handle that)
+    if [[ ${__DEBUG_CFG[use_timestamp]} -eq 1 ]]; then
+        if [[ ${__DEBUG_CFG[use_datestamp]} -eq 1 ]]; then
+            ts_fmt='%(%Y-%m-%d %H:%M:%S)T'
+            ts_arg='"-1" '
         else
-            printf -v ts_fmt '%s' '%(%H:%M:%S)T'
+            ts_fmt='%(%H:%M:%S)T'
+            ts_arg='"-1" '
         fi
     else
         ts_fmt=''
+        ts_arg=''
     fi
 
-    # Build complete format string
-    printf -v fmt_str '%s%s%%s%%s %%s\n' "$indent_str" "$ts_fmt"
+    # Build complete format string (no \n - we use printf %s later)
+    fmt_str="${indent_str}${ts_fmt}%s%s %s"
 
-    # Generate state-based debug function
+    # Generate state-based debug function (using source /dev/stdin, NO eval)
     if [[ "${!var_name}" -eq 1 ]]; then
         # Enabled: build output and send to destinations
-        if [[ -n "$__DEBUG_OUTPUT_FILE" ]]; then
-            if [[ -n "$ts_fmt" ]]; then
-                source /dev/stdin <<<'debug() { local o; printf -v o "'"$fmt_str"'" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"; echo "$o" >&2; echo "$o" >> "'"$__DEBUG_OUTPUT_FILE"'"; }'
-            else
-                source /dev/stdin <<<'debug() { local o; printf -v o "'"$fmt_str"'" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"; echo "$o" >&2; echo "$o" >> "'"$__DEBUG_OUTPUT_FILE"'"; }'
-            fi
+        if [[ -n "${__DEBUG_CFG[output_file]}" ]]; then
+            # With file output
+            source /dev/stdin <<- EOF
+            debug() {
+                local o
+                printf -v o "$fmt_str" ${ts_arg}"${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}" "\$1"
+                printf '%s\\n' "\$o" >&2
+                printf '%s\\n' "\$o" >> "${__DEBUG_CFG[output_file]}"
+            }
+EOF
         else
-            if [[ -n "$ts_fmt" ]]; then
-                source /dev/stdin <<<'debug() { local o; printf -v o "'"$fmt_str"'" "-1" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"; echo "$o" >&2; }'
-            else
-                source /dev/stdin <<<'debug() { local o; printf -v o "'"$fmt_str"'" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"; echo "$o" >&2; }'
-            fi
+            # Console only
+            source /dev/stdin <<- EOF
+            debug() {
+                local o
+                printf -v o "$fmt_str" ${ts_arg}"${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}" "\$1"
+                printf '%s\\n' "\$o" >&2
+            }
+EOF
         fi
     else
         # Disabled: no-op
@@ -259,15 +307,4 @@ elif [[ "${!__DEBUG_VAR_NAME}" == "false" ]]; then
 fi
 
 # Initialize all functions based on current state
-__debug_init_state
-
-# ==================================================================================================
-# BACKWARD COMPATIBILITY - Legacy setter functions (wrappers around debug_set)
-# ==================================================================================================
-
-debug_set_output_file() { debug_set output "$1"; }
-debug_set_timestamp() { debug_set timestamp "$1"; }
-debug_set_datestamp() { debug_set datestamp "$1"; }
-debug_set_emoji() { debug_set emoji "$1"; }
-debug_set_tag() { debug_set tag "$1"; }
-debug_set_indent() { debug_set indent "$1"; }
+__debug_defineFN
