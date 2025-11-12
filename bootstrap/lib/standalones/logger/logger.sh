@@ -117,9 +117,9 @@ log_init() {
     # Build timestamp code
     if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__LOG_USE_DATESTAMP -eq 1 ]]; then
-            ts_code='local ts; printf -v ts "%(%%Y-%%m-%%d %%H:%%M:%%S)T" -1 2>/dev/null'
+            ts_code='local ts; printf -v ts "%(%Y-%m-%d %H:%M:%S)T" -1 2>/dev/null'
         else
-            ts_code='local ts; printf -v ts "%(%%H:%%M:%%S)T" -1 2>/dev/null'
+            ts_code='local ts; printf -v ts "%(%H:%M:%S)T" -1 2>/dev/null'
         fi
     else
         ts_code=''
@@ -309,15 +309,16 @@ log_set_tag() {
 # Usage: log_clear_file
 log_clear_file() {
     if [[ -z "$__LOG_OUTPUT_FILE" ]]; then
-        warn "No log output file configured"
+        echo "Warning: No log output file configured" >&2
         return 1
     fi
     
     if [[ -f "$__LOG_OUTPUT_FILE" ]]; then
         : > "$__LOG_OUTPUT_FILE"
-        info "Log file cleared: $__LOG_OUTPUT_FILE"
+        # Don't use info() here - it would write to the file we just cleared
+        echo " ℹ️  [INFO] - Log file cleared: $__LOG_OUTPUT_FILE" >&2
     else
-        warn "Log file does not exist: $__LOG_OUTPUT_FILE"
+        echo "Warning: Log file does not exist: $__LOG_OUTPUT_FILE" >&2
     fi
 }
 # --------------------------------------------------------------------------------------------------

@@ -26,7 +26,8 @@ fi
 declare -g __DEBUG_VAR_NAME="${1:-DEBUG}"
 
 # Initialize the debug variable (0=disabled, 1=enabled)
-if [[ -z "${!__DEBUG_VAR_NAME:-}" ]]; then
+# Force default to 0 if not already set to a valid value
+if [[ -z "${!__DEBUG_VAR_NAME:-}" ]] || [[ "${!__DEBUG_VAR_NAME}" != "0" && "${!__DEBUG_VAR_NAME}" != "1" ]]; then
     declare -g "$__DEBUG_VAR_NAME=0"
 fi
 
@@ -233,10 +234,10 @@ debug_init() {
     # shellcheck disable=SC2016
     if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__DEBUG_USE_DATESTAMP -eq 1 ]]; then
-            ts_code='local ts; printf -v ts "%(%%Y-%%m-%%d %%H:%%M:%%S)T" -1 2>/dev/null'
+            ts_code='local ts; printf -v ts "%(%Y-%m-%d %H:%M:%S)T" -1 2>/dev/null'
             output_line='printf " %s%s%s %s\\n" "$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
         else
-            ts_code='local ts; printf -v ts "%(%%H:%%M:%%S)T" -1 2>/dev/null'
+            ts_code='local ts; printf -v ts "%(%H:%M:%S)T" -1 2>/dev/null'
             output_line='printf " %s%s%s %s\\n" "$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
         fi
     else
