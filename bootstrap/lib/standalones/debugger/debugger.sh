@@ -207,6 +207,19 @@ debug_get_var_name() {
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
+# Public: Get current debug state as string
+# Usage: state=$(debug_get_state)
+# Returns: "enabled" or "disabled"
+debug_get_state() {
+    if [[ "${!__DEBUG_VAR_NAME}" -eq 1 ]]; then
+        echo "enabled"
+    else
+        echo "disabled"
+    fi
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
 # Public: Initialize/reinitialize debug function based on current settings
 # Usage: debug_init
 # Note: Called automatically on source, call again after changing settings
@@ -221,14 +234,14 @@ debug_init() {
     if [[ $__DEBUG_USE_TIMESTAMP -eq 1 ]]; then
         if [[ $__DEBUG_USE_DATESTAMP -eq 1 ]]; then
             ts_code='local ts; printf -v ts "%(%%Y-%%m-%%d %%H:%%M:%%S)T" -1 2>/dev/null'
-            output_line='printf " %s%s%s %s\\n" "\$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "\$1"'
+            output_line='printf " %s%s%s %s\\n" "$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
         else
             ts_code='local ts; printf -v ts "%(%%H:%%M:%%S)T" -1 2>/dev/null'
-            output_line='printf " %s%s%s %s\\n" "\$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "\$1"'
+            output_line='printf " %s%s%s %s\\n" "$ts" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
         fi
     else
         ts_code=''
-        output_line='printf "%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "\$1"'
+        output_line='printf "%s%s %s\\n" "'"$__DEBUG_EMOJI"'" "'"$__DEBUG_TAG"'" "$1"'
     fi
 
     # Build file output code
