@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2025-11-02
+# Date:          Created: 2025-10-12 | Modified: 2025-11-12
 # Description:   One-liner to start DPS Bootstrap script by downloading repo to /tmp
 # Feature:       Clone or reset repository, check for untracked files, execute target script
 # ==================================================================================================
@@ -18,6 +18,11 @@ readonly REPO_PATH="/tmp/${REPO_NAME}"
 readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"
 readonly REPO_TARGET_SCRIPT="main.sh"
 readonly DEFAULT_BRANCHES=("main" "master")
+
+# ----------------------------------------------------------------------------------
+# GLOBAL VARIABLES
+# ----------------------------------------------------------------------------------
+NO_EXEC=0
 
 
 # ----------------------------------------------------------------------------------
@@ -39,6 +44,10 @@ parse_arguments() {
                 ;;
             --branch:*)
                 TARGET_BRANCH="${1#--branch:}"
+                shift
+                ;;
+            -n|--no-exec)
+                NO_EXEC=1
                 shift
                 ;;
             *)
@@ -180,6 +189,12 @@ if [[ -d "$REPO_PATH" ]]; then resetRepo; else cloneRepo; fi
 
 # Check for untracked files
 checkUntrackedFiles
+
+# If NO_EXEC is set, exit here
+if [[ "$NO_EXEC" -eq 1 ]]; then
+    log "No execution requested, exiting"
+    exit 0
+fi
 
 # Execute target script with remaining arguments
 log "Starting ${REPO_TARGET_SCRIPT} script"
