@@ -20,17 +20,24 @@ readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper) *dev*"
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
 readonly SCRIPT_DIR="${currentPath}"
 readonly LIB_DIR="${currentPath}/lib"
+readonly STANDALONE_LIB_DIR="${LIB_DIR}/standalones" # Directory for standalone libraries
 readonly DEV_ACTIONS=("test")
 
 
 # ----------------------------------------------------------------------------------
 # IMPORT LIBRARIES
 # ----------------------------------------------------------------------------------
+# IMPORT STANDALONE LIBRARIES
 # shellcheck disable=SC1091
-source "${LIB_DIR}/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
-nds_import_dir "${LIB_DIR}/output"
-nds_import_dir "${LIB_DIR}/essentials"
-nds_import_dir "${LIB_DIR}/mainCore"
+source "${STANDALONE_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
+import_named "${STANDALONE_LIB_DIR}/debugger/debugger.sh" "NDS_DEBUG"
+import_named "${STANDALONE_LIB_DIR}/logger/logger.sh"
+import_named "${STANDALONE_LIB_DIR}/trapMultiplexer"
+
+# IMPORT NDS LIBRARIES
+import_dir "${LIB_DIR}/output"
+import_dir "${LIB_DIR}/essentials"
+import_dir "${LIB_DIR}/mainCore"
 
 
 # ----------------------------------------------------------------------------------
