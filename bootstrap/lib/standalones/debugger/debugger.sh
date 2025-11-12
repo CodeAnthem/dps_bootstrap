@@ -26,10 +26,8 @@ fi
 declare -g __DEBUG_VAR_NAME="${1:-DEBUG}"
 
 # Initialize the debug variable (0=disabled, 1=enabled)
-# Force default to 0 if not already set to a valid value
-if [[ -z "${!__DEBUG_VAR_NAME:-}" ]] || [[ "${!__DEBUG_VAR_NAME}" != "0" && "${!__DEBUG_VAR_NAME}" != "1" ]]; then
-    declare -g "$__DEBUG_VAR_NAME=0"
-fi
+# Default to disabled (0) - environment can override via string values later
+declare -g "$__DEBUG_VAR_NAME=0"
 
 # ==================================================================================================
 # GLOBAL VARIABLES - Configuration
