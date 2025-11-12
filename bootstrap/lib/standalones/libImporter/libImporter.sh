@@ -53,19 +53,19 @@ declare -g __IMPORT_ERRORS=""                                 # Buffer for accum
 # Returns: 0 on success, 1 on failure
 import_file() {
     local file_path="$1"
-    
+
     if [[ -z "$file_path" ]]; then
         error "Usage: import_file <filepath>"
         return 1
     fi
-    
+
     if [[ ! -f "$file_path" ]]; then
         error "File not found: $file_path"
         return 1
     fi
-    
+
     __IMPORT_ERRORS=""  # Reset previous errors
-    
+
     __import_validate_and_source "$file_path"
     __import_show_errors
 }
@@ -82,44 +82,44 @@ import_dir() {
     local directory="${1:-}"
     local recursive="${2:-false}"
     local item base_name had_error=false
-    
+
     if [[ -z "$directory" ]]; then
         error "Usage: import_dir <directory> [recursive]"
         return 1
     fi
-    
+
     # Validate directory
     if [[ ! -d "$directory" ]]; then
         error "Directory not found: $directory"
         return 1
     fi
-    
+
     # Validate recursive flag
     if [[ "$recursive" != "true" && "$recursive" != "false" ]]; then
         error "Invalid recursive parameter: $recursive (expected true or false)"
         return 1
     fi
-    
+
     __IMPORT_ERRORS=""  # Reset previous errors
-    
+
     for item in "$directory"/*; do
         [[ -e "$item" ]] || continue
         base_name="$(basename "$item")"
-        
+
         # Skip hidden or internal files (starting with underscore)
         [[ "${base_name:0:1}" == "_" ]] && continue
-        
+
         if [[ -d "$item" && "$recursive" == "true" ]]; then
             import_dir "$item" "$recursive" || had_error=true
             continue
         fi
-        
+
         # Only process *.sh files
         if [[ "${base_name##*.}" == "sh" ]]; then
             __import_validate_and_source "$item" || had_error=true
         fi
     done
-    
+
     # Display errors if any
     if [[ "$had_error" == "true" ]]; then
         __import_show_errors
@@ -137,34 +137,34 @@ import_dir() {
 import_named() {
     local folder_path="${1:-}"
     local folder_name file_path
-    
+
     if [[ -z "$folder_path" ]]; then
         error "Usage: import_named <folder_path>"
         return 1
     fi
-    
+
     # Validate it's a directory
     if [[ ! -d "$folder_path" ]]; then
         error "Directory not found: $folder_path"
         return 1
     fi
-    
+
     # Get folder name
     folder_name="$(basename "$folder_path")"
-    
+
     # Construct expected file path
     file_path="${folder_path}/${folder_name}.sh"
-    
+
     # Check if file exists
     if [[ ! -f "$file_path" ]]; then
         error "Named file not found: $file_path"
         return 1
     fi
-    
+
     debug "Importing named file: $file_path"
-    
+
     __IMPORT_ERRORS=""  # Reset previous errors
-    
+
     __import_validate_and_source "$file_path"
     __import_show_errors
 }
@@ -177,24 +177,24 @@ import_named() {
 import_validate() {
     local file_path="$1"
     local err_output
-    
+
     if [[ -z "$file_path" ]]; then
         error "Usage: import_validate <filepath>"
         return 1
     fi
-    
+
     if [[ ! -f "$file_path" ]]; then
         error "File not found: $file_path"
         return 1
     fi
-    
+
     # Validate syntax in isolated shell
     if ! err_output=$(bash -n "$file_path" 2>&1); then
         error "Syntax validation failed for: $file_path"
         printf "%s\n" "$err_output" >&2
         return 1
     fi
-    
+
     debug "Syntax validation passed: $file_path"
     return 0
 }
@@ -211,26 +211,26 @@ import_validate() {
 __import_validate_and_source() {
     local file_path="$1"
     local err_output line cleaned=""
-    
+
     debug "Validating and sourcing: $file_path"
-    
+
     # Validate syntax in isolated shell
     if ! err_output=$(bash -n "$file_path" 2>&1); then
         while IFS= read -r line; do
             [[ "$line" == "$file_path:"* ]] && line="${line#"$file_path: "}"
             cleaned+=$'\n'" -> $line"
         done <<< "$err_output"
-        
+
         __IMPORT_ERRORS+=$'\n'"[Validation Error] $file_path:${cleaned}"
         return 1
     fi
-    
+
     # Source the file
     if ! source "$file_path"; then
         __IMPORT_ERRORS+=$'\n'"[Source Error] $file_path"
         return 1
     fi
-    
+
     debug "Successfully sourced: $file_path"
     return 0
 }
