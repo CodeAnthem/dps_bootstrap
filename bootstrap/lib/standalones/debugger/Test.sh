@@ -107,10 +107,10 @@ test_3_toggle() {
     debug_disable silent
     assert "! debug_is_enabled" "Starting disabled"
 
-    debug_toggle
+    debug_toggle silent
     assert "debug_is_enabled" "Toggled to enabled"
 
-    debug_toggle
+    debug_toggle silent
     assert "! debug_is_enabled" "Toggled back to disabled"
 }
 # --------------------------------------------------------------------------------------------------
