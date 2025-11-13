@@ -524,10 +524,10 @@ __streams_defineFN_single() {
     
     # Build console and file output statements
     local console_cmd=""
-    [[ "$console_out" == "1" ]] && console_cmd="printf -v o '$console_fmt %s\\\\n' $ts_arg \"\$fmt_msg\"; echo \"\\\$o\" >&${channel_fd};"
+    [[ "$console_out" == "1" ]] && console_cmd="printf '$console_fmt %s\n' $ts_arg \"$fmt_msg\" >&${channel_fd};"
     
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf '$file_fmt %s\\\\n' $ts_arg \"\$fmt_msg\" >> \"$file_path\";"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf '$file_fmt %s\n' $ts_arg \"$fmt_msg\" >> \"$file_path\";"
     
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then
