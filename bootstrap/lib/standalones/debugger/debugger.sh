@@ -125,6 +125,14 @@ debug_set() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --file|--output)
+                # Disable file output if no value is provided
+                if [[ -z "${2:-}" ]] && [[ -n "${__DEBUG_CFG[output_file]}" ]]; then
+                    __DEBUG_CFG[output_file]=""
+                    needs_reinit=1
+                    shift 2
+                    return 0
+                fi
+
                 [[ -z "${2:-}" ]] && { echo "Error: --file requires a value" >&2; return 1; }
                 local value="$2"
                 if [[ -n "$value" ]]; then
@@ -235,7 +243,7 @@ __debug_defineFN_debug() {
     local var_name="$__DEBUG_VAR_NAME"
 
     # Build message
-    local fmt_msg="\${1:-\"<No message was passed> - called from \${FUNCNAME[1]} line \${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\"}"
+    local fmt_msg="\${1:-\"<No message was passed> - called from \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\"}"
 
     # Build timestamp format (no trailing \n - printf will handle that)
     local ts_arg fmt_str

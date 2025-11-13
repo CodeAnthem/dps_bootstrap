@@ -64,6 +64,7 @@ main() {
     test_12_datestamp_toggle
     test_13_combined_settings
     test_14_indent_customization
+    test_15_default_message
 
     test_summary
 }
@@ -403,6 +404,29 @@ test_14_indent_customization() {
 
     # Reset to default
     debug_set --indent 1
+    debug_disable
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+test_15_default_message() {
+    test_start "Default Message (No Argument Passed)"
+
+    debug_enable
+
+    # Call debug without message - should show caller info
+    local output
+    output=$(debug 2>&1)
+
+    # Should contain the default message parts
+    assert_contains "$output" "<No message was passed>" "Default message shown"
+    assert_contains "$output" "called from" "Shows caller info"
+    assert_contains "$output" "line" "Shows line number"
+
+    # Call debug with empty string - should use default
+    output=$(debug "" 2>&1)
+    assert_contains "$output" "<No message was passed>" "Empty string triggers default message"
+
     debug_disable
 }
 # --------------------------------------------------------------------------------------------------
