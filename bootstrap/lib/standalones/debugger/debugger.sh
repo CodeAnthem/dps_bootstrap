@@ -90,9 +90,9 @@ debug_state() {
                 [[ -n "${silent}" ]] || debug "Debug already disabled"
                 return 0
             fi
+            [[ -z "${silent}" ]] && debug "Debug disabled"
             declare -g "$__DEBUG_VAR_NAME=0"
             __debug_defineFN
-            [[ -z "${silent}" ]] && debug "Debug disabled"
         ;;
         *)
             echo "Wrong usage of debug_state() function" >&2
@@ -254,6 +254,8 @@ __debug_defineFN_debug() {
         else
             printf -v fmt_str '%*s%s%s%s' "${__DEBUG_CFG[indent]}" '' "%(%H:%M:%S)T" "${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}"
         fi
+    else
+        printf -v fmt_str '%*s%s%s%s' "${__DEBUG_CFG[indent]}" '' "" "${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}"
     fi
 
     # Generate state-based debug function (using source /dev/stdin, NO eval)
@@ -265,13 +267,13 @@ __debug_defineFN_debug() {
             source /dev/stdin <<- EOF
             debug() {
                 printf -v o '$fmt_str %s\\n' ${ts_arg} "$fmt_msg"
-                echo "$o" >&2
-                echo "$o" >> "${__DEBUG_CFG[output_file]}"
+                echo "\$o" >&2
+                echo "\$o" >> "${__DEBUG_CFG[output_file]}"
             }
 EOF
         else
             # Console only
-            source /dev/stdin <<<"debug() { printf '$fmt_str %s\\n' ${ts_arg} \"$fmt_msg\" >&2; }"
+            source /dev/stdin <<<"debug() { printf '$fmt_str %s\\n' $ts_arg \"$fmt_msg\" >&2; }"
         fi
     else
         # Disabled: no-op
