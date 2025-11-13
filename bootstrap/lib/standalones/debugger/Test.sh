@@ -119,22 +119,22 @@ test_3_toggle() {
 test_4_debug_set() {
     test_start "Set State with Various Values"
 
-    debug_state false
+    debug_state false silent
     assert "! debug_is_enabled" "Set to false"
 
-    debug_state true
+    debug_state true silent
     assert "debug_is_enabled" "Set to true"
 
-    debug_state 0
+    debug_state 0 silent
     assert "! debug_is_enabled" "Set to 0"
 
-    debug_state 1
+    debug_state 1 silent
     assert "debug_is_enabled" "Set to 1"
 
-    debug_state off
+    debug_state off silent
     assert "! debug_is_enabled" "Set to off"
 
-    debug_state on
+    debug_state on silent
     assert "debug_is_enabled" "Set to on"
 }
 # --------------------------------------------------------------------------------------------------
