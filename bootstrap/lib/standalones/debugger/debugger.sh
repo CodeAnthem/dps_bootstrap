@@ -6,6 +6,7 @@
 # Description:   Conditional debug output with dynamic variable name support
 # Feature:       Enable/disable debug, check state, custom debug variable name
 # ==================================================================================================
+# shellcheck disable=SC1091  # Source not following
 
 # ==================================================================================================
 # VALIDATION & INITIALIZATION
@@ -42,12 +43,6 @@ declare -gA __DEBUG_CFG=(
 # ==================================================================================================
 # PUBLIC FUNCTIONS
 # ==================================================================================================
-
-# --------------------------------------------------------------------------------------------------
-# Public: Print debug message (dynamically generated)
-# Usage: debug <message>
-debug() { :; }
-# --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
 # Public: Enable debug output (with optional silent mode)
@@ -149,34 +144,30 @@ debug_set() {
                 shift 2
                 ;;
             --timestamp)
-                [[ -z "${2:-}" ]] && { echo "Error: --timestamp requires a value" >&2; return 1; }
-                case "$2" in
+                case "${2:-}" in
                     1|true|on|enabled) __DEBUG_CFG[use_timestamp]=1 ;;
                     0|false|off|disabled) __DEBUG_CFG[use_timestamp]=0 ;;
-                    *) echo "Error: Invalid --timestamp value '$2' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                    *) echo "Error: Invalid --timestamp value '${2:-}' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
                 esac
                 needs_reinit=1
                 shift 2
                 ;;
             --datestamp)
-                [[ -z "${2:-}" ]] && { echo "Error: --datestamp requires a value" >&2; return 1; }
-                case "$2" in
+                case "${2:-}" in
                     1|true|on|enabled) __DEBUG_CFG[use_datestamp]=1 ;;
                     0|false|off|disabled) __DEBUG_CFG[use_datestamp]=0 ;;
-                    *) echo "Error: Invalid --datestamp value '$2' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                    *) echo "Error: Invalid --datestamp value '${2:-}' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
                 esac
                 needs_reinit=1
                 shift 2
                 ;;
             --emoji)
-                [[ -z "${2:-}" ]] && { echo "Error: --emoji requires a value" >&2; return 1; }
-                __DEBUG_CFG[emoji]="$2"
+                __DEBUG_CFG[emoji]="${2:-}"
                 needs_reinit=1
                 shift 2
                 ;;
             --tag)
-                [[ -z "${2:-}" ]] && { echo "Error: --tag requires a value" >&2; return 1; }
-                __DEBUG_CFG[tag]="$2"
+                __DEBUG_CFG[tag]="${2:-}"
                 needs_reinit=1
                 shift 2
                 ;;
@@ -241,52 +232,38 @@ __debug_defineFN() {
 # Usage: __debug_defineFN_debug
 # Note: Called by __debug_defineFN_status and debug_set
 __debug_defineFN_debug() {
-    local var_name indent_str ts_fmt fmt_str ts_arg
+    local var_name="$__DEBUG_VAR_NAME"
 
-    var_name="$__DEBUG_VAR_NAME"
-
-    # Build indent
-    printf -v indent_str '%*s' "${__DEBUG_CFG[indent]}" ''
+    # Build message
+    local fmt_msg="\${1:-\"<No message was passed> - called from \${FUNCNAME[1]} line \${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\"}"
 
     # Build timestamp format (no trailing \n - printf will handle that)
+    local ts_arg fmt_str
     if [[ ${__DEBUG_CFG[use_timestamp]} -eq 1 ]]; then
+        ts_arg='-1 '
         if [[ ${__DEBUG_CFG[use_datestamp]} -eq 1 ]]; then
-            ts_fmt='%(%Y-%m-%d %H:%M:%S)T'
-            ts_arg='"-1" '
+            printf -v fmt_str '%*s%s%s%s' "${__DEBUG_CFG[indent]}" '' "%(%Y-%m-%d %H:%M:%S)T" "${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}"
         else
-            ts_fmt='%(%H:%M:%S)T'
-            ts_arg='"-1" '
+            printf -v fmt_str '%*s%s%s%s' "${__DEBUG_CFG[indent]}" '' "%(%H:%M:%S)T" "${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}"
         fi
-    else
-        ts_fmt=''
-        ts_arg=''
     fi
-
-    # Build complete format string (no \n - we use printf %s later)
-    fmt_str="${indent_str}${ts_fmt}%s%s %s"
 
     # Generate state-based debug function (using source /dev/stdin, NO eval)
     if [[ "${!var_name}" -eq 1 ]]; then
         # Enabled: build output and send to destinations
         if [[ -n "${__DEBUG_CFG[output_file]}" ]]; then
             # With file output
+            # shellcheck disable=SC2154
             source /dev/stdin <<- EOF
             debug() {
-                local o
-                printf -v o "$fmt_str" ${ts_arg}"${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}" "\$1"
-                printf '%s\\n' "\$o" >&2
-                printf '%s\\n' "\$o" >> "${__DEBUG_CFG[output_file]}"
+                printf -v o '$fmt_str %s\\n' ${ts_arg} "$fmt_msg"
+                echo "$o" >&2
+                echo "$o" >> "${__DEBUG_CFG[output_file]}"
             }
 EOF
         else
             # Console only
-            source /dev/stdin <<- EOF
-            debug() {
-                local o
-                printf -v o "$fmt_str" ${ts_arg}"${__DEBUG_CFG[emoji]}" "${__DEBUG_CFG[tag]}" "\$1"
-                printf '%s\\n' "\$o" >&2
-            }
-EOF
+            source /dev/stdin <<<"debug() { printf '$fmt_str %s\\n' ${ts_arg} \"$fmt_msg\" >&2; }"
         fi
     else
         # Disabled: no-op
