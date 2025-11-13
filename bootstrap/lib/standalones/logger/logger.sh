@@ -259,7 +259,7 @@ __log_defineFN_single() {
 
     # Check if we exit
     local ifExit=""
-    [[ -z "$exit_code" ]] || ifExit="exit $exit_code"
+    [[ "$exit_code" == "-1" ]] || ifExit="exit $exit_code;"
 
     # Build default message
     local fmt_msg="\${1:-\"<No message was passed> - called from \${FUNCNAME[1]}#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\"}"
@@ -269,9 +269,9 @@ __log_defineFN_single() {
     if [[ ${__LOG_CFG[use_timestamp]} -eq 1 ]]; then
         ts_arg='-1 '
         if [[ ${__LOG_CFG[use_datestamp]} -eq 1 ]]; then
-            printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' "%(%Y-%m-%d %H:%M:%S)T" "$emoji" "$tag"
+            printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' "%(%Y-%m-%d %H:%M:%S)T " "$emoji" "$tag"
         else
-            printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' "%(%H:%M:%S)T" "$emoji" "$tag"
+            printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' "%(%H:%M:%S)T " "$emoji" "$tag"
         fi
     else
         printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' '' "$emoji" "$tag"
@@ -290,7 +290,7 @@ __log_defineFN_single() {
 EOF
     else
         # Console only
-        source /dev/stdin <<<"$func_name() { printf '$fmt_str %s\\n' $ts_arg \"$fmt_msg\" >&2; }"; $ifExit
+        source /dev/stdin <<<"$func_name() { printf '$fmt_str %s\\n' $ts_arg \"$fmt_msg\" >&2; $ifExit }"
     fi
 }
 # --------------------------------------------------------------------------------------------------
@@ -300,12 +300,13 @@ EOF
 # ==================================================================================================
 
 # Register predefined loggers
-__LOG_REGISTRY[info]=" ℹ️ : [INFO] -:-1"
-__LOG_REGISTRY[warn]=" ⚠️ : [WARN] -:-1"
-__LOG_REGISTRY[error]=" 💥 : [ERROR] -:-1"
-__LOG_REGISTRY[fatal]=" 💀 : [FATAL] -:1"
-__LOG_REGISTRY[pass]=" ✅ : [PASS] -:-1"
-__LOG_REGISTRY[fail]=" ❌ : [FAIL] -:-1"
+__LOG_REGISTRY[info]="ℹ️  :[INFO] -:-1"
+__LOG_REGISTRY[warn]="⚠️  :[WARN] -:-1"
+__LOG_REGISTRY[error]="💥 :[ERROR] -:-1"
+__LOG_REGISTRY[fatal]="💀  :[FATAL] -:1"
+__LOG_REGISTRY[pass]="✅  :[PASS] -:-1"
+__LOG_REGISTRY[fail]="❌  :[FAIL] -:-1"
 
 # Initialize all logging functions based on current settings
+
 __log_defineFN
