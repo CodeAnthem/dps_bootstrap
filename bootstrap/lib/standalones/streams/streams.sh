@@ -23,8 +23,8 @@ fi
 # GLOBAL VARIABLES - Configuration
 # ==================================================================================================
 
-# Readonly channels array
-declare -g -a -r __STREAMS_CHANNELS=("stdout" "stderr" "logger" "debug")
+# Channels array
+declare -gra __STREAMS_CHANNELS=("stdout" "stderr" "logger" "debug")
 
 # Single configuration array with key patterns
 declare -gA __STREAMS_CONFIG=(
@@ -41,7 +41,7 @@ declare -gA __STREAMS_CONFIG=(
     [CHANNEL::logger::FILE]=1
     [CHANNEL::logger::FILE_PATH]=""
     [CHANNEL::logger::FD]=3
-    [CHANNEL::debug::CONSOLE]=0
+    [CHANNEL::debug::CONSOLE]=1
     [CHANNEL::debug::FILE]=1
     [CHANNEL::debug::FILE_PATH]=""
     [CHANNEL::debug::FD]=4
@@ -111,19 +111,13 @@ declare -g -a __STREAMS_FUNCTIONS=("output" "info" "warn" "error" "fatal" "pass"
 
 
 # ==================================================================================================
-# FILE DESCRIPTOR INITIALIZATION
+# FD INITIALIZATION
 # ==================================================================================================
 
-# Try to open FD3 (logger) and FD4 (debug) to /dev/tty with stderr fallback
-exec 3>/dev/tty 2>/dev/null || { 
-    exec 3>&2
-    __STREAMS_CONFIG[CHANNEL::logger::FD]=2
-}
-
-exec 4>/dev/tty 2>/dev/null || {
-    exec 4>&2
-    __STREAMS_CONFIG[CHANNEL::debug::FD]=2
-}
+# Open FD3 (logger) and FD4 (debug) as duplicates of stderr
+# This is safe for interactive shells and works correctly in subshells
+exec 3>&2
+exec 4>&2
 
 
 # ==================================================================================================
@@ -212,7 +206,7 @@ stream_set_channel() {
                 shift 2
                 ;;
             --file-path)
-                [[ -z "${2:-}" ]] && { echo "Error: --file-path requires a value" >&2; return 1; }
+                [[ $# -lt 2 ]] && { echo "Error: --file-path requires a value" >&2; return 1; }
                 local file_path="$2"
                 if [[ -n "$file_path" ]]; then
                     # Validate path - directory must exist or be creatable
@@ -600,3 +594,6 @@ __streams_build_format() {
 
 # Initialize all functions based on current settings
 __streams_defineFN_all
+
+# Note: Auto-initialization happens on source for immediate usability.
+# If you modify settings after sourcing, call __streams_defineFN_all manually to regenerate functions.

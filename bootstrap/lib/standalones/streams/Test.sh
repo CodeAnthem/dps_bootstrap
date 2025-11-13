@@ -41,6 +41,154 @@ source "$FEATURE_FILE" || {
     exit 1
 }
 
+
+# ==================================================================================================
+# TEST FRAMEWORK - Version 1.0.0
+# ==================================================================================================
+# Reusable test framework with dynamic FD capturing and exit handling
+# --------------------------------------------------------------------------------------------------
+
+# Test framework globals
+declare -g TEST_COUNT=0
+declare -g TEST_PASSED=0
+declare -g TEST_FAILED=0
+declare -g TEST_FW_VERSION="1.0.0"
+
+# --------------------------------------------------------------------------------------------------
+# Initialize test framework - detect open file descriptors
+# Usage: __test_fw_init
+__test_fw_init() {
+    # Detect open FDs (2-9) and build redirect string
+    local fd_redirects=""
+    for fd in {2..9}; do
+        if { true >&$fd; } 2>/dev/null; then
+            fd_redirects="$fd_redirects ${fd}>&1"
+        fi
+    done
+    
+    # Export for use in capture function
+    declare -g __TEST_FW_FD_REDIRECTS="$fd_redirects"
+}
+__test_fw_init # necessary for capture_all to work
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Capture output from all open file descriptors
+# Usage: capture_all <command> [args...]
+# Result: Sets CAPTURED_OUTPUT global variable
+# Note: Runs command in subshell to handle exit codes safely
+capture_all() {
+    local tmpfile
+    tmpfile=$(mktemp)
+    
+    # Run in subshell with all FD redirects, capture to file
+    # shellcheck disable=SC2086
+    ( eval "\"\$@\" $__TEST_FW_FD_REDIRECTS" ) > "$tmpfile" 2>&1
+    
+    CAPTURED_OUTPUT=$(cat "$tmpfile")
+    rm -f "$tmpfile"
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Start a new test
+# Usage: test_start "Test Description"
+test_start() {
+    TEST_COUNT=$((TEST_COUNT + 1))
+    printf '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+    printf 'Test #%d: %s\n' "$TEST_COUNT" "$1"
+    printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Assert a condition
+# Usage: assert <condition> <description>
+assert() {
+    local condition="$1"
+    local description="$2"
+
+    if eval "$condition"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        printf '  ✓ %s\n' "$description"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        printf '  ✗ FAILED: %s\n' "$description"
+        printf '    Condition: %s\n' "$condition"
+    fi
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Assert equality
+# Usage: assert_equal <actual> <expected> <description>
+assert_equal() {
+    local actual="$1"
+    local expected="$2"
+    local description="$3"
+
+    if [[ "$actual" == "$expected" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        printf '  ✓ %s\n' "$description"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        printf '  ✗ FAILED: %s\n' "$description"
+        printf "    Expected: '%s'\n" "$expected"
+        printf "    Got:      '%s'\n" "$actual"
+    fi
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Assert substring containment
+# Usage: assert_contains <haystack> <needle> <description>
+assert_contains() {
+    local haystack="$1"
+    local needle="$2"
+    local description="$3"
+
+    if [[ "$haystack" == *"$needle"* ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        printf '  ✓ %s\n' "$description"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        printf '  ✗ FAILED: %s\n' "$description"
+        printf "    Expected to contain: '%s'\n" "$needle"
+        printf "    In: '%s'\n" "$haystack"
+    fi
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Print test summary
+# Usage: test_summary
+test_summary() {
+    printf '\n╔════════════════════════════════════════════════════════════════════════════════╗\n'
+    printf '║                              TEST SUMMARY                                      ║\n'
+    printf '╠════════════════════════════════════════════════════════════════════════════════╣\n'
+    printf '║  Total Tests:    %-60s  ║\n' "$TEST_COUNT"
+    printf '║  Total Asserts:  %-60s  ║\n' "$((TEST_PASSED + TEST_FAILED))"
+    printf '║  ✓ Passed:       %-60s  ║\n' "$TEST_PASSED"
+    printf '║  ✗ Failed:       %-60s  ║\n' "$TEST_FAILED"
+    printf '╚════════════════════════════════════════════════════════════════════════════════╝\n'
+
+    if [[ $TEST_FAILED -eq 0 ]]; then
+        printf '\n✅ ALL TESTS PASSED!\n'
+        return 0
+    else
+        printf '\n❌ SOME TESTS FAILED\n'
+        return 1
+    fi
+}
+# --------------------------------------------------------------------------------------------------
+
+# Initialize test framework
+__test_fw_init
+
+# ==================================================================================================
+# END TEST FRAMEWORK v1.0.0
+# ==================================================================================================
+
 # ==================================================================================================
 # MAIN TEST ORCHESTRATOR
 # ==================================================================================================
@@ -76,26 +224,24 @@ test_1_predefined_functions() {
     test_start "Predefined Functions Exist and Execute"
 
     # Test all predefined functions exist
-    local output
+    capture_all output "Output test"
+    assert_contains "$CAPTURED_OUTPUT" "Output test" "output() executes"
 
-    output=$(output "Output test" 2>&1)
-    assert_contains "$output" "Output test" "output() executes"
+    capture_all info "Info test"
+    assert_contains "$CAPTURED_OUTPUT" "[INFO]" "info() has INFO tag"
 
-    output=$(info "Info test" 2>&1)
-    assert_contains "$output" "[INFO]" "info() has INFO tag"
+    capture_all warn "Warn test"
+    assert_contains "$CAPTURED_OUTPUT" "[WARN]" "warn() has WARN tag"
 
-    output=$(warn "Warn test" 2>&1)
-    assert_contains "$output" "[WARN]" "warn() has WARN tag"
+    capture_all error "Error test"
+    assert_contains "$CAPTURED_OUTPUT" "[ERROR]" "error() has ERROR tag"
 
-    output=$(error "Error test" 2>&1)
-    assert_contains "$output" "[ERROR]" "error() has ERROR tag"
-
-    output=$(pass "Pass test" 2>&1)
-    assert_contains "$output" "[PASS]" "pass() has PASS tag"
+    capture_all pass "Pass test"
+    assert_contains "$CAPTURED_OUTPUT" "[PASS]" "pass() has PASS tag"
 
     # Debug is NOP by default
-    output=$(debug "Debug test" 2>&1)
-    assert_equal "$output" "" "debug() is NOP by default"
+    capture_all debug "Debug test"
+    assert_equal "$CAPTURED_OUTPUT" "" "debug() is NOP by default"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -104,12 +250,10 @@ test_2_channel_routing_logger() {
     test_start "Channel Routing - Logger Channel (fd3)"
 
     # Logger channel should route to fd3
-    # Capture fd3 output
-    local output
-    output=$(info "Test message" 3>&1 1>/dev/null 2>/dev/null)
+    capture_all info "Test message"
     
-    assert_contains "$output" "Test message" "Logger channel routes to fd3"
-    assert_contains "$output" "[INFO]" "Logger channel includes tag"
+    assert_contains "$CAPTURED_OUTPUT" "Test message" "Logger channel output captured"
+    assert_contains "$CAPTURED_OUTPUT" "[INFO]" "Logger channel includes tag"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -121,11 +265,10 @@ test_3_channel_routing_debug() {
     stream_function debug --enable
 
     # Debug channel should route to fd4
-    local output
-    output=$(debug "Debug message" 4>&1 1>/dev/null 2>/dev/null 3>/dev/null)
+    capture_all debug "Debug message"
     
-    assert_contains "$output" "Debug message" "Debug channel routes to fd4"
-    assert_contains "$output" "[DEBUG]" "Debug channel includes tag"
+    assert_contains "$CAPTURED_OUTPUT" "Debug message" "Debug channel output captured"
+    assert_contains "$CAPTURED_OUTPUT" "[DEBUG]" "Debug channel includes tag"
 
     # Disable debug for other tests
     stream_function debug --disable
@@ -143,8 +286,8 @@ test_4_file_output() {
     stream_set_channel logger --file-path "$tmpfile"
 
     # Write messages
-    info "Test info message"
-    warn "Test warn message"
+    capture_all info "Test info message"
+    capture_all warn "Test warn message"
 
     # Check file content
     local content
@@ -169,11 +312,10 @@ test_5_format_console_timestamp() {
     # Disable timestamps
     stream_set_format console --time 0 --date 0
 
-    local output
-    output=$(info "No timestamp" 2>&1)
+    capture_all info "No timestamp"
 
     # Should NOT contain date pattern
-    if [[ ! "$output" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    if [[ ! "$CAPTURED_OUTPUT" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         printf '  ✓ Timestamps disabled\n'
     else
@@ -184,10 +326,10 @@ test_5_format_console_timestamp() {
     # Re-enable
     stream_set_format console --time 1 --date 1
 
-    output=$(info "With timestamp" 2>&1)
+    capture_all info "With timestamp"
 
     # Should contain timestamp
-    if [[ "$output" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    if [[ "$CAPTURED_OUTPUT" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         printf '  ✓ Timestamps re-enabled\n'
     else
@@ -204,11 +346,10 @@ test_6_format_console_indent() {
     # Set indent to 0
     stream_set_format console --indent 0
 
-    local output
-    output=$(info "No indent" 2>&1)
+    capture_all info "No indent"
 
     # Should start with date (no leading space)
-    if [[ "$output" =~ ^[0-9] ]]; then
+    if [[ "$CAPTURED_OUTPUT" =~ ^[0-9] ]]; then
         assert "true" "No indent - starts with date"
     else
         assert "false" "No indent - starts with date"
@@ -217,10 +358,10 @@ test_6_format_console_indent() {
     # Set indent to 5
     stream_set_format console --indent 5
 
-    output=$(info "Five spaces" 2>&1)
+    capture_all info "Five spaces"
 
     # Should have 5 leading spaces
-    if [[ "$output" =~ ^[[:space:]]{5} ]]; then
+    if [[ "$CAPTURED_OUTPUT" =~ ^[[:space:]]{5} ]]; then
         assert "true" "Five spaces indent applied"
     else
         assert "false" "Five spaces indent applied"
@@ -242,7 +383,7 @@ test_7_format_file_settings() {
     stream_set_format file --date 0 --time 1
     stream_set_channel logger --file-path "$tmpfile"
 
-    info "Test message"
+    capture_all info "Test message"
 
     local content
     content=$(cat "$tmpfile")
@@ -276,24 +417,23 @@ test_8_emoji_suppression() {
     # Enable emoji suppression
     stream_set_format --suppress-emojis 1
 
-    local output
-    output=$(info "No emoji" 2>&1)
+    capture_all info "No emoji"
 
     # Should not contain emoji
-    if [[ "$output" =~ ℹ️ ]]; then
+    if [[ "$CAPTURED_OUTPUT" =~ ℹ️ ]]; then
         assert "false" "Emoji suppressed"
     else
         assert "true" "Emoji suppressed"
     fi
 
     # Should still contain tag
-    assert_contains "$output" "[INFO]" "Tag still present"
+    assert_contains "$CAPTURED_OUTPUT" "[INFO]" "Tag still present"
 
     # Disable suppression
     stream_set_format --suppress-emojis 0
 
-    output=$(info "With emoji" 2>&1)
-    assert_contains "$output" "ℹ️" "Emoji restored"
+    capture_all info "With emoji"
+    assert_contains "$CAPTURED_OUTPUT" "ℹ️" "Emoji restored"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -307,12 +447,11 @@ test_9_function_management() {
     # Enable it (since debug channel might be off)
     stream_function trace --enable
 
-    local output
-    output=$(trace "Trace message" 4>&1 1>/dev/null 2>/dev/null 3>/dev/null)
+    capture_all trace "Trace message"
 
-    assert_contains "$output" "[TRACE]" "Custom function has correct tag"
-    assert_contains "$output" "🔍" "Custom function has correct emoji"
-    assert_contains "$output" "Trace message" "Custom function message present"
+    assert_contains "$CAPTURED_OUTPUT" "[TRACE]" "Custom function has correct tag"
+    assert_contains "$CAPTURED_OUTPUT" "🔍" "Custom function has correct emoji"
+    assert_contains "$CAPTURED_OUTPUT" "Trace message" "Custom function message present"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -323,16 +462,15 @@ test_10_nop_functions() {
     # Disable warn function
     stream_function warn --disable
 
-    local output
-    output=$(warn "Should not appear" 2>&1)
+    capture_all warn "Should not appear"
 
-    assert_equal "$output" "" "Disabled function produces no output"
+    assert_equal "$CAPTURED_OUTPUT" "" "Disabled function produces no output"
 
     # Re-enable
     stream_function warn --enable
 
-    output=$(warn "Should appear" 2>&1)
-    assert_contains "$output" "Should appear" "Re-enabled function works"
+    capture_all warn "Should appear"
+    assert_contains "$CAPTURED_OUTPUT" "Should appear" "Re-enabled function works"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -385,25 +523,24 @@ test_13_combined_settings() {
     stream_set_format --suppress-emojis 1
     stream_set_channel logger --file-path "$tmpfile"
 
-    local output
-    output=$(info "Combined test" 2>&1)
+    capture_all info "Combined test"
 
     # Should have NO date
-    if [[ ! "$output" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+    if [[ ! "$CAPTURED_OUTPUT" =~ [0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
         assert "true" "No date in combined mode"
     else
         assert "false" "No date in combined mode"
     fi
 
     # Should have time
-    if [[ "$output" =~ [0-9]{2}:[0-9]{2}:[0-9]{2} ]]; then
+    if [[ "$CAPTURED_OUTPUT" =~ [0-9]{2}:[0-9]{2}:[0-9]{2} ]]; then
         assert "true" "Time present in combined mode"
     else
         assert "false" "Time present in combined mode"
     fi
 
     # Should have no emoji
-    if [[ "$output" =~ ℹ️ ]]; then
+    if [[ "$CAPTURED_OUTPUT" =~ ℹ️ ]]; then
         assert "false" "No emoji in combined mode"
     else
         assert "true" "No emoji in combined mode"
@@ -420,91 +557,6 @@ test_13_combined_settings() {
     stream_set_channel logger --file-path ""
 
     rm -f "$tmpfile"
-}
-# --------------------------------------------------------------------------------------------------
-
-# ==================================================================================================
-# TEST FRAMEWORK
-# ==================================================================================================
-
-declare -g TEST_COUNT=0
-declare -g TEST_PASSED=0
-declare -g TEST_FAILED=0
-
-test_start() {
-    TEST_COUNT=$((TEST_COUNT + 1))
-    printf '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-    printf 'Test #%d: %s\n' "$TEST_COUNT" "$1"
-    printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-}
-# --------------------------------------------------------------------------------------------------
-
-assert() {
-    local condition="$1"
-    local description="$2"
-
-    if eval "$condition"; then
-        TEST_PASSED=$((TEST_PASSED + 1))
-        printf '  ✓ %s\n' "$description"
-    else
-        TEST_FAILED=$((TEST_FAILED + 1))
-        printf '  ✗ FAILED: %s\n' "$description"
-        printf '    Condition: %s\n' "$condition"
-    fi
-}
-# --------------------------------------------------------------------------------------------------
-
-assert_equal() {
-    local actual="$1"
-    local expected="$2"
-    local description="$3"
-
-    if [[ "$actual" == "$expected" ]]; then
-        TEST_PASSED=$((TEST_PASSED + 1))
-        printf '  ✓ %s\n' "$description"
-    else
-        TEST_FAILED=$((TEST_FAILED + 1))
-        printf '  ✗ FAILED: %s\n' "$description"
-        printf "    Expected: '%s'\n" "$expected"
-        printf "    Got:      '%s'\n" "$actual"
-    fi
-}
-# --------------------------------------------------------------------------------------------------
-
-assert_contains() {
-    local haystack="$1"
-    local needle="$2"
-    local description="$3"
-
-    if [[ "$haystack" == *"$needle"* ]]; then
-        TEST_PASSED=$((TEST_PASSED + 1))
-        printf '  ✓ %s\n' "$description"
-    else
-        TEST_FAILED=$((TEST_FAILED + 1))
-        printf '  ✗ FAILED: %s\n' "$description"
-        printf "    Expected to contain: '%s'\n" "$needle"
-        printf "    In: '%s'\n" "$haystack"
-    fi
-}
-# --------------------------------------------------------------------------------------------------
-
-test_summary() {
-    printf '\n╔════════════════════════════════════════════════════════════════════════════════╗\n'
-    printf '║                              TEST SUMMARY                                      ║\n'
-    printf '╠════════════════════════════════════════════════════════════════════════════════╣\n'
-    printf '║  Total Tests:    %-60s  ║\n' "$TEST_COUNT"
-    printf '║  Total Asserts:  %-60s  ║\n' "$((TEST_PASSED + TEST_FAILED))"
-    printf '║  ✓ Passed:       %-60s  ║\n' "$TEST_PASSED"
-    printf '║  ✗ Failed:       %-60s  ║\n' "$TEST_FAILED"
-    printf '╚════════════════════════════════════════════════════════════════════════════════╝\n'
-
-    if [[ $TEST_FAILED -eq 0 ]]; then
-        printf '\n✅ ALL TESTS PASSED!\n'
-        return 0
-    else
-        printf '\n❌ SOME TESTS FAILED\n'
-        return 1
-    fi
 }
 # --------------------------------------------------------------------------------------------------
 
