@@ -1,60 +1,132 @@
-# Logger
+# Logger <!-- omit in toc -->
 
-**Timestamped logging with multiple levels and optional file output**
+**Dynamic logging system with flexible logger creation**
 
-Production-ready logging with info/warn/error/fatal/success levels. Supports file output, custom timestamps, and flexible configuration. Zero dependencies, pure Bash.
+Drop-in logging system with predefined loggers and dynamic logger creation. Supports file output, exit codes, emoji suppression, and intelligent default messages. Zero dependencies, pure Bash.
 
----
+## Overview <!-- omit in toc -->
+
+- **🎨 Dynamic logger creation** - Create custom loggers with `log_create_logger`
+- **🚪 Exit code support** - Loggers can exit with custom codes (fatal, fail)
+- **🧠 Smart default messages** - Auto-shows caller context when no message provided
+- **⚙️ Argument-based configuration** - Set multiple options in one call
+- **📝 File output** - Optional dual output to file + stderr
+- **🔇 Emoji suppression** - Globally suppress emojis
+- **🎯 Predefined loggers** - info, warn, error, fatal, pass, fail
+- **📦 Minimal globals** - Single associative array for all config
+
+
+     
+## Table of Contents <!-- omit in toc -->
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+  - [Predefined Loggers](#predefined-loggers)
+  - [Configuration](#configuration)
+  - [Dynamic Logger Creation](#dynamic-logger-creation)
+  - [File Management](#file-management)
+  - [Utility Functions](#utility-functions)
+- [Usage Examples](#usage-examples)
+  - [Basic Logging](#basic-logging)
+  - [File Output](#file-output)
+  - [Customize Output Format](#customize-output-format)
+  - [Dynamic Logger Creation](#dynamic-logger-creation-1)
+  - [Emoji Suppression](#emoji-suppression)
+  - [Custom Indentation](#custom-indentation)
+  - [Default Message Feature](#default-message-feature)
+  - [Exit Code Loggers](#exit-code-loggers)
+- [Tests:](#tests)
+
+
+## Requirements
+- **Bash 4.0+** (for associative arrays)
 
 ## Quick Start
 
+**Standard Usage:**
 ```bash
-source logger.sh
+source logger.sh # All loggers predefined and ready to use
 
 info "Application started"
 warn "Configuration file missing, using defaults"
 error "Failed to connect to database"
-success "Deployment completed"
+pass "All tests passed"
 ```
 
----
+
 
 ## API Reference
 
-### Logging Functions
+### Predefined Loggers
 
-| Function | Level | Icon | Usage |
-|----------|-------|------|-------|
-| `info <msg>` | Info | ℹ️ | General information |
-| `warn <msg>` | Warning | ⚠️ | Warnings, non-critical issues |
-| `error <msg>` | Error | ❌ | Error conditions |
-| `fatal <msg>` | Fatal | ❌ | Critical errors (doesn't exit) |
-| `success <msg>` | Success | ✅ | Successful operations |
-| `validation_error <msg>` | Validation | ❌ | Input validation errors |
+| Function | Icon | Tag | Exit Code | Usage |
+|----------|------|-----|-----------|-------|
+| `info [msg]` | ℹ️ | [INFO] | -1 (none) | General information |
+| `warn [msg]` | ⚠️ | [WARN] | -1 (none) | Warnings, non-critical issues |
+| `error [msg]` | ❌ | [ERROR] | -1 (none) | Error conditions |
+| `fatal [msg]` | 💀 | [FATAL] | 1 | Critical errors (exits script) |
+| `pass [msg]` | ✅ | [PASS] | -1 (none) | Successful operations |
+| `fail [msg]` | ❌ | [FAIL] | 1 | Failed operations (exits script) |
+
+**Note:** If no message is provided, loggers show caller context automatically.
+
+### Configuration
+
+**`log_set [options]`** - Configure multiple options at once
+
+| Option | Description | Values |
+|--------|-------------|--------|
+| `--file PATH` | Set output file path (also: `--output`) | File path or empty to disable |
+| `--timestamp BOOL` | Enable/disable timestamp | `1/0`, `true/false`, `on/off` |
+| `--datestamp BOOL` | Enable/disable date in timestamp | `1/0`, `true/false`, `on/off` |
+| `--indent NUMBER` | Set leading spaces | Number >= 0 (default: 1) |
+| `--suppress-emojis BOOL` | Globally suppress emojis | `1/0`, `true/false`, `on/off` |
+
+**Examples:**
+```bash
+# Single option
+log_set --timestamp 0
+
+# Multiple options at once
+log_set --file "./logs/app.log" --timestamp 0 --indent 3
+
+# Suppress all emojis globally
+log_set --suppress-emojis 1
+```
+
+### Dynamic Logger Creation
+
+**`log_create_logger <name> [options]`** - Create custom logger
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--emoji EMOJI` | Set emoji prefix | " 📝" |
+| `--tag TAG` | Set tag prefix | " [name] -" |
+| `--exit CODE` | Set exit code (-1 = no exit) | -1 |
+
+**Example:**
+```bash
+log_create_logger "critical" --emoji " 🔥" --tag " [CRITICAL] -" --exit 99
+critical "Database connection lost"  # Exits with code 99
+```
+
+### File Management
+
+| Function | Description |
+|----------|-------------|
+| `log_get_file` | Get current log output file path |
+| `log_show_file` | Display contents of current log file |
+| `log_clear_file` | Clear log file content |
 
 ### Utility Functions
 
 | Function | Description |
 |----------|-------------|
 | `console <msg>` | Plain output (no timestamp/prefix) |
-| `consolef <fmt> [args]` | Formatted output |
+| `consolef <fmt> [args...]` | Formatted output |
 | `new_line` | Print newline to stderr |
 
-### Configuration Functions
 
-| Function | Description |
-|----------|-------------|
-| `log_init` | Reinitialize all logging functions (called automatically after config changes) |
-| `log_set_output_file <path>` | Enable file logging (empty=disable) |
-| `log_get_output_file` | Get current log file path |
-| `log_set_timestamp <1\|0>` | Enable/disable timestamps |
-| `log_set_datestamp <1\|0>` | Enable/disable date in timestamp (time only if off) |
-| `log_set_stream <stderr\|stdout>` | Set output stream |
-| `log_set_emoji <level> <emoji>` | Set emoji for level (info/warn/error/fatal/success/validation) |
-| `log_set_tag <level> <tag>` | Set tag for level |
-| `log_clear_file` | Clear log file content |
-
----
 
 ## Usage Examples
 
@@ -64,7 +136,7 @@ success "Deployment completed"
 source logger.sh
 
 info "Starting backup process"
-success "Backed up 1523 files"
+pass "Backed up 1523 files"
 warn "Backup took longer than expected"
 ```
 
@@ -74,13 +146,13 @@ warn "Backup took longer than expected"
 source logger.sh
 
 # Enable file logging
-log_set_output_file "/var/log/myapp.log"
+log_set --file "/var/log/myapp.log"
 
 info "This goes to stderr AND /var/log/myapp.log"
 error "Errors also logged to file"
 
 # Disable file logging
-log_set_output_file ""
+log_set --file ""
 ```
 
 ### Customize Output Format
@@ -88,211 +160,138 @@ log_set_output_file ""
 ```bash
 source logger.sh
 
-# Show time only (no date)
-log_set_datestamp 0
+# Set multiple options at once (efficient - only reinitializes once)
+log_set --datestamp 0 --timestamp 1
+
 info "Message with time only"
 # Output:  15:30:45 ℹ️  [INFO] - Message with time only
 
 # Disable timestamps completely
-log_set_timestamp 0
+log_set --timestamp 0
 info "Message without timestamp"
 # Output:  ℹ️  [INFO] - Message without timestamp
 
-# Customize emoji and tag for a specific level
-log_set_emoji info " 📝"
-log_set_tag info " [LOG] -"
-info "Custom formatted message"
-# Output:  2025-11-12 15:30:45 📝 [LOG] - Custom formatted message
-
-# Remove emoji completely
-log_set_emoji info ""
-info "No emoji message"
 ```
 
-### Application Logging
-
-```bash
-#!/usr/bin/env bash
-source logger.sh
-
-# Configure logging
-LOG_DIR="/var/log/myapp"
-mkdir -p "$LOG_DIR"
-log_set_output_file "$LOG_DIR/myapp-$(date +%Y%m%d).log"
-
-info "Application started"
-
-# Process files
-for file in *.txt; do
-    if process_file "$file"; then
-        success "Processed: $file"
-    else
-        error "Failed to process: $file"
-    fi
-done
-
-info "Application finished"
-```
-
-### Validation Messages
+### Dynamic Logger Creation
 
 ```bash
 source logger.sh
 
-validate_input() {
-    local input="$1"
-    
-    if [[ -z "$input" ]]; then
-        validation_error "Input cannot be empty"
-        return 1
+# Create custom logger with specific exit code
+log_create_logger "critical" --emoji " 🔥" --tag " [CRITICAL] -" --exit 99
+
+# Use it like any other logger
+critical "Database connection lost"  # Exits with code 99
+
+# Create logger without exit (default)
+log_create_logger "trace" --emoji " 🔍" --tag " [TRACE] -"
+trace "Entering function: process_data()"
+trace "Variable state: count=$count, status=$status"
+
+# Create logger with default emoji/tag
+log_create_logger "audit"
+audit "User login: $username from $ip_address"
+# Output:  2025-11-12 15:30:45 📝 [audit] - User login: admin from 192.168.1.100
+```
+
+### Emoji Suppression
+
+```bash
+source logger.sh
+
+# Suppress all emojis globally
+log_set --suppress-emojis 1
+
+info "No emoji here"
+# Output:  2025-11-12 15:30:45 [INFO] - No emoji here
+
+warn "Still no emoji"
+# Output:  2025-11-12 15:30:46 [WARN] - Still no emoji
+
+# Re-enable emojis
+log_set --suppress-emojis 0
+info "Emoji restored"
+# Output:  2025-11-12 15:30:47 ℹ️  [INFO] - Emoji restored
+```
+
+### Custom Indentation
+
+```bash
+source logger.sh
+
+# Default has 1 space indent
+info "Default indent"
+#  2025-11-12 15:30:45 ℹ️  [INFO] - Default indent
+# ^ one space
+
+# No indent
+log_set --indent 0
+info "No indent"
+# 2025-11-12 15:30:45 ℹ️  [INFO] - No indent
+
+# Five spaces
+log_set --indent 5
+info "Five spaces"
+#      2025-11-12 15:30:45 ℹ️  [INFO] - Five spaces
+# ^^^^^ five spaces
+```
+
+### Default Message Feature
+
+```bash
+source logger.sh
+
+# Call logger without message - shows caller info
+info
+# Output:  2025-11-12 15:30:45 ℹ️  [INFO] - <No message was passed> - called from main()#42 in myscript.sh
+
+# With message
+info "Processing data"
+# Output:  2025-11-12 15:30:45 ℹ️  [INFO] - Processing data
+```
+
+### Exit Code Loggers
+
+```bash
+source logger.sh
+
+# fatal and fail exit the script
+validate_config() {
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        fatal "Config file not found: $CONFIG_FILE"  # Exits with code 1
+        # Script stops here
     fi
-    
-    if [[ ! "$input" =~ ^[0-9]+$ ]]; then
-        validation_error "Input must be numeric"
-        return 1
-    fi
-    
-    return 0
 }
 
-if validate_input "$USER_INPUT"; then
-    success "Validation passed"
-else
-    error "Validation failed"
-fi
+run_tests() {
+    if ! ./run_tests.sh; then
+        fail "Test suite failed"  # Exits with code 1
+        # Script stops here
+    fi
+    
+    pass "All tests passed"  # Continues execution
+}
+
+# Custom exit codes with dynamic loggers
+log_create_logger "abort" --emoji " ❌" --tag " [ABORT] -" --exit 42
+abort "User cancelled operation"  # Exits with code 42
 ```
 
-### Plain Console Output
 
+
+## Tests:
 ```bash
-source logger.sh
+bash Test.sh
 
-# Plain output (no timestamp, no prefix)
-console "========================================="
-console "        My Application v1.0"
-console "========================================="
-new_line
-
-# Then use regular logging
-info "Starting up..."
-
-# Formatted console output
-consolef "Processing %d files..." "$file_count"
+# Expected output:
+...
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                              TEST SUMMARY                                      ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║  Total Tests:    11                                                            ║
+║  Total Asserts:  35+                                                           ║
+║  ✓ Passed:       35+                                                           ║
+║  ✗ Failed:       0                                                             ║
+╚════════════════════════════════════════════════════════════════════════════════╝
 ```
-
----
-
-## Output Format
-
-### With Timestamps (default)
-
-```
- 2025-11-12 15:30:45 ℹ️  [INFO] - Application started
- 2025-11-12 15:30:46 ⚠️  [WARN] - Cache miss
- 2025-11-12 15:30:47 ✅ [SUCCESS] - Task completed
- 2025-11-12 15:30:48 ❌ [ERROR] - Connection failed
-```
-
-### Without Timestamps
-
-```
- ℹ️  [INFO] - Application started
- ⚠️  [WARN] - Cache miss
- ✅ [SUCCESS] - Task completed
- ❌ [ERROR] - Connection failed
-```
-
----
-
-## Configuration
-
-### Configuration Options
-
-| Setting | Function | Default |
-|---------|----------|---------|
-| Output file | `log_set_output_file` | `""` (disabled) |
-| Timestamp | `log_set_timestamp` | `1` (enabled) |
-| Datestamp | `log_set_datestamp` | `1` (show date) |
-| Output stream | `log_set_stream` | `stderr` |
-| Emoji (per level) | `log_set_emoji` | See defaults below |
-| Tag (per level) | `log_set_tag` | See defaults below |
-
-**Default Emojis and Tags:**
-- **info**: ` ℹ️ ` / ` [INFO] -`
-- **warn**: ` ⚠️ ` / ` [WARN] -`
-- **error**: ` ❌` / ` [ERROR] -`
-- **fatal**: ` ❌` / ` [FATAL] -`
-- **success**: ` ✅` / ` [SUCCESS] -`
-- **validation**: ` ❌` / ` [VALIDATION] -`
-
-### Performance Optimization
-
-The logger uses **dynamic function generation** - all logging functions are rebuilt when settings change:
-
-- **Zero format overhead** - output format is pre-built into each function
-- **No repeated checks** - timestamp/file logic baked into function body
-- **Per-level customization** - each level gets its own optimized function
-- **File output baked in** - file writes included only when configured
-
-This means minimal performance impact even in high-throughput logging scenarios.
-
----
-
-## Best Practices
-
-### 1. Configure Early
-
-```bash
-source logger.sh
-
-# Set up logging first
-log_set_output_file "/var/log/myapp.log"
-log_set_datestamp 0  # Time only
-
-# Then start logging
-info "Logger configured"
-```
-
-### 2. Use Appropriate Levels
-
-- `info` - Normal operation milestones
-- `success` - Successful completions
-- `warn` - Issues that don't stop execution
-- `error` - Errors that affect functionality
-- `fatal` - Critical errors (but doesn't exit automatically)
-- `validation_error` - Input validation failures
-
-### 3. Structured Logging
-
-```bash
-# Good: Context-rich messages
-info "Processing file: $filename (size: $filesize bytes)"
-error "Database connection failed (host: $DB_HOST, timeout: ${TIMEOUT}s)"
-
-# Avoid: Vague messages
-info "Processing"
-error "Failed"
-```
-
-### 4. Log Rotation
-
-```bash
-# Daily log files
-DATE=$(date +%Y%m%d)
-log_set_output_file "/var/log/myapp-${DATE}.log"
-
-# Or use logrotate for automatic rotation
-```
-
----
-
-## Requirements
-
-- **Bash 3.2+** (widely compatible)
-- **Pure Bash** - no external dependencies
-
----
-
-## License
-
-Part of DPS Bootstrap - NixOS Deployment System

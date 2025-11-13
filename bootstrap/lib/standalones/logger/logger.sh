@@ -2,15 +2,15 @@
 # ==================================================================================================
 # Logger - Standalone Feature
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-12 | Modified: 2025-11-12
-# Description:   Timestamped logging with multiple levels and optional file output
-# Feature:       info/warn/error/fatal/success, console output, file logging
+# Date:          Created: 2025-11-12 | Modified: 2025-11-13
+# Description:   Dynamic logging system with multiple levels and optional file output
+# Feature:       Dynamic logger creation, file logging, exit codes, emoji suppression
 # ==================================================================================================
+# shellcheck disable=SC1091  # Source not following
 
 # ==================================================================================================
 # VALIDATION & INITIALIZATION
 # ==================================================================================================
-
 # Prevent execution - this file must be sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     echo "Error: This script must be sourced, not executed" >&2
@@ -18,73 +18,197 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
-# ==================================================================================================
-# GLOBAL VARIABLES - Configuration
-# ==================================================================================================
-
-declare -g __LOG_OUTPUT_FILE=""                               # Optional file path for log output
-declare -g __LOG_TO_STDERR=1                                  # 1=log to stderr, 0=stdout
-declare -g __LOG_USE_TIMESTAMP=1                              # Show timestamp (1=yes, 0=no)
-declare -g __LOG_USE_DATESTAMP=1                              # Show date in timestamp (1=yes, 0=no)
-declare -g __LOG_INDENT=1                                     # Number of leading spaces (default: 1)
-
-# Default emojis and tags per level
-declare -g __LOG_INFO_EMOJI=" ℹ️ "
-declare -g __LOG_INFO_TAG=" [INFO] -"
-declare -g __LOG_WARN_EMOJI=" ⚠️ "
-declare -g __LOG_WARN_TAG=" [WARN] -"
-declare -g __LOG_ERROR_EMOJI=" ❌"
-declare -g __LOG_ERROR_TAG=" [ERROR] -"
-declare -g __LOG_FATAL_EMOJI=" ❌"
-declare -g __LOG_FATAL_TAG=" [FATAL] -"
-declare -g __LOG_SUCCESS_EMOJI=" ✅"
-declare -g __LOG_SUCCESS_TAG=" [SUCCESS] -"
-declare -g __LOG_VALIDATION_EMOJI=" ❌"
-declare -g __LOG_VALIDATION_TAG=" [VALIDATION] -"
 
 # ==================================================================================================
-# PUBLIC FUNCTIONS - Logging (dynamically generated)
+# GLOBAL VARIABLES - Configuration (using associative array to avoid pollution)
+# ==================================================================================================
+
+# Global configuration
+declare -gA __LOG_CFG=(
+    [output_file]=""
+    [use_timestamp]=1
+    [use_datestamp]=1
+    [indent]=1
+    [suppress_emojis]=0
+)
+
+# Logger registry: stores all registered loggers
+# Format: [function_name]="emoji:tag:exit_code"
+declare -gA __LOG_REGISTRY=()
+
+# ==================================================================================================
+# PUBLIC FUNCTIONS
 # ==================================================================================================
 
 # --------------------------------------------------------------------------------------------------
-# Public: Info message (dynamically generated at init)
-# Usage: info <message>
-info() { :; }
+# Public: Consolidated setter for logger options with argument parsing
+# Usage: log_set [options]
+# Options:
+#   --file PATH           Set output file path (directory must exist or be creatable)
+#   --timestamp BOOL      Enable/disable timestamp (1/0, true/false, on/off)
+#   --datestamp BOOL      Enable/disable datestamp (1/0, true/false, on/off)
+#   --indent NUMBER       Set number of leading spaces (must be >= 0)
+#   --suppress-emojis BOOL  Globally suppress emojis (1/0, true/false, on/off)
+# Example: log_set --file "./app.log" --timestamp 0 --indent 3
+log_set() {
+    local needs_reinit=0
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --file|--output)
+                # Disable file output if no value is provided
+                if [[ -z "${2:-}" ]] && [[ -n "${__LOG_CFG[output_file]}" ]]; then
+                    __LOG_CFG[output_file]=""
+                    needs_reinit=1
+                    shift 2
+                    return 0
+                fi
+
+                [[ -z "${2:-}" ]] && { echo "Error: --file requires a value" >&2; return 1; }
+                local value="$2"
+                if [[ -n "$value" ]]; then
+                    # Validate path - directory must exist or be creatable
+                    local dir
+                    dir="$(dirname "$value")" || { echo "Error: Invalid file path '$value'" >&2; return 1; }
+                    if [[ ! -d "$dir" ]]; then
+                        mkdir -p "$dir" 2>/dev/null || {
+                            echo "Error: Cannot create directory: $dir" >&2
+                            return 1
+                        }
+                    fi
+                    # Don't create file yet - will be created on first write
+                fi
+                __LOG_CFG[output_file]="$value"
+                needs_reinit=1
+                shift 2
+                ;;
+            --timestamp)
+                case "${2:-}" in
+                    1|true|on|enabled) __LOG_CFG[use_timestamp]=1 ;;
+                    0|false|off|disabled) __LOG_CFG[use_timestamp]=0 ;;
+                    *) echo "Error: Invalid --timestamp value '${2:-}' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                esac
+                needs_reinit=1
+                shift 2
+                ;;
+            --datestamp)
+                case "${2:-}" in
+                    1|true|on|enabled) __LOG_CFG[use_datestamp]=1 ;;
+                    0|false|off|disabled) __LOG_CFG[use_datestamp]=0 ;;
+                    *) echo "Error: Invalid --datestamp value '${2:-}' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                esac
+                needs_reinit=1
+                shift 2
+                ;;
+            --indent)
+                [[ -z "${2:-}" ]] && { echo "Error: --indent requires a value" >&2; return 1; }
+                if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: Invalid --indent value '$2' (must be a number >= 0)" >&2
+                    return 1
+                fi
+                __LOG_CFG[indent]="$2"
+                needs_reinit=1
+                shift 2
+                ;;
+            --suppress-emojis)
+                case "${2:-}" in
+                    1|true|on|enabled) __LOG_CFG[suppress_emojis]=1 ;;
+                    0|false|off|disabled) __LOG_CFG[suppress_emojis]=0 ;;
+                    *) echo "Error: Invalid --suppress-emojis value '${2:-}' (use: 1/0, true/false, on/off)" >&2; return 1 ;;
+                esac
+                needs_reinit=1
+                shift 2
+                ;;
+            *)
+                echo "Error: Unknown option '$1'" >&2
+                echo "Usage: log_set [options]" >&2
+                echo "Options: --file PATH, --timestamp BOOL, --datestamp BOOL," >&2
+                echo "         --indent NUMBER, --suppress-emojis BOOL" >&2
+                return 1
+                ;;
+        esac
+    done
+
+    # Only reinitialize once after all changes
+    [[ $needs_reinit -eq 1 ]] && __log_defineFN
+}
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Warning message (dynamically generated at init)
-# Usage: warn <message>
-warn() { :; }
+# Public: Create/register a new logger function
+# Usage: log_create_logger <name> [--emoji EMOJI] [--tag TAG] [--exit EXIT_CODE]
+# Example: log_create_logger "critical" --emoji " 🔥" --tag " [CRITICAL] -" --exit 99
+log_create_logger() {
+    local name="$1"
+    [[ -z "$name" ]] && { echo "Error: Logger name required" >&2; return 1; }
+    shift
+
+    local emoji=" 📝" tag=" [$name] -" exit_code="-1"
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --emoji) emoji="${2:-}"; shift 2 ;;
+            --tag) tag="${2:-}"; shift 2 ;;
+            --exit)
+                [[ ! "${2:-}" =~ ^-?[0-9]+$ ]] && { echo "Error: --exit must be a number" >&2; return 1; }
+                exit_code="$2"
+                shift 2
+                ;;
+            *) echo "Error: Unknown option '$1'" >&2; return 1 ;;
+        esac
+    done
+
+    # Register logger
+    __LOG_REGISTRY[$name]="$emoji:$tag:$exit_code"
+
+    # Regenerate all functions
+    __log_defineFN
+}
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Error message (dynamically generated at init)
-# Usage: error <message>
-error() { :; }
+# Public: Get current log output file path
+# Usage: file=$(log_get_file)
+log_get_file() { echo "${__LOG_CFG[output_file]}"; }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Fatal error message (dynamically generated at init)
-# Usage: fatal <message>
-fatal() { :; }
+# Public: Display contents of current log file
+# Usage: log_show_file
+log_show_file() {
+    if [[ -z "${__LOG_CFG[output_file]}" ]]; then
+        echo "Error: No log output file configured" >&2
+        return 1
+    fi
+
+    if [[ ! -f "${__LOG_CFG[output_file]}" ]]; then
+        echo "Error: Log file does not exist: ${__LOG_CFG[output_file]}" >&2
+        return 1
+    fi
+
+    cat "${__LOG_CFG[output_file]}"
+}
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Success message (dynamically generated at init)
-# Usage: success <message>
-success() { :; }
-# --------------------------------------------------------------------------------------------------
+# Public: Clear log file
+# Usage: log_clear_file
+log_clear_file() {
+    if [[ -z "${__LOG_CFG[output_file]}" ]]; then
+        echo "Error: No log output file configured" >&2
+        return 1
+    fi
 
+    if [[ -f "${__LOG_CFG[output_file]}" ]]; then
+        : > "${__LOG_CFG[output_file]}"
+        echo " ℹ️  [INFO] - Log file cleared: ${__LOG_CFG[output_file]}" >&2
+    else
+        echo "Warning: Log file does not exist: ${__LOG_CFG[output_file]}" >&2
+    fi
+}
 # --------------------------------------------------------------------------------------------------
-# Public: Validation error message (dynamically generated at init)
-# Usage: validation_error <message>
-validation_error() { :; }
-# --------------------------------------------------------------------------------------------------
-
-# ==================================================================================================
-# PUBLIC FUNCTIONS - Console helpers (not dynamically generated)
-# ==================================================================================================
 
 # --------------------------------------------------------------------------------------------------
 # Public: Simple console output (no timestamp, no prefix)
@@ -105,229 +229,83 @@ new_line() { printf "\n" >&2; }
 # --------------------------------------------------------------------------------------------------
 
 # ==================================================================================================
-# PUBLIC FUNCTIONS - Configuration
+# INTERNAL FUNCTIONS
 # ==================================================================================================
 
 # --------------------------------------------------------------------------------------------------
-# Public: Initialize/reinitialize all logging functions based on current settings
-# Usage: log_init
-# Note: Called automatically on source, call again after changing settings
-log_init() {
-    local indent_str fmt_str stream_redir console_printf file_printf
-
-    # Build indent string
-    printf -v indent_str '%*s' "$__LOG_INDENT" ''
-
-    # Determine output redirection
-    if [[ $__LOG_TO_STDERR -eq 1 ]]; then
-        stream_redir='>&2'
-    else
-        stream_redir=''
-    fi
-
-    # Generate each logging function
-    local levels=(
-        "info:$__LOG_INFO_EMOJI:$__LOG_INFO_TAG"
-        "warn:$__LOG_WARN_EMOJI:$__LOG_WARN_TAG"
-        "error:$__LOG_ERROR_EMOJI:$__LOG_ERROR_TAG"
-        "fatal:$__LOG_FATAL_EMOJI:$__LOG_FATAL_TAG"
-        "success:$__LOG_SUCCESS_EMOJI:$__LOG_SUCCESS_TAG"
-        "validation_error:$__LOG_VALIDATION_EMOJI:$__LOG_VALIDATION_TAG"
-    )
-
-    for level_spec in "${levels[@]}"; do
-        IFS=: read -r func_name emoji tag <<< "$level_spec"
-
-        # Build format string (indent + timestamp + placeholders)
-        if [[ $__LOG_USE_TIMESTAMP -eq 1 ]]; then
-            if [[ $__LOG_USE_DATESTAMP -eq 1 ]]; then
-                fmt_str="${indent_str}%(%Y-%m-%d %H:%M:%S)T%s%s %s\\n"
-            else
-                fmt_str="${indent_str}%(%H:%M:%S)T%s%s %s\\n"
-            fi
-            console_printf='printf "'"$fmt_str"'" "-1" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
-            file_printf='printf "'"$fmt_str"'" "-1" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
-        else
-            fmt_str="${indent_str}%s%s %s\\n"
-            console_printf='printf "'"$fmt_str"'" "'"$emoji"'" "'"$tag"'" "$1" '"$stream_redir"
-            file_printf='printf "'"$fmt_str"'" "'"$emoji"'" "'"$tag"'" "$1" >> "'"$__LOG_OUTPUT_FILE"'"'
-        fi
-
-        # Generate optimized one-liner function
-        if [[ -n "$__LOG_OUTPUT_FILE" ]]; then
-            source /dev/stdin <<<"${func_name}() { $console_printf; $file_printf; }"
-        else
-            source /dev/stdin <<<"${func_name}() { $console_printf; }"
-        fi
+# Internal: Define all logger functions
+# Usage: __log_defineFN
+__log_defineFN() {
+    # Iterate through registry and create each function
+    for func_name in "${!__LOG_REGISTRY[@]}"; do
+        __log_defineFN_single "$func_name"
     done
 }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Set log output file
-# Usage: log_set_output_file <filepath>
-# Note: Set to empty string to disable file output. Calls log_init() automatically.
-log_set_output_file() {
-    local file_path="$1"
+# Internal: Initialize single logger function based on current format settings
+# Usage: __log_defineFN_single <function_name>
+__log_defineFN_single() {
+    local func_name="$1"
+    local spec="${__LOG_REGISTRY[$func_name]}"
 
-    if [[ -n "$file_path" ]]; then
-        # Create directory if it doesn't exist
-        local dir
-        dir="$(dirname "$file_path")"
-        if [[ ! -d "$dir" ]]; then
-            mkdir -p "$dir" 2>/dev/null || {
-                printf "[ERROR] Cannot create directory for log output: %s\n" "$dir" >&2
-                return 1
-            }
+    # Parse spec: emoji:tag:exit_code
+    local emoji tag exit_code
+    IFS=: read -r emoji tag exit_code <<< "$spec"
+
+    # Check if we use emojis
+    [[ ${__LOG_CFG[suppress_emojis]} -eq 1 ]] && emoji=""
+
+    # Check if we exit
+    local ifExit=""
+    [[ -z "$exit_code" ]] || ifExit="exit $exit_code"
+
+    # Build default message
+    local fmt_msg="\${1:-\"<No message was passed> - called from \${FUNCNAME[1]}#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\"}"
+
+    # Build timestamp format
+    local ts_arg fmt_str
+    if [[ ${__LOG_CFG[use_timestamp]} -eq 1 ]]; then
+        ts_arg='-1 '
+        if [[ ${__LOG_CFG[use_datestamp]} -eq 1 ]]; then
+            printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' "%(%Y-%m-%d %H:%M:%S)T" "$emoji" "$tag"
+        else
+            printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' "%(%H:%M:%S)T" "$emoji" "$tag"
         fi
-
-        # Test if file is writable
-        if ! touch "$file_path" 2>/dev/null; then
-            printf "[ERROR] Cannot write to log output file: %s\n" "$file_path" >&2
-            return 1
-        fi
-
-        __LOG_OUTPUT_FILE="$file_path"
-        log_init
-        info "Log output file set: $file_path"
     else
-        __LOG_OUTPUT_FILE=""
-        log_init
-        info "Log output file disabled"
-    fi
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Get current log output file
-# Usage: file=$(log_get_output_file)
-log_get_output_file() {
-    echo "$__LOG_OUTPUT_FILE"
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Set timestamp display
-# Usage: log_set_timestamp <1|0>
-# Note: Calls log_init() automatically
-log_set_timestamp() {
-    local state="$1"
-    case "$state" in
-        1|true|on|enabled) __LOG_USE_TIMESTAMP=1 ;;
-        0|false|off|disabled) __LOG_USE_TIMESTAMP=0 ;;
-        *) echo "Error: Invalid state '$state' (use: 1/0/true/false)" >&2; return 1 ;;
-    esac
-    log_init
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Set datestamp display (date portion of timestamp)
-# Usage: log_set_datestamp <1|0>
-# Note: Calls log_init() automatically
-log_set_datestamp() {
-    local state="$1"
-    case "$state" in
-        1|true|on|enabled) __LOG_USE_DATESTAMP=1 ;;
-        0|false|off|disabled) __LOG_USE_DATESTAMP=0 ;;
-        *) echo "Error: Invalid state '$state' (use: 1/0/true/false)" >&2; return 1 ;;
-    esac
-    log_init
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Set output stream (stderr or stdout)
-# Usage: log_set_stream <stderr|stdout>
-# Note: Calls log_init() automatically
-log_set_stream() {
-    local stream="$1"
-    case "$stream" in
-        stderr|2) __LOG_TO_STDERR=1 ;;
-        stdout|1) __LOG_TO_STDERR=0 ;;
-        *) echo "Error: Invalid stream '$stream' (use: stderr/stdout)" >&2; return 1 ;;
-    esac
-    log_init
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Set emoji for a specific log level
-# Usage: log_set_emoji <level> <emoji>
-# Level: info, warn, error, fatal, success, validation
-# Note: Calls log_init() automatically
-log_set_emoji() {
-    local level="$1" emoji="$2"
-    case "$level" in
-        info) __LOG_INFO_EMOJI="$emoji" ;;
-        warn) __LOG_WARN_EMOJI="$emoji" ;;
-        error) __LOG_ERROR_EMOJI="$emoji" ;;
-        fatal) __LOG_FATAL_EMOJI="$emoji" ;;
-        success) __LOG_SUCCESS_EMOJI="$emoji" ;;
-        validation) __LOG_VALIDATION_EMOJI="$emoji" ;;
-        *) echo "Error: Invalid level '$level'" >&2; return 1 ;;
-    esac
-    log_init
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Set indent (number of leading spaces)
-# Usage: log_set_indent <number>
-# Note: Calls log_init() automatically
-log_set_indent() {
-    local indent="$1"
-    if [[ ! "$indent" =~ ^[0-9]+$ ]]; then
-        echo "Error: Invalid indent '$indent' (must be a number)" >&2
-        return 1
-    fi
-    __LOG_INDENT="$indent"
-    log_init
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Set tag for a specific log level
-# Usage: log_set_tag <level> <tag>
-# Level: info, warn, error, fatal, success, validation
-# Note: Calls log_init() automatically
-log_set_tag() {
-    local level="$1" tag="$2"
-    case "$level" in
-        info) __LOG_INFO_TAG="$tag" ;;
-        warn) __LOG_WARN_TAG="$tag" ;;
-        error) __LOG_ERROR_TAG="$tag" ;;
-        fatal) __LOG_FATAL_TAG="$tag" ;;
-        success) __LOG_SUCCESS_TAG="$tag" ;;
-        validation) __LOG_VALIDATION_TAG="$tag" ;;
-        *) echo "Error: Invalid level '$level'" >&2; return 1 ;;
-    esac
-    log_init
-}
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Public: Clear log file
-# Usage: log_clear_file
-log_clear_file() {
-    if [[ -z "$__LOG_OUTPUT_FILE" ]]; then
-        echo "Warning: No log output file configured" >&2
-        return 1
+        printf -v fmt_str '%*s%s%s%s' "${__LOG_CFG[indent]}" '' '' "$emoji" "$tag"
     fi
 
-    if [[ -f "$__LOG_OUTPUT_FILE" ]]; then
-        : > "$__LOG_OUTPUT_FILE"
-        # Don't use info() here - it would write to the file we just cleared
-        echo " ℹ️  [INFO] - Log file cleared: $__LOG_OUTPUT_FILE" >&2
+    # Generate logger function (using source /dev/stdin, NO eval)
+    if [[ -n "${__LOG_CFG[output_file]}" ]]; then
+        # shellcheck disable=SC2154
+        source /dev/stdin <<- EOF
+        $func_name() {
+            printf -v o '$fmt_str %s\\n' $ts_arg "$fmt_msg"
+            echo "\$o" >&2
+            echo "\$o" >> "${__LOG_CFG[output_file]}"
+            $ifExit
+        }
+EOF
     else
-        echo "Warning: Log file does not exist: $__LOG_OUTPUT_FILE" >&2
+        # Console only
+        source /dev/stdin <<<"$func_name() { printf '$fmt_str %s\\n' $ts_arg \"$fmt_msg\" >&2; }"; $ifExit
     fi
 }
 # --------------------------------------------------------------------------------------------------
 
 # ==================================================================================================
-# AUTO-INITIALIZATION
+# PRE-DEFINED LOGGERS & AUTO-INITIALIZATION
 # ==================================================================================================
+
+# Register predefined loggers
+__LOG_REGISTRY[info]=" ℹ️ : [INFO] -:-1"
+__LOG_REGISTRY[warn]=" ⚠️ : [WARN] -:-1"
+__LOG_REGISTRY[error]=" 💥 : [ERROR] -:-1"
+__LOG_REGISTRY[fatal]=" 💀 : [FATAL] -:1"
+__LOG_REGISTRY[pass]=" ✅ : [PASS] -:-1"
+__LOG_REGISTRY[fail]=" ❌ : [FAIL] -:-1"
 
 # Initialize all logging functions based on current settings
-log_init
+__log_defineFN
