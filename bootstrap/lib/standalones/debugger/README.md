@@ -16,9 +16,10 @@ Drop-in debug system that only prints when enabled. Extremely fast and efficient
 - **🔧 Custom debug variable** - Use any variable name, avoid conflicts
 - **📦 Minimal globals** - Single associative array for all config
 
----  
+
      
 ## Table of Contents <!-- omit in toc -->
+- [Requirements](#requirements)
 - [Quick Start](#quick-start)
 - [API Reference](#api-reference)
   - [Functions](#functions)
@@ -36,8 +37,10 @@ Drop-in debug system that only prints when enabled. Extremely fast and efficient
     - [When Enabled:](#when-enabled)
     - [When Disabled:](#when-disabled)
 - [Tests:](#tests)
-- [Requirements](#requirements)
----
+
+
+## Requirements
+- **Bash 4.0+** (for associative arrays and indirect variable expansion)
 
 ## Quick Start
 
@@ -60,7 +63,7 @@ debug "This shows up"
 
 **Why?** Prevents conflicts when multiple scripts/modules use different debug flags.
 
----
+
 
 ## API Reference
 
@@ -99,7 +102,7 @@ debug_set --timestamp 0
 debug_set --file "./logs/debug.log" --timestamp 0 --indent 3
 ```
 
----
+
 
 ## Usage Examples
 
@@ -229,7 +232,7 @@ if debug_is_enabled; then
 fi
 ```
 
----
+
 
 ## Performance Optimization
 
@@ -252,18 +255,18 @@ debug_is_enabled() { return 1; }
 debug_get_state() { echo "disabled"; }
 ```
 
----
-
 ## Tests:
 ```bash
 bash Test.sh
 
 # Expected output:
-# ...
+...
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                              TEST SUMMARY                                      ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║  Total Tests:    15                                                            ║
+║  Total Asserts:  39                                                            ║
+║  ✓ Passed:       39                                                            ║
+║  ✗ Failed:       0                                                             ║
+╚════════════════════════════════════════════════════════════════════════════════╝
 ```
-
-## Requirements
-- **Bash 4.0+** (for associative arrays and indirect variable expansion)
-- **Pure Bash** - no external dependencies
-
----

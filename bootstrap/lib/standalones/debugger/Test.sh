@@ -90,12 +90,12 @@ test_1_default_state() {
 test_2_enable_disable() {
     test_start "Enable and Disable"
 
-    debug_disable  # Ensure starting state
+    debug_disable silent  # Ensure starting state
 
-    debug_enable
+    debug_enable silent
     assert "debug_is_enabled" "Debug enabled"
 
-    debug_disable
+    debug_disable silent
     assert "! debug_is_enabled" "Debug disabled"
 }
 # --------------------------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ test_2_enable_disable() {
 test_3_toggle() {
     test_start "Toggle State"
 
-    debug_disable
+    debug_disable silent
     assert "! debug_is_enabled" "Starting disabled"
 
     debug_toggle
@@ -143,7 +143,7 @@ test_4_debug_set() {
 test_5_is_enabled() {
     test_start "Check Is Enabled"
 
-    debug_disable
+    debug_disable silent
     if debug_is_enabled; then
         TEST_FAILED=$((TEST_FAILED + 1))
         printf '  ✗ FAILED: debug_is_enabled returns false when disabled\n'
@@ -152,7 +152,7 @@ test_5_is_enabled() {
         printf '  ✓ debug_is_enabled returns false when disabled\n'
     fi
 
-    debug_enable
+    debug_enable silent
     if debug_is_enabled; then
         TEST_PASSED=$((TEST_PASSED + 1))
         printf '  ✓ debug_is_enabled returns true when enabled\n'
@@ -161,7 +161,7 @@ test_5_is_enabled() {
         printf '  ✗ FAILED: debug_is_enabled returns true when enabled\n'
     fi
 
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -190,13 +190,12 @@ test_7_file_output() {
     debug_set --file "$tmpfile"
 
     # Enable debug and write message
-    debug_enable
+    debug_enable silent
     debug "Test message for file"
 
     # Check if file contains the message
     local content
     content=$(cat "$tmpfile" 2>/dev/null)
-
     assert_contains "$content" "Test message for file" "Message written to file"
     assert_contains "$content" "[DEBUG]" "Contains DEBUG prefix"
 
@@ -205,7 +204,7 @@ test_7_file_output() {
 
     # Clean up
     rm -f "$tmpfile"
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -213,16 +212,16 @@ test_7_file_output() {
 test_8_get_state() {
     test_start "Get State String"
 
-    debug_disable
+    debug_disable silent
     local state
     state=$(debug_get_state)
     assert_equal "$state" "disabled" "State is 'disabled'"
 
-    debug_enable
+    debug_enable silent
     state=$(debug_get_state)
     assert_equal "$state" "enabled" "State is 'enabled'"
 
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -230,7 +229,7 @@ test_8_get_state() {
 test_9_emoji_customization() {
     test_start "Emoji Customization"
 
-    debug_enable
+    debug_enable silent
 
     # Set custom emoji
     debug_set --emoji " 🔧"
@@ -244,7 +243,7 @@ test_9_emoji_customization() {
 
     # Reset to default
     debug_set --emoji " 🚧"
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -252,7 +251,7 @@ test_9_emoji_customization() {
 test_10_tag_customization() {
     test_start "Tag Customization"
 
-    debug_enable
+    debug_enable silent
 
     # Set custom tag
     debug_set --tag " [CUSTOM] -"
@@ -266,7 +265,7 @@ test_10_tag_customization() {
 
     # Reset to default
     debug_set --tag " [DEBUG] -"
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -274,7 +273,7 @@ test_10_tag_customization() {
 test_11_timestamp_toggle() {
     test_start "Timestamp Toggle"
 
-    debug_enable
+    debug_enable silent
 
     # Disable timestamp
     debug_set --timestamp 0
@@ -300,7 +299,7 @@ test_11_timestamp_toggle() {
         assert "false" "Timestamp present when enabled"
     fi
 
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -308,7 +307,7 @@ test_11_timestamp_toggle() {
 test_12_datestamp_toggle() {
     test_start "Datestamp Toggle"
 
-    debug_enable
+    debug_enable silent
 
     # Disable datestamp (time only)
     debug_set --datestamp 0
@@ -334,7 +333,7 @@ test_12_datestamp_toggle() {
         assert "false" "Date present when datestamp enabled"
     fi
 
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -342,8 +341,8 @@ test_12_datestamp_toggle() {
 test_13_combined_settings() {
     test_start "Combined Settings (No Timestamp, Custom Emoji/Tag)"
 
-    debug_enable
-    
+    debug_enable silent
+
     # Test setting multiple options at once
     debug_set --timestamp 0 --emoji " ⚡" --tag " [TEST] -"
 
@@ -364,7 +363,7 @@ test_13_combined_settings() {
 
     # Reset all to defaults (using single call)
     debug_set --timestamp 1 --datestamp 1 --emoji " 🚧" --tag " [DEBUG] -"
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -372,7 +371,7 @@ test_13_combined_settings() {
 test_14_indent_customization() {
     test_start "Indent Customization"
 
-    debug_enable
+    debug_enable silent
 
     # Test default indent (1 space)
     local output_default
@@ -404,7 +403,7 @@ test_14_indent_customization() {
 
     # Reset to default
     debug_set --indent 1
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -412,7 +411,7 @@ test_14_indent_customization() {
 test_15_default_message() {
     test_start "Default Message (No Argument Passed)"
 
-    debug_enable
+    debug_enable silent
 
     # Call debug without message - should show caller info
     local output
@@ -421,13 +420,13 @@ test_15_default_message() {
     # Should contain the default message parts
     assert_contains "$output" "<No message was passed>" "Default message shown"
     assert_contains "$output" "called from" "Shows caller info"
-    assert_contains "$output" "line" "Shows line number"
+    assert_contains "$output" "#" "Shows line number"
 
     # Call debug with empty string - should use default
     output=$(debug "" 2>&1)
     assert_contains "$output" "<No message was passed>" "Empty string triggers default message"
 
-    debug_disable
+    debug_disable silent
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -500,10 +499,10 @@ test_summary() {
     printf '\n╔════════════════════════════════════════════════════════════════════════════════╗\n'
     printf '║                              TEST SUMMARY                                      ║\n'
     printf '╠════════════════════════════════════════════════════════════════════════════════╣\n'
-    printf '║  Total Tests:    %-58s  ║\n' "$TEST_COUNT"
-    printf '║  Total Asserts:  %-58s  ║\n' "$((TEST_PASSED + TEST_FAILED))"
-    printf '║  ✓ Passed:       %-58s  ║\n' "$TEST_PASSED"
-    printf '║  ✗ Failed:       %-58s  ║\n' "$TEST_FAILED"
+    printf '║  Total Tests:    %-60s  ║\n' "$TEST_COUNT"
+    printf '║  Total Asserts:  %-60s  ║\n' "$((TEST_PASSED + TEST_FAILED))"
+    printf '║  ✓ Passed:       %-60s  ║\n' "$TEST_PASSED"
+    printf '║  ✗ Failed:       %-60s  ║\n' "$TEST_FAILED"
     printf '╚════════════════════════════════════════════════════════════════════════════════╝\n'
 
     if [[ $TEST_FAILED -eq 0 ]]; then
