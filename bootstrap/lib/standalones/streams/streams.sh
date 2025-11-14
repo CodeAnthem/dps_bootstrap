@@ -515,11 +515,12 @@ __streams_defineFN_single() {
     safe_file_path=$(printf '%q' "$file_path")
     
     # Build console and file output statements using command printf --
+    # Note: Single backslash before $ for runtime evaluation in generated function
     local console_cmd=""
-    [[ "$console_out" == "1" ]] && console_cmd="command printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
+    [[ "$console_out" == "1" ]] && console_cmd="command printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
     
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="command printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path};"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="command printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path};"
     
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then

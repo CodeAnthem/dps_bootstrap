@@ -212,6 +212,7 @@ main() {
     test_12_stdout_safety
     test_13_combined_settings
     test_14_special_characters
+    test_15_default_message
 
     test_summary
 }
@@ -224,25 +225,28 @@ main() {
 test_1_predefined_functions() {
     test_start "Predefined Functions Exist and Execute"
 
-    # Test all predefined functions exist
-    capture_all output "Output test"
-    assert_contains "$CAPTURED_OUTPUT" "Output test" "output() executes"
+    capture_all output "Output test message"
+    assert_contains "$CAPTURED_OUTPUT" "Output test message" "output() executes with message"
+    assert_contains "$CAPTURED_OUTPUT" "Output test message" "output() shows actual message"
 
-    capture_all info "Info test"
+    capture_all info "Info test message"
     assert_contains "$CAPTURED_OUTPUT" "[INFO]" "info() has INFO tag"
+    assert_contains "$CAPTURED_OUTPUT" "Info test message" "info() shows actual message"
 
-    capture_all warn "Warn test"
+    capture_all warn "Warn test message"
     assert_contains "$CAPTURED_OUTPUT" "[WARN]" "warn() has WARN tag"
+    assert_contains "$CAPTURED_OUTPUT" "Warn test message" "warn() shows actual message"
 
-    capture_all error "Error test"
+    capture_all error "Error test message"
     assert_contains "$CAPTURED_OUTPUT" "[ERROR]" "error() has ERROR tag"
+    assert_contains "$CAPTURED_OUTPUT" "Error test message" "error() shows actual message"
 
-    capture_all pass "Pass test"
+    capture_all pass "Pass test message"
     assert_contains "$CAPTURED_OUTPUT" "[PASS]" "pass() has PASS tag"
+    assert_contains "$CAPTURED_OUTPUT" "Pass test message" "pass() shows actual message"
 
-    # Debug is NOP by default
     capture_all debug "Debug test"
-    assert_equal "$CAPTURED_OUTPUT" "" "debug() is NOP by default"
+    assert "[[ -z \"$CAPTURED_OUTPUT\" ]]" "debug() is NOP by default"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -251,10 +255,11 @@ test_2_channel_routing_logger() {
     test_start "Channel Routing - Logger Channel (fd3)"
 
     # Logger channel should route to fd3
-    capture_all info "Test message"
+    capture_all info "Logger test message content"
     
-    assert_contains "$CAPTURED_OUTPUT" "Test message" "Logger channel output captured"
+    assert_contains "$CAPTURED_OUTPUT" "Logger test message content" "Logger channel shows actual message"
     assert_contains "$CAPTURED_OUTPUT" "[INFO]" "Logger channel includes tag"
+    assert_contains "$CAPTURED_OUTPUT" "ℹ️" "Logger channel includes emoji"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -264,15 +269,12 @@ test_3_channel_routing_debug() {
 
     # Enable debug first
     stream_function debug --enable
-
-    # Debug channel should route to fd4
-    capture_all debug "Debug message"
     
-    assert_contains "$CAPTURED_OUTPUT" "Debug message" "Debug channel output captured"
+    capture_all debug "Debug channel test message"
+    
+    assert_contains "$CAPTURED_OUTPUT" "Debug channel test message" "Debug channel shows actual message"
     assert_contains "$CAPTURED_OUTPUT" "[DEBUG]" "Debug channel includes tag"
-
-    # Disable debug for other tests
-    stream_function debug --disable
+    assert_contains "$CAPTURED_OUTPUT" "🐛" "Debug channel includes emoji"
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -589,6 +591,31 @@ test_14_special_characters() {
     # Test message with special chars (passed as argument, not embedded in format)
     capture_all info "Message with % and ' and \\"
     assert_contains "$CAPTURED_OUTPUT" "Message with % and ' and \\" "Special chars in message work"
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+test_15_default_message() {
+    test_start "Default Message Feature (no argument provided)"
+
+    # Test default message with info
+    capture_all info
+    assert_contains "$CAPTURED_OUTPUT" "<No message>" "Default message shows '<No message>'"
+    assert_contains "$CAPTURED_OUTPUT" "test_15_default_message" "Default message shows calling function name"
+    
+    # Test default message with warn
+    capture_all warn
+    assert_contains "$CAPTURED_OUTPUT" "<No message>" "warn default message works"
+    assert_contains "$CAPTURED_OUTPUT" "test_15_default_message" "warn default message shows caller"
+    
+    # Test default message with error
+    capture_all error
+    assert_contains "$CAPTURED_OUTPUT" "<No message>" "error default message works"
+    
+    # Verify message IS provided when argument given
+    capture_all info "Actual message"
+    assert_contains "$CAPTURED_OUTPUT" "Actual message" "Provided message appears"
+    assert "[[ \"$CAPTURED_OUTPUT\" != *'<No message>'* ]]" "No default when message provided"
 }
 # --------------------------------------------------------------------------------------------------
 
