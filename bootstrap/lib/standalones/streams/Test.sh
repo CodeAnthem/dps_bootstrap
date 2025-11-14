@@ -635,7 +635,7 @@ test_16_output_file_behavior() {
     tmpfile=$(mktemp)
 
     # Enable file output for stdout channel
-    stream_set_channel stdout --file-path "$tmpfile"
+    stream_set_channel stdout --file-path "$tmpfile" --file 1
 
     # Test output() - console is plain, file is formatted
     capture_all output "Test output message"
