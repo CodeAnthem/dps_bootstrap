@@ -496,10 +496,7 @@ __streams_defineFN_single() {
     local ifExit=""
     [[ "$exit_code" == "-1" ]] || ifExit="exit $exit_code;"
     
-    # Build default message
-    local fmt_msg="\${1:-\"<No message was passed> - called from \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\"}"
-    
-    # Build console format string
+    # Build console format string (% already escaped in emoji/tag)
     __streams_build_format "console" "$emoji" "$tag"
     local console_fmt="$__STREAMS_FMT_RESULT"
     local ts_arg="$__STREAMS_TS_ARG"
@@ -508,18 +505,21 @@ __streams_defineFN_single() {
     __streams_build_format "file" "$emoji" "$tag"
     local file_fmt="$__STREAMS_FMT_RESULT"
     
-    # Escape format strings for safe embedding (use printf %q for shell-safe quoting)
-    local safe_console_fmt safe_file_fmt safe_file_path
-    safe_console_fmt=$(printf '%q' "$console_fmt %s\\n")
-    safe_file_fmt=$(printf '%q' "$file_fmt %s\\n")
+    # Escape single quotes in format strings for safe embedding in single-quoted eval
+    # (% already escaped, now handle ' by replacing with '\'' for shell safety)
+    console_fmt="${console_fmt//\'/\'\\\'\'}"
+    file_fmt="${file_fmt//\'/\'\\\'\'}"
+    
+    # Escape file path using printf %q (handles spaces, quotes, etc.)
+    local safe_file_path
     safe_file_path=$(printf '%q' "$file_path")
     
     # Build console and file output statements using command printf --
     local console_cmd=""
-    [[ "$console_out" == "1" ]] && console_cmd="command printf -- $safe_console_fmt $ts_arg \"\\\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
+    [[ "$console_out" == "1" ]] && console_cmd="command printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
     
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="command printf -- $safe_file_fmt $ts_arg \"\\\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >> $safe_file_path;"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="command printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path};"
     
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then
