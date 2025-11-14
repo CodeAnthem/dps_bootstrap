@@ -18,6 +18,14 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
+# Bash version check - require 4.2+ for associative arrays and printf %(...)T
+if [[ -z "${BASH_VERSINFO[0]}" ]] || [[ "${BASH_VERSINFO[0]}" -lt 4 ]] || \
+   [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -lt 2 ]]; then
+    echo "Error: Bash 4.2 or higher required (you have ${BASH_VERSION:-unknown})" >&2
+    echo "Required features: associative arrays, printf %(...)T timestamp format" >&2
+    return 1 2>/dev/null || exit 1
+fi
+
 
 # ==================================================================================================
 # GLOBAL VARIABLES - Configuration
@@ -50,10 +58,8 @@ declare -gA __STREAMS_CONFIG=(
     [FORMAT::CONSOLE::DATE]=1
     [FORMAT::CONSOLE::TIME]=1
     [FORMAT::CONSOLE::INDENT]=1
-    [FORMAT::CONSOLE::TAB]=0
     [FORMAT::FILE::DATE]=1
     [FORMAT::FILE::TIME]=1
-    [FORMAT::FILE::TAB]=0
     [FORMAT::SUPPRESS_EMOJIS]=0
     
     # Predefined function registry
@@ -319,31 +325,14 @@ stream_set_format() {
                     echo "Error: Invalid --indent value '$2' (must be a number >= 0)" >&2
                     return 1
                 fi
-                if [[ -n "$format" ]]; then
-                    if [[ "$format" == "console" ]]; then
+                case "${1}" in
+                    console|file)
+                        __STREAMS_CONFIG[FORMAT::${1^^}::INDENT]="$2"
+                        ;;
+                    *)
                         __STREAMS_CONFIG[FORMAT::CONSOLE::INDENT]="$2"
-                        needs_reinit=1
-                    else
-                        echo "Warning: --indent only applies to console format" >&2
-                    fi
-                else
-                    __STREAMS_CONFIG[FORMAT::CONSOLE::INDENT]="$2"
-                    needs_reinit=1
-                fi
-                shift 2
-                ;;
-            --tab)
-                [[ -z "${2:-}" ]] && { echo "Error: --tab requires a value" >&2; return 1; }
-                if [[ ! "$2" =~ ^[0-9]+$ ]]; then
-                    echo "Error: Invalid --tab value '$2' (must be a number >= 0)" >&2
-                    return 1
-                fi
-                if [[ -n "$format" ]]; then
-                    __STREAMS_CONFIG[FORMAT::${format^^}::TAB]="$2"
-                else
-                    __STREAMS_CONFIG[FORMAT::CONSOLE::TAB]="$2"
-                    __STREAMS_CONFIG[FORMAT::FILE::TAB]="$2"
-                fi
+                        ;;
+                esac
                 needs_reinit=1
                 shift 2
                 ;;
@@ -473,10 +462,13 @@ __streams_defineFN_all() {
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Internal: Define single stream function
+# Internal: Define single stream function (hardened with safe escaping)
 # Usage: __streams_defineFN_single <function_name>
 __streams_defineFN_single() {
     local func_name="$1"
+    
+    # Unset existing function to ensure clean replacement
+    unset -f "$func_name" 2>/dev/null || :
     
     # Get function attributes
     local emoji="${__STREAMS_CONFIG[FUNC::${func_name}::EMOJI]}"
@@ -487,7 +479,7 @@ __streams_defineFN_single() {
     
     # If NOP, generate no-op function
     if [[ "$is_nop" == "1" ]]; then
-        source /dev/stdin <<<"${func_name}() { :; }"
+        eval "${func_name}() { :; }"
         return 0
     fi
     
@@ -516,25 +508,31 @@ __streams_defineFN_single() {
     __streams_build_format "file" "$emoji" "$tag"
     local file_fmt="$__STREAMS_FMT_RESULT"
     
-    # Build console and file output statements
+    # Escape format strings for safe embedding (use printf %q for shell-safe quoting)
+    local safe_console_fmt safe_file_fmt safe_file_path
+    safe_console_fmt=$(printf '%q' "$console_fmt %s\\n")
+    safe_file_fmt=$(printf '%q' "$file_fmt %s\\n")
+    safe_file_path=$(printf '%q' "$file_path")
+    
+    # Build console and file output statements using command printf --
     local console_cmd=""
-    [[ "$console_out" == "1" ]] && console_cmd="printf '$console_fmt %s\n' $ts_arg \"$fmt_msg\" >&${channel_fd};"
+    [[ "$console_out" == "1" ]] && console_cmd="command printf -- $safe_console_fmt $ts_arg \"\\\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
     
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf '$file_fmt %s\n' $ts_arg \"$fmt_msg\" >> \"$file_path\";"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="command printf -- $safe_file_fmt $ts_arg \"\\\${1:-\\\"<No message> - \\\${FUNCNAME[1]}()#\\\${BASH_LINENO[0]} in \\\${BASH_SOURCE[1]}\\\"}\" >> $safe_file_path;"
     
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then
-        source /dev/stdin <<<"${func_name}() { $console_cmd $file_cmd $ifExit }"
+        eval "${func_name}() { $console_cmd $file_cmd $ifExit }"
     else
         # No output (NOP)
-        source /dev/stdin <<<"${func_name}() { :; }"
+        eval "${func_name}() { :; }"
     fi
 }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Internal: Build format string for console or file
+# Internal: Build format string for console or file (with % escaping for user content)
 # Usage: __streams_build_format <console|file> <emoji> <tag>
 # Result: Sets __STREAMS_FMT_RESULT and __STREAMS_TS_ARG
 __streams_build_format() {
@@ -547,11 +545,15 @@ __streams_build_format() {
         emoji=""
     fi
     
+    # Escape % in user-supplied content to prevent format string injection
+    # (% needs to be %% in printf format strings, except for %(...)T)
+    emoji="${emoji//%/%%}"
+    tag="${tag//%/%%}"
+    
     # Get format settings
     local use_date="${__STREAMS_CONFIG[FORMAT::${format_type}::DATE]}"
     local use_time="${__STREAMS_CONFIG[FORMAT::${format_type}::TIME]}"
     local indent="${__STREAMS_CONFIG[FORMAT::${format_type}::INDENT]:-0}"
-    local tab="${__STREAMS_CONFIG[FORMAT::${format_type}::TAB]}"
     
     # Build format string
     local fmt_parts=""
@@ -562,7 +564,7 @@ __streams_build_format() {
         printf -v fmt_parts '%*s' "$indent" ''
     fi
     
-    # Add timestamp
+    # Add timestamp (%(...)T tokens are safe, not user-supplied)
     if [[ "$use_date" == "1" && "$use_time" == "1" ]]; then
         fmt_parts="${fmt_parts}%(%Y-%m-%d %H:%M:%S)T"
         __STREAMS_TS_ARG="-1 "
@@ -571,17 +573,8 @@ __streams_build_format() {
         __STREAMS_TS_ARG="-1 "
     fi
     
-    # Add emoji and tag
+    # Add emoji and tag (already escaped)
     fmt_parts="${fmt_parts}${emoji}${tag}"
-    
-    # Add tab alignment if specified
-    if [[ "$tab" -gt 0 ]]; then
-        # Calculate current length for alignment
-        local current_len=${#fmt_parts}
-        if [[ "$current_len" -lt "$tab" ]]; then
-            printf -v fmt_parts "%-${tab}s" "$fmt_parts"
-        fi
-    fi
     
     __STREAMS_FMT_RESULT="$fmt_parts"
 }

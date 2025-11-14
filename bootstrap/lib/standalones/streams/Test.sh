@@ -211,6 +211,7 @@ main() {
     test_11_exit_codes
     test_12_stdout_safety
     test_13_combined_settings
+    test_14_special_characters
 
     test_summary
 }
@@ -557,6 +558,37 @@ test_13_combined_settings() {
     stream_set_channel logger --file-path ""
 
     rm -f "$tmpfile"
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+test_14_special_characters() {
+    test_start "Special Characters (%, ', \\, newlines in tags/emojis)"
+
+    # Test % sign escaping in custom tag
+    stream_function "test_percent" --emoji " % " --tag " [TEST%100] -" --channel "stderr" --exit -1
+    capture_all test_percent "Percent test"
+    
+    assert_contains "$CAPTURED_OUTPUT" "Percent test" "Message with % in tag works"
+    assert_contains "$CAPTURED_OUTPUT" "[TEST%100]" "Tag with % sign renders correctly"
+
+    # Test single quote in tag
+    stream_function "test_quote" --emoji " ' " --tag " [IT'S] -" --channel "stderr" --exit -1
+    capture_all test_quote "Quote test"
+    
+    assert_contains "$CAPTURED_OUTPUT" "Quote test" "Message with ' in tag works"
+    assert_contains "$CAPTURED_OUTPUT" "[IT'S]" "Tag with single quote renders correctly"
+
+    # Test backslash in tag
+    stream_function "test_backslash" --emoji " \\ " --tag " [PATH\\TEST] -" --channel "stderr" --exit -1
+    capture_all test_backslash "Backslash test"
+    
+    assert_contains "$CAPTURED_OUTPUT" "Backslash test" "Message with \\ in tag works"
+    assert_contains "$CAPTURED_OUTPUT" "[PATH" "Tag with backslash renders"
+
+    # Test message with special chars (passed as argument, not embedded in format)
+    capture_all info "Message with % and ' and \\"
+    assert_contains "$CAPTURED_OUTPUT" "Message with % and ' and \\" "Special chars in message work"
 }
 # --------------------------------------------------------------------------------------------------
 
