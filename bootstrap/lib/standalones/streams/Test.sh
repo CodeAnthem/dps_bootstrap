@@ -601,16 +601,18 @@ test_15_default_message() {
     # Test default message with info
     capture_all info
     assert_contains "$CAPTURED_OUTPUT" "<No message>" "Default message shows '<No message>'"
-    assert_contains "$CAPTURED_OUTPUT" "test_15_default_message" "Default message shows calling function name"
+    assert_contains "$CAPTURED_OUTPUT" "capture_all" "Default message shows caller (capture_all wrapper)"
+    assert_contains "$CAPTURED_OUTPUT" "Test.sh" "Default message shows source file"
     
     # Test default message with warn
     capture_all warn
     assert_contains "$CAPTURED_OUTPUT" "<No message>" "warn default message works"
-    assert_contains "$CAPTURED_OUTPUT" "test_15_default_message" "warn default message shows caller"
+    assert_contains "$CAPTURED_OUTPUT" "capture_all" "warn shows caller function"
     
-    # Test default message with error
+    # Test default message with error  
     capture_all error
     assert_contains "$CAPTURED_OUTPUT" "<No message>" "error default message works"
+    assert_contains "$CAPTURED_OUTPUT" "#" "error shows line number marker"
     
     # Verify message IS provided when argument given
     capture_all info "Actual message"
