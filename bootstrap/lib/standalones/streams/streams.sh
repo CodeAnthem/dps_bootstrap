@@ -63,11 +63,11 @@ declare -gA __STREAMS_CONFIG=(
     [FORMAT::SUPPRESS_EMOJIS]=0
     
     # Predefined function registry
-    [FUNC::output::EMOJI]=""
-    [FUNC::output::TAG]=""
-    [FUNC::output::CHANNEL]="stdout"
-    [FUNC::output::EXIT]="-1"
-    [FUNC::output::NOP]="0"
+    [FUNC::log::EMOJI]=""
+    [FUNC::log::TAG]=""
+    [FUNC::log::CHANNEL]="stdout"
+    [FUNC::log::EXIT]="-1"
+    [FUNC::log::NOP]="0"
     
     [FUNC::info::EMOJI]=" ℹ️ "
     [FUNC::info::TAG]=" [INFO] -"
@@ -113,7 +113,7 @@ declare -gA __STREAMS_CONFIG=(
 )
 
 # Registry to track all defined functions (for iteration)
-declare -g -a __STREAMS_FUNCTIONS=("output" "info" "warn" "error" "fatal" "pass" "fail" "debug")
+declare -g -a __STREAMS_FUNCTIONS=("log" "info" "warn" "error" "fatal" "pass" "fail" "debug")
 
 
 # ==================================================================================================
@@ -455,9 +455,54 @@ stream_function() {
 # Internal: Define all stream functions
 # Usage: __streams_defineFN_all
 __streams_defineFN_all() {
+    # Generate special output() function first
+    __streams_defineFN_output
+    
+    # Generate regular functions
     for func_name in "${__STREAMS_FUNCTIONS[@]}"; do
         __streams_defineFN_single "$func_name"
     done
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+# Internal: Define output() function - mimics echo with optional file logging
+# Usage: __streams_defineFN_output
+# Note: output() always writes to stdout (fd1) with NO formatting
+#       If stdout channel has file output enabled, writes to file WITH formatting
+__streams_defineFN_output() {
+    # Unset existing function
+    unset -f "output" 2>/dev/null || :
+    
+    # Get stdout channel file settings
+    local file_out="${__STREAMS_CONFIG[CHANNEL::stdout::FILE]}"
+    local file_path="${__STREAMS_CONFIG[CHANNEL::stdout::FILE_PATH]}"
+    
+    # Build file format (empty emoji/tag for output, but keep timestamp if enabled)
+    __streams_build_format "file" "" ""
+    local file_fmt="$__STREAMS_FMT_RESULT"
+    local ts_arg="$__STREAMS_TS_ARG"
+    
+    # Escape single quotes in format string
+    file_fmt="${file_fmt//\'/\'\\\'\'}"
+    
+    # Escape file path
+    local safe_file_path
+    safe_file_path=$(printf '%q' "$file_path")
+    
+    # Build function
+    # Console: plain echo (true echo behavior)
+    # File: formatted output (with timestamp if enabled)
+    local file_cmd=""
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"\\\"}\" >> ${safe_file_path};"
+    
+    if [[ -n "$file_cmd" ]]; then
+        # With file output
+        eval "output() { echo \"\$@\"; ${file_cmd} }"
+    else
+        # Console only
+        eval "output() { echo \"\$@\"; }"
+    fi
 }
 # --------------------------------------------------------------------------------------------------
 
@@ -514,13 +559,13 @@ __streams_defineFN_single() {
     local safe_file_path
     safe_file_path=$(printf '%q' "$file_path")
     
-    # Build console and file output statements using command printf --
+    # Build console and file output statements
     # Note: Single backslash before $ for runtime evaluation in generated function
     local console_cmd=""
-    [[ "$console_out" == "1" ]] && console_cmd="command printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
+    [[ "$console_out" == "1" ]] && console_cmd="printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >&${channel_fd};"
     
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="command printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path};"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path};"
     
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then

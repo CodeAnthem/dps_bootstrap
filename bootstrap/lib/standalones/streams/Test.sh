@@ -213,6 +213,7 @@ main() {
     test_13_combined_settings
     test_14_special_characters
     test_15_default_message
+    test_16_output_file_behavior
 
     test_summary
 }
@@ -225,9 +226,14 @@ main() {
 test_1_predefined_functions() {
     test_start "Predefined Functions Exist and Execute"
 
+    # Test output() - plain output, no formatting
     capture_all output "Output test message"
-    assert_contains "$CAPTURED_OUTPUT" "Output test message" "output() executes with message"
-    assert_contains "$CAPTURED_OUTPUT" "Output test message" "output() shows actual message"
+    assert_contains "$CAPTURED_OUTPUT" "Output test message" "output() shows message"
+    assert "[[ \"$CAPTURED_OUTPUT\" != *'[INFO]'* ]]" "output() has NO tag (plain)"
+    
+    # Test log() - formatted output
+    capture_all log "Log test message"
+    assert_contains "$CAPTURED_OUTPUT" "Log test message" "log() shows message"
 
     capture_all info "Info test message"
     assert_contains "$CAPTURED_OUTPUT" "[INFO]" "info() has INFO tag"
@@ -618,6 +624,45 @@ test_15_default_message() {
     capture_all info "Actual message"
     assert_contains "$CAPTURED_OUTPUT" "Actual message" "Provided message appears"
     assert "[[ \"$CAPTURED_OUTPUT\" != *'<No message>'* ]]" "No default when message provided"
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+test_16_output_file_behavior() {
+    test_start "output() File Behavior (plain console, formatted file)"
+
+    local tmpfile
+    tmpfile=$(mktemp)
+
+    # Enable file output for stdout channel
+    stream_set_channel stdout --file-path "$tmpfile"
+
+    # Test output() - console is plain, file is formatted
+    capture_all output "Test output message"
+    
+    # Console should be plain (no timestamp)
+    assert_contains "$CAPTURED_OUTPUT" "Test output message" "output() console shows message"
+    assert "[[ \"$CAPTURED_OUTPUT\" != *':'* ]]" "output() console has NO timestamp"
+    
+    # File should have timestamp (formatted)
+    local file_content
+    file_content=$(cat "$tmpfile")
+    assert_contains "$file_content" "Test output message" "output() file contains message"
+    
+    # Check if file has timestamp pattern (YYYY-MM-DD HH:MM:SS)
+    if [[ "$file_content" =~ [0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2} ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        printf '  ✓ output() file has timestamp (formatted)\n'
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        printf '  ✗ FAILED: output() file missing timestamp\n'
+        printf "    File content: '%s'\n" "$file_content"
+    fi
+
+    # Clear file path
+    stream_set_channel stdout --file-path ""
+
+    rm -f "$tmpfile"
 }
 # --------------------------------------------------------------------------------------------------
 
