@@ -2,9 +2,9 @@
 # ==================================================================================================
 # Streams - Test Suite
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-13 | Modified: 2025-11-13
+# Date:          Created: 2025-11-13 | Modified: 2025-11-25
 # Description:   Test suite for Streams standalone feature
-# Feature:       Tests for channels, functions, routing, format settings
+# Feature:       Tests for channels, functions, routing, format settings, FD management
 # ==================================================================================================
 # shellcheck disable=SC1090  # Can't follow non-constant source
 # shellcheck disable=SC1091  # Source not following
@@ -55,10 +55,16 @@ declare -g TEST_FAILED=0
 declare -g TEST_FW_VERSION="1.0.0"
 
 # --------------------------------------------------------------------------------------------------
-# Initialize test framework - detect open file descriptors
-# Usage: __test_fw_init
-__test_fw_init() {
-    # Detect open FDs (2-9) and build redirect string
+# Capture output from all open file descriptors
+# Usage: capture_all <command> [args...]
+# Result: Sets CAPTURED_OUTPUT global variable
+# Note: Runs command in subshell to handle exit codes safely
+#       Dynamically detects open FDs at runtime (for dynamic FD management)
+capture_all() {
+    local tmpfile
+    tmpfile=$(mktemp)
+    
+    # Build FD redirect string dynamically
     local fd_redirects=""
     for fd in {2..9}; do
         if { true >&$fd; } 2>/dev/null; then
@@ -66,24 +72,9 @@ __test_fw_init() {
         fi
     done
     
-    # Export for use in capture function
-    declare -g __TEST_FW_FD_REDIRECTS="$fd_redirects"
-}
-__test_fw_init # necessary for capture_all to work
-# --------------------------------------------------------------------------------------------------
-
-# --------------------------------------------------------------------------------------------------
-# Capture output from all open file descriptors
-# Usage: capture_all <command> [args...]
-# Result: Sets CAPTURED_OUTPUT global variable
-# Note: Runs command in subshell to handle exit codes safely
-capture_all() {
-    local tmpfile
-    tmpfile=$(mktemp)
-    
     # Run in subshell with all FD redirects, capture to file
     # shellcheck disable=SC2086
-    ( eval "\"\$@\" $__TEST_FW_FD_REDIRECTS" ) > "$tmpfile" 2>&1
+    ( eval "\"\$@\" $fd_redirects" ) > "$tmpfile" 2>&1
     
     CAPTURED_OUTPUT=$(cat "$tmpfile")
     rm -f "$tmpfile"
@@ -676,10 +667,12 @@ test_17_fd_management() {
     assert "[[ $? -eq 0 ]]" "FD 1 (stdout) is always available"
     
     # Test FD 3-9 are automatically opened
-    # Create function on a custom FD
-    __STREAMS_CONFIG[CHANNEL::test_custom::FD]=5
-    __STREAMS_CONFIG[CHANNEL::test_custom::CONSOLE]=1
-    stream_function "test_fd5" --channel "test_custom" --emoji "" --tag ""
+    # Temporarily change debug channel to use FD 5
+    local original_debug_fd="${__STREAMS_CONFIG[CHANNEL::debug::FD]}"
+    __STREAMS_CONFIG[CHANNEL::debug::FD]=5
+    
+    # Regenerate debug function (should open FD 5)
+    stream_function "debug" --enable
     assert "[[ $? -eq 0 ]]" "FD 5 can be used"
     
     # Verify FD 5 is now tracked
@@ -692,11 +685,16 @@ test_17_fd_management() {
     done
     assert "[[ $found -eq 1 ]]" "FD 5 is tracked in registry"
     
+    # Restore debug channel FD
+    __STREAMS_CONFIG[CHANNEL::debug::FD]="$original_debug_fd"
+    
     # Test FD > 9 causes error
-    __STREAMS_CONFIG[CHANNEL::test_invalid::FD]=10
-    __STREAMS_CONFIG[CHANNEL::test_invalid::CONSOLE]=1
-    stream_function "test_fd10" --channel "test_invalid" --emoji "" --tag "" 2>/dev/null
+    __STREAMS_CONFIG[CHANNEL::debug::FD]=10
+    stream_function "debug" --enable 2>/dev/null
     assert "[[ $? -ne 0 ]]" "FD 10 (out of range) causes error"
+    
+    # Restore debug channel FD again
+    __STREAMS_CONFIG[CHANNEL::debug::FD]="$original_debug_fd"
     
     # Test stream_cleanup closes FDs
     local fds_before="${#__STREAMS_OPENED_FDS[@]}"
@@ -705,11 +703,8 @@ test_17_fd_management() {
     assert "[[ $fds_after -eq 0 ]]" "stream_cleanup clears FD registry"
     assert "[[ $fds_before -gt 0 ]]" "FD registry had entries before cleanup"
     
-    # Clean up test channels
-    unset '__STREAMS_CONFIG[CHANNEL::test_custom::FD]'
-    unset '__STREAMS_CONFIG[CHANNEL::test_custom::CONSOLE]'
-    unset '__STREAMS_CONFIG[CHANNEL::test_invalid::FD]'
-    unset '__STREAMS_CONFIG[CHANNEL::test_invalid::CONSOLE]'
+    # Re-initialize all functions with correct FDs
+    __streams_defineFN_all
 }
 # --------------------------------------------------------------------------------------------------
 
