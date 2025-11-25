@@ -100,7 +100,7 @@ curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.
 ```
 **DEV**: Run the one-liner
 ```bash
-curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash -s -- --dev
+curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash -s -- --dev -n
 ```
 
 3. **Manual**: Clone and run the main script
