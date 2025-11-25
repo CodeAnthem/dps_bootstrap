@@ -28,6 +28,7 @@ Drop-in logging/debug system with 4 independent output channels. 9 predefined fu
   - [Custom Functions](#custom-functions)
   - [Format Customization](#format-customization)
   - [Default Message Feature](#default-message-feature)
+  - [Cleanup](#cleanup)
 - [Performance](#performance)
 - [Tests](#tests)
 
@@ -82,6 +83,13 @@ stream_function <name> [--emoji STR] [--tag STR] [--channel NAME] [--exit CODE] 
 ```
 - **Channels:** `stdout`, `stderr`, `logger`, `debug`
 - **Exit:** Number or `-1` for no exit
+
+**Cleanup:**
+```bash
+stream_cleanup
+```
+- Closes all opened FDs (3-9) and clears registry
+- Typically called at script exit or when streams no longer needed
 
 ### Options
 
@@ -173,6 +181,17 @@ info
 # Output: 2025-11-13 17:30:45 ℹ️  [INFO] - <No message> - main()#42 in script.sh
 ```
 
+### Cleanup
+
+```bash
+# Clean up FDs at script exit
+trap stream_cleanup EXIT
+
+# Or manually
+info "Last message"
+stream_cleanup  # Closes FD3, FD4, etc.
+```
+
 ## Performance
 
 **Generated Function:**
@@ -190,6 +209,12 @@ warn() { :; }  # literal no-op
 - NOP functions are literal `:` (zero overhead)
 - Config changes regenerate all functions (~0.002-0.003s)
 
+**FD Management:**
+- FD 1-2 (stdout, stderr) always available
+- FD 3-9 automatically opened on first use (if needed)
+- Tracked in registry, closed via `stream_cleanup()`
+- FD outside 1-9 range causes error
+
 ## Tests
 
 ```bash
@@ -199,11 +224,11 @@ bash Test.sh
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                              TEST SUMMARY                                      ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
-║  Total Tests:    16                                                            ║
-║  Total Asserts:  50+                                                           ║
-║  ✓ Passed:       50+                                                           ║
+║  Total Tests:    17                                                            ║
+║  Total Asserts:  57                                                            ║
+║  ✓ Passed:       57                                                            ║
 ║  ✗ Failed:       0                                                             ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-**Coverage:** All functions, channels, file output, formatting, NOP control, exit codes, special characters, default messages.
+**Coverage:** All functions, channels, file output, formatting, NOP control, exit codes, special characters, default messages, FD management (validation, opening, cleanup).

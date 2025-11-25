@@ -214,6 +214,7 @@ main() {
     test_14_special_characters
     test_15_default_message
     test_16_output_file_behavior
+    test_17_fd_management
 
     test_summary
 }
@@ -663,6 +664,52 @@ test_16_output_file_behavior() {
     stream_set_channel stdout --file-path ""
 
     rm -f "$tmpfile"
+}
+# --------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------
+test_17_fd_management() {
+    test_start "FD Management (validation, opening, cleanup)"
+
+    # Test FD 1-2 are always available (no error)
+    stream_function "test_fd1" --channel "stdout" --emoji "" --tag ""
+    assert "[[ $? -eq 0 ]]" "FD 1 (stdout) is always available"
+    
+    # Test FD 3-9 are automatically opened
+    # Create function on a custom FD
+    __STREAMS_CONFIG[CHANNEL::test_custom::FD]=5
+    __STREAMS_CONFIG[CHANNEL::test_custom::CONSOLE]=1
+    stream_function "test_fd5" --channel "test_custom" --emoji "" --tag ""
+    assert "[[ $? -eq 0 ]]" "FD 5 can be used"
+    
+    # Verify FD 5 is now tracked
+    local found=0
+    for fd in "${__STREAMS_OPENED_FDS[@]}"; do
+        if [[ "$fd" -eq 5 ]]; then
+            found=1
+            break
+        fi
+    done
+    assert "[[ $found -eq 1 ]]" "FD 5 is tracked in registry"
+    
+    # Test FD > 9 causes error
+    __STREAMS_CONFIG[CHANNEL::test_invalid::FD]=10
+    __STREAMS_CONFIG[CHANNEL::test_invalid::CONSOLE]=1
+    stream_function "test_fd10" --channel "test_invalid" --emoji "" --tag "" 2>/dev/null
+    assert "[[ $? -ne 0 ]]" "FD 10 (out of range) causes error"
+    
+    # Test stream_cleanup closes FDs
+    local fds_before="${#__STREAMS_OPENED_FDS[@]}"
+    stream_cleanup
+    local fds_after="${#__STREAMS_OPENED_FDS[@]}"
+    assert "[[ $fds_after -eq 0 ]]" "stream_cleanup clears FD registry"
+    assert "[[ $fds_before -gt 0 ]]" "FD registry had entries before cleanup"
+    
+    # Clean up test channels
+    unset '__STREAMS_CONFIG[CHANNEL::test_custom::FD]'
+    unset '__STREAMS_CONFIG[CHANNEL::test_custom::CONSOLE]'
+    unset '__STREAMS_CONFIG[CHANNEL::test_invalid::FD]'
+    unset '__STREAMS_CONFIG[CHANNEL::test_invalid::CONSOLE]'
 }
 # --------------------------------------------------------------------------------------------------
 

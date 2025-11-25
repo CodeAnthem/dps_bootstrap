@@ -2,7 +2,7 @@
 # ==================================================================================================
 # Streams - Standalone Feature
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-13 | Modified: 2025-11-13
+# Date:          Created: 2025-11-13 | Modified: 2025-11-25
 # Description:   Unified channel-based output system with dynamic function generation
 # Feature:       Multi-channel routing (stdout, stderr, logger, debug), file output, NOP control
 # ==================================================================================================
@@ -113,17 +113,11 @@ declare -gA __STREAMS_CONFIG=(
 )
 
 # Registry to track all defined functions (for iteration)
-declare -g -a __STREAMS_FUNCTIONS=("log" "info" "warn" "error" "fatal" "pass" "fail" "debug")
+declare -ga __STREAMS_FUNCTIONS=("log" "info" "warn" "error" "fatal" "pass" "fail" "debug")
 
-
-# ==================================================================================================
-# FD INITIALIZATION
-# ==================================================================================================
-
-# Open FD3 (logger) and FD4 (debug) as duplicates of stderr
-# This is safe for interactive shells and works correctly in subshells
-exec 3>&2
-exec 4>&2
+# FD registry - tracks which FDs (3-9) have been opened by streams
+# Empty array = no FDs opened yet. Array elements are FD numbers that have been opened.
+declare -ga __STREAMS_OPENED_FDS=()
 
 
 # ==================================================================================================
@@ -446,6 +440,72 @@ stream_function() {
 }
 # --------------------------------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------------------------------
+# Public: Close all opened file descriptors (except 1 and 2)
+# Usage: stream_cleanup
+# Note: Call this to clean up FDs opened by streams (typically at script exit)
+stream_cleanup() {
+    local fd
+    
+    # Close all FDs tracked in registry
+    for fd in "${__STREAMS_OPENED_FDS[@]}"; do
+        # Safety check: only close FDs 3-9
+        if [[ "$fd" -ge 3 && "$fd" -le 9 ]]; then
+            eval "exec ${fd}>&-" 2>/dev/null || :
+        fi
+    done
+    
+    # Clear registry
+    __STREAMS_OPENED_FDS=()
+}
+# --------------------------------------------------------------------------------------------------
+
+
+# ==================================================================================================
+# INTERNAL FUNCTIONS - FD Management
+# ==================================================================================================
+
+# --------------------------------------------------------------------------------------------------
+# Internal: Validate and ensure FD is open
+# Usage: __streams_ensure_fd <fd_number>
+# Returns: 0 on success, 1 on error
+__streams_ensure_fd() {
+    local fd="$1"
+    
+    # Validate FD is a number
+    if ! [[ "$fd" =~ ^[0-9]+$ ]]; then
+        echo "Error: FD must be a number, got: $fd" >&2
+        return 1
+    fi
+    
+    # FD 1-2 are always available (stdout, stderr)
+    if [[ "$fd" -eq 1 || "$fd" -eq 2 ]]; then
+        return 0
+    fi
+    
+    # FD 3-9 are allowed and managed
+    if [[ "$fd" -ge 3 && "$fd" -le 9 ]]; then
+        # Check if already opened
+        for opened_fd in "${__STREAMS_OPENED_FDS[@]}"; do
+            if [[ "$opened_fd" -eq "$fd" ]]; then
+                return 0  # Already open
+            fi
+        done
+        
+        # Open FD as duplicate of stderr
+        eval "exec ${fd}>&2"
+        
+        # Track in registry
+        __STREAMS_OPENED_FDS+=("$fd")
+        return 0
+    fi
+    
+    # FD outside 1-9 range is an error
+    echo "Error: FD must be in range 1-9, got: $fd" >&2
+    return 1
+}
+# --------------------------------------------------------------------------------------------------
+
 
 # ==================================================================================================
 # INTERNAL FUNCTIONS - Function Generation
@@ -533,6 +593,12 @@ __streams_defineFN_single() {
     local file_out="${__STREAMS_CONFIG[CHANNEL::${channel}::FILE]}"
     local file_path="${__STREAMS_CONFIG[CHANNEL::${channel}::FILE_PATH]}"
     local channel_fd="${__STREAMS_CONFIG[CHANNEL::${channel}::FD]}"
+    
+    # Ensure FD is valid and open (if needed)
+    if ! __streams_ensure_fd "$channel_fd"; then
+        echo "Error: Failed to ensure FD $channel_fd for function $func_name (channel: $channel)" >&2
+        return 1
+    fi
     
     # Apply emoji suppression
     [[ "${__STREAMS_CONFIG[FORMAT::SUPPRESS_EMOJIS]}" == "1" ]] && emoji=""
@@ -631,8 +697,8 @@ __streams_build_format() {
 # AUTO-INITIALIZATION
 # ==================================================================================================
 
-# Initialize all functions based on current settings
+# Auto-initialization happens on source for immediate usability based on current settings.
+# If you modify settings after sourcing, call __streams_defineFN_all manually to regenerate functions.
 __streams_defineFN_all
 
-# Note: Auto-initialization happens on source for immediate usability.
-# If you modify settings after sourcing, call __streams_defineFN_all manually to regenerate functions.
+
