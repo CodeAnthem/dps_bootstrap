@@ -34,8 +34,7 @@ readonly XBASHLIB_LIB_DIR="${SCRIPT_DIR}/xBashLib" # Directory for standalone li
 source "${XBASHLIB_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
 import_named "${XBASHLIB_LIB_DIR}/trapMultiplexer" # Signal handler
 import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
-# trap_named "streamsCleanup" 'stream_cleanup' EXIT --priority -999 # Cleanup FDs on exit (lowest priority = runs LAST)
-trap_named "streamsCleanup" 'stream_cleanup' EXIT # Debug test
+trap_named "streamsCleanup" 'stream_cleanup' EXIT --priority -999 # Cleanup FDs on exit (lowest priority = runs LAST)
 
 # Debug ENV control
 if [[ "${NDS_DEBUG:-}" == "true" ]]; then stream_function debug --enable; fi

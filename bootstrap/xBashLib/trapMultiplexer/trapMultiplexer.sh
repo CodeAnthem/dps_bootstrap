@@ -632,7 +632,7 @@ __trap_register_handler() {
     
     # Append to registry
     if [[ -n "${__TRAP_REGISTRY[$sig]:-}" ]]; then
-        __TRAP_REGISTRY[$sig]+=" $__TRAP_RDEL$handler_key"
+        __TRAP_REGISTRY[$sig]+="$__TRAP_RDEL$handler_key"
     else
         __TRAP_REGISTRY[$sig]="$handler_key"
     fi

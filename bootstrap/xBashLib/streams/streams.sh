@@ -446,7 +446,6 @@ stream_function() {
 # Note: Call this to clean up FDs opened by streams (typically at script exit)
 # IMPORTANT: Do NOT call debug/info/etc here - we're closing those FDs!
 stream_cleanup() {
-    echo "stream_cleanup called" >&2
     local fd
     
     # Close all FDs tracked in registry
