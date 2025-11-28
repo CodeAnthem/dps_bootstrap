@@ -43,7 +43,10 @@ if [[ "${NDS_DEBUG:-}" == "false" ]]; then stream_function debug --disable; fi
 # IMPORT NDS LIBRARIES
 import_dir "${LIB_DIR}/output"
 import_dir "${LIB_DIR}/genericHelpers"
-
+import_dir "${LIB_DIR}/actionHandlers"
+import_named "${LIB_DIR}/configurator"
+import_named "${LIB_DIR}/partitionTools"
+pass "Bootstrapper 'NDS' libraries loaded"
 
 # ----------------------------------------------------------------------------------
 # EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS
@@ -106,12 +109,6 @@ if nds_arg_has "--help"; then _main_help; fi
 # ----------------------------------------------------------------------------------
 # MAIN WORKFLOW
 # ----------------------------------------------------------------------------------
-# Import script libraries
-import_dir "${LIB_DIR}/actionHandlers"
-import_named "${LIB_DIR}/configurator"
-import_named "${LIB_DIR}/partitionTools"
-pass "Bootstrapper 'NDS' libraries loaded"
-
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
 
