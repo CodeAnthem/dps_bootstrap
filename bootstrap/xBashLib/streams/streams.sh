@@ -628,14 +628,15 @@ __streams_defineFN_single() {
     
     # Build console and file output statements with FD error protection
     # Note: Single backslash before $ for runtime evaluation in generated function
+    # Note: Using $* to capture all arguments (allows: info this is unquoted)
     local console_cmd=""
     if [[ "$console_out" == "1" ]]; then
         # Wrap console output with FD check and error handling
-        console_cmd="if ! printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >&${channel_fd} 2>/dev/null; then printf '[STREAM ERROR] %s called after stream_cleanup. Message: %s\\n' '${func_name}' \"\${1:-<no message>}\" >&2; fi;"
+        console_cmd="if ! printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${*:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >&${channel_fd} 2>/dev/null; then printf '[STREAM ERROR] %s called after stream_cleanup. Message: %s\\n' '${func_name}' \"\${*:-<no message>}\" >&2; fi;"
     fi
     
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path} 2>/dev/null;"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${*:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path} 2>/dev/null;"
     
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then
