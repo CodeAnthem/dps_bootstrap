@@ -444,6 +444,7 @@ stream_function() {
 # Public: Close all opened file descriptors (except 1 and 2)
 # Usage: stream_cleanup
 # Note: Call this to clean up FDs opened by streams (typically at script exit)
+# IMPORTANT: Do NOT call debug/info/etc here - we're closing those FDs!
 stream_cleanup() {
     local fd
     

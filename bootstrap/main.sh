@@ -50,8 +50,8 @@ import_dir "${LIB_DIR}/actionHandlers"
 # EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS 
 # ----------------------------------------------------------------------------------
 # Trap register functions of exitHandler.sh 
-trap _nds_trap_onInterrupt SIGINT
-trap _nds_trap_onExit EXIT
+# trap _nds_trap_onInterrupt SIGINT
+# trap _nds_trap_onExit EXIT
 
 # shellcheck disable=SC2329
 _main_scriptExitMessage() {
@@ -80,6 +80,10 @@ _main_onCleanup() {
 };
 nds_trap_registerCleanup _main_onCleanup # Register cleanup function in exitHandler.sh
 nds_hook_register "exit_cleanup" "hook_exit_cleanup" # Register cleanup hook of action
+
+# Register trap handlers using trap multiplexer for proper signal handling
+# trap_named "ndsExitHandler" '_nds_trap_onExit' EXIT
+# trap_named "ndsInterruptHandler" '_nds_trap_onInterrupt' SIGINT
 
 # ----------------------------------------------------------------------------------
 # INITIALIZE
@@ -115,6 +119,7 @@ if nds_arg_has "--help"; then _main_help; fi
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
 info good so far
+trap_debug
 exit
 
 tui::body_append "$(date '+%Y-%m-%d %H:%M:%S') Discovered ${#ACTION_NAMES[@]} actions"
