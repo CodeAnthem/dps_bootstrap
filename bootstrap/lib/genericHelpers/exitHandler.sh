@@ -85,3 +85,7 @@ _nds_trap_onInterrupt() {
     echo || true # print new_line to keep UI tidy if user pressed ^C during a prompt
     exit 130
 }
+
+# Register traps
+trap _nds_trap_onInterrupt SIGINT
+trap _nds_trap_onExit EXIT

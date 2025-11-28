@@ -34,7 +34,8 @@ readonly XBASHLIB_LIB_DIR="${SCRIPT_DIR}/xBashLib" # Directory for standalone li
 source "${XBASHLIB_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
 import_named "${XBASHLIB_LIB_DIR}/trapMultiplexer" # Signal handler
 import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
-trap_named "streamsCleanup" 'stream_cleanup' EXIT --priority -999 # Cleanup FDs on exit (lowest priority = runs LAST)
+# trap_named "streamsCleanup" 'stream_cleanup' EXIT --priority -999 # Cleanup FDs on exit (lowest priority = runs LAST)
+trap_named "streamsCleanup" 'stream_cleanup' EXIT # Debug test
 
 # Debug ENV control
 if [[ "${NDS_DEBUG:-}" == "true" ]]; then stream_function debug --enable; fi
@@ -49,10 +50,6 @@ import_dir "${LIB_DIR}/actionHandlers"
 # ----------------------------------------------------------------------------------
 # EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS 
 # ----------------------------------------------------------------------------------
-# Trap register functions of exitHandler.sh 
-trap _nds_trap_onInterrupt SIGINT
-trap _nds_trap_onExit EXIT
-
 # shellcheck disable=SC2329
 _main_scriptExitMessage() {
     local exitCode=$?
@@ -73,13 +70,11 @@ nds_hook_register "exit_msg" "hook_exit_msg" # Register exit message hook of act
 # shellcheck disable=SC2329
 _main_onCleanup() {
     local exitCode="$1"
-    echo "is this ever executed: _main_onCleanup()"
     info "Cleaning up session"
     nds_hook_call "exit_cleanup" "$exitCode" || true # Call cleanup hook
 };
 nds_trap_registerCleanup _main_onCleanup # Register cleanup function in exitHandler.sh
 nds_hook_register "exit_cleanup" "hook_exit_cleanup" # Register cleanup hook of action
-
 
 
 # ----------------------------------------------------------------------------------
