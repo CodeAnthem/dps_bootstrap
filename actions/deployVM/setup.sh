@@ -156,7 +156,6 @@ action_setup() {
         if ! nds_cfg_validate_all; then
             echo 4
             error "Configuration validation failed"
-            set -x
             exit 11
         fi
         echo 5
