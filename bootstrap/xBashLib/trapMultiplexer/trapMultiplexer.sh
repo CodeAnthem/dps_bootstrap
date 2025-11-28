@@ -2,7 +2,7 @@
 # ==================================================================================================
 # Trap Multiplexer - Standalone Feature
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-09 | Modified: 2025-11-12
+# Date:          Created: 2025-11-09 | Modified: 2025-11-28
 # Description:   Advanced signal handler stacking with priorities, limits, and exit policies
 # Feature:       Named handlers, priority execution, one-shot/N-shot, exit policies
 # ==================================================================================================
@@ -74,7 +74,7 @@ __TRAP_EXIT_POLICY["SIGINT"]="force"
 # --------------------------------------------------------------------------------------------------
 # Public: Override builtin trap to support handler stacking
 # Usage: trap <code> <signal>...
-# Note: Creates anonymous handler. Use trap_named for named handlers.
+# Note: Creates anonymous handler. Use trap_named for named handlers with priority control.
 trap() {
     # Delegate special options to builtin
     # shellcheck disable=SC2064
@@ -83,29 +83,57 @@ trap() {
     esac
     
     local code="$1"; shift
-    local sig name
+    local sig
     
+    # Loop allows: trap 'code' EXIT TERM INT (registers for multiple signals)
     for sig in "$@"; do
-        __trap_register_handler "$sig" "" "$code"
+        __trap_register_handler -s "$sig" -c "$code"
     done
 }
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Public: Register named handler
-# Usage: trap_named <name> <code> <signal>...
+# Public: Register named handler with optional priority
+# Usage: trap_named <name> <code> <signal>... [--priority NUM]
 trap_named() {
     local name="$1" code="$2"
     shift 2
     
     if [[ -z "$name" || -z "$code" ]]; then
-        error "Usage: trap_named <name> <code> <signal>..."
+        error "Usage: trap_named <name> <code> <signal>... [--priority NUM]"
         return 1
     fi
     
+    # Parse signals and optional priority
+    local -a signals=()
+    local priority=""
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --priority)
+                priority="${2:-}"
+                shift 2
+                ;;
+            *)
+                signals+=("$1")
+                shift
+                ;;
+        esac
+    done
+    
+    if [[ ${#signals[@]} -eq 0 ]]; then
+        error "At least one signal required"
+        return 1
+    fi
+    
+    # Loop allows: trap_named "name" "code" EXIT TERM INT --priority 10
     local sig
-    for sig in "$@"; do
-        __trap_register_handler "$sig" "$name" "$code"
+    for sig in "${signals[@]}"; do
+        if [[ -n "$priority" ]]; then
+            __trap_register_handler -s "$sig" -n "$name" -c "$code" -p "$priority"
+        else
+            __trap_register_handler -s "$sig" -n "$name" -c "$code"
+        fi
     done
 }
 # --------------------------------------------------------------------------------------------------
@@ -554,11 +582,33 @@ __trap_execute_handler() {
 # --------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------
-# Private: Register handler with metadata
-# Usage: __trap_register_handler <signal> <name> <code>
-# Note: If name is empty, generates anonymous name
+# Private: Register handler with metadata (argument-based)
+# Usage: __trap_register_handler -s <signal> -c <code> [-n <name>] [-p <priority>]
+# Required: -s (signal), -c (code)
+# Optional: -n (name, auto-generated if empty), -p (priority, default 0)
 __trap_register_handler() {
-    local sig="$1" name="$2" code="$3"
+    local sig="" name="" code="" priority="0"
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s) sig="$2"; shift 2;;
+            -n) name="$2"; shift 2;;
+            -c) code="$2"; shift 2;;
+            -p) priority="$2"; shift 2;;
+            *) error "Unknown argument: $1"; return 1;;
+        esac
+    done
+    
+    # Validate required arguments
+    if [[ -z "$sig" ]]; then
+        error "Signal (-s) is required"
+        return 1
+    fi
+    if [[ -z "$code" ]]; then
+        error "Code (-c) is required"
+        return 1
+    fi
     
     # Generate anonymous name if not provided
     if [[ -z "$name" ]]; then
@@ -568,20 +618,27 @@ __trap_register_handler() {
     
     local handler_key="${sig}:${name}"
     
-    # Store handler data
+    # Store handler code
     __TRAP_HANDLER_CODE[$handler_key]="$code"
-    __TRAP_HANDLER_PRIORITY[$handler_key]="${__TRAP_HANDLER_PRIORITY[$handler_key]:-0}"
+    
+    # Use existing validation functions for priority
+    if [[ -n "$priority" ]]; then
+        trap_policy_priority_set "$handler_key" "$priority" || return 1
+    fi
+    
+    # Initialize limit and count
     __TRAP_HANDLER_LIMIT[$handler_key]="${__TRAP_HANDLER_LIMIT[$handler_key]:-0}"
     __TRAP_HANDLER_COUNT[$handler_key]=0
     
     # Append to registry
     if [[ -n "${__TRAP_REGISTRY[$sig]:-}" ]]; then
-        __TRAP_REGISTRY[$sig]+="$__TRAP_RDEL$handler_key"
+        __TRAP_REGISTRY[$sig]+=" $__TRAP_RDEL$handler_key"
     else
         __TRAP_REGISTRY[$sig]="$handler_key"
     fi
     
-    # Install dispatcher on first handler
+    # Install dispatcher - ALWAYS install to ensure it's set
+    # This ensures both trap() and trap_named() properly install the dispatcher
     if [[ -z "${__TRAP_INITIALIZED[$sig]:-}" ]]; then
         # shellcheck disable=SC2064
         builtin trap "__trap_dispatch '$sig'" "$sig"
@@ -592,7 +649,7 @@ __trap_register_handler() {
     # Update public last name variable
     TRAP_LAST_NAME="$handler_key"
     
-    debug "Registered handler: $handler_key"
+    debug "Registered handler: $handler_key (priority: $priority)"
 }
 # --------------------------------------------------------------------------------------------------
 

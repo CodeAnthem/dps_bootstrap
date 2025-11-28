@@ -34,7 +34,7 @@ readonly XBASHLIB_LIB_DIR="${SCRIPT_DIR}/xBashLib" # Directory for standalone li
 source "${XBASHLIB_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
 import_named "${XBASHLIB_LIB_DIR}/trapMultiplexer" # Signal handler
 import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
-trap_named "streamsCleanup" 'stream_cleanup' EXIT # Cleanup FDs on exit
+trap_named "streamsCleanup" 'stream_cleanup' EXIT --priority -999 # Cleanup FDs on exit (lowest priority = runs LAST)
 
 # Debug ENV control
 if [[ "${NDS_DEBUG:-}" == "true" ]]; then stream_function debug --enable; fi
@@ -57,7 +57,6 @@ trap _nds_trap_onExit EXIT
 _main_scriptExitMessage() {
     local exitCode=$?
     local exitMsg=""
-    echo "is this ever executed: _main_scriptExitMessage()"
     exitMsg=$(nds_hook_call "exit_msg" "$exitCode" || true)
 
     if [[ -n "$exitMsg" ]]; then
@@ -81,9 +80,7 @@ _main_onCleanup() {
 nds_trap_registerCleanup _main_onCleanup # Register cleanup function in exitHandler.sh
 nds_hook_register "exit_cleanup" "hook_exit_cleanup" # Register cleanup hook of action
 
-# Register trap handlers using trap multiplexer for proper signal handling
-# trap_named "ndsExitHandler" '_nds_trap_onExit' EXIT
-# trap_named "ndsInterruptHandler" '_nds_trap_onInterrupt' SIGINT
+
 
 # ----------------------------------------------------------------------------------
 # INITIALIZE
