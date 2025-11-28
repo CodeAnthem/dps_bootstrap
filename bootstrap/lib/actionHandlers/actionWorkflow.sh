@@ -235,7 +235,6 @@ nds_action_execute() {
 
     info "Executing $ACTION_CURRENT_NAME..."
     section_title "Action: $ACTION_CURRENT_NAME"
-    echo 123
     if ! action_setup; then # TODO: add hook here
         fatal "Action setup failed for: $ACTION_CURRENT_NAME"
     fi

@@ -140,7 +140,7 @@ action_setup() {
     NDS_ACTION_CONFIG_SOURCE="$(dirname "$0")/nixosConfiguration/deployVM.nix"
 
     # Description
-    console " ${action_description}"
+    console " ${ACTION_CURRENT_DESCRIPTION}"
     console " This will install a NixOS for managing NixOS nodes and include the following features:"
     console "  • Deployment tools (nixos-anywhere, deploy-rs)"
     console "  • Secrets management (age, sops)"
