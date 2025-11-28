@@ -58,18 +58,11 @@ _nds_trap_onExit() {
         console "$exitMsg"
     else
         case "$exitCode" in
-            0)
-                pass "Script completed successfully"
-                ;;
-            130)
-                warn "Script aborted by user"
-                ;;
-            200)
-                fatal "Internal error! - ${NDS_FATAL_MESSAGE:-}"
-                ;;
-            *)
-                warn "Script failed with exit code: $exitCode"
-                ;;
+            0) pass "Script completed successfully" ;;
+            11) error "Configuration validation failed";;
+            130) warn "Script aborted by user";;
+            200) fatal "Internal error! - ${NDS_FATAL_MESSAGE:-}";;
+            *) warn "Script failed with exit code: $exitCode";;
         esac
     fi
 
