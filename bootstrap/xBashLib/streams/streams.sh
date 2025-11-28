@@ -2,9 +2,10 @@
 # ==================================================================================================
 # Streams - Standalone Feature
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-13 | Modified: 2025-11-25
-# Description:   Unified channel-based output system with dynamic function generation
-# Feature:       Multi-channel routing (stdout, stderr, logger, debug), file output, NOP control
+# Date:         Created: 2025-11-13 | Modified: 2025-11-25
+# Description:  Unified channel-based output system with dynamic function generation
+# Feature:      Multi-channel routing (stdout, stderr, logger, debug), file output, NOP control
+# TODO:         Maybe add: console, new_line abilities (basicOutput.sh functions)
 # ==================================================================================================
 # shellcheck disable=SC1091  # Source not following
 
