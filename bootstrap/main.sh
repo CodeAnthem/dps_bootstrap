@@ -53,7 +53,7 @@ pass "Bootstrapper 'NDS' libraries loaded"
 # ----------------------------------------------------------------------------------
 # shellcheck disable=SC2329
 _main_scriptExitMessage() {
-    local exitCode=$?
+    local exitCode="${1:-0}"  # Receive exit code from caller
     local exitMsg=""
     exitMsg=$(nds_hook_call "exit_msg" "$exitCode" || true)
 

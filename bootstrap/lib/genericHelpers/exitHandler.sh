@@ -46,7 +46,8 @@ nds_trap_registerCleanup() {
 # It will call an optional hook "exit_msg" (hook may output a message),
 # display a default message otherwise, purge runtime dir and call "exit_cleanup" hook.
 _nds_trap_onExit() {
-    local exitCode=$?
+    # Use captured exit code from trap multiplexer (falls back to $? if not set)
+    local exitCode="${__TRAP_EXIT_CODE:-$?}"
     local exitMsg=""
 
     if [[ -n "${NDS_EXIT_REGISTER:-}" ]]; then

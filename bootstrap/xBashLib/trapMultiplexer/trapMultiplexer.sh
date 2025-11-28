@@ -57,11 +57,9 @@ declare -gA __TRAP_HANDLER_COUNT=()                           # Maps handler key
 declare -gA __TRAP_INITIALIZED=()                             # Maps signal -> 1 if dispatcher installed
 declare -gA __TRAP_EXIT_POLICY=()                             # Maps signal -> exit policy (always|once|never|force)
 declare -gA __TRAP_SUSPENDED=()                               # Maps signal -> 1 if suspended, 0 if active
-declare -g __TRAP_IN_EXIT=0                                   # Re-entrancy guard for EXIT signal
-declare -g __TRAP_FIRST_EXIT=""                               # First captured exit code during dispatch
-declare -g __TRAP_LAST_EXIT=""                                # Last captured exit code during dispatch
-declare -g __TRAP_EXIT_CALLED=0                               # Flag: 1 if exit() was called during dispatch
-declare -g __TRAP_EVAL_DISABLED=0                             # Safety: 1 disables eval, only allows functions
+declare -g __TRAP_IN_EXIT=0                                   # Flag: currently in EXIT trap (prevent recursion)
+declare -g __TRAP_EVAL_DISABLED=0                             # Flag: eval disabled (for debugging/safety)
+declare -g __TRAP_EXIT_CODE=0                                 # Exit code captured at trap dispatch time
 declare -g TRAP_LAST_NAME=""                                  # Public: Last registered handler name (with signal prefix)
 
 # Default exit policy for SIGINT - force exit after handlers complete
@@ -657,9 +655,12 @@ __trap_register_handler() {
 # Private: Main dispatcher - executes all handlers for a signal
 # Usage: __trap_dispatch <signal>
 __trap_dispatch() {
+    # CRITICAL: Capture $? FIRST before any other commands
+    __TRAP_EXIT_CODE=$?
+    
     local sig="$1"
     
-    debug "Trap dispatcher called for signal: $sig"
+    debug "Trap dispatcher called for signal: $sig (exit_code=$__TRAP_EXIT_CODE)"
     
     # Check if suspended
     if [[ "${__TRAP_SUSPENDED[$sig]:-0}" == "1" ]]; then
