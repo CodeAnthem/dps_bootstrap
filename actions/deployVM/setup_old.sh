@@ -115,7 +115,7 @@ deploy_vm_workflow() {
     
     new_section
     section_header "Installation Complete!"
-    success "Deploy VM installation completed successfully!"
+    pass "Deploy VM installation completed successfully!"
     echo
     printf "📋 Next steps:\n"
     printf "   1️⃣  Reboot the system\n"
@@ -175,7 +175,7 @@ managed_node_workflow() {
     # Install NixOS with flake and hardware override
     install_managed_node "$NDS_HOSTNAME" "$private_repo_path"
     
-    success "Managed node installation completed successfully!"
+    pass "Managed node installation completed successfully!"
     echo
     echo "Next steps:"
     echo "1. Reboot the system"

@@ -58,7 +58,7 @@ nds_runAsSudo() {
 
     # --- Root Check -------------------------------------------------------------
     if [[ $EUID -eq 0 ]]; then
-        success "Root privileges confirmed"
+        pass "Root privileges confirmed"
         return 0
     fi
 

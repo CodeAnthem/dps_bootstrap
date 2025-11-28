@@ -17,7 +17,7 @@ nds_partition_init() {
         return 1
     }
     
-    success "Partition tools initialized"
+    pass "Partition tools initialized"
     return 0
 }
 
@@ -111,7 +111,7 @@ nds_partition_run_from_config() {
             _nds_partition_manual_format_and_mount "$disk" "$root_dev" "$fs_type" "$separate_home" || return 1
         run_step "Setting up swap" \
             _nds_partition_manual_setup_swap "$disk" "$swap_mib" || true
-        success "Partitioning and mounting (fast) complete"
+        pass "Partitioning and mounting (fast) complete"
     else
         run_step "Running Disko partitioning strategy" \
             nds_partition_disko "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"

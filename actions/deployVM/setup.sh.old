@@ -123,7 +123,7 @@ install_system() {
     fi
     step_complete "NixOS installed"
 
-    success "System installation complete"
+    pass "System installation complete"
     return 0
 }
 
@@ -166,7 +166,7 @@ post_install_setup() {
     fi
     step_complete "Permissions set"
 
-    success "Post-install configuration complete"
+    pass "Post-install configuration complete"
     return 0
 }
 
@@ -288,7 +288,7 @@ setup() {
     # Show completion summary
     show_completion_summary
 
-    success "Deploy VM installation complete!"
+    pass "Deploy VM installation complete!"
     return 0
 }
 
@@ -330,7 +330,7 @@ install_deploy_tools() {
     chown -R 1000:1000 "$mnt_dest" 2>/dev/null || true
     
     step_complete "Deploy tools installed"
-    success "Deploy tools installed to: $deploy_tools_dest"
+    pass "Deploy tools installed to: $deploy_tools_dest"
     return 0
 }
 

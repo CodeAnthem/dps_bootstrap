@@ -47,7 +47,7 @@ nds_setupRuntimeDir() {
         return 1
     }
 
-    success "Created runtime directory: $NDS_RUNTIME_DIR"
+    pass "Created runtime directory: $NDS_RUNTIME_DIR"
     nds_trap_registerCleanup "nds_purgeRuntimeDir"
     return 0
 }
@@ -57,7 +57,7 @@ nds_setupRuntimeDir() {
 nds_purgeRuntimeDir() {
     if [[ -n "${NDS_RUNTIME_DIR:-}" && -d "$NDS_RUNTIME_DIR" ]]; then
         if rm -rf "$NDS_RUNTIME_DIR"; then
-            success "Removed runtime directory: $NDS_RUNTIME_DIR"
+            pass "Removed runtime directory: $NDS_RUNTIME_DIR"
         else
             error "Failed to remove runtime directory: $NDS_RUNTIME_DIR"
         fi

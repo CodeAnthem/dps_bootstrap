@@ -197,7 +197,7 @@ tui::_start_coproc_ticker() {
                     local new=() p
                     for p in "${_tk_pids[@]}"; do
                         if [[ "$p" == "$pid" ]]; then
-                            # update body: success or fail placeholder; actual output may follow via OUT
+                            # update body: pass or fail placeholder; actual output may follow via OUT
                             if (( status == 0 )); then
                                 local idx=${_tk_idx[$pid]:-0}
                                 tui::body_replace "$idx" "✅ ${_tk_label[$pid]}"

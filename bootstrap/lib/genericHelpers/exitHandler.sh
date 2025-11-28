@@ -65,7 +65,7 @@ _nds_trap_onExit() {
     else
         case "$exitCode" in
             0)
-                success "Script completed successfully"
+                pass "Script completed successfully"
                 ;;
             130)
                 warn "Script aborted by user"

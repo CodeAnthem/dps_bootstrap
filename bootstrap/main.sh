@@ -35,8 +35,6 @@ source "${XBASHLIB_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to imp
 import_named "${XBASHLIB_LIB_DIR}/trapMultiplexer" # Signal handler
 import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
 trap_named "streamsCleanup" 'stream_cleanup' EXIT # Cleanup FDs on exit
-info "Stuff loaded"
-exit
 
 # Debug ENV control
 if [[ "${NDS_DEBUG:-}" == "true" ]]; then stream_function debug --enable; fi
@@ -49,30 +47,24 @@ import_dir "${LIB_DIR}/actionHandlers"
 
 
 # ----------------------------------------------------------------------------------
-# HANDLING EXIT AND CLEANUP
+# EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS 
 # ----------------------------------------------------------------------------------
-# Register exit hooks
-nds_hook_register "exit_msg" "hook_exit_msg"
-nds_hook_register "exit_cleanup" "hook_exit_cleanup"
-
 # shellcheck disable=SC2329
-_main_onExit() {
+_main_scriptExitMessage() {
     local exitCode=$?
-    echo "is this ever executed: _main_onExit()"
     local exitMsg=""
-    reset
     exitMsg=$(nds_hook_call "exit_msg" "$exitCode" || true)
 
     if [[ -n "$exitMsg" ]]; then
         console "$exitMsg"
     else
         case "${exitCode}" in
-            2) success "Placeholder" ;;
+            2) pass "Placeholder" ;;
         esac
     fi
-}; 
-trap_named "cleanup" '_main_onExit' EXIT # Cleanup FDs on exit
-# nds_trap_registerExit _main_onExit
+};
+nds_trap_registerExit _main_scriptExitMessage # Register exit function in exitHandler.sh
+nds_hook_register "exit_msg" "hook_exit_msg" # Register exit message hook of action
 
 # shellcheck disable=SC2329
 _main_onCleanup() {
@@ -81,32 +73,35 @@ _main_onCleanup() {
     info "Cleaning up session"
     nds_hook_call "exit_cleanup" "$exitCode" || true # Call cleanup hook
 };
-# nds_trap_registerCleanup _main_onCleanup
-
+nds_trap_registerCleanup _main_onCleanup # Register cleanup function in exitHandler.sh
+nds_hook_register "exit_cleanup" "hook_exit_cleanup" # Register cleanup hook of action
 
 # ----------------------------------------------------------------------------------
 # INITIALIZE
 # ----------------------------------------------------------------------------------
 nds_runAsSudo "$0" -p "NDS_" "$@"
-nds_trap_init && success "Signal handlers initialized"
-nds_arg_parse "$@" # Register arguments
 nds_setupRuntimeDir "/tmp/nds_runtime" true || crash "Failed to setup runtime directory"
-nds_trap_registerCleanup "tui::shutdown"
-tui::init "$SCRIPT_NAME v$SCRIPT_VERSION" "Waiting for action"
+# nds_trap_registerCleanup "tui::shutdown"
+# tui::init "$SCRIPT_NAME v$SCRIPT_VERSION" "Waiting for action"
 
 # ----------------------------------------------------------------------------------
 # ARGUMENTS
 # ----------------------------------------------------------------------------------
-if nds_arg_has "--auto"; then export NDS_AUTO_CONFIRM=true; fi
-if nds_arg_has "--debug"; then debug_set "true"; fi
-if nds_arg_has "--help"; then
+_main_help() {
     echo "Options:"
     echo "  --auto            Skip all user confirmation prompts"
     echo "  --debug           Enable debug mode"
     echo "  --action,         Select action to run"
     echo "  --help, -h        Show this help message"
     exit 0
-fi
+}
+# Parse arguments
+nds_arg_parse "$@"
+
+# Check arguments
+if nds_arg_has "--auto"; then export NDS_AUTO_CONFIRM=true; fi
+if nds_arg_has "--debug"; then debug_set "true"; fi
+if nds_arg_has "--help"; then _main_help; fi
 
 
 # ----------------------------------------------------------------------------------
@@ -114,6 +109,9 @@ fi
 # ----------------------------------------------------------------------------------
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
+info good so far
+exit
+
 tui::body_append "$(date '+%Y-%m-%d %H:%M:%S') Discovered ${#ACTION_NAMES[@]} actions"
 tui::draw_progress 1 5
 # Display script header
@@ -147,7 +145,7 @@ else
     crash "Partition feature not available (nds_partition_init not found)"
 fi
 
-success "Bootstrapper 'NDS' libraries loaded"
+pass "Bootstrapper 'NDS' libraries loaded"
 
 
 

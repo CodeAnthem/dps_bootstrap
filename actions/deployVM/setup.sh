@@ -257,7 +257,7 @@ install_deploy_tools() {
     chown -R 1000:1000 "$mnt_dest" 2>/dev/null || true
 
     step_complete "Deploy tools installed"
-    success "Deploy tools installed to: $deploy_tools_dest"
+    pass "Deploy tools installed to: $deploy_tools_dest"
     return 0
 }
 

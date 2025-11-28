@@ -183,7 +183,7 @@ update_if_changed "$action" "$module" "KEY" "$old" "$new"
 error "fatal error"                # Exits with code 2
 validation_error "bad input"       # Logs only, doesn't exit
 warn "warning message"             # Logs warning
-success "task complete"            # Logs success
+pass "task complete"            # Logs success
 debug "debug info"                 # Logs if DEBUG=1
 ```
 

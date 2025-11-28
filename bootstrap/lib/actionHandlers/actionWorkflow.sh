@@ -239,5 +239,5 @@ nds_action_execute() {
         fatal "Action setup failed for: $ACTION_CURRENT_NAME"
     fi
 
-    success "Action completed: $ACTION_CURRENT_NAME"
+    pass "Action completed: $ACTION_CURRENT_NAME"
 }

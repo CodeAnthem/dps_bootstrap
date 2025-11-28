@@ -83,7 +83,7 @@ run_all_tests() {
     console "  Total:  $((TEST_PASSED + TEST_FAILED))"
     
     if [[ $TEST_FAILED -eq 0 ]]; then
-        success "All tests passed!"
+        pass "All tests passed!"
         return 0
     else
         error "$TEST_FAILED test(s) failed"

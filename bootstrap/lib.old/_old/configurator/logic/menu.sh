@@ -73,7 +73,7 @@ nds_cfg_menu() {
                     last_status=$(warn "Configuration has errors. Fix before proceeding.")
                     break  # Break to redraw menu with error
                 fi
-                success "Configuration confirmed"
+                pass "Configuration confirmed"
                 return 0
             elif [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 ]] && [[ "$sel" -le "$i" ]]; then
                 local preset="${presets[$((sel-1))]}"
@@ -91,11 +91,11 @@ nds_cfg_menu() {
                     nds_cfg_preset_prompt_all "$preset"
                     
                     if nds_cfg_preset_validate "$preset" 2>/dev/null; then
-                        last_status=$(success "$(nds_cfg_preset_get "$preset" "display") updated")
+                        last_status=$(pass "$(nds_cfg_preset_get "$preset" "display") updated")
                         break
                     fi
                 done
-                break  # Break to redraw menu with success status
+                break  # Break to redraw menu with pass status
             else
                 warn "Invalid selection"
                 # Continue inner loop to re-prompt

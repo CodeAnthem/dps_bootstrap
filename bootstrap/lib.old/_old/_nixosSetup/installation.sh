@@ -29,7 +29,7 @@ clone_repository() {
     # Clone repository quietly
     mkdir -p "$(dirname "$target_path")"
     if git clone --quiet "$repo_url" "$target_path" 2>/dev/null; then
-        success "Repository cloned successfully"
+        pass "Repository cloned successfully"
     else
         error "Failed to clone repository: $repo_url"
     fi

@@ -35,6 +35,6 @@ nds_cfg_init() {
     # 4. Apply environment variable overrides
     nds_cfg_env_import "NDS_"
     
-    success "Configurator v4.1 initialized (${#CFG_ALL_SETTINGTYPES[@]} types, ${#CFG_ALL_PRESETS[@]} presets, ${#CFG_ALL_SETTINGS[@]} settings)"
+    pass "Configurator v4.1 initialized (${#CFG_ALL_SETTINGTYPES[@]} types, ${#CFG_ALL_PRESETS[@]} presets, ${#CFG_ALL_SETTINGS[@]} settings)"
     return 0
 }
