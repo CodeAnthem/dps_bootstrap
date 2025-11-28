@@ -555,7 +555,7 @@ __streams_defineFN_output() {
     # Console: plain echo (true echo behavior)
     # File: formatted output (with timestamp if enabled)
     local file_cmd=""
-    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${1:-\\\"\\\"}\" >> ${safe_file_path};"
+    [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${*:-\\\"\\\"}\" >> ${safe_file_path};"
     
     if [[ -n "$file_cmd" ]]; then
         # With file output
