@@ -50,8 +50,8 @@ import_dir "${LIB_DIR}/actionHandlers"
 # EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS 
 # ----------------------------------------------------------------------------------
 # Trap register functions of exitHandler.sh 
-# trap _nds_trap_onInterrupt SIGINT
-# trap _nds_trap_onExit EXIT
+trap _nds_trap_onInterrupt SIGINT
+trap _nds_trap_onExit EXIT
 
 # shellcheck disable=SC2329
 _main_scriptExitMessage() {
