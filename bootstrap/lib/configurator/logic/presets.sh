@@ -214,19 +214,28 @@ nds_cfg_preset_prompt_errors() {
     local preset="$1"
     local vars_to_prompt=()
     
+    echo "DEBUG: preset=$preset" >&2
     local order="${CFG_PRESETS["${preset}::order"]:-}"
+    echo "DEBUG: order=$order" >&2
+    
     for varname in $order; do
+        echo "DEBUG: checking varname=$varname" >&2
         # Skip if not visible
         if ! nds_cfg_setting_isVisible "$varname"; then
+            echo "DEBUG: $varname not visible, skipping" >&2
             continue
         fi
         
         # Check if valid
         if ! nds_cfg_setting_validate "$varname" 2>/dev/null; then
+            echo "DEBUG: $varname INVALID, adding to prompt list" >&2
             vars_to_prompt+=("$varname")
+        else
+            echo "DEBUG: $varname valid" >&2
         fi
     done
     
+    echo "DEBUG: vars_to_prompt count=${#vars_to_prompt[@]}" >&2
     if [[ ${#vars_to_prompt[@]} -gt 0 ]]; then
         local display="${CFG_PRESETS["${preset}::display"]}"
         console "${display} Configuration:"
