@@ -133,7 +133,7 @@ section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
 # Execute selected action
-nds_execute_action || crash "Failed to execute action"
+nds_action_execute || crash "Failed to execute action"
 
 # ----------------------------------------------------------------------------------
 # END
