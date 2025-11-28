@@ -222,7 +222,7 @@ nds_action_autoSelectOrMenu() {
 # ----------------------------------------------------------------------------------
 nds_action_execute() {
     info "Loading $ACTION_CURRENT_NAME action..."
-    if ! nds_import_file "$ACTION_CURRENT_PATH/$ACTION_TARGET_NAME"; then
+    if ! import_file "$ACTION_CURRENT_PATH/$ACTION_TARGET_NAME"; then
         fatal "Failed to import action setup script"
     fi
 
