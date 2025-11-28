@@ -15,19 +15,19 @@ nds_cfg_init() {
     info "Initializing configurator v4.1..."
     
     # 1. Load logic (foundation)
-    nds_import_dir "./logic" false || {
+    import_dir "./logic" false || {
         fatal "Failed to load logic"
         return 1
     }
     
     # 2. Load all settingTypes (auto-register)
-    nds_import_dir "./settingTypes" false || {
+    import_dir "./settingTypes" false || {
         fatal "Failed to load settingTypes"
         return 1
     }
     
     # 3. Load all presets (auto-register settings)
-    nds_import_dir "./presets" false || {
+    import_dir "./presets" false || {
         fatal "Failed to load presets"
         return 1
     }
