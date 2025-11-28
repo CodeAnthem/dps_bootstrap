@@ -45,6 +45,7 @@ import_dir "${LIB_DIR}/output"
 import_dir "${LIB_DIR}/genericHelpers"
 import_dir "${LIB_DIR}/actionHandlers"
 import_named "${LIB_DIR}/configurator"
+import_named "${LIB_DIR}/partitionTools"
 
 
 # ----------------------------------------------------------------------------------
@@ -114,9 +115,6 @@ nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || cra
 # Display script header
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
-# Select action
-nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
-
 # Initialize configurator feature
 if declare -f nds_cfg_init &>/dev/null; then
     nds_cfg_init || crash "Failed to initialize configurator"
@@ -130,6 +128,11 @@ if declare -f nds_partition_init &>/dev/null; then
 else
     crash "Partition feature not available (nds_partition_init not found)"
 fi
+
+# Select action
+nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
+
+
 
 pass "Bootstrapper 'NDS' libraries loaded"
 

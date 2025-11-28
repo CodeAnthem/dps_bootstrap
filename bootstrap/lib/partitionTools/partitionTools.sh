@@ -12,7 +12,7 @@
 # ----------------------------------------------------------------------------------
 nds_partition_init() {
     # Import with validation
-    nds_import_dir "${SCRIPT_DIR}/lib/partitionTools" true || {
+    import_dir "${LIB_DIR}/partitionTools" true || {
         fatal "Failed to load partition tools"
         return 1
     }
