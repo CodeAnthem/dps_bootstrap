@@ -113,9 +113,8 @@ info "this is quoted"
 output "this is quoted"
 info this is unquoted
 output this is unquoted
-echo
-declare -f info
-declare -f output
+output
+output above line should be empty
 exit
 
 tui::body_append "$(date '+%Y-%m-%d %H:%M:%S') Discovered ${#ACTION_NAMES[@]} actions"
