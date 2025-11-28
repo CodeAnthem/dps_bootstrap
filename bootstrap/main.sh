@@ -109,7 +109,8 @@ if nds_arg_has "--help"; then _main_help; fi
 # ----------------------------------------------------------------------------------
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
-info good so far
+info "good so far"
+declare -f info
 exit
 
 tui::body_append "$(date '+%Y-%m-%d %H:%M:%S') Discovered ${#ACTION_NAMES[@]} actions"
