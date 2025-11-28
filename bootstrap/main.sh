@@ -19,25 +19,31 @@ readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper) *dev*"
 # Script Path - declare and assign separately to avoid masking return values
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
 readonly SCRIPT_DIR="${currentPath}"
-readonly LIB_DIR="${currentPath}/lib"
-readonly STANDALONE_LIB_DIR="${LIB_DIR}/standalones" # Directory for standalone libraries
+
+# Library Path
+readonly LIB_DIR="${SCRIPT_DIR}/lib"
 readonly DEV_ACTIONS=("test")
 
 
 # ----------------------------------------------------------------------------------
 # IMPORT LIBRARIES
 # ----------------------------------------------------------------------------------
-# IMPORT STANDALONE LIBRARIES
+# IMPORT XBS LIBRARIES
+readonly XBASHLIB_LIB_DIR="${SCRIPT_DIR}/xBashLib" # Directory for standalone libraries
 # shellcheck disable=SC1091
-source "${STANDALONE_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
-import_named "${STANDALONE_LIB_DIR}/debugger/debugger.sh" "NDS_DEBUG"
-import_named "${STANDALONE_LIB_DIR}/logger/logger.sh"
-import_named "${STANDALONE_LIB_DIR}/trapMultiplexer"
+source "${XBASHLIB_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to import libraries" >&2; exit 1; }
+import_named "${XBASHLIB_LIB_DIR}/trapMultiplexer" # Signal handler
+import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
+trap_named "streamsCleanup" 'stream_cleanup' EXIT # Cleanup FDs on exit
+
+# Debug ENV control
+if [[ "${NDS_DEBUG}" == "true" ]]; then stream_function debug --enable; fi
+if [[ "${NDS_DEBUG}" == "false" ]]; then stream_function debug --disable; fi
 
 # IMPORT NDS LIBRARIES
 import_dir "${LIB_DIR}/output"
-import_dir "${LIB_DIR}/essentials"
-import_dir "${LIB_DIR}/mainCore"
+import_dir "${LIB_DIR}/genericHelpers"
+import_dir "${LIB_DIR}/actionHandlers"
 
 
 # ----------------------------------------------------------------------------------
@@ -62,7 +68,9 @@ _main_onExit() {
             2) success "Placeholder" ;;
         esac
     fi
-}; nds_trap_registerExit _main_onExit
+}; 
+trap_named "cleanup" '_main_onExit' EXIT # Cleanup FDs on exit
+# nds_trap_registerExit _main_onExit
 
 # shellcheck disable=SC2329
 _main_onCleanup() {
@@ -70,7 +78,8 @@ _main_onCleanup() {
     echo "is this ever executed: _main_onCleanup()"
     info "Cleaning up session"
     nds_hook_call "exit_cleanup" "$exitCode" || true # Call cleanup hook
-}; nds_trap_registerCleanup _main_onCleanup
+};
+# nds_trap_registerCleanup _main_onCleanup
 
 
 # ----------------------------------------------------------------------------------

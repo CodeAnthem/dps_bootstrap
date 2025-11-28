@@ -10,7 +10,7 @@
 # ----------------------------------------------------------------------------------
 # Globals
 # ----------------------------------------------------------------------------------
-declare -g ACTION_TARGET_NAME="setup.sh"         # entrypoint file for actions
+readonly ACTION_TARGET_NAME="setup.sh"         # entrypoint file for actions
 declare -ga ACTION_NAMES=()                       # array of discovered action names
 declare -gA ACTION_DATA=()                        # associative array of action metadata
 declare -g ACTION_CURRENT_NAME=""                # current action name
