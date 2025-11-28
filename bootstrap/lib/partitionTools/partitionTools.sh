@@ -13,7 +13,7 @@
 nds_partition_init() {
     # Import with validation
     import_dir "${LIB_DIR}/partitionTools" true || {
-        fatal "Failed to load partition tools"
+        fatal "PartitionTools: Failed to load partition tools"
         return 1
     }
     

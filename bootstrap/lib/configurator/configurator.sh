@@ -11,30 +11,28 @@
 # CONFIGURATOR INITIALIZATION
 # ----------------------------------------------------------------------------------
 
-nds_cfg_init() {
-    info "Initializing configurator v4.1..."
-    
+nds_cfg_init() {    
     # 1. Load logic (foundation)
     import_dir "${LIB_DIR}/configurator/logic" false || {
-        fatal "Failed to load logic"
+        fatal "Configurator: Failed to load logic"
         return 1
     }
     
     # 2. Load all settingTypes (auto-register)
     import_dir "${LIB_DIR}/configurator/settingTypes" false || {
-        fatal "Failed to load settingTypes"
+        fatal "Configurator: Failed to load settingTypes"
         return 1
     }
     
     # 3. Load all presets (auto-register settings)
     import_dir "${LIB_DIR}/configurator/presets" false || {
-        fatal "Failed to load presets"
+        fatal "Configurator: Failed to load presets"
         return 1
     }
     
     # 4. Apply environment variable overrides
     nds_cfg_env_import "NDS_"
     
-    pass "Configurator v4.1 initialized (${#CFG_ALL_SETTINGTYPES[@]} types, ${#CFG_ALL_PRESETS[@]} presets, ${#CFG_ALL_SETTINGS[@]} settings)"
+    pass "Configurator initialized (${#CFG_ALL_SETTINGTYPES[@]} types, ${#CFG_ALL_PRESETS[@]} presets, ${#CFG_ALL_SETTINGS[@]} settings)"
     return 0
 }
