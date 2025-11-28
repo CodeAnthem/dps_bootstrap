@@ -35,6 +35,8 @@ source "${XBASHLIB_LIB_DIR}/libImporter/libImporter.sh" || { echo "Failed to imp
 import_named "${XBASHLIB_LIB_DIR}/trapMultiplexer" # Signal handler
 import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
 trap_named "streamsCleanup" 'stream_cleanup' EXIT # Cleanup FDs on exit
+info "Stuff loaded"
+exit
 
 # Debug ENV control
 if [[ "${NDS_DEBUG:-}" == "true" ]]; then stream_function debug --enable; fi
