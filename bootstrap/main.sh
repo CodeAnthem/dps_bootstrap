@@ -110,21 +110,12 @@ if nds_arg_has "--help"; then _main_help; fi
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
 
-tui::body_append "$(date '+%Y-%m-%d %H:%M:%S') Discovered ${#ACTION_NAMES[@]} actions"
-tui::draw_progress 1 5
 # Display script header
-# section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
-
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Select action
-# nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
-tui::draw_progress 3 5
-testfn() { sleep 3; }
-tui::run_with_spinner "Testing function" testfn
+nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
-# pid=$(tui::task_start "Installing packages" bash -c 'sleep 4; echo "apt install done"')
-
-tui::draw_progress 5 5
 
 echo exit
 exit 0
