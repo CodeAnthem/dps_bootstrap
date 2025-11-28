@@ -44,6 +44,7 @@ if [[ "${NDS_DEBUG:-}" == "false" ]]; then stream_function debug --disable; fi
 import_dir "${LIB_DIR}/output"
 import_dir "${LIB_DIR}/genericHelpers"
 import_dir "${LIB_DIR}/actionHandlers"
+import_named "${LIB_DIR}/configurator"
 
 
 # ----------------------------------------------------------------------------------
