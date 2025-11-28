@@ -43,13 +43,10 @@ if [[ "${NDS_DEBUG:-}" == "false" ]]; then stream_function debug --disable; fi
 # IMPORT NDS LIBRARIES
 import_dir "${LIB_DIR}/output"
 import_dir "${LIB_DIR}/genericHelpers"
-import_dir "${LIB_DIR}/actionHandlers"
-import_named "${LIB_DIR}/configurator"
-import_named "${LIB_DIR}/partitionTools"
 
 
 # ----------------------------------------------------------------------------------
-# EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS 
+# EXIT HANDLER & REGISTER ACTION EXIT AND CLEANUP HOOKS
 # ----------------------------------------------------------------------------------
 # shellcheck disable=SC2329
 _main_scriptExitMessage() {
@@ -109,11 +106,14 @@ if nds_arg_has "--help"; then _main_help; fi
 # ----------------------------------------------------------------------------------
 # MAIN WORKFLOW
 # ----------------------------------------------------------------------------------
+# Import script libraries
+import_dir "${LIB_DIR}/actionHandlers"
+import_named "${LIB_DIR}/configurator"
+import_named "${LIB_DIR}/partitionTools"
+pass "Bootstrapper 'NDS' libraries loaded"
+
 # Discover available actions
 nds_action_discover "${SCRIPT_DIR}/../actions" "${DEV_ACTIONS[@]}" "true" || crash "Failed to discover actions"
-
-# Display script header
-section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Initialize configurator feature
 if declare -f nds_cfg_init &>/dev/null; then
@@ -129,18 +129,14 @@ else
     crash "Partition feature not available (nds_partition_init not found)"
 fi
 
+# Display script header
+section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
+
 # Select action
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
-
-
-pass "Bootstrapper 'NDS' libraries loaded"
-
-
-
-
 # Execute selected action
-_nds_execute_action || crash "Failed to execute action"
+nds_execute_action || crash "Failed to execute action"
 
 # ----------------------------------------------------------------------------------
 # END
