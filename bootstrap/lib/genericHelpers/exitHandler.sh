@@ -11,13 +11,6 @@ declare -g NDS_FATAL_MESSAGE="" # Fatal message placeholder (set by nds_crash)
 declare -g NDS_EXIT_REGISTER="" # Function name to call on exit
 declare -ga NDS_CLEANUP_REGISTER=() # Array of functions to call on exit
 
-# Public: initialize traps (call once from main)
-# Usage: nds_trap_init
-nds_trap_init() {
-    trap _nds_trap_onInterrupt SIGINT
-    trap _nds_trap_onExit EXIT
-}
-
 # Public: Trigger a controlled fatal that sets a message and exits with code 200
 # Usage: crash "message"
 crash() {
@@ -92,5 +85,3 @@ _nds_trap_onInterrupt() {
     echo || true # print new_line to keep UI tidy if user pressed ^C during a prompt
     exit 130
 }
-
-
