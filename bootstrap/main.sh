@@ -116,10 +116,6 @@ section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 # Select action
 nds_action_autoSelectOrMenu "$(nds_arg_value "--action")"
 
-
-echo exit
-exit 0
-
 # Initialize configurator feature
 if declare -f nds_cfg_init &>/dev/null; then
     nds_cfg_init || crash "Failed to initialize configurator"
