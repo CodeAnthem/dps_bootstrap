@@ -77,6 +77,8 @@ nds_cfg_preset_validate() {
     local preset="$1"
     local errors=0
     
+    echo "DEBUG: nds_cfg_preset_validate - preset=$preset" >&2
+    
     # Validate each visible setting
     local order="${CFG_PRESETS["${preset}::order"]:-}"
     for varname in $order; do
@@ -87,18 +89,25 @@ nds_cfg_preset_validate() {
         
         # Validate setting
         if ! nds_cfg_setting_validate "$varname"; then
+            echo "DEBUG: nds_cfg_preset_validate - $varname FAILED individual validation" >&2
             ((errors++))
         fi
     done
     
     # Run preset-level validation if defined
     local validateFunc="${CFG_PRESETS["${preset}::hook::validate"]:-}"
+    echo "DEBUG: nds_cfg_preset_validate - validateFunc for $preset = '$validateFunc'" >&2
     if [[ -n "$validateFunc" ]]; then
+        echo "DEBUG: nds_cfg_preset_validate - calling hook: $validateFunc" >&2
         if ! "$validateFunc"; then
+            echo "DEBUG: nds_cfg_preset_validate - HOOK FAILED: $validateFunc returned non-zero" >&2
             ((errors++))
+        else
+            echo "DEBUG: nds_cfg_preset_validate - hook passed: $validateFunc" >&2
         fi
     fi
     
+    echo "DEBUG: nds_cfg_preset_validate - preset=$preset, errors=$errors" >&2
     return $errors
 }
 
@@ -106,13 +115,20 @@ nds_cfg_preset_validate() {
 nds_cfg_preset_validate_all() {
     local errors=0
     
+    echo "DEBUG: nds_cfg_preset_validate_all - starting, preset count=${#CFG_ALL_PRESETS[@]}" >&2
+    echo "DEBUG: nds_cfg_preset_validate_all - presets: ${CFG_ALL_PRESETS[*]}" >&2
+    
     for preset in "${CFG_ALL_PRESETS[@]}"; do
         debug "Validating preset: $preset"
         if ! nds_cfg_preset_validate "$preset"; then
+            echo "DEBUG: nds_cfg_preset_validate_all - PRESET FAILED: $preset" >&2
             ((errors++))
+        else
+            echo "DEBUG: nds_cfg_preset_validate_all - preset passed: $preset" >&2
         fi
     done
     
+    echo "DEBUG: nds_cfg_preset_validate_all - total errors=$errors" >&2
     return $errors
 }
 
