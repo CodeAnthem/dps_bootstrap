@@ -77,8 +77,6 @@ nds_cfg_preset_validate() {
     local preset="$1"
     local errors=0
     
-    echo "DEBUG: nds_cfg_preset_validate - preset=$preset" >&2
-    
     # Validate each visible setting
     local order="${CFG_PRESETS["${preset}::order"]:-}"
     for varname in $order; do
@@ -89,25 +87,18 @@ nds_cfg_preset_validate() {
         
         # Validate setting
         if ! nds_cfg_setting_validate "$varname"; then
-            echo "DEBUG: nds_cfg_preset_validate - $varname FAILED individual validation" >&2
             ((errors++))
         fi
     done
     
     # Run preset-level validation if defined
     local validateFunc="${CFG_PRESETS["${preset}::hook::validate"]:-}"
-    echo "DEBUG: nds_cfg_preset_validate - validateFunc for $preset = '$validateFunc'" >&2
     if [[ -n "$validateFunc" ]]; then
-        echo "DEBUG: nds_cfg_preset_validate - calling hook: $validateFunc" >&2
         if ! "$validateFunc"; then
-            echo "DEBUG: nds_cfg_preset_validate - HOOK FAILED: $validateFunc returned non-zero" >&2
             ((errors++))
-        else
-            echo "DEBUG: nds_cfg_preset_validate - hook passed: $validateFunc" >&2
         fi
     fi
     
-    echo "DEBUG: nds_cfg_preset_validate - preset=$preset, errors=$errors" >&2
     return $errors
 }
 
@@ -115,20 +106,13 @@ nds_cfg_preset_validate() {
 nds_cfg_preset_validate_all() {
     local errors=0
     
-    echo "DEBUG: nds_cfg_preset_validate_all - starting, preset count=${#CFG_ALL_PRESETS[@]}" >&2
-    echo "DEBUG: nds_cfg_preset_validate_all - presets: ${CFG_ALL_PRESETS[*]}" >&2
-    
     for preset in "${CFG_ALL_PRESETS[@]}"; do
         debug "Validating preset: $preset"
         if ! nds_cfg_preset_validate "$preset"; then
-            echo "DEBUG: nds_cfg_preset_validate_all - PRESET FAILED: $preset" >&2
             ((errors++))
-        else
-            echo "DEBUG: nds_cfg_preset_validate_all - preset passed: $preset" >&2
         fi
     done
     
-    echo "DEBUG: nds_cfg_preset_validate_all - total errors=$errors" >&2
     return $errors
 }
 
@@ -230,28 +214,20 @@ nds_cfg_preset_prompt_errors() {
     local preset="$1"
     local vars_to_prompt=()
     
-    echo "DEBUG: preset=$preset" >&2
     local order="${CFG_PRESETS["${preset}::order"]:-}"
-    echo "DEBUG: order=$order" >&2
     
     for varname in $order; do
-        echo "DEBUG: checking varname=$varname" >&2
         # Skip if not visible
         if ! nds_cfg_setting_isVisible "$varname"; then
-            echo "DEBUG: $varname not visible, skipping" >&2
             continue
         fi
         
         # Check if valid
         if ! nds_cfg_setting_validate "$varname" 2>/dev/null; then
-            echo "DEBUG: $varname INVALID, adding to prompt list" >&2
             vars_to_prompt+=("$varname")
-        else
-            echo "DEBUG: $varname valid" >&2
         fi
     done
     
-    echo "DEBUG: vars_to_prompt count=${#vars_to_prompt[@]}" >&2
     if [[ ${#vars_to_prompt[@]} -gt 0 ]]; then
         local display="${CFG_PRESETS["${preset}::display"]}"
         console "${display} Configuration:"

@@ -26,14 +26,10 @@ nds_cfg_prompt_errors() {
     if [[ ${#presets[@]} -eq 0 ]]; then
         readarray -t presets < <(nds_cfg_preset_getAllSorted)
     fi
-    echo "DEBUG: nds_cfg_prompt_errors - preset count=${#presets[@]}" >&2
-    echo "DEBUG: presets=${presets[*]}" >&2
     section_header "Configuration Required"
     for preset in "${presets[@]}"; do
-        echo "DEBUG: calling nds_cfg_preset_prompt_errors for preset=$preset" >&2
         nds_cfg_preset_prompt_errors "$preset"
     done
-    echo "DEBUG: nds_cfg_prompt_errors - done" >&2
 }
 
 nds_cfg_menu() {

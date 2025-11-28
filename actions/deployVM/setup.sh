@@ -148,32 +148,20 @@ action_setup() {
     nds_askUserToProceed " Ready to begin configuration?" || exit 130
 
     # Configuration phase - uses all enabled presets from registry
-if ! nds_cfg_validate_all; then
-    nds_cfg_prompt_errors
-    echo prompt done
-    exit
-    nds_cfg_menu || exit 12  # Let user fix the config interactively
-    # Now validate the FIXED config
-    if ! nds_cfg_validate_all; then 
-        error "Configuration still invalid after changes"
-        exit 11
+    if ! nds_cfg_validate_all; then
+        nds_cfg_prompt_errors
+        nds_cfg_menu || exit 12  # Let user fix the config interactively
+        
+        # Validate again after user changes
+        if ! nds_cfg_validate_all; then 
+            error "Configuration still invalid after changes"
+            exit 11
+        fi
     fi
-fi
 
-    # echo 1
-    # if ! nds_cfg_validate_all; then
-    #     echo 2
-    #     nds_cfg_prompt_errors
-    #     echo 3
-    #     # Configuration validation failed
-    #     if ! nds_cfg_validate_all; then exit 11 ; fi
-    #     echo 5
-    # fi
-    # echo 6
-
-    # Optional: Show interactive menu
-    # nds_cfg_menu || exit 12
-echo 1111111111111111111111
+    # Optional: Show interactive menu even if validation passed
+    nds_cfg_menu || exit 12
+    
     nds_askUserToProceed "Configuration complete. Ready to install?" || exit 13
 
     # Pre-install phase

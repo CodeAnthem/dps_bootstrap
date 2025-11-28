@@ -17,7 +17,7 @@ first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 
 
 # Base settings (always visible)
 nds_cfg_setting_create DISK_TARGET \
-    --type disk \
+    --type disktype \
     --display "Target Disk" \
     --default "$first_disk"
 

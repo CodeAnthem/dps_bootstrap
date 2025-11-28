@@ -7,7 +7,7 @@
 # Feature:       Disk selection with device listing (custom prompt)
 # ==================================================================================================
 
-_disk_validate() {
+_disktype_validate() {
     local value="$1"
     
     [[ -z "$value" ]] && return 1
@@ -16,12 +16,12 @@ _disk_validate() {
     return 1
 }
 
-_disk_errorCode() {
+_disktype_errorCode() {
     local value="$1"
     echo "'$value' is not a valid block device"
 }
 
-_disk_prompt() {
+_disktype_prompt() {
     local display="$1"
     local current="$2"
     local type="$3"
@@ -66,7 +66,7 @@ _disk_prompt() {
         fi
         
         # Validate
-        if _disk_validate "$value"; then
+        if _disktype_validate "$value"; then
             echo "$value"
             return 0
         else
@@ -76,4 +76,4 @@ _disk_prompt() {
 }
 
 # Auto-register this settingType
-nds_cfg_settingType_register "disk"
+nds_cfg_settingType_register "disktype"
