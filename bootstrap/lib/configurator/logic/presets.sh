@@ -103,6 +103,8 @@ nds_cfg_preset_validate() {
             if ! nds_cfg_setting_validate "$varname"; then
                 debug "nds_cfg_preset_validate() - -> $varname is invalid [Total Errors: ${allErrors}]"
                 ((errors++))
+            else
+                debug "nds_cfg_preset_validate() - -> $varname is valid [Total Errors: ${allErrors}]"
             fi
         done
 
