@@ -215,7 +215,6 @@ nds_cfg_preset_prompt_errors() {
     local vars_to_prompt=()
     
     local order="${CFG_PRESETS["${preset}::order"]:-}"
-    
     for varname in $order; do
         # Skip if not visible
         if ! nds_cfg_setting_isVisible "$varname"; then
