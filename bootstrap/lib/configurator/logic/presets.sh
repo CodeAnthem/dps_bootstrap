@@ -87,7 +87,7 @@ nds_cfg_preset_validate() {
 
     # Validate each preset
     for preset in "${presets[@]}"; do
-        debug "nds_cfg_preset_validate() - #${presetErrors} Validating preset: $preset"
+        debug "nds_cfg_preset_validate() - Preset: $preset [Bad Presets: ${presetErrors}]"
         local -i errors=0
 
         # Validate each visible setting
@@ -95,13 +95,13 @@ nds_cfg_preset_validate() {
         for varname in $order; do
             # Skip if not visible
             if ! nds_cfg_setting_isVisible "$varname"; then
-                debug "nds_cfg_preset_validate() - ##${allErrors} $varname is not visible"
+                debug "nds_cfg_preset_validate() - -> $varname is not visible [Total Errors: ${allErrors}]"
                 continue
             fi
 
             # Validate setting
             if ! nds_cfg_setting_validate "$varname"; then
-                debug "nds_cfg_preset_validate() - ##${allErrors} $varname is invalid"
+                debug "nds_cfg_preset_validate() - -> $varname is invalid [Total Errors: ${allErrors}]"
                 ((errors++))
             fi
         done
@@ -111,12 +111,12 @@ nds_cfg_preset_validate() {
         if [[ -n "$validateFunc" ]]; then
             if ! "$validateFunc"; then
                 ((errors++))
-                debug "nds_cfg_preset_validate() - ##${allErrors} $preset validation failed"
+                debug "nds_cfg_preset_validate() - -> Preset validation failed [Total Errors: ${allErrors}]"
             else
-                debug "nds_cfg_preset_validate() - ##${allErrors} $preset validation passed"
+                debug "nds_cfg_preset_validate() - -> Preset validation passed [Total Errors: ${allErrors}]"
             fi
         else
-            debug "nds_cfg_preset_validate() - ##${allErrors} $preset has no validation function"
+            debug "nds_cfg_preset_validate() - -> Preset has no validation function [Total Errors: ${allErrors}]"
         fi
 
         # Update error count
