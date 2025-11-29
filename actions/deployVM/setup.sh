@@ -68,6 +68,7 @@ action_config() {
 
     # Quick Setup
     # nds_cfg_set COUNTRY ""
+    debug "action_config() finished"
 }
 
 # @AI - Optional function to return fields (similar to deploy_get_active_fields)
@@ -148,25 +149,27 @@ action_setup() {
     nds_askUserToProceed " Ready to begin configuration?" || exit 130
 
     # Configuration phase - uses all enabled presets from registry
-if ! nds_cfg_validate_all; then
+    if nds_cfg_preset_validate; then echo all good; else echo all bad; fi
+    exit
+if ! nds_cfg_preset_validate; then
     nds_cfg_prompt_errors
     echo prompt done
     exit
     nds_cfg_menu || exit 12  # Let user fix the config interactively
     # Now validate the FIXED config
-    if ! nds_cfg_validate_all; then 
+    if ! nds_cfg_preset_validate; then 
         error "Configuration still invalid after changes"
         exit 11
     fi
 fi
 
     # echo 1
-    # if ! nds_cfg_validate_all; then
+    # if ! nds_cfg_preset_validate; then
     #     echo 2
     #     nds_cfg_prompt_errors
     #     echo 3
     #     # Configuration validation failed
-    #     if ! nds_cfg_validate_all; then exit 11 ; fi
+    #     if ! nds_cfg_preset_validate; then exit 11 ; fi
     #     echo 5
     # fi
     # echo 6

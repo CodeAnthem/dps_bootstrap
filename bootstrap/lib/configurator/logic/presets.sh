@@ -16,16 +16,16 @@
 nds_cfg_preset_create() {
     local preset="$1"
     shift
-    
+
     # Check if preset already exists
     if nds_cfg_preset_exists "$preset"; then
         error "Preset '$preset' already exists"
         return 1
     fi
-    
+
     # Parse arguments
     local display="" priority="50"
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --display)
@@ -42,79 +42,102 @@ nds_cfg_preset_create() {
                 ;;
         esac
     done
-    
+
     # Default display to capitalized preset name
     if [[ -z "$display" ]]; then
         display="$(echo "${preset^}" | tr '_' ' ')"
     fi
-    
+
     # Store preset metadata
     CFG_PRESETS["${preset}::display"]="$display"
     CFG_PRESETS["${preset}::priority"]="$priority"
     CFG_PRESETS["${preset}::order"]=""
-    
+
     # Add to master list
     CFG_ALL_PRESETS+=("$preset")
-    
+
     # Set as current context
     CFG_CONTEXT_PRESET="$preset"
-    
+
     # Auto-detect validation function
     if declare -F "_${preset}_validate" &>/dev/null; then
         CFG_PRESETS["${preset}::hook::validate"]="_${preset}_validate"
     fi
-    
+
     return 0
 }
 
 # ----------------------------------------------------------------------------------
 # PRESET VALIDATION
 # ----------------------------------------------------------------------------------
-
-# Validate all settings in a preset
-# Returns: 0 if all valid, error count if any invalid
-nds_cfg_preset_validate() {
-    local preset="$1"
-    local errors=0
-    
-    # Validate each visible setting
-    local order="${CFG_PRESETS["${preset}::order"]:-}"
-    for varname in $order; do
-        # Skip if not visible
-        if ! nds_cfg_setting_isVisible "$varname"; then
-            continue
-        fi
-        
-        # Validate setting
-        if ! nds_cfg_setting_validate "$varname"; then
-            ((errors++))
-        fi
-    done
-    
-    # Run preset-level validation if defined
-    local validateFunc="${CFG_PRESETS["${preset}::hook::validate"]:-}"
-    if [[ -n "$validateFunc" ]]; then
-        if ! "$validateFunc"; then
-            ((errors++))
-        fi
-    fi
-    
-    return $errors
-}
-
 # Validate all presets
-nds_cfg_preset_validate_all() {
-    local errors=0
-    
-    for preset in "${CFG_ALL_PRESETS[@]}"; do
+# Returns: 0 if all valid, 1 if any invalid
+# Usage: nds_cfg_preset_validate "preset1" "preset2" ...
+nds_cfg_preset_validate() {
+    local presets=("$@")
+    # If no presets specified, get all from registry (sorted by priority)
+    if [[ ${#presets[@]} -eq 0 ]]; then
+        readarray -t presets < <(nds_cfg_preset_getAllSorted)
+    fi
+
+    # State variablesa
+    local -i allErrors=0
+    local -i presetErrors=0
+    local -a presetsWithErrors=()
+
+    # Validate each preset
+    for preset in "${presets[@]}"; do
         debug "Validating preset: $preset"
-        if ! nds_cfg_preset_validate "$preset"; then
-            ((errors++))
+        local -i errors=0
+
+        # Validate each visible setting
+        local order="${CFG_PRESETS["${preset}::order"]:-}"
+        for varname in $order; do
+            # Skip if not visible
+            if ! nds_cfg_setting_isVisible "$varname"; then
+                debug "nds_cfg_preset_validate() - $varname is not visible"
+                continue
+            fi
+
+            # Validate setting
+            if ! nds_cfg_setting_validate "$varname"; then
+                debug "nds_cfg_preset_validate() - $varname is invalid"
+                ((errors++))
+            fi
+        done
+
+        # Run preset-level validation if defined
+        local validateFunc="${CFG_PRESETS["${preset}::hook::validate"]:-}"
+        if [[ -n "$validateFunc" ]]; then
+            if ! "$validateFunc"; then
+                ((errors++))
+                debug "nds_cfg_preset_validate() - $preset validation failed"
+            else
+                debug "nds_cfg_preset_validate() - $preset validation passed"
+            fi
+        else
+            debug "nds_cfg_preset_validate() - $preset has no validation function"
+        fi
+
+        # Update error count
+        ((allErrors+=errors))
+        if ((errors > 0)); then
+            ((presetErrors++))
+            presetsWithErrors+=("$preset")
         fi
     done
-    
-    return $errors
+
+    # Set global variable
+    CFG_PRESETS_WITH_ERRORS=("${presetsWithErrors[@]}")
+
+    # Return true if all presets are valid
+    if ((presetErrors > 0)); then
+        debug "nds_cfg_preset_validate() - $presetErrors presets have errors, $allErrors total errors"
+        return 1
+    fi
+    return 0
 }
+
 
 # ----------------------------------------------------------------------------------
 # PRESET QUERIES
@@ -130,7 +153,7 @@ nds_cfg_preset_getSettings() {
 nds_cfg_preset_getVisibleSettings() {
     local preset="$1"
     local order="${CFG_PRESETS["${preset}::order"]:-}"
-    
+
     for varname in $order; do
         if nds_cfg_setting_isVisible "$varname"; then
             echo "$varname"
@@ -146,7 +169,7 @@ nds_cfg_preset_getAllSorted() {
         local priority="${CFG_PRESETS["${preset}::priority"]:-50}"
         sorted+=("${priority}:${preset}")
     done
-    
+
     # Sort and extract preset names
     printf '%s\n' "${sorted[@]}" | sort -t: -k1,1n -k2,2 | cut -d: -f2
 }
@@ -159,29 +182,29 @@ nds_cfg_preset_getAllSorted() {
 nds_cfg_preset_display() {
     local preset="$1"
     local number="${2:-}"
-    
+
     local display="${CFG_PRESETS["${preset}::display"]}"
     local header="${display} Configuration:"
     [[ -n "$number" ]] && header="$number. $header"
-    
+
     console "$header"
-    
+
     local order="${CFG_PRESETS["${preset}::order"]:-}"
     for varname in $order; do
         # Skip if not visible
         if ! nds_cfg_setting_isVisible "$varname"; then
             continue
         fi
-        
+
         local setting_display="${CFG_SETTINGS["${varname}::display"]}"
         local value="${CFG_SETTINGS["${varname}::value"]:-}"
-        
+
         # Transform for display if function exists
         local displayFunc="${CFG_SETTINGS["${varname}::hook::display"]:-}"
         if [[ -n "$displayFunc" ]]; then
             value=$("$displayFunc" "$value")
         fi
-        
+
         console "   > $setting_display: $value"
     done
 }
@@ -193,18 +216,18 @@ nds_cfg_preset_display() {
 # Prompt for all visible settings in preset
 nds_cfg_preset_prompt_all() {
     local preset="$1"
-    
+
     local display="${CFG_PRESETS["${preset}::display"]}"
     console "${display} Configuration:"
     console ""
-    
+
     local order="${CFG_PRESETS["${preset}::order"]:-}"
     for varname in $order; do
         # Skip if not visible
         if ! nds_cfg_setting_isVisible "$varname"; then
             continue
         fi
-        
+
         _nds_cfg_setting_prompt "$varname"
     done
 }
@@ -213,34 +236,34 @@ nds_cfg_preset_prompt_all() {
 nds_cfg_preset_prompt_errors() {
     local preset="$1"
     local vars_to_prompt=()
-    
+
     local order="${CFG_PRESETS["${preset}::order"]:-}"
     for varname in $order; do
         # Skip if not visible
         if ! nds_cfg_setting_isVisible "$varname"; then
             continue
         fi
-        
+
         # Check if valid
         if ! nds_cfg_setting_validate "$varname" 2>/dev/null; then
             vars_to_prompt+=("$varname")
         fi
     done
-    
+
     if [[ ${#vars_to_prompt[@]} -gt 0 ]]; then
         local display="${CFG_PRESETS["${preset}::display"]}"
         console "${display} Configuration:"
-        
+
         for varname in "${vars_to_prompt[@]}"; do
             # Re-check visibility (earlier prompts may have changed conditions)
             if ! nds_cfg_setting_isVisible "$varname"; then
                 debug "Skipping $varname — not visible after previous changes"
                 continue
             fi
-            
+
             _nds_cfg_setting_prompt "$varname"
         done
-        
+
         console ""
     fi
 }
@@ -252,29 +275,29 @@ nds_cfg_preset_prompt_errors() {
 # Prompt for a single setting
 _nds_cfg_setting_prompt() {
     local varname="$1"
-    
+
     local type="${CFG_SETTINGS["${varname}::type"]}"
     local display="${CFG_SETTINGS["${varname}::display"]}"
     local current="${CFG_SETTINGS["${varname}::value"]:-}"
-    
+
     while true; do
         # Get prompt function
         local promptFunc="${CFG_SETTINGS["${varname}::hook::prompt"]:-}"
-        
+
         if [[ -z "$promptFunc" ]]; then
             error "Setting '$varname' has no prompt hook"
             return 1
         fi
-        
+
         # Execute prompt
         local new_value
         new_value=$("$promptFunc" "$display" "$current" "$type")
-        
+
         # Empty = keep current
         if [[ -z "$new_value" ]]; then
             return 0
         fi
-        
+
         # Apply and validate
         if nds_cfg_apply_setting "$varname" "$new_value" "prompt"; then
             # Update successful

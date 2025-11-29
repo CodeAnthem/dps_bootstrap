@@ -37,8 +37,7 @@ import_named "${XBASHLIB_LIB_DIR}/streams" # Output feature
 trap_named "streamsCleanup" 'stream_cleanup' EXIT --priority -999 # Cleanup FDs on exit (lowest priority = runs LAST)
 
 # Debug ENV control
-if [[ "${NDS_DEBUG:-}" == "true" ]]; then stream_function debug --enable; fi
-if [[ "${NDS_DEBUG:-}" == "false" ]]; then stream_function debug --disable; fi
+stream_toggle debug "$NDS_DEBUG"
 
 # IMPORT NDS LIBRARIES
 import_dir "${LIB_DIR}/output"

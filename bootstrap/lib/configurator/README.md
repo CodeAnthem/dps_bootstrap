@@ -160,7 +160,7 @@ if nds_cfg_preset_validate "region"; then
 fi
 
 # Validate all presets
-nds_cfg_preset_validate_all
+nds_cfg_preset_validate
 ```
 
 ### Interactive Prompting
@@ -415,7 +415,7 @@ See `MIGRATION_v4.1.md` for detailed migration guide from v3.x.
 - `nds_cfg_preset_create PRESET [--flags...]` - Create preset
 - `nds_cfg_preset_exists PRESET` - Check if preset exists
 - `nds_cfg_preset_validate PRESET` - Validate all settings
-- `nds_cfg_preset_validate_all` - Validate all presets
+- `nds_cfg_preset_validate` - Validate all presets
 - `nds_cfg_preset_get PRESET FIELD` - Get metadata
 - `nds_cfg_preset_getSettings PRESET` - Get all settings
 - `nds_cfg_preset_getVisibleSettings PRESET` - Get visible settings

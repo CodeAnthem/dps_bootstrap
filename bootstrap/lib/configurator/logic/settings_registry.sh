@@ -16,6 +16,7 @@ declare -gA CFG_SETTINGS=()
 
 # Presets: stores preset metadata and ordering
 declare -gA CFG_PRESETS=()
+declare -ga CFG_PRESETS_WITH_ERRORS=()
 
 # SettingTypes: stores settingType function hooks
 declare -gA CFG_SETTINGTYPES=()

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # Streams - Standalone Feature
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:         Created: 2025-11-13 | Modified: 2025-11-25
+# Date:         Created: 2025-11-13 | Modified: 2025-11-29
 # Description:  Unified channel-based output system with dynamic function generation
 # Feature:      Multi-channel routing (stdout, stderr, logger, debug), file output, NOP control
 # TODO:         Maybe add: console, new_line abilities (basicOutput.sh functions)
@@ -54,7 +54,7 @@ declare -gA __STREAMS_CONFIG=(
     [CHANNEL::debug::FILE]=1
     [CHANNEL::debug::FILE_PATH]=""
     [CHANNEL::debug::FD]=4
-    
+
     # Format settings
     [FORMAT::CONSOLE::DATE]=1
     [FORMAT::CONSOLE::TIME]=1
@@ -62,50 +62,50 @@ declare -gA __STREAMS_CONFIG=(
     [FORMAT::FILE::DATE]=1
     [FORMAT::FILE::TIME]=1
     [FORMAT::SUPPRESS_EMOJIS]=0
-    
+
     # Predefined function registry
     [FUNC::log::EMOJI]=""
     [FUNC::log::TAG]=""
     [FUNC::log::CHANNEL]="stdout"
     [FUNC::log::EXIT]="-1"
     [FUNC::log::NOP]="0"
-    
+
     [FUNC::info::EMOJI]=" ℹ️ "
     [FUNC::info::TAG]=" [INFO] -"
     [FUNC::info::CHANNEL]="logger"
     [FUNC::info::EXIT]="-1"
     [FUNC::info::NOP]="0"
-    
+
     [FUNC::warn::EMOJI]=" ⚠️ "
     [FUNC::warn::TAG]=" [WARN] -"
     [FUNC::warn::CHANNEL]="logger"
     [FUNC::warn::EXIT]="-1"
     [FUNC::warn::NOP]="0"
-    
+
     [FUNC::error::EMOJI]=" ❌"
     [FUNC::error::TAG]=" [ERROR] -"
     [FUNC::error::CHANNEL]="stderr"
     [FUNC::error::EXIT]="-1"
     [FUNC::error::NOP]="0"
-    
+
     [FUNC::fatal::EMOJI]=" 💀"
     [FUNC::fatal::TAG]=" [FATAL] -"
     [FUNC::fatal::CHANNEL]="stderr"
     [FUNC::fatal::EXIT]="1"
     [FUNC::fatal::NOP]="0"
-    
+
     [FUNC::pass::EMOJI]=" ✅"
     [FUNC::pass::TAG]=" [PASS] -"
     [FUNC::pass::CHANNEL]="logger"
     [FUNC::pass::EXIT]="-1"
     [FUNC::pass::NOP]="0"
-    
+
     [FUNC::fail::EMOJI]=" ❌"
     [FUNC::fail::TAG]=" [FAIL] -"
     [FUNC::fail::CHANNEL]="stderr"
     [FUNC::fail::EXIT]="-1"
     [FUNC::fail::NOP]="0"
-    
+
     [FUNC::debug::EMOJI]=" 🐛"
     [FUNC::debug::TAG]=" [DEBUG] -"
     [FUNC::debug::CHANNEL]="debug"
@@ -124,6 +124,37 @@ declare -ga __STREAMS_OPENED_FDS=()
 # ==================================================================================================
 # PUBLIC FUNCTIONS - Channel Configuration
 # ==================================================================================================
+# Public: Toggle function NOP state
+# Usage: stream_toggle [function] <BOOL>
+stream_toggle() {
+    # Check if first arg is a function name
+    local func_name="${1:-}"
+    [[ -z "$func_name" ]] && { error "stream_toggle() - Function name required"; return 1; }
+
+    # Check if function name is an existing function
+    [[ ! " ${__STREAMS_FUNCTIONS[*]} " == *" $func_name "* ]] && \
+    { error "stream_toggle() - Function '$func_name' does not exist"; return 1; }
+
+    # Check if current function is NOP
+    local is_nop="${__STREAMS_CONFIG[FUNC::${func_name}::NOP]}"
+
+    # Compare new state with current state
+    case "${2:-}" in
+        1|true|on|enabled)
+            if [[ "$is_nop" -eq 0 ]]; then return 0; fi
+            __STREAMS_CONFIG[FUNC::${func_name}::NOP]=0
+            ;;
+        0|false|off|disabled)
+            if [[ "$is_nop" -eq 1 ]]; then return 0; fi
+            __STREAMS_CONFIG[FUNC::${func_name}::NOP]=1
+            ;;
+        *) return 0 ;; # State was empty, do nothing
+    esac
+
+    # Reinitialize function
+    __streams_defineFN_single "$func_name"
+}
+
 
 # --------------------------------------------------------------------------------------------------
 # Public: Configure channel settings
@@ -132,19 +163,19 @@ declare -ga __STREAMS_OPENED_FDS=()
 stream_set_channel() {
     local channel=""
     local needs_reinit=0
-    
+
     # Check if first arg is a channel name
     if [[ " ${__STREAMS_CHANNELS[*]} " == *" ${1:-} "* ]]; then
         channel="$1"
         shift
     fi
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --console)
                 case "${2:-}" in
-                    1|true|on|enabled) 
+                    1|true|on|enabled)
                         if [[ -n "$channel" ]]; then
                             __STREAMS_CONFIG[CHANNEL::${channel}::CONSOLE]=1
                         else
@@ -237,7 +268,7 @@ stream_set_channel() {
                 ;;
         esac
     done
-    
+
     # Only reinitialize once after all changes
     [[ $needs_reinit -eq 1 ]] && __streams_defineFN_all
 }
@@ -250,13 +281,13 @@ stream_set_channel() {
 stream_set_format() {
     local format=""
     local needs_reinit=0
-    
+
     # Check if first arg is format type
     if [[ "${1:-}" == "console" ]] || [[ "${1:-}" == "file" ]]; then
         format="$1"
         shift
     fi
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -350,7 +381,7 @@ stream_set_format() {
                 ;;
         esac
     done
-    
+
     # Only reinitialize once after all changes
     [[ $needs_reinit -eq 1 ]] && __streams_defineFN_all
 }
@@ -368,17 +399,17 @@ stream_function() {
     local name="${1:-}"
     [[ -z "$name" ]] && { echo "Error: Function name required" >&2; return 1; }
     shift
-    
+
     local needs_reinit=0
     local is_new=0
-    
+
     # Check if function exists
     if [[ ! " ${__STREAMS_FUNCTIONS[*]} " == *" $name "* ]]; then
         # New function - add to registry
         __STREAMS_FUNCTIONS+=("$name")
         is_new=1
     fi
-    
+
     # Set defaults for new functions
     if [[ $is_new -eq 1 ]]; then
         __STREAMS_CONFIG[FUNC::${name}::EMOJI]=""
@@ -387,7 +418,7 @@ stream_function() {
         __STREAMS_CONFIG[FUNC::${name}::EXIT]="-1"
         __STREAMS_CONFIG[FUNC::${name}::NOP]="0"
     fi
-    
+
     # Parse options
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -435,7 +466,7 @@ stream_function() {
                 ;;
         esac
     done
-    
+
     # Regenerate this function
     [[ $needs_reinit -eq 1 ]] && __streams_defineFN_single "$name"
 }
@@ -448,7 +479,7 @@ stream_function() {
 # IMPORTANT: Do NOT call debug/info/etc here - we're closing those FDs!
 stream_cleanup() {
     local fd
-    
+
     # Close all FDs tracked in registry
     for fd in "${__STREAMS_OPENED_FDS[@]}"; do
         # Safety check: only close FDs 3-9
@@ -456,7 +487,7 @@ stream_cleanup() {
             eval "exec ${fd}>&-" 2>/dev/null || :
         fi
     done
-    
+
     # Clear registry
     __STREAMS_OPENED_FDS=()
 }
@@ -473,18 +504,18 @@ stream_cleanup() {
 # Returns: 0 on success, 1 on error
 __streams_ensure_fd() {
     local fd="$1"
-    
+
     # Validate FD is a number
     if ! [[ "$fd" =~ ^[0-9]+$ ]]; then
         echo "Error: FD must be a number, got: $fd" >&2
         return 1
     fi
-    
+
     # FD 1-2 are always available (stdout, stderr)
     if [[ "$fd" -eq 1 || "$fd" -eq 2 ]]; then
         return 0
     fi
-    
+
     # FD 3-9 are allowed and managed
     if [[ "$fd" -ge 3 && "$fd" -le 9 ]]; then
         # Check if already opened
@@ -493,15 +524,15 @@ __streams_ensure_fd() {
                 return 0  # Already open
             fi
         done
-        
+
         # Open FD as duplicate of stderr
         eval "exec ${fd}>&2"
-        
+
         # Track in registry
         __STREAMS_OPENED_FDS+=("$fd")
         return 0
     fi
-    
+
     # FD outside 1-9 range is an error
     echo "Error: FD must be in range 1-9, got: $fd" >&2
     return 1
@@ -519,7 +550,7 @@ __streams_ensure_fd() {
 __streams_defineFN_all() {
     # Generate special output() function first
     __streams_defineFN_output
-    
+
     # Generate regular functions
     for func_name in "${__STREAMS_FUNCTIONS[@]}"; do
         __streams_defineFN_single "$func_name"
@@ -535,29 +566,29 @@ __streams_defineFN_all() {
 __streams_defineFN_output() {
     # Unset existing function
     unset -f "output" 2>/dev/null || :
-    
+
     # Get stdout channel file settings
     local file_out="${__STREAMS_CONFIG[CHANNEL::stdout::FILE]}"
     local file_path="${__STREAMS_CONFIG[CHANNEL::stdout::FILE_PATH]}"
-    
+
     # Build file format (empty emoji/tag for output, but keep timestamp if enabled)
     __streams_build_format "file" "" ""
     local file_fmt="$__STREAMS_FMT_RESULT"
     local ts_arg="$__STREAMS_TS_ARG"
-    
+
     # Escape single quotes in format string
     file_fmt="${file_fmt//\'/\'\\\'\'}"
-    
+
     # Escape file path
     local safe_file_path
     safe_file_path=$(printf '%q' "$file_path")
-    
+
     # Build function
     # Console: plain echo (true echo behavior)
     # File: formatted output (with timestamp if enabled)
     local file_cmd=""
     [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${*:-\\\"\\\"}\" >> ${safe_file_path};"
-    
+
     if [[ -n "$file_cmd" ]]; then
         # With file output
         eval "output() { echo \"\$@\"; ${file_cmd} }"
@@ -573,60 +604,60 @@ __streams_defineFN_output() {
 # Usage: __streams_defineFN_single <function_name>
 __streams_defineFN_single() {
     local func_name="$1"
-    
+
     # Unset existing function to ensure clean replacement
     unset -f "$func_name" 2>/dev/null || :
-    
+
     # Get function attributes
     local emoji="${__STREAMS_CONFIG[FUNC::${func_name}::EMOJI]}"
     local tag="${__STREAMS_CONFIG[FUNC::${func_name}::TAG]}"
     local channel="${__STREAMS_CONFIG[FUNC::${func_name}::CHANNEL]}"
     local exit_code="${__STREAMS_CONFIG[FUNC::${func_name}::EXIT]}"
     local is_nop="${__STREAMS_CONFIG[FUNC::${func_name}::NOP]}"
-    
+
     # If NOP, generate no-op function
     if [[ "$is_nop" == "1" ]]; then
         eval "${func_name}() { :; }"
         return 0
     fi
-    
+
     # Get channel attributes
     local console_out="${__STREAMS_CONFIG[CHANNEL::${channel}::CONSOLE]}"
     local file_out="${__STREAMS_CONFIG[CHANNEL::${channel}::FILE]}"
     local file_path="${__STREAMS_CONFIG[CHANNEL::${channel}::FILE_PATH]}"
     local channel_fd="${__STREAMS_CONFIG[CHANNEL::${channel}::FD]}"
-    
+
     # Ensure FD is valid and open (if needed)
     if ! __streams_ensure_fd "$channel_fd"; then
         echo "Error: Failed to ensure FD $channel_fd for function $func_name (channel: $channel)" >&2
         return 1
     fi
-    
+
     # Apply emoji suppression
     [[ "${__STREAMS_CONFIG[FORMAT::SUPPRESS_EMOJIS]}" == "1" ]] && emoji=""
-    
+
     # Build exit statement
     local ifExit=""
     [[ "$exit_code" == "-1" ]] || ifExit="exit $exit_code;"
-    
+
     # Build console format string (% already escaped in emoji/tag)
     __streams_build_format "console" "$emoji" "$tag"
     local console_fmt="$__STREAMS_FMT_RESULT"
     local ts_arg="$__STREAMS_TS_ARG"
-    
+
     # Build file format string
     __streams_build_format "file" "$emoji" "$tag"
     local file_fmt="$__STREAMS_FMT_RESULT"
-    
+
     # Escape single quotes in format strings for safe embedding in single-quoted eval
     # (% already escaped, now handle ' by replacing with '\'' for shell safety)
     console_fmt="${console_fmt//\'/\'\\\'\'}"
     file_fmt="${file_fmt//\'/\'\\\'\'}"
-    
+
     # Escape file path using printf %q (handles spaces, quotes, etc.)
     local safe_file_path
     safe_file_path=$(printf '%q' "$file_path")
-    
+
     # Build console and file output statements with FD error protection
     # Note: Single backslash before $ for runtime evaluation in generated function
     # Note: Using $* to capture all arguments (allows: info this is unquoted)
@@ -635,10 +666,10 @@ __streams_defineFN_single() {
         # Wrap console output with FD check and error handling
         console_cmd="if ! printf -- '${console_fmt} %s\\n' ${ts_arg}\"\${*:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >&${channel_fd} 2>/dev/null; then printf '[STREAM ERROR] %s called after stream_cleanup. Message: %s\\n' '${func_name}' \"\${*:-<no message>}\" >&2; fi;"
     fi
-    
+
     local file_cmd=""
     [[ "$file_out" == "1" && -n "$file_path" ]] && file_cmd="printf -- '${file_fmt} %s\\n' ${ts_arg}\"\${*:-\\\"<No message> - \${FUNCNAME[1]}()#\${BASH_LINENO[0]} in \${BASH_SOURCE[1]}\\\"}\" >> ${safe_file_path} 2>/dev/null;"
-    
+
     # Generate function (single path, no branches)
     if [[ -n "$console_cmd" || -n "$file_cmd" ]]; then
         eval "${func_name}() { $console_cmd $file_cmd $ifExit }"
@@ -657,31 +688,31 @@ __streams_build_format() {
     local format_type="${1^^}"  # CONSOLE or FILE
     local emoji="$2"
     local tag="$3"
-    
+
     # Apply emoji suppression
     if [[ "${__STREAMS_CONFIG[FORMAT::SUPPRESS_EMOJIS]}" == "1" ]]; then
         emoji=""
     fi
-    
+
     # Escape % in user-supplied content to prevent format string injection
     # (% needs to be %% in printf format strings, except for %(...)T)
     emoji="${emoji//%/%%}"
     tag="${tag//%/%%}"
-    
+
     # Get format settings
     local use_date="${__STREAMS_CONFIG[FORMAT::${format_type}::DATE]}"
     local use_time="${__STREAMS_CONFIG[FORMAT::${format_type}::TIME]}"
     local indent="${__STREAMS_CONFIG[FORMAT::${format_type}::INDENT]:-0}"
-    
+
     # Build format string
     local fmt_parts=""
     __STREAMS_TS_ARG=""
-    
+
     # Add indent (console only)
     if [[ "$format_type" == "CONSOLE" && "$indent" -gt 0 ]]; then
         printf -v fmt_parts '%*s' "$indent" ''
     fi
-    
+
     # Add timestamp (%(...)T tokens are safe, not user-supplied)
     if [[ "$use_date" == "1" && "$use_time" == "1" ]]; then
         fmt_parts="${fmt_parts}%(%Y-%m-%d %H:%M:%S)T"
@@ -690,10 +721,10 @@ __streams_build_format() {
         fmt_parts="${fmt_parts}%(%H:%M:%S)T"
         __STREAMS_TS_ARG="-1 "
     fi
-    
+
     # Add emoji and tag (already escaped)
     fmt_parts="${fmt_parts}${emoji}${tag}"
-    
+
     __STREAMS_FMT_RESULT="$fmt_parts"
 }
 # --------------------------------------------------------------------------------------------------
@@ -706,5 +737,3 @@ __streams_build_format() {
 # Auto-initialization happens on source for immediate usability based on current settings.
 # If you modify settings after sourcing, call __streams_defineFN_all manually to regenerate functions.
 __streams_defineFN_all
-
-

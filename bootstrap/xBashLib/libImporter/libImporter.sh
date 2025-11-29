@@ -2,7 +2,7 @@
 # ==================================================================================================
 # Library Importer - Standalone Feature
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-12 | Modified: 2025-11-12
+# Date:          Created: 2025-11-12 | Modified: 2025-11-29
 # Description:   Safe library import with syntax validation and error aggregation
 # Feature:       File/directory import, recursive scanning, named folder import
 # ==================================================================================================
@@ -211,8 +211,6 @@ import_validate() {
 __import_validate_and_source() {
     local file_path="$1"
     local err_output line cleaned=""
-
-    debug "Validating and sourcing: $file_path"
 
     # Validate syntax in isolated shell
     if ! err_output=$(bash -n "$file_path" 2>&1); then
