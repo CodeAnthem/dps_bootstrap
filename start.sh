@@ -12,7 +12,7 @@ set -euo pipefail
 # ----------------------------------------------------------------------------------
 # SCRIPT METADATA
 # ----------------------------------------------------------------------------------
-readonly REPO_URL="https://github.com/codeAnthem/dps_bootstrap.git"
+readonly REPO_URL="https://github.com/CodeAnthem/dps_bootstrap.git"
 readonly REPO_NAME="dps_bootstrap"
 readonly REPO_PATH="/tmp/${REPO_NAME}"
 readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"

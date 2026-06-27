@@ -1,183 +1,114 @@
-# DPS Bootstrap - NixOS Deployment System
+# dps_bootstrap
 
-> **⚠️ WARNING** - This system is in active development and is not yet ready for production use.
-> 
-> **⚠️ WARNING** - This system is in active development and is not yet ready for production use.
-> 
-> **⚠️ WARNING** - This system is in active development and is not yet ready for production use.
+[![Version](https://img.shields.io/badge/version-4.0.1-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
+[![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 
-**Automated NixOS deployment system** that transforms any NixOS Live ISO into fully configured systems with a single command. This bootstrapper provides a fast, secure, and customizable way to deploy NixOS infrastructure.
+**dps_bootstrap** (NDS) installs NixOS from a live ISO — disk layout, optional LUKS, hardware config, and `nixos-install --flake` for [dps_swarm](https://github.com/CodeAnthem/dps_swarm) cluster nodes.
 
-## 🎯 Project Purpose
-
-DPS Bootstrap solves the complexity of NixOS deployment by providing:
-
-- **🚀 Rapid Deployment**: Transform bare NixOS ISO to configured system in minutes
-- **🔒 Security-First**: Built-in encryption, secure token handling, and access controls
-- **🎛️ Flexibility**: Works with any private NixOS flake repository
-- **🏗️ Infrastructure Ready**: Deploy management hubs and infrastructure nodes
-- **⚙️ Customizable**: Environment variables and interactive configuration
-
-## 🌟 Bootstrapper Benefits
-
-### 📦 Quick NixOS Installation
-- **One-liner deployment** from any NixOS Live ISO
-- **Interactive configuration** with smart defaults
-- **Automated partitioning** with optional LUKS encryption
-- **Hardware detection** and configuration generation
-- **Flake integration** with pure architecture support
-
-### 🛡️ Security Features
-- **LUKS full-disk encryption** with multiple key generation methods
-- **Interactive GitHub token input** (never stored or logged)
-- **Automatic credential cleanup** after operations
-- **Repository integrity verification** and untracked file detection
-- **SSH key generation** and secure distribution
-
-### 🔧 Deploy VM Management Hub
-
-The Deploy VM provides centralized infrastructure management:
-
-- **🔑 SOPS Integration**: Centralized secret management for entire infrastructure
-- **📡 SSH Orchestration**: Automated key distribution and node access
-- **🚀 Mass Deployment**: Deploy multiple nodes from templates
-- **📊 Monitoring Integration**: Built-in system monitoring and logging
-- **🔄 Update Management**: Coordinate updates across infrastructure
-- **💾 Backup Systems**: Automated backup of keys and configurations
-
-## 📋 Private Repository Requirements
-
-Your private NixOS flake repository must include:
-
-```nix
-# flake.nix - Required structure
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # Optional hardware input for pure flake architecture
-    hardware = { url = "path:/dev/null"; flake = false; };
-  };
-
-  outputs = { nixpkgs, hardware, ... }: {
-    nixosConfigurations.default = nixpkgs.lib.nixosSystem {
-      modules = [
-        # Hardware configuration override
-        (if hardware != null then hardware else {})
-        # Your system configuration
-        ./configuration.nix
-      ];
-    };
-  };
-}
 ```
-
-**Required Components**:
-- **flake.nix**: Pure flake with hardware input support
-- **configuration.nix**: Base system configuration
-- **templates/**: Role-based configurations (optional)
-- **secrets/**: SOPS encrypted secrets (optional)
-
-## 📋 Prerequisites
-
-- **NixOS ISO**: Official NixOS installation media
-- **Network**: Internet connection for downloads
-- **Target Disk**: Available storage device (will be completely wiped)
-- **Private Repository**: NixOS flake repository (optional for Deploy VM setup)
-- **GitHub Token**: Personal Access Token for private repository access
-
-## 🚀 Quick Start
-
-1. Prepare the target machine
-- Live boot from **Minimal NixOS ISO** from https://nixos.org/download/
-
-2. (optional) Set user password to allow SSH login
-- `passwd`
-- Login via SSH client
-
-3. **Recommended**: Run the one-liner
-```bash
-curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
+NixOS ISO → dps_bootstrap → partition / mount → clone flake → nixos-install --flake
 ```
-
-3. **Manual**: Clone and run the main script
-```bash
-# 1. Clone Repo
-git clone https://github.com/codeAnthem/dps_bootstrap.git /tmp/dps_bootstrap
-cd /tmp/dps_bootstrap
-# 2. Execute Main Script
-sudo bash bootstrap/main.sh
-```
-
-## 📚 What is the script workflow?
-
-### start.sh (Quicks Start one-liner script) will:
-1. **Download** this repository to `/tmp/dps_bootstrap/`
-2. **Verify Purity** it will force reset the repository to the latest commit
-3. **Avoid manipulation** checks and warns about (potential unwanted) untracked files
-4. **Launch** the interactive bootstrap selector 
-
-### bootstrap/main.sh (Main bootstrap script) will:
-1. **Source** all library scripts
-2. **Check** root privileges
-3. **Create** runtime directory (where secrets are temporarily stored)$
-4. **Setup** Cleanup Trap  to purge runtime files
-5. **Grab** bootstrap mode files
-6. **Menu** Prompt to select the bootstrap action
-7. **Execute** the selected bootstrap action
-8. **Cleanup** runtime directory
-
-___
-
-## Bootstraper Modes:
-
-### 🎯 Deploy VM (Management Hub)
-- **Purpose**: Central management and deployment system
-- **Access**: Write access to your private NixOS flake repository
-- **Features**: SOPS key management, SSH orchestration, cluster deployment tools
-- **Security**: Encrypted by default, stateless and recoverable
--> Read More: [deployVM.md](bootstrap/README_deployVM.md)
-
-### 🔧 Managed Nodes (Infrastructure)
-- **Purpose**: Any NixOS configuration from your private flake
-- **Access**: Read-only access to your private repository
-- **Types**: Servers, workstations, IoT devices, containers, custom systems
-- **Updates**: Automated configuration pulls and system updates
--> Read More: [managedNode.md](bootstrap/README_managedNode.md)
-
-
-
-
-## 📚 Documentation
-
-- **[bootstrap/README.md](bootstrap/README.md)** - Bootstrap script documentation
-- **[deployVM/README.md](deployVM/README.md)** - Deploy VM NixOS configuration details
-
-## ⚙️ Configuration
-
-The system uses **smart defaults** with optional customization:
-
-### Deploy VM Defaults
-- **Encryption**: Enabled by default
-- **Networking**: DHCP (configurable to static)
-- **Role**: Management and deployment hub
-
-### Managed Node Defaults  
-- **Encryption**: Optional (disabled by default)
-- **Networking**: Static IP required
-- **Role**: Configurable (worker/gateway/gpu-worker/custom)
-
-
-
-## 🆘 Support
-
-- **Debug Mode**: Set `export DPS_DEBUG=1` for verbose logging
-- **Common Issues**: Check disk paths, network configuration, and repository access
-- **Repository Structure**: Ensure your private flake follows NixOS conventions
-
-## 📄 License
-
-This project is open source. See individual files for specific license information.
 
 ---
 
-**Ready to deploy?** Run the one-liner above and let DPS Bootstrap handle the rest! 🚀
+## Quickstart
+
+### From live ISO (recommended)
+
+1. Boot [NixOS minimal ISO](https://nixos.org/download/)
+2. Optional: `passwd` and SSH in for comfort
+3. Run:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.sh | bash
+```
+
+4. Select **nixosNode** (cluster node install)
+5. Follow prompts — see [actions/nixosNode/README.md](actions/nixosNode/README.md)
+
+### Local checkout
+
+```bash
+git clone git@github.com:CodeAnthem/dps_bootstrap.git
+cd dps_bootstrap
+sudo bash bootstrap/main.sh
+```
+
+### Auto-confirm (CI / scripting)
+
+```bash
+export NDS_AUTO_CONFIRM=true
+sudo bash bootstrap/main.sh
+```
+
+---
+
+## Actions
+
+| Action | Purpose |
+|--------|---------|
+| **nixosNode** | Install a [dps_swarm](https://github.com/CodeAnthem/dps_swarm) host via flake |
+| **deployVM** | Legacy management-hub install (classic `/etc/nixos` config) |
+| **test** | Configurator / input tests (`DPS_TEST=true`) |
+
+Cluster install guide: **[actions/nixosNode/README.md](actions/nixosNode/README.md)**
+
+---
+
+## What the nixosNode path does
+
+1. Interactive configurator (disk, network, role)
+2. Partition target disk (+ optional LUKS + initrd SSH for remote unlock)
+3. Clone `dps_swarm` to `/mnt/opt/dps_swarm` (configurable)
+4. Write `hardware-configuration.nix` (+ `machine.nix` when encrypted) into the host dir
+5. `nixos-install --root /mnt --flake <checkout>#<host>`
+
+The flake on disk is the source of truth — bootstrap does not generate `configuration.nix`.
+
+---
+
+## Configuration
+
+Any configurator field can be preset via `DPS_*` env vars before launch:
+
+```bash
+export DPS_DISK_TARGET=/dev/vda
+export DPS_ENCRYPTION=false
+export DPS_HOSTNAME=control-toolkit
+curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.sh | bash
+```
+
+Debug logging: `export DEBUG=1`
+
+---
+
+## Prerequisites
+
+| Requirement | Notes |
+|-------------|-------|
+| Root | Script re-execs with `sudo` if needed |
+| Network | Clone bootstrap + dps_swarm during install |
+| Git access | SSH key on ISO for private `dps_swarm` repo |
+| Target disk | **Wiped** completely |
+| sops hosts | Age key on target (`/etc/sops/age/keys.txt`) — not created by bootstrap yet |
+
+---
+
+## Architecture
+
+| Path | Role |
+|------|------|
+| [`bootstrap/main.sh`](bootstrap/main.sh) | Entry, action discovery |
+| [`bootstrap/lib/installation.sh`](bootstrap/lib/installation.sh) | Loads nixInstaller stack |
+| [`bootstrap/lib/nixInstaller/`](bootstrap/lib/nixInstaller/) | Disk, LUKS, flake install |
+| [`actions/nixosNode/`](actions/nixosNode/) | dps_swarm cluster node action |
+
+Details: [bootstrap/README.md](bootstrap/README.md)
+
+---
+
+## Related
+
+- [dps_swarm](https://github.com/CodeAnthem/dps_swarm) — cluster flake
+- [Thundercast](https://github.com/CodeAnthem/thundercast) — infra modules
+- [ThunderCore](https://github.com/CodeAnthem/thundercore) — compose framework

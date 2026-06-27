@@ -1,132 +1,115 @@
-# Managed Node Setup Guide
+# nixosNode — cluster node install
 
-**Managed Node specific configuration and roles.**
-
-## 🎯 Managed Node Characteristics
-
-- **📖 Read-Only Access**: Pulls configs from private repository
-- **🎭 Role-Based**: worker/gateway/gpu-worker/custom
-- **🌐 Static Networking**: Stable IP addresses
-- **⚡ Performance Focused**: Optional encryption
-
-## 🎭 Node Roles
-
-### Standard Roles
-- **worker**: General compute workloads, Docker containers
-- **gateway**: Load balancers, firewalls, VPN endpoints
-- **gpu-worker**: ML workloads, GPU acceleration
-- **custom**: Your specialized templates
-
-## ⚙️ Managed Node Configuration
-
-### Required
-- `DPS_ROLE` - Node role
-- `DPS_HOSTNAME` - Node hostname  
-- `DPS_IP_ADDRESS` - Static IP address
-
-### Defaults (Managed Node Specific)
-```bash
-DPS_ENCRYPTION="n"              # Performance over security
-DPS_NETWORK_DNS_PRIMARY="1.1.1.1"
-DPS_NETWORK_DNS_SECONDARY="1.0.0.1"
-```
-
-### Network Configuration (Static Required)
-```bash
-export DPS_IP_ADDRESS="192.168.1.101"
-export DPS_NETWORK_GATEWAY="192.168.1.1"
-```
-
-## 🔄 Managed Node Workflow
-
-1. **Role Selection**: Interactive prompt for node role
-2. **Repository Clone**: Read-only access to private repo
-3. **Hardware Detection**: Generate local hardware config
-4. **Flake Install**: Pure flake with hardware override
-5. **Update Setup**: Create `dps-update` script
-
-## 🏗️ Post-Installation Structure
-
-```
-Managed Node (After Installation)
-├── /etc/nixos/
-│   ├── configuration.nix           # Imports role template
-│   └── hardware-configuration.nix  # Local only
-├── /etc/nixos-flake/               # Private repo (read-only)
-│   ├── templates/worker.nix        # Role templates
-│   └── [private repo contents]
-└── /usr/local/bin/dps-update       # Update script
-```
-
-## 🔄 Update Mechanism
-
-### Automated Updates
-```bash
-dps-update  # Pull latest config and rebuild
-```
-
-### Manual Process
-```bash
-cd /etc/nixos-flake
-git pull origin main
-nixos-rebuild switch --flake .#default \
-  --override-input hardware "path:/etc/nixos/hardware-configuration.nix"
-```
-
-## 🎯 Role Templates
-
-### Worker Node Template
-```nix
-# templates/worker.nix
-{
-  virtualisation.docker.enable = true;
-  services.prometheus.exporters.node.enable = true;
-  environment.systemPackages = [ docker-compose ];
-}
-```
-
-### Gateway Node Template  
-```nix
-# templates/gateway.nix
-{
-  services.nginx.enable = true;
-  services.haproxy.enable = true;
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
-}
-```
-
-### GPU Worker Template
-```nix
-# templates/gpu-worker.nix
-{
-  services.xserver.videoDrivers = [ "nvidia" ];
-  virtualisation.docker.enableNvidia = true;
-  environment.systemPackages = [ cudatoolkit ];
-}
-```
-
-## 🔐 Security Model
-
-### Access Control
-- **Read-Only**: Cannot modify infrastructure configs
-- **Pull Updates**: Automatic config updates from trusted source
-- **SSH Keys**: Managed through Deploy VM or SOPS
-
-### Secret Management
-```nix
-# In role templates
-sops.secrets.database-password = {
-  owner = "myapp";
-  mode = "0400";
-};
-```
-
-## 🔍 Managed Node Specific Troubleshooting
-
-**Role Templates**: Ensure template exists in private repository
-**Update Issues**: Check flake syntax and hardware override path
-**Network**: Verify static IP configuration and gateway
+Install a [dps_swarm](https://github.com/CodeAnthem/dps_swarm) host from a NixOS live ISO using `nixos-install --flake`.
 
 ---
 
-For general bootstrap info, see [README.md](README.md). For Deploy VM, see [README_deployVM.md](README_deployVM.md).
+## Quickstart
+
+### 1. Prepare the live environment
+
+```bash
+# On NixOS minimal ISO (as root or via sudo)
+
+# Optional: enable SSH
+passwd
+
+# Required for private repo: load your GitHub deploy key
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+# copy id_ed25519 + id_ed25519.pub, then:
+ssh -T git@github.com
+```
+
+### 2. Launch bootstrap
+
+```bash
+curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.sh | bash
+```
+
+Select **nixosNode**.
+
+### 3. Configurator choices
+
+| Preset | What to set |
+|--------|-------------|
+| **Cluster Node** | `FLAKE_REPO_URL` (default: `git+ssh://git@github.com/CodeAnthem/dps_swarm.git`) |
+| | `FLAKE_INSTALL_PATH` (default: `/mnt/opt/dps_swarm`) |
+| | `NODE_ROLE` — see table below |
+| **Network** | `HOSTNAME` — override to pick `worker-02` / `worker-03` |
+| | Static IP fields (used for validation; host IP comes from flake `configuration.nix`) |
+| **Disk** | `DISK_TARGET` — e.g. `/dev/vda` in a VM |
+| | `ENCRYPTION` — **off** for fastest VM smoke test |
+| | `REMOTE_UNLOCK` — on only for `encrypted-worker` role (auto-enabled) |
+
+### 4. Role → flake host
+
+| NODE_ROLE | Default host | Profile |
+|-----------|--------------|---------|
+| `control-toolkit` | `control-toolkit` | Ops VM — **start here** |
+| `gateway` | `gateway-01` | Swarm manager + edge |
+| `worker` | `worker-01` | Swarm worker |
+| `gpu-worker` | `gpu-worker-01` | GPU worker |
+| `encrypted-worker` | `encrypted-worker` | LUKS + remote unlock |
+
+Set **Hostname** in the Network preset to use `worker-02`, `worker-03`, etc.
+
+### 5. Confirm and install
+
+The installer will:
+
+1. Partition and mount `/mnt`
+2. Clone the flake onto the target disk
+3. Generate `hosts/x86_64-linux/<host>/hardware-configuration.nix`
+4. Write `machine.nix` with LUKS UUID when encryption is enabled
+5. Run `nixos-install --flake /mnt/opt/dps_swarm#<host>`
+
+### 6. After reboot
+
+| Check | Expected |
+|-------|----------|
+| Login | `root` / `root` on eval stubs (change immediately) |
+| Flake checkout | `/opt/dps_swarm` on installed system |
+| LUKS key | Back up from bootstrap runtime dir if encrypted |
+| sops | Place age key at `/etc/sops/age/keys.txt` before relying on secrets |
+
+---
+
+## First VM smoke test
+
+Recommended settings:
+
+- Role: **control-toolkit**
+- Encryption: **disabled**
+- Disk: single virtio disk (`/dev/vda`)
+- VM network: `192.168.1.0/24` to match host configs, or edit `hosts/.../configuration.nix` first
+
+---
+
+## Encrypted / production nodes
+
+1. Enable **Encryption** in Disk preset (default on)
+2. For remote unlock: enable **REMOTE_UNLOCK** (auto for `encrypted-worker`)
+3. Bootstrap generates initrd SSH keys → `/etc/ssh/initrd_ssh_host_ed25519_key`
+4. Bootstrap writes `machine.nix` with LUKS device UUID
+5. After install: encrypt the LUKS key into sops (`luks/root_key`) and deploy age key to the host
+
+Update `profiles/encrypted-worker.nix` with your SSH public key before installing encrypted workers.
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `git clone` fails | SSH key / repo access on live ISO |
+| `nixos-install` eval error | Run `nix flake check` on dps_swarm locally; check host `opts.nix` |
+| Wrong IP after boot | Edit host `configuration.nix` — bootstrap network preset does not override flake networking |
+| sops fails on boot | Install age key; encrypt real secrets in `secrets/secrets.yaml` |
+| LUKS won't unlock | Ensure `machine.nix` UUID matches; add `luks/root_key` to sops |
+
+---
+
+## Related
+
+- [dps_swarm README](https://github.com/CodeAnthem/dps_swarm/blob/main/README.md)
+- [dps_bootstrap README](../../README.md)
