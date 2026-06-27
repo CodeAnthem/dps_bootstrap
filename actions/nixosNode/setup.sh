@@ -2,133 +2,130 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - NixOS Node Action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-17 | Modified: 2025-10-17
-# Description:   NixOS Node setup for infrastructure deployment with role-based configurations
-# Feature:       Role-based templates, flake integration, hardware override, automated updates
-# Author:        DPS Project
+# Date:          Created: 2025-10-17 | Modified: 2026-06-27
+# Description:   Install dps_swarm cluster nodes from live ISO via flake
 # ==================================================================================================
-
-set -euo pipefail
-
-# =============================================================================
-# ACTION METADATA
-# =============================================================================
-readonly ACTION_NAME="nixosNode"
-readonly ACTION_VERSION="1.0.0"
-readonly ACTION_DESCRIPTION="NixOS Node setup for infrastructure deployment with role-based configurations"
 
 # =============================================================================
 # ACTION CONFIGURATION
 # =============================================================================
-# NixOS Node specific defaults
-setup_node_defaults() {
-    export DPS_HOSTNAME="${DPS_HOSTNAME:-}"
-    export DPS_ROLE="${DPS_ROLE:-}"
-    export DPS_IP_ADDRESS="${DPS_IP_ADDRESS:-}"
-    export DPS_NETWORK_GATEWAY="${DPS_NETWORK_GATEWAY:-192.168.1.1}"
-    export DPS_NETWORK_DNS_PRIMARY="${DPS_NETWORK_DNS_PRIMARY:-1.1.1.1}"
-    export DPS_NETWORK_DNS_SECONDARY="${DPS_NETWORK_DNS_SECONDARY:-1.0.0.1}"
-    export DPS_ENCRYPTION="${DPS_ENCRYPTION:-n}"  # Performance-focused by default
-    export DPS_DISK_TARGET="${DPS_DISK_TARGET:-/dev/sda}"
-    export DPS_ADMIN_USER="${DPS_ADMIN_USER:-admin}"
-    
-    log "NixOS Node defaults configured"
+action_config() {
+    PRESET_CONTEXT="nixosNode"
+
+    nds_configurator_preset_set_display "nixosNode" "Cluster Node"
+    nds_configurator_preset_set_priority "nixosNode" 50
+
+    nds_configurator_var_declare FLAKE_REPO_URL \
+        display="dps_swarm Git URL" \
+        input=url \
+        default="git+ssh://git@github.com/CodeAnthem/dps_swarm.git" \
+        required=true
+
+    nds_configurator_var_declare FLAKE_INSTALL_PATH \
+        display="Flake checkout on target disk" \
+        input=path \
+        default="/mnt/opt/dps_swarm" \
+        required=true
+
+    nds_configurator_var_declare NODE_ROLE \
+        display="Cluster role" \
+        input=choice \
+        default="worker" \
+        options="gateway|worker|gpu-worker|encrypted-worker|control-toolkit" \
+        required=true
+
+    PRESET_CONTEXT=""
+
+    nds_configurator_config_set "ENCRYPTION" "true"
+    nds_configurator_config_set "REMOTE_UNLOCK" "false"
+    nds_configurator_config_set "NETWORK_METHOD" "static"
 }
 
-# =============================================================================
-# MAIN SETUP FUNCTION
-# =============================================================================
-setup() {
-    section_header "NixOS Node Setup"
-    
-    # Setup configuration defaults
-    step_start "Setting up NixOS Node configuration"
-    setup_node_defaults
-    step_complete "Configuration setup"
-    
-    # Collect required node information
-    collect_node_configuration
-    
-    # Show configuration preview
-    show_configuration_preview "node"
-    
-    # TODO: Implement NixOS Node installation workflow
-    # This is a template - actual implementation will include:
-    # - Role selection and validation
-    # - Private repository cloning (read-only)
-    # - Disk partitioning and optional encryption
-    # - Hardware configuration generation
-    # - NixOS flake installation with hardware override
-    # - Update script creation
-    
-    log "NixOS Node setup template executed successfully"
-    console "This is a template implementation - full NixOS Node setup coming soon!"
-    
-    return 0
+# Map role preset to flake host name (must match hosts/x86_64-linux/<name>)
+_nixosnode_resolve_host() {
+    local role hostname
+    role=$(nds_configurator_config_get "NODE_ROLE")
+    hostname=$(nds_configurator_config_get "HOSTNAME")
+
+    if [[ -n "$hostname" ]]; then
+        echo "$hostname"
+        return 0
+    fi
+
+    case "$role" in
+        gateway) echo "gateway-01" ;;
+        gpu-worker) echo "gpu-worker-01" ;;
+        encrypted-worker) echo "encrypted-worker" ;;
+        control-toolkit) echo "control-toolkit" ;;
+        worker) echo "worker-01" ;;
+        *) error "Unknown NODE_ROLE: $role" ;;
+    esac
 }
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-collect_node_configuration() {
-    # Prompt for required values if not set
-    if [[ -z "$DPS_ROLE" ]]; then
-        console "Available roles: worker, gateway, gpu-worker, custom"
-        read -p "Enter node role: " DPS_ROLE
-        export DPS_ROLE
-    fi
-    
-    if [[ -z "$DPS_HOSTNAME" ]]; then
-        read -p "Enter hostname: " DPS_HOSTNAME
-        export DPS_HOSTNAME
-    fi
-    
-    if [[ -z "$DPS_IP_ADDRESS" ]]; then
-        read -p "Enter IP address: " DPS_IP_ADDRESS
-        export DPS_IP_ADDRESS
-    fi
-    
-    log "Node configuration collected"
-}
+_nixosnode_apply_role_defaults() {
+    local role
+    role=$(nds_configurator_config_get "NODE_ROLE")
 
-show_configuration_preview() {
-    local mode="$1"
-    
-    console ""
-    console "=== NixOS Node Configuration Preview ==="
-    console "Role: ${DPS_ROLE}"
-    console "Hostname: ${DPS_HOSTNAME}"
-    console "IP Address: ${DPS_IP_ADDRESS}"
-    console "Network Gateway: ${DPS_NETWORK_GATEWAY}"
-    console "Encryption: ${DPS_ENCRYPTION}"
-    console "Disk Target: ${DPS_DISK_TARGET}"
-    console "Admin User: ${DPS_ADMIN_USER}"
-    console "======================================="
-    console ""
-    
-    # Prompt for confirmation
-    local confirm
-    read -p "Proceed with this configuration? [Y/n]: " confirm
-    case "${confirm,,}" in
-        n|no)
-            error "Setup cancelled by user"
+    case "$role" in
+        encrypted-worker)
+            nds_configurator_config_set "ENCRYPTION" "true"
+            nds_configurator_config_set "REMOTE_UNLOCK" "true"
             ;;
-        *)
-            log "Configuration confirmed, proceeding..."
+        gateway|gpu-worker|worker|control-toolkit)
+            nds_configurator_config_set "ENCRYPTION" "true"
             ;;
     esac
 }
 
+_nixosnode_prepare_host_identity() {
+    local host
+    _nixosnode_apply_role_defaults
+    host=$(_nixosnode_resolve_host)
+    nds_configurator_config_set "HOSTNAME" "$host"
+    export NDS_FLAKE_HOST="$host"
+    export NDS_FLAKE_REPO_URL="$(nds_configurator_config_get "FLAKE_REPO_URL")"
+    export NDS_FLAKE_INSTALL_PATH="$(nds_configurator_config_get "FLAKE_INSTALL_PATH")"
+    log "Flake host selected: ${NDS_FLAKE_INSTALL_PATH}#${host}"
+}
+
+action_show_completion() {
+    console ""
+    console "Cluster node installed: ${NDS_FLAKE_HOST:-unknown}"
+    console "  Flake: ${NDS_FLAKE_ROOT:-unknown}"
+    console ""
+    console "Next steps:"
+    console "  1. Back up install secrets (LUKS key in runtime dir if encrypted)"
+    console "  2. Encrypt LUKS key into sops (luks/root_key) before production use"
+    console "  3. Reboot into installed system"
+    console ""
+}
+
 # =============================================================================
-# VALIDATION
+# MAIN WORKFLOW
 # =============================================================================
-validate_node_config() {
-    # TODO: Implement NixOS Node specific validation
-    # - Validate role is supported
-    # - Validate hostname format
-    # - Validate IP address format
-    # - Check disk target exists
-    # - Validate network configuration
-    
-    log "NixOS Node configuration validation passed"
+action_setup() {
+    console "Install a dps_swarm cluster node from the Thundercast leaf flake."
+    console "  • Disk layout + optional LUKS + optional remote unlock"
+    console "  • hardware-configuration.nix → host dir (gitignored)"
+    console "  • nixos-install --flake <dps_swarm>#<host>"
+
+    nds_askUserToProceed "Ready to configure?" || exit 130
+
+    if ! nds_configurator_validate_all; then
+        nds_configurator_prompt_errors
+        nds_configurator_validate_all || exit 11
+    fi
+
+    nds_configurator_menu || exit 12
+    _nixosnode_prepare_host_identity
+
+    nds_askUserToProceed "Install ${NDS_FLAKE_HOST}? This will erase the target disk." || exit 13
+
+    new_section
+    section_header "NixOS Installation"
+    nds_nixos_install_flake || exit 15
+
+    new_section
+    action_show_completion
+    nds_askUserToProceed "Reboot now?" && reboot
 }

@@ -14,12 +14,13 @@
 # Auto-mode: reads from configuration modules
 # Usage: nds_nixinstall_auto
 nds_nixinstall_auto() {
-    local disk encryption hostname
+    local disk encryption hostname remote_unlock
     disk=$(nds_config_get "disk" "DISK_TARGET")
     encryption=$(nds_config_get "disk" "ENCRYPTION")
     hostname=$(nds_config_get "network" "HOSTNAME")
+    remote_unlock=$(nds_config_get "disk" "REMOTE_UNLOCK")
     
-    nds_nixinstall "$disk" "$encryption" "$hostname"
+    nds_nixinstall "$disk" "$encryption" "$hostname" "$remote_unlock"
 }
 
 # Manual mode: explicit parameters
@@ -28,10 +29,12 @@ nds_nixinstall() {
     local disk="$1"
     local encryption="${2:-false}"
     local hostname="${3:-nixos}"
+    local remote_unlock="${4:-false}"
     
     log "Starting NixOS installation"
     log "Disk: $disk"
     log "Encryption: $encryption"
+    log "Remote unlock: $remote_unlock"
     log "Hostname: $hostname"
     
     # Step 1: Setup encryption (if enabled - generates key before partitioning)
@@ -50,10 +53,24 @@ nds_nixinstall() {
     if ! _nixinstall_mount_filesystems "$encryption"; then
         error "Failed to mount filesystems"
     fi
+
+    # Step 4: Initrd SSH keys for remote unlock (target root filesystem)
+    if [[ "$encryption" == "true" && "$remote_unlock" == "true" ]]; then
+        if ! _nixinstall_setup_initrd_ssh_keys; then
+            error "Initrd SSH host key setup failed"
+        fi
+    fi
     
-    # Step 4: Generate hardware configuration
+    # Step 5: Generate hardware configuration
     if ! _nixinstall_generate_hardware_config; then
         error "Hardware configuration generation failed"
+    fi
+
+    # Step 6: Optional machine.nix into flake checkout (NDS_FLAKE_ROOT + hostname)
+    if [[ "$encryption" == "true" && -n "${NDS_FLAKE_ROOT:-}" ]]; then
+        if ! _nixinstall_write_machine_facts "$disk" "$hostname" "$NDS_FLAKE_ROOT" "$encryption"; then
+            error "Failed to write machine.nix host facts"
+        fi
     fi
     
     success "NixOS disk preparation completed successfully"
@@ -105,5 +122,55 @@ nds_nixos_install() {
     fi
     step_complete "NixOS installed"
     
+    return 0
+}
+
+# Complete flake-based cluster node installation
+# Requires: FLAKE_REPO_URL + FLAKE_INSTALL_PATH (or NDS_FLAKE_* env), configurator hostname
+# Usage: nds_nixos_install_flake
+nds_nixos_install_flake() {
+    local flake_root repo_url install_path hostname
+    hostname=$(nds_config_get "network" "HOSTNAME")
+    repo_url="${NDS_FLAKE_REPO_URL:-$(nds_configurator_config_get "FLAKE_REPO_URL")}"
+    install_path="${NDS_FLAKE_INSTALL_PATH:-$(nds_configurator_config_get "FLAKE_INSTALL_PATH")}"
+
+    if [[ -z "$hostname" ]]; then
+        error "HOSTNAME must be set before flake install"
+    fi
+
+    step_start "Preparing disk and filesystems"
+    if ! nds_nixinstall_auto; then
+        step_fail "Disk preparation failed"
+        return 1
+    fi
+    step_complete "Disk ready"
+
+    step_start "Cloning dps_swarm flake onto target disk"
+    if ! _nixinstall_ensure_flake_checkout "$repo_url" "$install_path"; then
+        step_fail "Flake checkout failed"
+        return 1
+    fi
+    flake_root="$install_path"
+    export NDS_FLAKE_ROOT="$flake_root"
+    step_complete "Flake at $flake_root"
+
+    step_start "Installing hardware configuration into flake host dir"
+    local host_dir="${flake_root}/hosts/x86_64-linux/${hostname}"
+    mkdir -p "$host_dir"
+    if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+        cp /mnt/etc/nixos/hardware-configuration.nix "${host_dir}/hardware-configuration.nix"
+        chmod 600 "${host_dir}/hardware-configuration.nix"
+    else
+        warn "No hardware-configuration.nix generated — host may use eval stub"
+    fi
+    step_complete "Hardware config placed"
+
+    step_start "Installing NixOS from flake"
+    if ! _nixinstall_install_nixos_flake "$flake_root" "$hostname"; then
+        step_fail "NixOS installation failed"
+        return 1
+    fi
+    step_complete "NixOS installed"
+
     return 0
 }

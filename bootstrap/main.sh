@@ -227,8 +227,12 @@ setupRuntimeDir() {
     RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
 
     # Create runtime directory
-    mkdir -p "$RUNTIME_DIR" || return 1
+    mkdir -p "$RUNTIME_DIR/config" "$RUNTIME_DIR/secrets" || return 1
     chmod 700 "$RUNTIME_DIR" || return 1
+
+    export RUNTIME_DIR
+    export NDS_RUNTIME_DIR="$RUNTIME_DIR"
+    export DPS_RUNTIME_DIR="$RUNTIME_DIR"
     return 0
 }
 
@@ -516,6 +520,12 @@ if declare -f nds_configurator_init &>/dev/null; then
     nds_configurator_init || crash "Failed to initialize configurator"
 else
     crash "Configurator not available (nds_configurator_init not found)"
+fi
+
+if declare -f nds_installation_init &>/dev/null; then
+    nds_installation_init || crash "Failed to initialize installation stack"
+else
+    crash "Installation stack not available (nds_installation_init not found)"
 fi
 
 success "Bootstrapper 'NDS' libraries loaded"

@@ -48,6 +48,11 @@ disk_init() {
         display="Use Passphrase" \
         input=toggle \
         default=false
+
+    nds_configurator_var_declare REMOTE_UNLOCK \
+        display="Enable SSH remote unlock in initrd" \
+        input=toggle \
+        default=false
     
     nds_configurator_var_declare ENCRYPTION_PASSPHRASE_METHOD \
         display="Passphrase Generation Method" \
@@ -75,9 +80,11 @@ disk_init() {
 disk_get_active() {
     local encryption
     local use_passphrase
+    local remote_unlock
     
     encryption=$(nds_configurator_config_get "ENCRYPTION")
     use_passphrase=$(nds_configurator_config_get "ENCRYPTION_USE_PASSPHRASE")
+    remote_unlock=$(nds_configurator_config_get "REMOTE_UNLOCK")
     
     # Base fields always active
     echo "DISK_TARGET"
@@ -89,6 +96,7 @@ disk_get_active() {
         echo "ENCRYPTION_KEY_METHOD"
         echo "ENCRYPTION_KEY_LENGTH"
         echo "ENCRYPTION_USE_PASSPHRASE"
+        echo "REMOTE_UNLOCK"
         
         # Passphrase settings only if passphrase enabled (toggle normalizes to "true")
         if [[ "$use_passphrase" == "true" ]]; then

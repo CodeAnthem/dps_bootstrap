@@ -186,6 +186,12 @@ nds_configurator_config_get() {
     echo "${CONFIG_DATA[$1]:-${2:-}}"
 }
 
+# Legacy preset-scoped getter — preset name ignored; vars are flat in CONFIG_DATA.
+# Usage: nds_config_get "disk" "DISK_TARGET"
+nds_config_get() {
+    nds_configurator_config_get "$2"
+}
+
 # Get config value with env variable fallback (checks NDS_<varname>)
 # Usage: nds_configurator_config_get_env varname [default]
 nds_configurator_config_get_env() {
