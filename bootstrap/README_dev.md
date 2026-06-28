@@ -257,7 +257,7 @@ config_register_module "mymodule" \
 
 1. Every `config_set()` call registers the key in `CONFIG_KEYS`
 2. After module init, `config_apply_env_overrides()` scans ALL registered keys
-3. Checks for matching `DPS_*` environment variables
+3. Checks for matching `NDS_*` environment variables
 4. Applies overrides automatically
 
 ### Example
@@ -269,8 +269,8 @@ config_register_vars "$action" \
     "CUSTOM_SETTING:default"
 
 # User can set:
-export DPS_API_KEY=secret123
-export DPS_CUSTOM_SETTING=value
+export NDS_API_KEY=secret123
+export NDS_CUSTOM_SETTING=value
 
 # Both are applied automatically!
 ```
@@ -344,7 +344,7 @@ Modules register keys via config_set()
   ↓
 config_apply_env_overrides() scans registered keys
   ↓
-Applies DPS_* environment variable overrides
+Applies NDS_* environment variable overrides
   ↓
 config_workflow() runs validation → display → interactive → confirm
   ↓

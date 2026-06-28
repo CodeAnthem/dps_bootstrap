@@ -125,14 +125,17 @@ nds_nixos_install() {
     return 0
 }
 
-# Complete flake-based cluster node installation
-# Requires: FLAKE_REPO_URL + FLAKE_INSTALL_PATH (or NDS_FLAKE_* env), configurator hostname
+# Complete flake-based installation
+# Requires: FLAKE_* config or NDS_FLAKE_* env, configurator hostname
 # Usage: nds_nixos_install_flake
 nds_nixos_install_flake() {
-    local flake_root repo_url install_path hostname
+    local flake_root repo_url install_path hostname host_dir_rel source local_path
     hostname=$(nds_config_get "network" "HOSTNAME")
+    source="${NDS_FLAKE_SOURCE:-$(nds_configurator_config_get "FLAKE_SOURCE")}"
     repo_url="${NDS_FLAKE_REPO_URL:-$(nds_configurator_config_get "FLAKE_REPO_URL")}"
+    local_path="${NDS_FLAKE_LOCAL_PATH:-$(nds_configurator_config_get "FLAKE_LOCAL_PATH")}"
     install_path="${NDS_FLAKE_INSTALL_PATH:-$(nds_configurator_config_get "FLAKE_INSTALL_PATH")}"
+    host_dir_rel="${NDS_FLAKE_HOST_DIR:-$(nds_configurator_config_get "FLAKE_HOST_DIR")}"
 
     if [[ -z "$hostname" ]]; then
         error "HOSTNAME must be set before flake install"
@@ -145,17 +148,31 @@ nds_nixos_install_flake() {
     fi
     step_complete "Disk ready"
 
-    step_start "Cloning dps_swarm flake onto target disk"
-    if ! _nixinstall_ensure_flake_checkout "$repo_url" "$install_path"; then
-        step_fail "Flake checkout failed"
-        return 1
-    fi
+    step_start "Staging flake on target disk"
+    case "$source" in
+        local)
+            if ! _nixinstall_stage_local_flake "$local_path" "$install_path"; then
+                step_fail "Local flake staging failed"
+                return 1
+            fi
+            ;;
+        remote|*)
+            if [[ -z "$repo_url" ]]; then
+                error "FLAKE_REPO_URL is required for remote flake source"
+            fi
+            if ! _nixinstall_ensure_flake_checkout "$repo_url" "$install_path"; then
+                step_fail "Flake checkout failed"
+                return 1
+            fi
+            ;;
+    esac
     flake_root="$install_path"
     export NDS_FLAKE_ROOT="$flake_root"
     step_complete "Flake at $flake_root"
 
     step_start "Installing hardware configuration into flake host dir"
-    local host_dir="${flake_root}/hosts/x86_64-linux/${hostname}"
+    [[ -z "$host_dir_rel" ]] && host_dir_rel="hosts/x86_64-linux"
+    local host_dir="${flake_root}/${host_dir_rel}/${hostname}"
     mkdir -p "$host_dir"
     if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
         cp /mnt/etc/nixos/hardware-configuration.nix "${host_dir}/hardware-configuration.nix"

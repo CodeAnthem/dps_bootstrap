@@ -1,19 +1,43 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# NDS - Live ISO quickstart
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2025-11-12
-# Description:   One-liner to start DPS Bootstrap script by downloading repo to /tmp
-# Feature:       Clone or reset repository, check for untracked files, execute target script
+# Date:          Created: 2025-10-12 | Modified: 2026-06-28
+# Description:   One-liner: clone repo to /tmp and run bootstrap/main.sh
 # ==================================================================================================
 
 set -euo pipefail
 
 # ----------------------------------------------------------------------------------
+# REPOSITORY RESOLUTION
+# ----------------------------------------------------------------------------------
+# Priority: NDS_REPO_URL env → git remote when start.sh is in a checkout → canonical default
+nds_resolve_repo_url() {
+    if [[ -n "${NDS_REPO_URL:-}" ]]; then
+        echo "$NDS_REPO_URL"
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    if git -C "$script_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+        local remote
+        remote="$(git -C "$script_dir" config --get remote.origin.url 2>/dev/null || true)"
+        if [[ -n "$remote" ]]; then
+            echo "$remote"
+            return 0
+        fi
+    fi
+
+    echo "https://github.com/CodeAnthem/dps_bootstrap.git"
+}
+
+# ----------------------------------------------------------------------------------
 # SCRIPT METADATA
 # ----------------------------------------------------------------------------------
-readonly REPO_URL="https://github.com/CodeAnthem/dps_bootstrap.git"
-readonly REPO_NAME="dps_bootstrap"
+readonly REPO_URL="$(nds_resolve_repo_url)"
+readonly REPO_NAME="${NDS_REPO_NAME:-$(basename "${REPO_URL%.git}")}"
 readonly REPO_PATH="/tmp/${REPO_NAME}"
 readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"
 readonly REPO_TARGET_SCRIPT="main.sh"

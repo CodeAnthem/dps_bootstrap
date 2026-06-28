@@ -66,7 +66,7 @@ bootstrap/
 **Key Features**:
 - Conditional fields (e.g., IP only shown for static networking)
 - Cross-field validation (e.g., gateway must differ from IP)
-- Environment variable overrides (`DPS_*`)
+- Environment variable overrides (`NDS_*`)
 - Interactive menu with validation loop
 - See [lib/2_configuration/README.md](lib/2_configuration/README.md) for details
 
@@ -127,24 +127,23 @@ bootstrap/
 
 ### Environment Variables
 
-**Any configuration key can be set via `DPS_*` environment variables!**
+**Any configuration key can be set via `NDS_*` environment variables!**
 
 Common variables:
-- `DPS_HOSTNAME` - System hostname
-- `DPS_DISK_TARGET` - Target disk (e.g., `/dev/sda`)
-- `DPS_ENCRYPTION` - Enable encryption (`y`/`n`)
-- `DPS_NETWORK_METHOD` - Network mode (`dhcp`/`static`)
-- `DPS_IP_ADDRESS`, `DPS_NETWORK_MASK`, `DPS_NETWORK_GATEWAY` - Static IP config
-- `DPS_ADMIN_USER` - Admin username
-- `DPS_SSH_PORT` - SSH port number
+- `NDS_HOSTNAME` - System hostname
+- `NDS_DISK_TARGET` - Target disk (e.g., `/dev/sda`)
+- `NDS_ENCRYPTION` - Enable encryption (`true`/`false`)
+- `NDS_NETWORK_METHOD` - Network mode (`dhcp`/`static`)
+- `NDS_NETWORK_IP`, `NDS_NETWORK_MASK`, `NDS_NETWORK_GATEWAY` - Static IP config
+- `NDS_FLAKE_REPO_URL`, `NDS_FLAKE_HOST` - Flake install (installFlake action)
 - `DEBUG` - Enable debug logging (`1`/`0`)
 
 **Example:**
 ```bash
-export DPS_HOSTNAME="myserver"
-export DPS_ADMIN_USER="admin"
-export DPS_ENCRYPTION="y"
-export DPS_NETWORK_METHOD="dhcp"
+export NDS_HOSTNAME="myserver"
+export NDS_ENCRYPTION="false"
+export NDS_NETWORK_METHOD="dhcp"
+export NDS_FLAKE_HOST="myserver"
 ./main.sh
 ```
 
@@ -159,7 +158,7 @@ Actions use: `config_workflow("network", "disk", "system")`
 4. **Confirm** - User presses X to proceed (validates all modules)
 
 **Features:**
-- Smart defaults per action (deployVM: encryption=true, dhcp)
+- Smart defaults per action (installFlake: remote flake, optional encryption)
 - Conditional fields (IP only for static networking)
 - Cross-field validation (gateway ≠ IP, same subnet)
 - Environment overrides applied automatically
@@ -173,8 +172,8 @@ curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.
 
 **With environment variables:**
 ```bash
-export DPS_HOSTNAME="myserver"
-export DPS_NETWORK_METHOD="dhcp"
+export NDS_HOSTNAME="myserver"
+export NDS_NETWORK_METHOD="dhcp"
 curl -sSL https://raw.githubusercontent.com/codeAnthem/dps_bootstrap/main/start.sh | bash
 ```
 

@@ -1,66 +1,48 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# Digital Paradise Swarm - Bootstrap Configuration Example by CodeAnthem
+# NDS - Configuration example
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2024-10-15 | Modified: 2025-10-15
-# Description:   Configuration template for DPS bootstrap script deployment
-# Feature:       Environment variable configuration with examples and defaults
+# Date:          Created: 2024-10-15 | Modified: 2026-06-28
+# Description:   Environment variable preset for installFlake
 # ==================================================================================================
 #
-# Copy this file and modify the values for your environment
-# Source this file before running the bootstrap script
+# Copy or source before running: sudo bash bootstrap/main.sh
 
 # =============================================================================
-# GLOBAL CONFIGURATION (OPTIONAL - HAS DEFAULTS)
+# FLAKE INSTALL (installFlake action)
 # =============================================================================
 
-
-# Network Defaults
-export DPS_NETWORK_GATEWAY="192.168.0.1"
-export DPS_NETWORK_MASK="255.255.255.0"
-export DPS_NETWORK_DNS_PRIMARY="1.1.1.1"
-export DPS_NETWORK_DNS_SECONDARY="1.0.0.1"
-
-# System Defaults
-export DPS_ADMIN_USER="admin"
-
-# Disk Defaults
-export DPS_DISK_TARGET="/dev/sda"
-export DPS_DISK_ENCRYPTION_ENABLED="n"
-export DPS_DISK_ENCRYPTION_KEY_LENGTH="32"
-export DPS_DISK_ENCRYPTION_USE_PASSPHRASE="n"
-export DPS_DISK_ENCRYPTION_PASSPHRASE_LENGTH="32"
-export DPS_DISK_ENCRYPTION_GENERATE="urandom"
+export NDS_FLAKE_SOURCE="remote"          # remote | local
+export NDS_FLAKE_REPO_URL="git+ssh://git@github.com/you/your-leaf.git"
+# export NDS_FLAKE_LOCAL_PATH="/mnt/usb/my-flake"   # when NDS_FLAKE_SOURCE=local
+export NDS_FLAKE_INSTALL_PATH="/mnt/opt/your-leaf"
+export NDS_FLAKE_HOST="my-server"       # nixosConfigurations name
+export NDS_FLAKE_HOST_DIR="hosts/x86_64-linux"
 
 # =============================================================================
-# REQUIRED HOST CONFIGURATION
+# DISK & ENCRYPTION
 # =============================================================================
 
-# Required Configuration
-export DPS_GIT_REPO="https://github.com/YOUR_USERNAME/YOUR_REPO.git"  # Git repository URL
-export DPS_NETWORK_HOSTNAME="worker-01"                          # Hostname for this node
-export DPS_NETWORK_ADDRESS="192.168.0.100"                      # Static IP address
-export DPS_ROLE="worker"                                         # tooling, gateway, worker, gpu-worker
+export NDS_DISK_TARGET="/dev/vda"
+export NDS_ENCRYPTION="false"
+export NDS_ENCRYPTION_KEY_LENGTH="64"
+export NDS_ENCRYPTION_USE_PASSPHRASE="n"
 
 # =============================================================================
-# USAGE EXAMPLES
+# NETWORK
 # =============================================================================
 
-# Example 1: Gateway Node
-# export DPS_ROLE="gateway"
-# export DPS_NETWORK_HOSTNAME="gateway-01"
-# export DPS_NETWORK_ADDRESS="192.168.0.1"
-# export DPS_DISK_ENCRYPTION_ENABLED="y"
+export NDS_HOSTNAME="my-server"         # must match FLAKE_HOST unless you set both explicitly
+export NDS_NETWORK_METHOD="dhcp"
+# export NDS_NETWORK_IP="192.168.1.100"
+# export NDS_NETWORK_MASK="255.255.255.0"
+# export NDS_NETWORK_GATEWAY="192.168.1.1"
+export NDS_NETWORK_DNS_PRIMARY="1.1.1.1"
+export NDS_NETWORK_DNS_SECONDARY="1.0.0.1"
 
-# Example 2: GPU Worker Node
-# export DPS_ROLE="gpu-worker"
-# export DPS_NETWORK_HOSTNAME="gpu-worker-01"
-# export DPS_NETWORK_ADDRESS="192.168.0.200"
-# export DPS_DISK_TARGET="/dev/nvme0n1"
+# =============================================================================
+# OPTIONAL
+# =============================================================================
 
-# Example 3: Tooling Node
-# export DPS_ROLE="tooling"
-# export DPS_NETWORK_HOSTNAME="tooling-01"
-# export DPS_NETWORK_ADDRESS="192.168.0.10"
-# export DPS_DISK_ENCRYPTION_ENABLED="y"
-# export DPS_ADMIN_USER="tooling-admin"
+# export NDS_AUTO_CONFIRM="true"
+# export DEBUG="1"

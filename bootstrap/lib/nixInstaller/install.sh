@@ -28,6 +28,28 @@ _nixinstall_generate_hardware_config() {
     return 0
 }
 
+# Copy a local flake directory onto the mounted target root.
+# Usage: _nixinstall_stage_local_flake "local_path" "install_path"
+_nixinstall_stage_local_flake() {
+    local local_path="$1"
+    local install_path="$2"
+
+    if [[ -z "$local_path" || ! -d "$local_path" ]]; then
+        error "Local flake path not found: $local_path"
+    fi
+
+    log "Copying local flake from $local_path to $install_path"
+    mkdir -p "$(dirname "$install_path")"
+
+    if [[ -e "$install_path" ]]; then
+        rm -rf "$install_path"
+    fi
+
+    cp -a "$local_path" "$install_path" || error "Failed to copy flake to $install_path"
+    log "Local flake staged at $install_path"
+    return 0
+}
+
 # Clone or refresh flake checkout on the mounted target root.
 # Usage: _nixinstall_ensure_flake_checkout "repo_url" "install_path"
 _nixinstall_ensure_flake_checkout() {
