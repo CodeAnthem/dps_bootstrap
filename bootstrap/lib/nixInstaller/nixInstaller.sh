@@ -30,28 +30,43 @@ nds_nixinstall() {
     local encryption="${2:-false}"
     local hostname="${3:-nixos}"
     local remote_unlock="${4:-false}"
+    local disk_strategy
+    disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
+    disk_strategy="${disk_strategy:-nds}"
     
     log "Starting NixOS installation"
     log "Disk: $disk"
+    log "Disk strategy: $disk_strategy"
     log "Encryption: $encryption"
     log "Remote unlock: $remote_unlock"
     log "Hostname: $hostname"
     
-    # Step 1: Setup encryption (if enabled - generates key before partitioning)
-    if [[ "$encryption" == "true" ]]; then
-        if ! _nixinstall_setup_encryption; then
-            error "Encryption setup failed"
+    if [[ "$disk_strategy" == "flake" ]]; then
+        warn "disk strategy 'flake' skips NDS partitioning — use only from flake install with /mnt ready"
+        return 0
+    fi
+
+    if [[ "$disk_strategy" == "disko" ]]; then
+        if ! nds_partition_run_disko_from_config; then
+            error "Disko partitioning failed"
         fi
-    fi
-    
-    # Step 2: Partition disk
-    if ! _nixinstall_partition_disk "$disk" "$encryption"; then
-        error "Disk partitioning failed"
-    fi
-    
-    # Step 3: Mount filesystems
-    if ! _nixinstall_mount_filesystems "$encryption"; then
-        error "Failed to mount filesystems"
+    else
+        # Step 1: Setup encryption (if enabled - generates key before partitioning)
+        if [[ "$encryption" == "true" ]]; then
+            if ! _nixinstall_setup_encryption; then
+                error "Encryption setup failed"
+            fi
+        fi
+        
+        # Step 2: Partition disk
+        if ! _nixinstall_partition_disk "$disk" "$encryption"; then
+            error "Disk partitioning failed"
+        fi
+        
+        # Step 3: Mount filesystems
+        if ! _nixinstall_mount_filesystems "$encryption"; then
+            error "Failed to mount filesystems"
+        fi
     fi
 
     # Step 4: Initrd SSH keys for remote unlock (target root filesystem)
@@ -124,15 +139,17 @@ nds_nixos_install() {
 # Usage: nds_nixos_install_flake
 nds_nixos_install_flake() {
     local flake_root repo_url install_path hostname host_dir_rel source local_path
-    local disk_prep hw_mode encryption disk
+    local disk_prep hw_mode encryption disk disk_strategy
     hostname=$(nds_config_get "network" "HOSTNAME")
     source="${NDS_FLAKE_SOURCE:-$(nds_configurator_config_get "FLAKE_SOURCE")}"
     repo_url="${NDS_FLAKE_REPO_URL:-$(nds_configurator_config_get "FLAKE_REPO_URL")}"
     local_path="${NDS_FLAKE_LOCAL_PATH:-$(nds_configurator_config_get "FLAKE_LOCAL_PATH")}"
     install_path="${NDS_FLAKE_INSTALL_PATH:-$(nds_configurator_config_get "FLAKE_INSTALL_PATH")}"
     host_dir_rel="${NDS_FLAKE_HOST_DIR:-$(nds_configurator_config_get "FLAKE_HOST_DIR")}"
-    disk_prep="${NDS_DISK_PREP:-$(nds_configurator_config_get "DISK_PREP")}"
-    hw_mode="${NDS_HARDWARE_CONFIG:-$(nds_configurator_config_get "HARDWARE_CONFIG")}"
+    disk_strategy="${NDS_DISK_STRATEGY:-$(nds_config_get "disk" "DISK_STRATEGY")}"
+    disk_strategy="${disk_strategy:-nds}"
+    hw_mode="${NDS_HARDWARE_PLACEMENT:-$(nds_configurator_config_get "HARDWARE_PLACEMENT")}"
+    hw_mode="${hw_mode:-host-dir}"
     encryption=$(nds_config_get "disk" "ENCRYPTION")
     disk=$(nds_config_get "disk" "DISK_TARGET")
 
@@ -140,10 +157,11 @@ nds_nixos_install_flake() {
         error "HOSTNAME must be set before flake install"
     fi
 
-    if [[ "$disk_prep" == "skip" ]]; then
-        step_start "Verifying /mnt (disk prep skipped)"
+    if [[ "$disk_strategy" == "flake" ]]; then
+        step_start "Verifying /mnt (flake-owned disk)"
         if ! mountpoint -q /mnt; then
-            step_fail "/mnt is not mounted — required when disk preparation is skip"
+            step_fail "/mnt is not mounted — required when disk strategy is flake"
+            error "Mount /mnt per your flake docs, or use disko from the flake before install"
             return 1
         fi
         if [[ "$hw_mode" != "skip" ]]; then
@@ -184,20 +202,27 @@ nds_nixos_install_flake() {
     export NDS_FLAKE_ROOT="$flake_root"
     step_complete "Flake at $flake_root"
 
-    step_start "Installing hardware configuration into flake host dir"
+    step_start "Hardware configuration"
     [[ -z "$host_dir_rel" ]] && host_dir_rel="hosts/x86_64-linux"
     local host_dir="${flake_root}/${host_dir_rel}/${hostname}"
-    if [[ "$hw_mode" == "skip" ]]; then
-        log "Skipping hardware-configuration.nix copy (HARDWARE_CONFIG=skip)"
-    else
-        mkdir -p "$host_dir"
-        if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
-            cp /mnt/etc/nixos/hardware-configuration.nix "${host_dir}/hardware-configuration.nix"
-            chmod 600 "${host_dir}/hardware-configuration.nix"
-        else
-            warn "No hardware-configuration.nix generated — host may use eval stub"
-        fi
-    fi
+    case "$hw_mode" in
+        skip)
+            log "Skipping hardware-configuration.nix (HARDWARE_PLACEMENT=skip)"
+            ;;
+        etc-nixos)
+            log "Keeping hardware-configuration.nix in /etc/nixos only"
+            mkdir -p /mnt/etc/nixos
+            ;;
+        host-dir|*)
+            mkdir -p "$host_dir"
+            if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+                cp /mnt/etc/nixos/hardware-configuration.nix "${host_dir}/hardware-configuration.nix"
+                chmod 600 "${host_dir}/hardware-configuration.nix"
+            else
+                warn "No hardware-configuration.nix generated — host may use eval stub"
+            fi
+            ;;
+    esac
     step_complete "Hardware config handled"
 
     if [[ "$encryption" == "true" ]]; then
@@ -210,7 +235,7 @@ nds_nixos_install_flake() {
     fi
 
     step_start "Installing NixOS from flake"
-    if ! _nixinstall_install_nixos_flake "$flake_root" "$hostname"; then
+    if ! _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$hw_mode"; then
         step_fail "NixOS installation failed"
         return 1
     fi

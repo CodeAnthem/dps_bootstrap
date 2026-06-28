@@ -21,29 +21,13 @@ NDS is intentionally narrow: **live-ISO install helper for an existing flake**. 
 
 ## Does NDS fight your flake?
 
-### Disko or custom partitioning in the flake
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full disk + hardware model. Summary:
 
-**Yes, by default.** NDS partitions with `parted` before `nixos-install`. If your flake uses **disko** (or any module that expects to own the disk during install), NDS layout can conflict.
+- **disko in flake** → use `DISK_STRATEGY=flake`, mount `/mnt` yourself first
+- **NDS disko** → `DISK_STRATEGY=disko` (restored from earlier project work)
+- **hardware** → default `host-dir` (gitignored on disk, survives `git pull`)
 
-**Mitigation today:** set **Disk preparation** to `skip` in the menu (`NDS_DISK_PREP=skip`). You must already have `/mnt` mounted the way your install expects. This is an advanced escape hatch — document your own disko/manual steps in your flake README.
-
-**Not supported yet:** a first-class “flake owns disk” mode that runs `nixos-install` without NDS partitioning and lets disko run natively.
-
-### Hardware-configuration.nix
-
-**Default:** NDS generates it and copies it into your flake’s host directory on disk.
-
-**Why:** Most leaf flakes (Thundercast-style) import `./hardware-configuration.nix` per host. The file is machine-specific and usually gitignored.
-
-**Skip:** set **Hardware config** to `skip` (`NDS_HARDWARE_CONFIG=skip`) if your flake already ships a stub, uses `--override-input`, or generates hardware another way.
-
-### Read-only Git access
-
-Cloning a **read-only** deploy token is fine — NDS only needs fetch access. Writes happen on the **installed disk** (copying `hardware-configuration.nix` / `machine.nix` into the checkout there), not back to GitHub.
-
-### Flake without a host directory
-
-NDS creates `<FLAKE_HOST_DIR>/<hostname>/` if missing. Your `nixosConfigurations.<host>` must still know how to import that path. NDS does not scaffold a full Thundercore `nixosBuilder` host tree.
+This file lists edge cases and future work only.
 
 ---
 
@@ -82,8 +66,8 @@ nixos-install --root /mnt --flake /mnt/opt/myflake#myhost
 | Scenario | NDS today | Possible future |
 |----------|-----------|-----------------|
 | Leaf flake + NDS disk layout + host dir | Supported | — |
-| Disko-owned disk | Conflicts unless `DISK_PREP=skip` | Native disko mode |
-| Skip hardware copy | `HARDWARE_CONFIG=skip` | — |
+| Disko-owned disk | Use `DISK_STRATEGY=flake` | — |
+| Skip hardware copy | `HARDWARE_PLACEMENT=skip` | — |
 | Generate flake / host from menu | Not supported | Separate tool or action |
 | Apply timezone/network from menu to flake | Not supported (by design) | Would need flake-aware codegen |
 | Classic `/etc/nixos` only | Removed (`_CleanupLater/deployVM`) | Out of scope |

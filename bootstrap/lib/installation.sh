@@ -35,6 +35,16 @@ nds_installation_init() {
         return 1
     }
 
+    nds_import_file "${SCRIPT_DIR}/lib/partitionTools/partitionTools.sh" || {
+        fatal "Failed to load partitionTools"
+        return 1
+    }
+
+    nds_partition_load || {
+        fatal "Failed to load partition tool modules"
+        return 1
+    }
+
     success "Installation stack loaded"
     return 0
 }

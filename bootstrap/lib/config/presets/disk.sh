@@ -24,6 +24,35 @@ disk_init() {
         input=disk \
         default="$first_disk" \
         required=true
+
+    nds_configurator_var_declare DISK_STRATEGY \
+        display="Disk strategy" \
+        input=choice \
+        default="nds" \
+        options="nds|disko|flake" \
+        help="nds: simple EFI+root. disko: NDS Disko template. flake: your flake owns disk (disko in flake)."
+
+    nds_configurator_var_declare FS_TYPE \
+        display="Root filesystem" \
+        input=choice \
+        default="ext4" \
+        options="ext4|btrfs" \
+        required=false
+
+    nds_configurator_var_declare SWAP_SIZE_MIB \
+        display="Swap size (MiB, 0=none)" \
+        input=int \
+        default="0" \
+        min=0 \
+        max=65536 \
+        required=false
+
+    nds_configurator_var_declare DISKO_CONFIG \
+        display="Disko config file (optional)" \
+        input=path \
+        default="" \
+        required=false \
+        help="Path to a .nix disko config (in flake or on live system). Empty = NDS built-in template."
     
     nds_configurator_var_declare ENCRYPTION \
         display="Enable Encryption" \
@@ -88,8 +117,17 @@ disk_get_active() {
     
     # Base fields always active
     echo "DISK_TARGET"
+    echo "DISK_STRATEGY"
     echo "ENCRYPTION"
     echo "PARTITION_SCHEME"
+
+    local strategy
+    strategy=$(nds_configurator_config_get "DISK_STRATEGY")
+    if [[ "$strategy" == "disko" ]]; then
+        echo "FS_TYPE"
+        echo "SWAP_SIZE_MIB"
+        echo "DISKO_CONFIG"
+    fi
     
     # Encryption settings only if encryption enabled (toggle normalizes to "true")
     if [[ "$encryption" == "true" ]]; then

@@ -19,7 +19,7 @@ You need:
 - A **host entry** your flake can import (often `hosts/<system>/<hostname>/` — Thundercast-style layouts work well)
 - **Git access** to the flake if installing from a remote private repo (SSH keys on the live system)
 
-NDS is **not** a flake generator. It does not set timezone, users, or services — that lives in your flake. See [LIMITATIONS.md](LIMITATIONS.md) for what NDS does and does not do (disk layouts, disko, hardware files, read-only clones).
+NDS is **not** a flake generator. It does not set timezone, users, or services — that lives in your flake. See [ARCHITECTURE.md](ARCHITECTURE.md) for disk strategies, hardware placement, and what happens after install.
 
 ---
 
@@ -149,4 +149,4 @@ DEBUG=1 sudo bash bootstrap/main.sh
 NDS_TEST=true sudo bash bootstrap/main.sh   # configurator test harness only
 ```
 
-Contributor notes: [bootstrap/README.md](bootstrap/README.md) · Scope: [LIMITATIONS.md](LIMITATIONS.md)
+Contributor notes: [bootstrap/README.md](bootstrap/README.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [LIMITATIONS.md](LIMITATIONS.md)

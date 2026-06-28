@@ -81,11 +81,12 @@ _nixinstall_ensure_flake_checkout() {
     return 0
 }
 
-# Install NixOS from a flake configuration (hardware-configuration.nix in host dir optional)
-# Usage: _nixinstall_install_nixos_flake "flake_root" "host_name"
+# Usage: _nixinstall_install_nixos_flake "flake_root" "host_name" ["hardware_placement"]
 _nixinstall_install_nixos_flake() {
     local flake_root="$1"
     local host_name="$2"
+    local hw_placement="${3:-host-dir}"
+    local -a install_args=(--root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd)
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
 
@@ -93,7 +94,12 @@ _nixinstall_install_nixos_flake() {
         error "Flake root not found: $flake_root"
     fi
 
-    if ! nixos-install --root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd; then
+    if [[ "$hw_placement" == "etc-nixos" && -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+        install_args+=(--override-input hardware "path:/etc/nixos/hardware-configuration.nix")
+        log "Using --override-input hardware path:/etc/nixos/hardware-configuration.nix"
+    fi
+
+    if ! nixos-install "${install_args[@]}"; then
         error "Flake-based NixOS installation failed"
     fi
 

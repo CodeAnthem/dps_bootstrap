@@ -18,8 +18,8 @@ export NDS_FLAKE_REPO_URL="git+ssh://git@github.com/you/your-leaf.git"
 export NDS_FLAKE_INSTALL_PATH="/mnt/opt/your-leaf"
 export NDS_FLAKE_HOST="my-server"       # nixosConfigurations name
 export NDS_FLAKE_HOST_DIR="hosts/x86_64-linux"
-export NDS_DISK_PREP="nds"              # nds | skip
-export NDS_HARDWARE_CONFIG="copy"       # copy | skip
+export NDS_DISK_STRATEGY="nds"              # nds | disko | flake
+export NDS_HARDWARE_PLACEMENT="host-dir"    # host-dir | etc-nixos | skip
 
 # =============================================================================
 # DISK & ENCRYPTION

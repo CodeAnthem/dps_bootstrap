@@ -10,7 +10,6 @@
 # ACTION CONFIGURATION
 # =============================================================================
 action_config() {
-    # Only disk + flake fields apply — timezone/network/etc. live in the user's flake.
     nds_configurator_preset_disable quick
     nds_configurator_preset_disable region
     nds_configurator_preset_disable network
@@ -59,19 +58,12 @@ action_config() {
         default="hosts/x86_64-linux" \
         required=false
 
-    nds_configurator_var_declare DISK_PREP \
-        display="Disk preparation" \
-        input=choice \
-        default="nds" \
-        options="nds|skip" \
-        help="nds: NDS partitions and mounts /mnt. skip: you already mounted /mnt (disko/advanced)."
-
-    nds_configurator_var_declare HARDWARE_CONFIG \
+    nds_configurator_var_declare HARDWARE_PLACEMENT \
         display="Hardware configuration" \
         input=choice \
-        default="copy" \
-        options="copy|skip" \
-        help="copy: generate and place hardware-configuration.nix in host dir. skip: flake handles hardware."
+        default="host-dir" \
+        options="host-dir|etc-nixos|skip" \
+        help="host-dir: copy into flake host folder (gitignored). etc-nixos: keep in /etc/nixos + override-input. skip: flake handles hardware."
 
     PRESET_CONTEXT=""
 }
@@ -88,8 +80,8 @@ _installflake_prepare() {
     export NDS_FLAKE_LOCAL_PATH="$(nds_configurator_config_get "FLAKE_LOCAL_PATH")"
     export NDS_FLAKE_INSTALL_PATH="$(nds_configurator_config_get "FLAKE_INSTALL_PATH")"
     export NDS_FLAKE_HOST_DIR="$(nds_configurator_config_get "FLAKE_HOST_DIR")"
-    export NDS_DISK_PREP="$(nds_configurator_config_get "DISK_PREP")"
-    export NDS_HARDWARE_CONFIG="$(nds_configurator_config_get "HARDWARE_CONFIG")"
+    export NDS_HARDWARE_PLACEMENT="$(nds_configurator_config_get "HARDWARE_PLACEMENT")"
+    export NDS_DISK_STRATEGY="$(nds_config_get "disk" "DISK_STRATEGY")"
 
     log "Flake target: ${NDS_FLAKE_INSTALL_PATH}#${host} (source: ${source})"
 }
@@ -110,10 +102,8 @@ action_show_completion() {
 # =============================================================================
 action_setup() {
     console "Install NixOS from your flake."
-    console "  Your flake owns system config (timezone, users, services)."
-    console "  NDS handles disk prep, hardware facts, staging the flake, and nixos-install."
-    console ""
-    console "  See LIMITATIONS.md if your flake uses disko or custom partitioning."
+    console "  Disk + hardware options: see menu sections Disk and Your flake."
+    console "  Full model: ARCHITECTURE.md"
 
     nds_askUserToProceed "Ready to configure?" || exit 130
 
@@ -125,11 +115,16 @@ action_setup() {
     nds_configurator_menu || exit 12
     _installflake_prepare
 
-    local confirm_msg="Install ${NDS_FLAKE_HOST}?"
-    if [[ "${NDS_DISK_PREP:-nds}" == "nds" ]]; then
-        confirm_msg+=" This will erase and repartition the target disk."
+    local disk_strategy confirm_msg
+    disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
+    disk_strategy="${disk_strategy:-nds}"
+    confirm_msg="Install ${NDS_FLAKE_HOST}?"
+    if [[ "$disk_strategy" == "flake" ]]; then
+        confirm_msg+=" Disk strategy is flake — NDS will not partition; /mnt must be ready."
+    elif [[ "$disk_strategy" == "disko" ]]; then
+        confirm_msg+=" Disko will repartition $(nds_config_get "disk" "DISK_TARGET")."
     else
-        confirm_msg+=" Disk preparation is skipped — ensure /mnt is correct."
+        confirm_msg+=" This will erase and repartition the target disk."
     fi
     nds_askUserToProceed "$confirm_msg" || exit 13
 
