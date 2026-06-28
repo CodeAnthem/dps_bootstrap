@@ -18,6 +18,8 @@ export NDS_FLAKE_REPO_URL="git+ssh://git@github.com/you/your-leaf.git"
 export NDS_FLAKE_INSTALL_PATH="/mnt/opt/your-leaf"
 export NDS_FLAKE_HOST="my-server"       # nixosConfigurations name
 export NDS_FLAKE_HOST_DIR="hosts/x86_64-linux"
+export NDS_DISK_PREP="nds"              # nds | skip
+export NDS_HARDWARE_CONFIG="copy"       # copy | skip
 
 # =============================================================================
 # DISK & ENCRYPTION
@@ -29,16 +31,10 @@ export NDS_ENCRYPTION_KEY_LENGTH="64"
 export NDS_ENCRYPTION_USE_PASSPHRASE="n"
 
 # =============================================================================
-# NETWORK
+# NETWORK — not used by installFlake (configure in your flake)
 # =============================================================================
 
-export NDS_HOSTNAME="my-server"         # must match FLAKE_HOST unless you set both explicitly
-export NDS_NETWORK_METHOD="dhcp"
-# export NDS_NETWORK_IP="192.168.1.100"
-# export NDS_NETWORK_MASK="255.255.255.0"
-# export NDS_NETWORK_GATEWAY="192.168.1.1"
-export NDS_NETWORK_DNS_PRIMARY="1.1.1.1"
-export NDS_NETWORK_DNS_SECONDARY="1.0.0.1"
+# export NDS_NETWORK_METHOD="dhcp"
 
 # =============================================================================
 # OPTIONAL
