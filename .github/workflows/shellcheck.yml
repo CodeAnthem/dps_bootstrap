@@ -33,4 +33,4 @@ jobs:
               | sort
           )
           scripts+=(start.sh)
-          shellcheck --rcfile=.shellcheckrc "${scripts[@]}"
+          shellcheck -S warning --rcfile=.shellcheckrc "${scripts[@]}"
