@@ -83,8 +83,10 @@ _nixosnode_prepare_host_identity() {
     host=$(_nixosnode_resolve_host)
     nds_configurator_config_set "HOSTNAME" "$host"
     export NDS_FLAKE_HOST="$host"
-    export NDS_FLAKE_REPO_URL="$(nds_configurator_config_get "FLAKE_REPO_URL")"
-    export NDS_FLAKE_INSTALL_PATH="$(nds_configurator_config_get "FLAKE_INSTALL_PATH")"
+    NDS_FLAKE_REPO_URL="$(nds_configurator_config_get "FLAKE_REPO_URL")"
+    export NDS_FLAKE_REPO_URL
+    NDS_FLAKE_INSTALL_PATH="$(nds_configurator_config_get "FLAKE_INSTALL_PATH")"
+    export NDS_FLAKE_INSTALL_PATH
     log "Flake host selected: ${NDS_FLAKE_INSTALL_PATH}#${host}"
 }
 

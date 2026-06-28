@@ -22,6 +22,8 @@ jobs:
             find bootstrap actions -name '*.sh' \
               ! -path '*/setup_old.sh' \
               ! -path '*/deployTools/*' \
+              ! -path '*/tests/*' \
+              ! -path '*/actions/test/*' \
               | sort
           )
           scripts+=(start.sh)
