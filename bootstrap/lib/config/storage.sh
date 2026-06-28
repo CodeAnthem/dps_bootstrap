@@ -213,6 +213,17 @@ nds_configurator_config_export_script() {
     done
 }
 
+# Print configuration as copy-pasteable DPS_* exports for backup / repeat installs.
+nds_configurator_print_config_backup() {
+    new_section
+    section_header "Configuration backup"
+    console "Save these lines to replay the same non-secret settings:"
+    console ""
+    nds_configurator_config_export_script
+    console ""
+    warn "LUKS keys and generated passwords live in the runtime secrets dir — back those up separately."
+}
+
 # =============================================================================
 # VALIDATOR CONTEXT (Internal)
 # =============================================================================

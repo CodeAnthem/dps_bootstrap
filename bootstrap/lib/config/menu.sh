@@ -68,6 +68,7 @@ nds_configurator_menu() {
                     break  # Break to redraw menu with error
                 fi
                 success "Configuration confirmed"
+                nds_configurator_print_config_backup
                 return 0
             elif [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 ]] && [[ "$sel" -le "$i" ]]; then
                 local preset="${presets[$((sel-1))]}"
