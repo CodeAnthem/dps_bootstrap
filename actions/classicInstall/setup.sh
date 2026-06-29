@@ -12,10 +12,17 @@ action_config() {
 }
 
 action_preview() {
-    nds_action_preview \
-        "Classic NixOS installation (no flake required)" \
-        "system basics (timezone, locales, keyboard, network, admin user), boot, and disk" \
-        "partition the target disk, write configuration.nix and hardware-configuration.nix, run nixos-install, then reboot"
+    nds_ui_h "Classic NixOS installation (no flake required)"
+    nds_ui_b ""
+    nds_ui_b "You will configure:"
+    nds_ui_i "timezone, locales, keyboard, network, admin user"
+    nds_ui_i "bootloader and disk"
+    nds_ui_b ""
+    nds_ui_b "After confirmation, NDS will:"
+    nds_ui_i "partition the target disk"
+    nds_ui_i "generate configuration.nix and hardware-configuration.nix"
+    nds_ui_i "run nixos-install and reboot"
+    nds_ui_b ""
 }
 
 action_setup() {

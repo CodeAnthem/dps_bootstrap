@@ -15,10 +15,14 @@ action_config() {
 }
 
 action_preview() {
-    nds_action_preview \
-        "NDS self-tests (read-only)" \
-        "nothing — no install settings required" \
-        "run configurator, inputs, and classicConfig test suites"
+    nds_ui_h "NDS self-tests (read-only)"
+    nds_ui_b ""
+    nds_ui_b "You will configure:"
+    nds_ui_i "nothing — no install settings required"
+    nds_ui_b ""
+    nds_ui_b "NDS will:"
+    nds_action_items "run configurator tests, run inputs tests, run classicConfig tests"
+    nds_ui_b ""
 }
 
 action_setup() {

@@ -88,10 +88,17 @@ _remoteaction_find_script() {
 }
 
 action_preview() {
-    nds_action_preview \
-        "Run a custom install action from your flake" \
-        "flake Git URL, host name, hardware placement, disk, plus any fields your .nds/action.sh adds" \
-        "clone the flake, run your .nds/action.sh (or fall back to a standard flake install), then reboot"
+    nds_ui_h "Run a custom install action from your flake"
+    nds_ui_b ""
+    nds_ui_b "You will configure:"
+    nds_ui_i "flake Git URL, host name, host directory, hardware placement, disk"
+    nds_ui_i "plus any extra fields your .nds/action.sh adds"
+    nds_ui_b ""
+    nds_ui_b "After confirmation, NDS will:"
+    nds_ui_i "clone the flake and load its .nds/action.sh"
+    nds_ui_i "run your install script (or fall back to a standard flake install)"
+    nds_ui_i "reboot when done"
+    nds_ui_b ""
 }
 
 action_setup() {

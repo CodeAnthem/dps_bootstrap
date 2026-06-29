@@ -122,10 +122,17 @@ action_show_completion() {
 }
 
 action_preview() {
-    nds_action_preview \
-        "Install NixOS from your flake" \
-        "flake source, host name, hardware placement, and disk" \
-        "partition the target disk (or defer to your flake), stage the flake, run nixos-install --flake, then reboot"
+    nds_ui_h "Install NixOS from your flake"
+    nds_ui_b ""
+    nds_ui_b "You will configure:"
+    nds_ui_i "flake source and URL or path, host name, host directory"
+    nds_ui_i "hardware placement and disk"
+    nds_ui_b ""
+    nds_ui_b "After confirmation, NDS will:"
+    nds_ui_i "partition the target disk (or defer to your flake)"
+    nds_ui_i "generate hardware-configuration.nix and stage the flake"
+    nds_ui_i "run nixos-install --flake and reboot"
+    nds_ui_b ""
 }
 
 action_setup() {

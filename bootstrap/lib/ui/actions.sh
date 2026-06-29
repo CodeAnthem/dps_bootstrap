@@ -13,24 +13,15 @@ nds_trim() {
     printf '%s' "$s"
 }
 
-# Description: Show grouped install preview (called from action_preview in each action).
-# Arguments:
-# - title:     <String> Action headline
-# - configure: <String> One-line summary of what the user configures
-# - steps:     <String> One-line summary of what NDS does after confirm
-nds_action_preview() {
-    local title="$1"
-    local configure="$2"
-    local steps="$3"
-
-    nds_ui_h "$title"
-    nds_ui_b ""
-    nds_ui_b "You will configure:"
-    nds_ui_i "$configure"
-    nds_ui_b ""
-    nds_ui_b "After confirmation, NDS will:"
-    nds_ui_i "$steps"
-    nds_ui_b ""
+# Description: Print comma-separated items as indented lines (optional helper).
+# Actions own section titles and layout; call this only for simple bullet lists.
+nds_action_items() {
+    local items="$1"
+    local item
+    IFS=',' read -ra _items <<< "$items"
+    for item in "${_items[@]}"; do
+        nds_ui_i "$(nds_trim "$item")"
+    done
 }
 
 # Description: Destructive install warning before partitioning.
