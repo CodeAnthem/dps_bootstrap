@@ -6,14 +6,16 @@ NDS discovers subdirectories here that provide `action_config()` and `action_set
 
 | Action | Description |
 |--------|-------------|
-| [installFlake](installFlake/README.md) | `nixos-install --flake` from a remote Git repo or a local directory |
+| [classicInstall](classicInstall/) | No flake — generates `/etc/nixos/configuration.nix` + `nixos-install` |
+| [installFlake](installFlake/README.md) | `nixos-install --flake` from remote Git or local path |
+| [remoteAction](remoteAction/) | Clone flake and run `.nds/action.sh` if present, else installFlake |
 
 ## Development only
 
 | Action | Description |
 |--------|-------------|
-| [test](test/README.md) | Configurator input tests — visible when `NDS_TEST=true` |
+| [test](test/README.md) | Self-tests (configurator, inputs, classicConfig) — `NDS_TEST=true` |
 
 ## Archived
 
-Cluster-specific and classic-config actions moved to [`_CleanupLater/`](../_CleanupLater/) (`deployVM`, `nixosNode`). New installs should use **installFlake** only.
+Cluster-specific actions in [`_CleanupLater/`](../_CleanupLater/) (`deployVM`, `nixosNode`).

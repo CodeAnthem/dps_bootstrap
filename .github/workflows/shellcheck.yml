@@ -30,8 +30,15 @@ jobs:
               ! -path '*/setup_old.sh' \
               ! -path '*/deployTools/*' \
               ! -path '*/tests/*' \
-              ! -path '*/actions/test/*' \
               | sort
           )
           scripts+=(start.sh)
           shellcheck -S warning --rcfile=.shellcheckrc "${scripts[@]}"
+
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run NDS self-tests
+        run: bash bootstrap/tests/run.sh

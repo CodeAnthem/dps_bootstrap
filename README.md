@@ -4,9 +4,9 @@
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 
-**Installing NixOS from your own flake on bare metal is a long checklist.** On the live ISO you partition disks, set up encryption, generate hardware facts, get your flake onto the machine, put files in the right host folder, and run `nixos-install --flake` — in order, without wiping the wrong disk.
+**Installing NixOS on bare metal is a long checklist.** Partition disks, set up encryption, generate hardware facts, stage your config, run `nixos-install` — in order, without wiping the wrong disk.
 
-**NDS is the guided installer that runs that pipeline for you.** You point it at your flake and host name; it handles disk prep (optional), hardware facts, staging the flake on disk, and the install command. **Your flake stays the source of truth** — NDS does not ship your system config or secrets.
+**NDS is the guided installer.** Pick a path in the menu; it handles disk prep, hardware facts, staging, and the install command. **Your flake or `/etc/nixos` config stays the source of truth** — NDS does not ship your system config or secrets.
 
 ---
 
@@ -15,11 +15,17 @@
 You need:
 
 - A **NixOS live ISO** on the target machine or VM
-- A **flake** that already defines `nixosConfigurations.<hostname>`
-- A **host entry** your flake can import (often `hosts/<system>/<hostname>/` — Thundercast-style layouts work well)
-- **Git access** to the flake if installing from a remote private repo (SSH keys on the live system)
+- **Root** on the live system (console or SSH after `passwd`)
 
-NDS is **not** a flake generator. It does not set timezone, users, or services — that lives in your flake. See [ARCHITECTURE.md](ARCHITECTURE.md) for disk strategies, hardware placement, and what happens after install.
+**Path A — no flake yet (`classicInstall`):** nothing else. The menu collects timezone, network, user, and disk options.
+
+**Path B — existing flake (`installFlake`):**
+
+- A flake with `nixosConfigurations.<hostname>`
+- A host entry (often `hosts/<system>/<hostname>/`)
+- **Git SSH access** on the live system for private repos
+
+**Path C — leaf with custom install (`remoteAction`):** same as B, plus `.nds/action.sh` in your flake repo (see [actions/remoteAction/README.md](actions/remoteAction/README.md)).
 
 ---
 
@@ -27,34 +33,16 @@ NDS is **not** a flake generator. It does not set timezone, users, or services �
 
 ### 1. Boot the live ISO
 
-Download the [NixOS minimal ISO](https://nixos.org/download/), boot, log in as **root** on the console.
+Download the [NixOS minimal ISO](https://nixos.org/download/), boot, log in as **root**.
 
 ### 2. SSH from another machine (optional)
 
-On the live system:
-
 ```bash
-passwd          # required before root can SSH in
-ip -4 a         # note the LAN address, e.g. 192.168.1.50
+passwd && ip -4 a    # on the live system
+ssh root@<ip>        # Linux/macOS/WSL
 ```
-
-**Linux or macOS:**
-
-```bash
-ssh root@192.168.1.50
-```
-
-**Windows (PowerShell)** — built-in OpenSSH on Windows 10/11; install *OpenSSH Client* under Optional features if `ssh` is missing:
-
-```powershell
-ssh root@192.168.1.50
-```
-
-Or use the VM **console** and skip SSH entirely.
 
 ### 3. Run NDS
-
-**One-liner** (downloads to `/tmp`, then opens the menu):
 
 See [TRUST.md](TRUST.md) before piping a remote script into `bash`.
 
@@ -62,55 +50,39 @@ See [TRUST.md](TRUST.md) before piping a remote script into `bash`.
 curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.sh | bash
 ```
 
-**Fork or renamed repo:**
+Or clone and run: `sudo bash bootstrap/main.sh`
 
-```bash
-export NDS_REPO_URL='https://github.com/you/your-repo.git'
-curl -sSL https://raw.githubusercontent.com/you/your-repo/main/start.sh | bash
-```
+### 4. Pick an action
 
-**Manual steps** (clone yourself, no pipe):
+| Action | When |
+|--------|------|
+| **classicInstall** | First NixOS install, no flake yet |
+| **installFlake** | Generic `nixos-install --flake` |
+| **remoteAction** | Your repo ships `.nds/action.sh` (e.g. dps_swarm) |
 
-```bash
-git clone https://github.com/CodeAnthem/dps_bootstrap.git
-cd dps_bootstrap
-sudo bash bootstrap/main.sh
-```
+Then: walk the menu → press **X** to confirm → save `NDS_*` export lines → confirm destructive step → back up secrets → reboot.
 
-### 4. Install
-
-1. Walk through the menu: **your flake** (URL or local path, host name) and **disk** (target device, encryption).
-2. Press **X** to confirm — save the printed `NDS_*` lines if you may repeat this install.
-3. Confirm the destructive step when prompted.
-4. Back up **runtime secrets** (LUKS key, if enabled), then reboot.
+Install log (survives reboot): `/tmp/nds_install.log`
 
 ---
 
 ## What happens under the hood
 
+**Classic install (no flake):**
+
 ```
-  Live ISO
-     │
-     ▼
-  Menu (flake + disk options)
-     │
-     ▼
-  Disk prep (NDS layout) ── or skip if your flake owns partitioning
-     │
-     ▼
-  nixos-generate-config  →  hardware-configuration.nix
-     │
-     ▼
-  Stage your flake on disk  (git clone or copy)
-     │
-     ▼
-  Copy hardware-configuration.nix into host dir  (optional skip)
-     │
-     ▼
-  nixos-install --flake <path>#<host>
+Live ISO → menu → disk prep → configuration.nix + hardware-configuration.nix → nixos-install
 ```
 
-Your flake is cloned/copied **directly** — there is no wrapper flake. NDS only adds install-time files (`hardware-configuration.nix`, optional `machine.nix` for LUKS UUID) under your host directory.
+**Flake install:**
+
+```
+Live ISO → menu → disk prep (or skip if flake owns disko)
+         → nixos-generate-config → stage flake → hardware in host dir
+         → nixos-install --flake <path>#<host>
+```
+
+NDS clones your flake **directly** — no wrapper flake. Install-time files (`hardware-configuration.nix`, optional `machine.nix` for LUKS) are gitignored on disk.
 
 ---
 
@@ -138,7 +110,7 @@ sudo bash bootstrap/main.sh
 
 ## Point your flake README here
 
-Leaf repos (e.g. Thundercast consumers) can link to this project for live-ISO installs and document which `nixosConfigurations` host name and repo URL to use.
+Leaf repos can link here for live-ISO installs. For custom flows, ship `.nds/action.sh` and document the **remoteAction** menu entry.
 
 ---
 
@@ -146,7 +118,8 @@ Leaf repos (e.g. Thundercast consumers) can link to this project for live-ISO in
 
 ```bash
 DEBUG=1 sudo bash bootstrap/main.sh
-NDS_TEST=true sudo bash bootstrap/main.sh   # configurator test harness only
+NDS_TEST=true sudo bash bootstrap/main.sh   # self-test action only
+bash bootstrap/tests/run.sh                 # same tests, no menu
 ```
 
-Contributor notes: [bootstrap/README.md](bootstrap/README.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [LIMITATIONS.md](LIMITATIONS.md)
+Contributor notes: [bootstrap/README.md](bootstrap/README.md) · [bootstrap/lib/README.md](bootstrap/lib/README.md) · [actions/remoteAction/README.md](actions/remoteAction/README.md)

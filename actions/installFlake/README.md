@@ -1,6 +1,22 @@
 # Install from flake
 
-See [ARCHITECTURE.md](../../ARCHITECTURE.md) for the full model (disk strategies, hardware placement, git pull).
+Installs `nixosConfigurations.<host>` from your flake. NDS handles disk prep, hardware facts, and staging — your flake owns system config.
+
+## Disk strategies
+
+| Strategy | Who partitions |
+|----------|----------------|
+| `nds` | NDS — simple GPT + optional LUKS |
+| `disko` | NDS runs Disko (template or `DISKO_CONFIG`) |
+| `flake` | Your flake — mount `/mnt` first |
+
+## Hardware placement
+
+| Mode | Where hardware-configuration.nix lives |
+|------|--------------------------------------|
+| `host-dir` | `<flake>/hosts/.../<host>/` (gitignored) |
+| `etc-nixos` | `/etc/nixos` + `--override-input hardware` |
+| `skip` | Flake handles hardware |
 
 ## Menu fields
 

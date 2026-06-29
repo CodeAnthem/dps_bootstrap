@@ -30,136 +30,8 @@ declare -gA NDS_HOOK_FUNCTIONS=(
 # =============================================================================
 # IMPORT LIBRARIES
 # =============================================================================
-
-# Global variable to store import errors
-declare -g NDS_IMPORT_ERRORS=""
-
-# Internal function: Validate and import a single file
-# Usage: _nds_import_and_validate_file <filepath>
-# Returns: 0 on success, 1 on failure (errors stored in NDS_IMPORT_ERRORS)
-_nds_import_and_validate_file() {
-    local filepath="$1"
-    local err_output
-
-    # Validate by running in a strict subshell and capture stderr output
-    if ! err_output=$(bash -euo pipefail "$filepath" 2>&1); then
-        # Clean the path prefix "$filepath: " from each line
-        local cleaned=""
-        local line
-        while IFS= read -r line; do
-            if [[ "$line" == "$filepath:"* ]]; then
-                line="${line#"$filepath: "}"
-            fi
-            cleaned+=$'\n'" -> $line"
-        done <<< "$err_output"
-
-        # Store error in global variable
-        if [[ -z "$NDS_IMPORT_ERRORS" ]]; then
-            NDS_IMPORT_ERRORS="Error: Failed to validate: $filepath${cleaned}"
-        else
-            NDS_IMPORT_ERRORS+=$'\n'"Error: Failed to validate: $filepath${cleaned}"
-        fi
-        return 1
-    fi
-
-    # Source in current shell (affects parent environment)
-    # shellcheck disable=SC1090
-    if ! source "$filepath"; then
-        # Store source error in global variable
-        if [[ -z "$NDS_IMPORT_ERRORS" ]]; then
-            NDS_IMPORT_ERRORS="Error: Failed to source: $filepath"
-        else
-            NDS_IMPORT_ERRORS+=$'\n'"Error: Failed to source: $filepath"
-        fi
-        return 1
-    fi
-
-    return 0
-}
-
-# Display collected import errors and clear the error buffer
-# Usage: _nds_import_showErrors
-# Returns: 0 if no errors, 1 if errors were present
-_nds_import_showErrors() {
-    if [[ -n "$NDS_IMPORT_ERRORS" ]]; then
-        echo "$NDS_IMPORT_ERRORS" >&2
-        NDS_IMPORT_ERRORS=""  # Clear errors after showing
-        return 1
-    fi
-    return 0
-}
-
-# Import a single file with validation
-# Usage: nds_import_file <filepath>
-# Returns: 0 on success, 1 on failure (with errors displayed)
-nds_import_file() {
-    local filepath="$1"
-    
-    [[ -f "$filepath" ]] || {
-        echo "Error: File not found: $filepath" >&2
-        return 1
-    }
-    
-    NDS_IMPORT_ERRORS=""  # Clear previous errors
-    _nds_import_and_validate_file "$filepath"
-    _nds_import_showErrors
-}
-
-# Import all .sh files from a directory
-# Usage: nds_import_dir <directory> [recursive]
-# If recursive is "true" will descend into subdirectories (skipping names beginning with "_").
-# Returns: 0 on success, 1 if any file failed
-nds_import_dir() {
-    local directory recursive item basename
-    local had_error=false
-
-    directory="${1:-}"
-    [[ -d "$directory" ]] || {
-        echo "Error: Directory not found: $directory" >&2
-        return 1
-    }
-
-    recursive="${2:-false}"
-    [[ "$recursive" == "true" || "$recursive" == "false" ]] || {
-        echo "Error: Invalid recursive parameter: $recursive" >&2
-        return 1
-    }
-
-    NDS_IMPORT_ERRORS=""  # Clear previous errors
-    local had_error=false
-
-    for item in "$directory"/*; do
-        [[ -e "$item" ]] || continue   # Skip when glob doesn't match (empty dir)
-
-        basename="$(basename "$item")"
-
-        # Skip files/folders starting with underscore
-        [[ "${basename:0:1}" == "_" ]] && continue
-
-        # If directory, maybe recurse
-        if [[ -d "$item" ]]; then
-            if [[ "$recursive" == "true" ]]; then
-                nds_import_dir "$item" "$recursive" || return 1
-            fi
-            continue
-        fi
-
-        # Only consider .sh files
-        if [[ "${basename: -3}" == ".sh" ]]; then
-            if ! _nds_import_and_validate_file "$item"; then
-                had_error=true
-            fi
-        fi
-    done
-
-    # Show collected errors and return status
-    if [[ "$had_error" == "true" ]]; then
-        _nds_import_showErrors
-        return 1
-    fi
-
-    return 0
-}
+# shellcheck disable=SC1091
+source "${LIB_DIR}/core/import.sh"
 
 
 # =============================================================================
@@ -219,35 +91,14 @@ runWithRoot() {
 # =============================================================================
 # RUNTIME DIRECTORY
 # =============================================================================
-# Setup runtime directory - declare and assign separately
+# Setup runtime directory - uses nds_runtime_init from core/runtime.sh when loaded.
 setupRuntimeDir() {
-    local timestamp=""
-    printf -v timestamp '%(%Y%m%d_%H%M%S)T' -1
-    [[ -z "$timestamp" ]] && return 1
-    RUNTIME_DIR="/tmp/dps_${timestamp}_$$"
-
-    # Create runtime directory
-    mkdir -p "$RUNTIME_DIR/config" "$RUNTIME_DIR/secrets" || return 1
-    chmod 700 "$RUNTIME_DIR" || return 1
-
-    export RUNTIME_DIR
-    export NDS_RUNTIME_DIR="$RUNTIME_DIR"
-    export NDS_RUNTIME_DIR="$RUNTIME_DIR"
-    return 0
+    nds_runtime_init
 }
 
 # shellcheck disable=SC2329
 purgeRuntimeDir() {
-    if [[ -d "${RUNTIME_DIR:-}" ]]; then
-        if rm -rf "$RUNTIME_DIR"; then
-            success " > Removed runtime directory: $RUNTIME_DIR"
-        else
-            error " > Failed to remove runtime directory: $RUNTIME_DIR"
-        fi
-    fi
-
-    # shellcheck disable=SC2010
-    ls -l /tmp/ | grep -i "dps" # TODO: Remove after debugging
+    nds_runtime_purge
 }
 
 
@@ -487,7 +338,8 @@ done
 # MAIN WORKFLOW
 # =============================================================================
 # Load libraries
-nds_import_dir "${LIB_DIR}" false || exit 1
+nds_import_file "${LIB_DIR}/core/import.sh" || exit 1
+nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
 
 # Run with root (pass original args for sudo restart)
 if [[ ${#ORIGINAL_ARGS[@]} -gt 0 ]]; then
@@ -508,6 +360,7 @@ success "Signal handlers initialized"
 declare -g RUNTIME_DIR
 if ! setupRuntimeDir; then crash "Failed to setup runtime directory"; fi
 info "Runtime directory: $RUNTIME_DIR"
+nds_install_log "NDS session started (v$SCRIPT_VERSION)"
 
 # Discover available actions
 readonly ACTIONS_DIR="${SCRIPT_DIR}/../actions"
@@ -515,19 +368,7 @@ declare -a ACTION_NAMES=()
 declare -gA ACTION_DATA=()
 if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
-# Initialize configurator feature
-if declare -f nds_configurator_init &>/dev/null; then
-    nds_configurator_init || crash "Failed to initialize configurator"
-else
-    crash "Configurator not available (nds_configurator_init not found)"
-fi
-
-if declare -f nds_installation_init &>/dev/null; then
-    nds_installation_init || crash "Failed to initialize installation stack"
-else
-    crash "Installation stack not available (nds_installation_init not found)"
-fi
-
+# Initialize configurator and installation (loaded by nds_bootstrap_load_libs)
 success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action

@@ -2,10 +2,8 @@
 # Choice validation tests
 
 test_choice() {
-    # Setup options context for choice validation
-    INPUT_OPTIONS_CACHE["options"]="yes|no|auto"
-    
-    # Valid choices
+    VALIDATOR_OPTIONS=([options]="yes|no|auto")
+
     assert_valid "choice" "yes"
     assert_valid "choice" "no"
     assert_valid "choice" "auto"
@@ -15,7 +13,6 @@ test_choice() {
     assert_invalid "choice" "n"
     assert_invalid "choice" "maybe"
     assert_invalid "choice" "invalid"
-    
-    # Clear context
-    INPUT_OPTIONS_CACHE=()
+
+    VALIDATOR_OPTIONS=()
 }

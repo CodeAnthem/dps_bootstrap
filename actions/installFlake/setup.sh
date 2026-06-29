@@ -2,13 +2,10 @@
 # ==================================================================================================
 # NDS - Install from Nix flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-06-28
+# Date:          Created: 2026-06-28 | Modified: 2026-06-29
 # Description:   Generic nixos-install --flake from the live ISO
 # ==================================================================================================
 
-# =============================================================================
-# ACTION CONFIGURATION
-# =============================================================================
 action_config() {
     nds_configurator_preset_disable quick
     nds_configurator_preset_disable region
@@ -86,6 +83,27 @@ _installflake_prepare() {
     log "Flake target: ${NDS_FLAKE_INSTALL_PATH}#${host} (source: ${source})"
 }
 
+_installflake_detect_disko() {
+    local source host host_dir local_path repo_url probe_root
+    source=$(nds_configurator_config_get "FLAKE_SOURCE")
+    host=$(nds_configurator_config_get "FLAKE_HOST")
+    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
+    host_dir="${host_dir:-hosts/x86_64-linux}"
+
+    case "$source" in
+        local)
+            local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
+            [[ -d "$local_path" ]] && nds_preflight_apply_disko_strategy "$local_path" "$host" "$host_dir"
+            ;;
+        remote)
+            repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
+            [[ -z "$repo_url" ]] && return 0
+            probe_root=$(nds_preflight_probe_flake "$repo_url") || return 0
+            nds_preflight_apply_disko_strategy "$probe_root" "$host" "$host_dir"
+            ;;
+    esac
+}
+
 action_show_completion() {
     console ""
     console "Installed: ${NDS_FLAKE_HOST:-unknown}"
@@ -97,13 +115,9 @@ action_show_completion() {
     console ""
 }
 
-# =============================================================================
-# MAIN WORKFLOW
-# =============================================================================
 action_setup() {
     console "Install NixOS from your flake."
     console "  Disk + hardware options: see menu sections Disk and Your flake."
-    console "  Full model: ARCHITECTURE.md"
 
     nds_askUserToProceed "Ready to configure?" || exit 130
 
@@ -114,25 +128,33 @@ action_setup() {
 
     nds_configurator_menu || exit 12
     _installflake_prepare
+    _installflake_detect_disko
 
-    local disk_strategy confirm_msg
+    local disk_strategy confirm_msg disk_target repo_url
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
     disk_strategy="${disk_strategy:-nds}"
+    disk_target="$(nds_config_get "disk" "DISK_TARGET")"
+    repo_url="$(nds_configurator_config_get "FLAKE_REPO_URL")"
+
+    nds_preflight_install "$disk_target" "$repo_url" || exit 11
+
     confirm_msg="Install ${NDS_FLAKE_HOST}?"
     if [[ "$disk_strategy" == "flake" ]]; then
         confirm_msg+=" Disk strategy is flake — NDS will not partition; /mnt must be ready."
     elif [[ "$disk_strategy" == "disko" ]]; then
-        confirm_msg+=" Disko will repartition $(nds_config_get "disk" "DISK_TARGET")."
+        confirm_msg+=" Disko will repartition ${disk_target}."
     else
-        confirm_msg+=" This will erase and repartition the target disk."
+        confirm_msg+=" This will erase and repartition ${disk_target}."
     fi
     nds_askUserToProceed "$confirm_msg" || exit 13
 
     new_section
     section_header "NixOS installation"
+    nds_install_log "installFlake: action starting"
     nds_nixos_install_flake || exit 15
 
     new_section
     action_show_completion
+    nds_secrets_offer_backup
     nds_askUserToProceed "Reboot now?" && reboot
 }
