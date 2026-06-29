@@ -121,14 +121,14 @@ action_show_completion() {
     nds_ui_b ""
 }
 
-action_setup() {
-    nds_action_overview \
+action_preview() {
+    nds_action_preview \
         "Install NixOS from your flake" \
-        "flake source and URL/path, host name, host directory, hardware placement, disk" \
-        "partition the target disk (or defer to your flake), generate hardware-configuration.nix, stage the flake, run nixos-install --flake, reboot"
+        "flake source, host name, hardware placement, and disk" \
+        "partition the target disk (or defer to your flake), stage the flake, run nixos-install --flake, then reboot"
+}
 
-    nds_askUserContinue_or_exit "Proceed to configuration wizard?" || return $?
-
+action_setup() {
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
         nds_configurator_validate_all || exit 11
@@ -138,7 +138,7 @@ action_setup() {
     _installflake_prepare
     _installflake_detect_disko
 
-    local disk_strategy confirm_msg disk_target repo_url
+    local disk_strategy disk_target repo_url
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
     disk_strategy="${disk_strategy:-nds}"
     disk_target="$(nds_config_get "disk" "DISK_TARGET")"
@@ -146,15 +146,7 @@ action_setup() {
 
     nds_preflight_install "$disk_target" "$repo_url" || exit 11
 
-    confirm_msg="Install ${NDS_FLAKE_HOST}?"
-    if [[ "$disk_strategy" == "flake" ]]; then
-        confirm_msg+=" Disk strategy is flake — NDS will not partition; /mnt must be ready."
-    elif [[ "$disk_strategy" == "disko" ]]; then
-        confirm_msg+=" Disko will repartition ${disk_target}."
-    else
-        confirm_msg+=" This will erase and repartition ${disk_target}."
-    fi
-    nds_askUserToProceed "$confirm_msg" || exit 13
+    nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
 
     new_section
     section_header "NixOS installation"

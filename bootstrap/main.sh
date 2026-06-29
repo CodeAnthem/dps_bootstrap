@@ -118,6 +118,10 @@ _main_stopHandler() {
     local exit_msg=""
     exit_msg=$(_nds_callHook "exit_msg" "$exit_code" || true)
 
+    if [[ "$exit_code" -eq "$NDS_ACTION_BACK" ]]; then
+        return 0
+    fi
+
     if [[ -n "$exit_msg" ]]; then
         console "$exit_msg"
     else
@@ -126,7 +130,7 @@ _main_stopHandler() {
                 success "Script completed successfully"
             ;;
             10)
-                # NDS_ACTION_BACK — return to menu, not an error
+                # NDS_ACTION_BACK — handled above; suppress duplicate messaging
             ;;
             130)
                 warn "Script aborted by user"
@@ -140,7 +144,10 @@ _main_stopHandler() {
         esac
     fi
 
-    # Bootstrapper cleanup
+    if [[ "$exit_code" -eq "$NDS_ACTION_BACK" ]]; then
+        return 0
+    fi
+
     info "Cleaning up session"
     purgeRuntimeDir
 
@@ -166,6 +173,11 @@ _nds_validate_action() {
     # Check for required functions (without sourcing)
     if ! grep -q "^action_config()" "$setup_script"; then
         debug "Action '$action_name': Missing action_config() function"
+        return 1
+    fi
+
+    if ! grep -q "^action_preview()" "$setup_script"; then
+        debug "Action '$action_name': Missing action_preview() function"
         return 1
     fi
 
@@ -232,9 +244,9 @@ _nds_discover_actions() {
 
 _nds_select_action() {
     new_section
-    section_header "Choose Bootstrap Action"
+    section_header "NDS: Choose an action"
 
-    console ""
+    nds_ui_b ""
     nds_ui_choice_row "0" "Abort" "Exit the script"
     nds_ui_b ""
 
@@ -246,14 +258,12 @@ _nds_select_action() {
     done
 
     nds_ui_b ""
-    nds_ui_b "Press b at any later prompt to return to this menu."
-    nds_ui_b ""
 
     local choice max_choice
     max_choice="${#ACTION_NAMES[@]}"
 
     while true; do
-        read -rsn1 -p "${NDS_UI_INDENT_B}-> Select action [0-$max_choice]: " choice < /dev/tty
+        read -rsn1 -p "${NDS_UI_INDENT_B}Select action to preview [0-$max_choice]: " choice < /dev/tty
         echo >&2
 
         if [[ "$choice" == "0" ]]; then
@@ -263,13 +273,34 @@ _nds_select_action() {
 
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
-            nds_ui_b "Selected: $selected_action"
             current_action="$selected_action"
             return 0
         fi
 
         nds_ui_b "Invalid selection. Choose 0-$max_choice"
     done
+}
+
+_nds_run_action_preview() {
+    local action_name="$1"
+
+    if ! declare -f action_preview &>/dev/null; then
+        error "action_preview() not found"
+        return 1
+    fi
+
+    new_section
+    section_header "Action: ${action_name}"
+    action_preview
+    nds_ui_b "Press Y to continue, B to go back to the action menu."
+    nds_ui_b ""
+    nds_askUserContinue "Proceed with this action?"
+    local prc=$?
+    case "$prc" in
+        0) return 0 ;;
+        2) return "$NDS_ACTION_BACK" ;;
+        *) return 130 ;;
+    esac
 }
 
 _nds_execute_action() {
@@ -297,9 +328,15 @@ _nds_execute_action() {
         return 1
     fi
 
+    _nds_run_action_preview "$action_name"
+    rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        return "$rc"
+    fi
+
     info "Executing $action_name..."
-    section_title "Action: $action_name"
-    action_setup || rc=$?
+    action_setup
+    rc=$?
     if [[ "$rc" -ne 0 ]]; then
         if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
             return "$NDS_ACTION_BACK"
@@ -381,19 +418,24 @@ success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action
 declare -g current_action
-rc=0
-while true; do
-    _nds_select_action
-    _nds_execute_action "$current_action"
-    rc=$?
-    if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
-        continue
-    fi
-    if [[ "$rc" -ne 0 ]]; then
-        crash "Failed to execute action"
-    fi
-    break
-done
+
+nds_main() {
+    local rc=0
+    while true; do
+        _nds_select_action
+        _nds_execute_action "$current_action"
+        rc=$?
+        if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
+            continue
+        fi
+        if [[ "$rc" -ne 0 ]]; then
+            crash "Failed to execute action"
+        fi
+        break
+    done
+}
+
+nds_main
 
 # =============================================================================
 # END

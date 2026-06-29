@@ -11,6 +11,7 @@ declare -g NDS_UI_COLOR=false
 declare -g NDS_UI_LABEL_WIDTH=38
 declare -g NDS_UI_INDENT_H=' '
 declare -g NDS_UI_INDENT_B='  '
+declare -g NDS_UI_INDENT_I='    '
 
 readonly NDS_ACTION_BACK=10
 
@@ -20,6 +21,10 @@ nds_ui_h() {
 
 nds_ui_b() {
     printf '%s%s\n' "$NDS_UI_INDENT_B" "${1:-}" >&2
+}
+
+nds_ui_i() {
+    printf '%s%s\n' "$NDS_UI_INDENT_I" "${1:-}" >&2
 }
 
 nds_ui_init() {
@@ -120,9 +125,9 @@ nds_ui_kv_row() {
     nds_ui_init
 
     if [[ "$NDS_UI_COLOR" == true ]]; then
-        printf "%s\033[1m%-${width}s\033[0m %s\n" "$NDS_UI_INDENT_B" "${label}:" "$value" >&2
+        printf "%s\033[1m%-${width}s\033[0m %s\n" "$NDS_UI_INDENT_I" "${label}:" "$value" >&2
     else
-        printf "%s%-${width}s %s\n" "$NDS_UI_INDENT_B" "${label}:" "$value" >&2
+        printf "%s%-${width}s %s\n" "$NDS_UI_INDENT_I" "${label}:" "$value" >&2
     fi
 }
 

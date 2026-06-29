@@ -68,9 +68,9 @@ nds_configurator_menu() {
     fi
     
     while true; do
-        section_header "Configuration Menu"
+        section_header "Configuration"
         [[ -n "$last_status" ]] && nds_ui_b "$last_status" && nds_ui_b ""
-        nds_ui_b "Fine-tune any section below, or press X when ready to proceed."
+        nds_ui_b "Pick a category to fine-tune, or press X when ready to install."
         nds_ui_b ""
         
         local i=0
@@ -82,7 +82,7 @@ nds_configurator_menu() {
         
         # Inner loop for re-prompting without redrawing menu
         while true; do
-            read -sr -n 1 -p "${NDS_UI_INDENT_B}Select preset (1-$i or X to proceed): " sel < /dev/tty
+            read -sr -n 1 -p "${NDS_UI_INDENT_B}Select category (1-$i or X when ready): " sel < /dev/tty
             echo
             
             # Handle empty input (just ENTER) - re-prompt
@@ -98,6 +98,11 @@ nds_configurator_menu() {
                 fi
                 success "Configuration confirmed"
                 nds_configurator_print_config_backup
+                nds_configurator_confirm_config_saved || {
+                    last_status="Copy the configuration export above, then confirm to continue."
+                    warn "$last_status"
+                    break
+                }
                 return 0
             elif [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 ]] && [[ "$sel" -le "$i" ]]; then
                 local preset="${presets[$((sel-1))]}"

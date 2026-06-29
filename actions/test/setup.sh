@@ -14,6 +14,13 @@ action_config() {
     nds_configurator_preset_disable installFlake
 }
 
+action_preview() {
+    nds_action_preview \
+        "NDS self-tests (read-only)" \
+        "nothing — no install settings required" \
+        "run configurator, inputs, and classicConfig test suites"
+}
+
 action_setup() {
     console "Running NDS self-tests (read-only)."
     # shellcheck disable=SC1091

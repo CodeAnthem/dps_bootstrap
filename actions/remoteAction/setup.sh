@@ -87,14 +87,14 @@ _remoteaction_find_script() {
     return 1
 }
 
-action_setup() {
-    nds_action_overview \
+action_preview() {
+    nds_action_preview \
         "Run a custom install action from your flake" \
-        "flake Git URL, host name, host directory, hardware placement, disk, plus any fields your .nds/action.sh adds" \
-        "clone the flake, load its .nds/action.sh, run your install script (or fall back to a standard flake install), reboot"
+        "flake Git URL, host name, hardware placement, disk, plus any fields your .nds/action.sh adds" \
+        "clone the flake, run your .nds/action.sh (or fall back to a standard flake install), then reboot"
+}
 
-    nds_askUserContinue_or_exit "Proceed to configuration wizard?" || return $?
-
+action_setup() {
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
         nds_configurator_validate_all || exit 11
@@ -106,8 +106,7 @@ action_setup() {
     local repo_url="${NDS_FLAKE_REPO_URL}"
     local host_dir="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     local probe_dir remote_script
-
-    nds_preflight_install "$(nds_config_get "disk" "DISK_TARGET")" "$repo_url" || exit 11
+    local disk_strategy disk_target
 
     step_start "Fetching flake for action probe"
     probe_dir=$(nds_preflight_probe_flake "$repo_url") || exit 14
@@ -124,13 +123,23 @@ action_setup() {
             nds_configurator_menu || exit 12
             _remoteaction_prepare
         fi
+    else
+        warn "No .nds/action.sh found — will use a standard flake install"
+    fi
 
+    disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
+    disk_strategy="${disk_strategy:-nds}"
+    disk_target="$(nds_config_get "disk" "DISK_TARGET")"
+
+    nds_preflight_install "$disk_target" "$repo_url" || exit 11
+
+    nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
+
+    if [[ -n "${remote_script:-}" ]]; then
         if declare -f remote_action_run &>/dev/null; then
-            nds_askUserToProceed "Run remote install action for ${NDS_FLAKE_HOST}?" || exit 13
             nds_install_log "remoteAction: running ${remote_script}"
             remote_action_run || exit 15
         elif declare -f action_setup &>/dev/null; then
-            nds_askUserToProceed "Run remote install action for ${NDS_FLAKE_HOST}?" || exit 13
             nds_install_log "remoteAction: running action_setup from ${remote_script}"
             action_setup || exit 15
         else
@@ -138,8 +147,6 @@ action_setup() {
             exit 14
         fi
     else
-        warn "No .nds/action.sh found — using a standard flake install"
-        nds_askUserToProceed "Install ${NDS_FLAKE_HOST} from flake?" || exit 13
         nds_install_log "remoteAction: fallback to flake install"
         nds_nixos_install_flake || exit 15
     fi

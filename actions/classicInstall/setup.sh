@@ -11,14 +11,14 @@ action_config() {
     nds_configurator_preset_disable security
 }
 
-action_setup() {
-    nds_action_overview \
+action_preview() {
+    nds_action_preview \
         "Classic NixOS installation (no flake required)" \
-        "timezone, locales, keyboard, network, admin user, bootloader, disk" \
-        "partition the target disk, generate configuration.nix and hardware-configuration.nix, run nixos-install, reboot"
+        "system basics (timezone, locales, keyboard, network, admin user), boot, and disk" \
+        "partition the target disk, write configuration.nix and hardware-configuration.nix, run nixos-install, then reboot"
+}
 
-    nds_askUserContinue_or_exit "Proceed to configuration wizard?" || return $?
-
+action_setup() {
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
         nds_configurator_validate_all || exit 11
@@ -26,22 +26,14 @@ action_setup() {
 
     nds_configurator_menu || exit 12
 
-    local disk_strategy confirm_msg disk_target
+    local disk_strategy disk_target
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
     disk_strategy="${disk_strategy:-nds}"
     disk_target="$(nds_config_get "disk" "DISK_TARGET")"
 
     nds_preflight_install "$disk_target" || exit 11
 
-    confirm_msg="Install NixOS with generated /etc/nixos config?"
-    if [[ "$disk_strategy" == "flake" ]]; then
-        confirm_msg+=" Disk strategy is flake — /mnt must already be mounted."
-    elif [[ "$disk_strategy" == "disko" ]]; then
-        confirm_msg+=" Disko will repartition ${disk_target}."
-    else
-        confirm_msg+=" This will erase and repartition ${disk_target}."
-    fi
-    nds_askUserToProceed "$confirm_msg" || exit 13
+    nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
 
     step_start "Generating configuration.nix"
     nds_nixcfg_build_classic_auto

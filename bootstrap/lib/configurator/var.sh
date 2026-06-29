@@ -73,9 +73,9 @@ _nds_configurator_prompt_generic() {
     
     while true; do
         if [[ -n "$hint" ]]; then
-            printf "%s%-20s [%s] %s: " "$NDS_UI_INDENT_B" "$display" "$current" "$hint" >&2
+            printf "%s%-20s [%s] %s: " "$NDS_UI_INDENT_I" "$display" "$current" "$hint" >&2
         else
-            printf "%s%-20s [%s]: " "$NDS_UI_INDENT_B" "$display" "$current" >&2
+            printf "%s%-20s [%s]: " "$NDS_UI_INDENT_I" "$display" "$current" >&2
         fi
         
         local value

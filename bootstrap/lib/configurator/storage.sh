@@ -215,13 +215,26 @@ nds_configurator_config_export_script() {
 
 # Print configuration as copy-pasteable NDS_* exports for backup / repeat installs.
 nds_configurator_print_config_backup() {
+    local line
+
     new_section
-    section_header "Configuration backup"
-    console "Save these lines to replay the same non-secret settings:"
-    console ""
-    nds_configurator_config_export_script
-    console ""
-    warn "LUKS keys and generated passwords live in the runtime secrets dir — back those up separately."
+    section_header "Save your configuration"
+    nds_ui_b "Copy the export block below — paste it before your next NDS run"
+    nds_ui_b "to reuse the same hostname, disk, flake URL, and other menu choices."
+    nds_ui_b ""
+    while IFS= read -r line; do
+        nds_ui_i "$line"
+    done < <(nds_configurator_config_export_script)
+    nds_ui_b ""
+    nds_ui_b "LUKS keys and generated passwords are created during installation."
+    nds_ui_b "You will be prompted to back them up before reboot."
+    nds_ui_b ""
+}
+
+# Confirm the user saved the export block before continuing to install.
+nds_configurator_confirm_config_saved() {
+    nds_askUserToProceed "I have copied this configuration" || return 1
+    return 0
 }
 
 # =============================================================================

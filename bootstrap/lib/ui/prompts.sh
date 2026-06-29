@@ -58,13 +58,13 @@ nds_askUserToProceed() {
 
 nds_askUserContinue_or_exit() {
     local prompt="${1:-Continue?}"
-    nds_askUserContinue "$prompt" || {
-        local rc=$?
-        if [[ "$rc" -eq 2 ]]; then
-            return "$NDS_ACTION_BACK"
-        fi
-        return 130
-    }
+    nds_askUserContinue "$prompt"
+    local rc=$?
+    case "$rc" in
+        0) return 0 ;;
+        2) return "$NDS_ACTION_BACK" ;;
+        *) return 130 ;;
+    esac
 }
 
 prompt_yes_no() {
