@@ -3,10 +3,10 @@
 # NDS - Configuration example
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2024-10-15 | Modified: 2026-06-28
-# Description:   Environment variable preset for installFlake
+# Description:   Example NDS_* exports — source before bootstrap/main.sh
 # ==================================================================================================
 #
-# Copy or source before running: sudo bash bootstrap/main.sh
+# Copy to my-install.env, edit, then: source my-install.env && sudo bash bootstrap/main.sh
 
 # =============================================================================
 # FLAKE INSTALL (installFlake action)

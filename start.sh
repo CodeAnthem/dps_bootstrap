@@ -63,10 +63,6 @@ TARGET_SCRIPT_ARGS=()
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --dev)
-                TARGET_BRANCH="dev"
-                shift
-                ;;
             --branch:*)
                 TARGET_BRANCH="${1#--branch:}"
                 shift
@@ -101,7 +97,7 @@ branch_error() {
     local branch="$1"
     log "ERROR: Branch '$branch' does not exist in repository"
     console " -> Repository: $REPO_URL"
-    console " -> Please specify a valid branch using --branch:name or --dev"
+    console " -> Please specify a valid branch using --branch:name"
     exit 1
 }
 

@@ -5,28 +5,32 @@
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 [![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)
 
-**Installing NixOS on bare metal is a long checklist.** Partition disks, set up encryption, generate hardware facts, stage your config, run `nixos-install` — in order, without wiping the wrong disk.
+**NDS is the guided NixOS installer for the live ISO** — pick a path, answer the menu, and it handles disk prep, hardware facts, staging, and `nixos-install` in order.
 
-**NDS is the guided installer.** Pick a path in the menu; it handles disk prep, hardware facts, staging, and the install command. **Your flake or `/etc/nixos` config stays the source of truth** — NDS does not ship your system config or secrets.
+**NDS can:**
+
+- Install with **no flake** — generates `/etc/nixos/configuration.nix` (`classicInstall`)
+- Install from **your flake** — clone, place hardware facts, `nixos-install --flake` (`installFlake`)
+- Run a **custom install script** from your repo — `.nds/action.sh` (`remoteAction`)
+- Partition with NDS layouts, **Disko**, or defer to your flake
+- Print a **saved `NDS_*` config** you can reuse on the next machine
+
+**NDS does not:**
+
+- Ship your system configuration or secrets
+- Replace your flake as the source of truth
+- Wrap your flake in another flake
+- Commit `hardware-configuration.nix` to your repo (it stays gitignored on disk)
 
 ---
 
-## Before you start
+## Install paths
 
-You need:
-
-- A **NixOS live ISO** on the target machine or VM
-- **Root** on the live system (console or SSH after `passwd`)
-
-**Path A — no flake yet (`classicInstall`):** nothing else. The menu collects timezone, network, user, and disk options.
-
-**Path B — existing flake (`installFlake`):**
-
-- A flake with `nixosConfigurations.<hostname>`
-- A host entry (often `hosts/<system>/<hostname>/`)
-- **Git SSH access** on the live system for private repos
-
-**Path C — leaf with custom install (`remoteAction`):** same as B, plus `.nds/action.sh` in your flake repo (see [actions/remoteAction/README.md](actions/remoteAction/README.md)).
+| Path | Action | You need |
+|------|--------|----------|
+| **A** — first install, no flake | `classicInstall` | Live ISO + root |
+| **B** — existing flake | `installFlake` | `nixosConfigurations.<host>`, Git SSH for private repos |
+| **C** — custom leaf flow | `remoteAction` | Same as B + `.nds/action.sh` ([API](actions/remoteAction/README.md)) |
 
 ---
 
@@ -34,26 +38,59 @@ You need:
 
 ### 1. Boot the live ISO
 
-Download the [NixOS minimal ISO](https://nixos.org/download/), boot, log in as **root**.
+Download the [NixOS minimal ISO](https://nixos.org/download/), boot the target machine or VM, log in as **root**.
 
-### 2. SSH from another machine (optional)
+### 2. Remote shell (optional)
+
+Use the live console, or SSH from **Linux, macOS, or WSL** after setting a root password on the live system:
 
 ```bash
-passwd && ip -4 a    # on the live system
-ssh root@<ip>        # Linux/macOS/WSL
+passwd && ip -4 a    # on the live system — note the IP
+ssh root@<ip>        # from your dev machine
 ```
 
 ### 3. Run NDS
 
-See [TRUST.md](TRUST.md) before piping a remote script into `bash`.
+Read [TRUST.md](TRUST.md) before piping a remote script into `bash`.
+
+**Option A — one-liner** (downloads `start.sh`, clones to `/tmp`, runs the menu):
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.sh | bash
 ```
 
-Or clone and run: `sudo bash bootstrap/main.sh`
+**Option B — clone and run** (inspect the repo first):
 
-### 4. Pick an action
+```bash
+git clone https://github.com/CodeAnthem/dps_bootstrap.git /tmp/dps_bootstrap
+cd /tmp/dps_bootstrap
+sudo bash bootstrap/main.sh
+```
+
+Fork or offline? Set `NDS_REPO_URL` before the one-liner, or clone your fork in option B. See [TRUST.md](TRUST.md).
+
+### 4. Import a saved config (optional)
+
+Skip re-entering the menu by **exporting `NDS_*` variables** before step 3:
+
+- **From a previous install** — when you press **X** in the menu, NDS prints an `export NDS_…` block. Save it. Paste or `source` that file before running NDS again.
+- **From the template** — copy [`config-example.sh`](config-example.sh), edit values, then `source config-example.sh` before `bootstrap/main.sh`.
+
+Any `NDS_<FIELD>` overrides the matching menu field (same names as the backup export). Example for a flake install:
+
+```bash
+source ./my-install.env    # or paste exports directly into the shell
+sudo bash bootstrap/main.sh
+```
+
+| Variable | Purpose |
+|----------|---------|
+| `NDS_<FIELD>` | Preset any menu field |
+| `NDS_AUTO_CONFIRM=true` | Skip yes/no prompts |
+| `NDS_REPO_URL` / `NDS_REPO_NAME` | Point `start.sh` at a fork or different clone path |
+| `DEBUG=1` | Verbose logging |
+
+### 5. Pick an action
 
 | Action | When |
 |--------|------|
@@ -61,9 +98,9 @@ Or clone and run: `sudo bash bootstrap/main.sh`
 | **installFlake** | Generic `nixos-install --flake` |
 | **remoteAction** | Your repo ships `.nds/action.sh` (e.g. dps_swarm) |
 
-Then: walk the menu → press **X** to confirm → save `NDS_*` export lines → confirm destructive step → back up secrets → reboot.
+Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → save the new export block → confirm the destructive step → back up secrets → reboot.
 
-Install log (survives reboot): `/tmp/nds_install.log`
+Install log on the live system: `/tmp/nds_install.log`
 
 ---
 
@@ -87,31 +124,9 @@ NDS clones your flake **directly** — no wrapper flake. Install-time files (`ha
 
 ---
 
-## Repeat the same install
+## For flake maintainers
 
-Paste the export block from the menu, or use [`config-example.sh`](config-example.sh):
-
-```bash
-export NDS_FLAKE_SOURCE=remote
-export NDS_FLAKE_REPO_URL=git+ssh://git@github.com/you/your-leaf.git
-export NDS_FLAKE_HOST=my-server
-export NDS_DISK_TARGET=/dev/vda
-export NDS_ENCRYPTION=false
-sudo bash bootstrap/main.sh
-```
-
-| Variable | Purpose |
-|----------|---------|
-| `NDS_<FIELD>` | Preset any menu field (same names as the backup export) |
-| `NDS_AUTO_CONFIRM=true` | Skip yes/no prompts |
-| `NDS_REPO_URL` / `NDS_REPO_NAME` | Override repo URL or `/tmp` clone dir for `start.sh` |
-| `DEBUG=1` | Verbose logging |
-
----
-
-## Point your flake README here
-
-Leaf repos can link here for live-ISO installs. For custom flows, ship `.nds/action.sh` and document the **remoteAction** menu entry.
+Link here from your leaf README for live-ISO installs. For custom flows, ship `.nds/action.sh` and tell users to pick **remoteAction**.
 
 ---
 
