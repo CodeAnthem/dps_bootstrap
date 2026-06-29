@@ -328,15 +328,15 @@ _nds_execute_action() {
         return 1
     fi
 
-    _nds_run_action_preview "$action_name"
-    rc=$?
+    rc=0
+    _nds_run_action_preview "$action_name" || rc=$?
     if [[ "$rc" -ne 0 ]]; then
         return "$rc"
     fi
 
     info "Executing $action_name..."
-    action_setup
-    rc=$?
+    rc=0
+    action_setup || rc=$?
     if [[ "$rc" -ne 0 ]]; then
         if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
             return "$NDS_ACTION_BACK"
@@ -423,8 +423,8 @@ nds_main() {
     local rc=0
     while true; do
         _nds_select_action
-        _nds_execute_action "$current_action"
-        rc=$?
+        rc=0
+        _nds_execute_action "$current_action" || rc=$?
         if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
             continue
         fi
