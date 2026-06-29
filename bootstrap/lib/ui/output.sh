@@ -43,7 +43,7 @@ section_title() {
     draw_title " === $1 === " 100
 }
 
-new_section() { printf '\n' >&2; }
+new_section() { printf "\033[2J\033[H" >&2; }
 
 declare -g CURRENT_STEP_NAME=""
 
