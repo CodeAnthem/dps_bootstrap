@@ -20,7 +20,9 @@ _nixinstall_generate_hardware_config() {
     mkdir -p /mnt/etc/nixos
     
     # Generate hardware configuration
-    if ! nixos-generate-config --root /mnt --show-hardware-config > /mnt/etc/nixos/hardware-configuration.nix; then
+    if ! nixos-generate-config --root /mnt --show-hardware-config \
+        > /mnt/etc/nixos/hardware-configuration.nix \
+        2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
         error "Failed to generate hardware configuration"
     fi
     
@@ -106,6 +108,17 @@ _nixinstall_install_nixos_flake() {
     fi
 
     log "Flake-based NixOS installation completed"
+    return 0
+}
+
+# Copy generated configs from runtime to /mnt/etc/nixos.
+# Usage: _nixinstall_install_configs
+_nixinstall_install_configs() {
+    cp "$NDS_RUNTIME_DIR/config/"*.nix /mnt/etc/nixos/ || return 1
+
+    if [[ -n "${NDS_ACTION_CONFIG_SOURCE:-}" ]] && [[ -f "${NDS_ACTION_CONFIG_SOURCE}" ]]; then
+        cp "${NDS_ACTION_CONFIG_SOURCE}" /mnt/etc/nixos/"${NDS_ACTION_CONFIG_FILE:-config.nix}" || return 1
+    fi
     return 0
 }
 

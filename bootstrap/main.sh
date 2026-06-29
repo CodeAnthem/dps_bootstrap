@@ -148,6 +148,18 @@ _main_stopHandler() {
         return 0
     fi
 
+    if [[ "$exit_code" -ne 0 ]]; then
+        if [[ -d "${RUNTIME_DIR:-}" ]]; then
+            warn "Install failed — runtime preserved at: ${RUNTIME_DIR}"
+            [[ -d "${RUNTIME_DIR}/secrets" ]] && warn "Secrets in: ${RUNTIME_DIR}/secrets/"
+        fi
+        if [[ -n "${NDS_SECRETS_BUNDLE:-}" && -f "$NDS_SECRETS_BUNDLE" ]]; then
+            warn "Secrets bundle preserved at: ${NDS_SECRETS_BUNDLE}"
+        fi
+        warn "Install log: ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+        return 0
+    fi
+
     info "Cleaning up session"
     purgeRuntimeDir
 

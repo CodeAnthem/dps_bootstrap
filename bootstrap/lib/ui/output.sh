@@ -12,8 +12,13 @@ newline() { echo >&2; }
 
 logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "${1:-"  "}" "$2" >&2; }
 
+declare -g NDS_UI_QUIET=false
+declare -g NDS_INSTALL_DETAIL_LOG="/tmp/nds_install.log"
+
 log() {
-    logDate "" "$1"
+    if [[ "${NDS_UI_QUIET:-false}" != true ]]; then
+        logDate "" "$1"
+    fi
     if declare -f nds_install_log &>/dev/null; then
         nds_install_log "$1"
     fi
@@ -38,7 +43,7 @@ section_title() {
     draw_title " === $1 === " 100
 }
 
-new_section() { printf "\033[2J\033[H" >&2; }
+new_section() { printf '\n' >&2; }
 
 declare -g CURRENT_STEP_NAME=""
 
@@ -72,4 +77,28 @@ show_spinner() {
         printf "\b\b\b\b\b\b" >&2
     done
     printf "    \b\b\b\b" >&2
+}
+
+# Description: Run a command with spinner; stdout/stderr go to the install detail log.
+nds_step_exec() {
+    local label="$1"
+    shift
+    local logfile="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    local rc=0
+
+    step_start "$label"
+    {
+        printf '\n=== %s ===\n' "$label"
+        "$@"
+    } >>"$logfile" 2>&1 &
+    local pid=$!
+    show_spinner "$pid"
+    wait "$pid" || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+        step_complete "$label"
+        return 0
+    fi
+    step_fail "$label"
+    warn "Step failed — see $logfile for details"
+    return "$rc"
 }

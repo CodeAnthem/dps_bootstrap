@@ -68,9 +68,8 @@ _nixinstall_setup_encryption() {
     # Export for use by other functions
     export NDS_ENCRYPTION_KEY="$encryption_key"
     export NDS_KEY_FILE="$key_file"
-    
-    warn "Encryption key saved to: $key_file"
-    warn "BACKUP THIS KEY BEFORE REBOOTING!"
+
+    log "Encryption key saved to $key_file (bundle will be offered after disk setup)"
     
     return 0
 }
@@ -79,13 +78,26 @@ _nixinstall_setup_encryption() {
 # Usage: _nixinstall_setup_luks_partition "partition"
 _nixinstall_setup_luks_partition() {
     local partition="$1"
-    
+
+    if [[ -z "${NDS_ENCRYPTION_KEY:-}" ]]; then
+        if [[ -n "${NDS_KEY_FILE:-}" && -f "$NDS_KEY_FILE" ]]; then
+            NDS_ENCRYPTION_KEY=$(<"$NDS_KEY_FILE")
+            export NDS_ENCRYPTION_KEY
+        elif [[ -f "${NDS_RUNTIME_DIR:-}/secrets/luks_key.txt" ]]; then
+            NDS_ENCRYPTION_KEY=$(<"${NDS_RUNTIME_DIR}/secrets/luks_key.txt")
+            export NDS_ENCRYPTION_KEY
+            export NDS_KEY_FILE="${NDS_RUNTIME_DIR}/secrets/luks_key.txt"
+        fi
+    fi
+
     if [[ -z "${NDS_ENCRYPTION_KEY:-}" ]]; then
         error "Encryption key not available - run _nixinstall_setup_encryption first"
     fi
     
     log "Setting up LUKS encryption on $partition"
-    
+
+    wipefs -a "$partition" 2>/dev/null || true
+
     # Setup LUKS
     echo -n "$NDS_ENCRYPTION_KEY" | cryptsetup luksFormat --type luks2 "$partition" - || return 1
     echo -n "$NDS_ENCRYPTION_KEY" | cryptsetup open "$partition" cryptroot - || return 1
