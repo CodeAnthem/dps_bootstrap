@@ -226,8 +226,8 @@ nds_configurator_print_config_backup() {
         nds_ui_i "$line"
     done < <(nds_configurator_config_export_script)
     nds_ui_b ""
-    nds_ui_b "LUKS keys and generated passwords are created during installation."
-    nds_ui_b "You will be prompted to back them up before reboot."
+    nds_ui_b "LUKS keys are created during installation."
+    nds_ui_b "You will be prompted to back them up after installation, before reboot."
     nds_ui_b ""
 }
 

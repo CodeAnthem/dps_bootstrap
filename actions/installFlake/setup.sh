@@ -162,6 +162,5 @@ action_setup() {
 
     new_section
     action_show_completion
-    nds_secrets_offer_backup
-    nds_askUserToProceed "Reboot now?" && reboot
+    nds_install_finish || exit 16
 }

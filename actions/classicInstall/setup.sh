@@ -11,6 +11,11 @@ action_config() {
     nds_configurator_preset_disable security
 }
 
+_classicinstall_write_config() {
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$NDS_RUNTIME_DIR/config/configuration.nix"
+}
+
 action_preview() {
     nds_ui_h "Classic NixOS installation (no flake required)"
     nds_ui_b ""
@@ -42,20 +47,19 @@ action_setup() {
 
     nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
 
-    step_start "Generating configuration.nix"
-    nds_nixcfg_build_classic_auto
-    nds_nixcfg_write "$NDS_RUNTIME_DIR/config/configuration.nix"
-    step_complete "Configuration generated"
-
     new_section
     section_header "NixOS installation"
     nds_install_log "classicInstall: action starting"
+
+    NDS_UI_QUIET=true
+    nds_step_exec "Generating configuration.nix" _classicinstall_write_config || exit 14
+
     nds_nixos_install || exit 15
 
     new_section
+    section_header "Installation complete"
     nds_ui_h "Installed with a classic /etc/nixos configuration."
     nds_ui_b "Flakes are enabled — you can migrate to a flake later."
     nds_ui_b ""
-    nds_secrets_offer_backup
-    nds_askUserToProceed "Reboot now?" && reboot
+    nds_install_finish || exit 16
 }

@@ -63,7 +63,7 @@ nds_ui_install_warning() {
     nds_ui_i "Partition and mount the target disk"
     nds_ui_i "Generate hardware-configuration.nix on the live system"
     nds_ui_i "Run nixos-install (Nix will download packages)"
-    nds_ui_i "Prompt to back up encryption keys before reboot"
+    nds_ui_i "Prompt to back up encryption keys after installation (before you reboot manually)"
     [[ -n "$extra" ]] && nds_ui_b "" && nds_ui_b "$extra"
     nds_ui_b ""
 }

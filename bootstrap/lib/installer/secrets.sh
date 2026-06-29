@@ -27,10 +27,15 @@ nds_secrets_list_runtime() {
 }
 
 # Pack runtime secrets into /tmp (survives until reboot; not removed with runtime purge).
+# Silent — no prompts. Sets NDS_SECRETS_BUNDLE when files exist.
 # Usage: nds_secrets_create_bundle
 nds_secrets_create_bundle() {
     local secret_files=()
-    local hostname stamp bundle item
+    local hostname stamp bundle
+
+    if [[ -n "${NDS_SECRETS_BUNDLE:-}" && -f "$NDS_SECRETS_BUNDLE" ]]; then
+        return 0
+    fi
 
     mapfile -t secret_files < <(nds_secrets_list_runtime)
     [[ ${#secret_files[@]} -eq 0 ]] && return 0
@@ -55,69 +60,41 @@ nds_secrets_create_bundle() {
     chmod 600 "$bundle"
     export NDS_SECRETS_BUNDLE="$bundle"
     nds_install_log "secrets bundle: $bundle"
-
-    section_header "Backup encryption keys"
-    nds_ui_b "Copy this file off the machine before continuing."
-    nds_ui_b "It lives in /tmp and is removed on reboot."
-    nds_ui_b ""
-    nds_ui_h "$bundle"
-    nds_ui_b ""
-    nds_ui_b "Install log (verbose output): ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
-    nds_ui_b ""
-    nds_askUserToProceed "I have backed up the secrets bundle" || return 1
     return 0
 }
 
-# Offer to copy runtime secrets to a user path (USB stick, etc.).
-# Usage: nds_secrets_offer_backup
-nds_secrets_offer_backup() {
-    local secret_files=()
-    local path item dest
+# Post-install screen: show bundle path, acknowledge backup before manual reboot.
+# Usage: nds_secrets_finish_install
+nds_secrets_finish_install() {
+    nds_secrets_create_bundle || return 1
 
-    if [[ -n "${NDS_SECRETS_BUNDLE:-}" && -f "$NDS_SECRETS_BUNDLE" ]]; then
-        section_header "Secrets backup reminder"
-        nds_ui_b "Secrets bundle (copy before reboot):"
-        nds_ui_h "$NDS_SECRETS_BUNDLE"
-        nds_ui_b ""
+    if [[ -z "${NDS_SECRETS_BUNDLE:-}" || ! -f "$NDS_SECRETS_BUNDLE" ]]; then
         return 0
     fi
 
-    mapfile -t secret_files < <(nds_secrets_list_runtime)
-
-    if [[ ${#secret_files[@]} -eq 0 ]]; then
-        return 0
-    fi
-
-    section_header "Secrets backup required"
-    nds_ui_b "Back up these files before reboot:"
-    for item in "${secret_files[@]}"; do
-        nds_ui_i "$item"
-    done
+    section_header "Backup encryption keys"
+    nds_ui_b "Copy this bundle off the machine before you reboot."
+    nds_ui_b "It lives in /tmp and is removed on reboot."
     nds_ui_b ""
-    nds_ui_b "Store offline (password manager, encrypted USB, Cryptomator vault)."
+    nds_ui_i "$NDS_SECRETS_BUNDLE"
     nds_ui_b ""
+    nds_ui_b "Install log (verbose output): ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    nds_ui_b ""
+    nds_askUserToProceed "I will back up these keys before rebooting" || return 1
+    nds_ui_b ""
+    nds_ui_b "Installation finished. Reboot manually when your keys are safe."
+    return 0
+}
 
-    if [[ ! -t 0 ]] || [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
-        warn "Copy secrets manually from the paths above"
+# End-of-install: secrets acknowledgment when encrypted; optional reboot otherwise.
+# Usage: nds_install_finish
+nds_install_finish() {
+    if [[ "$(nds_config_get "disk" "ENCRYPTION")" == "true" ]]; then
+        nds_secrets_finish_install || return 1
         return 0
     fi
 
-    read -rp "Copy secrets to directory (blank to skip): " path < /dev/tty
-    if [[ -z "$path" ]]; then
-        return 0
-    fi
-
-    mkdir -p "$path" || {
-        error "Cannot create $path"
-        return 1
-    }
-
-    for item in "${secret_files[@]}"; do
-        dest="$path/$(basename "$item")"
-        cp "$item" "$dest" && chmod 600 "$dest"
-    done
-
-    success "Secrets copied to $path"
-    nds_install_log "secrets backed up to $path"
+    nds_ui_b "Reboot when ready: sudo reboot"
+    nds_askUserToProceed "Reboot now?" && reboot
     return 0
 }

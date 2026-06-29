@@ -50,18 +50,18 @@ declare -g CURRENT_STEP_NAME=""
 step_start() {
     local message="$1"
     CURRENT_STEP_NAME="$message"
-    printf "%s %s" "$(nds_ui_step_icon start)" "$message" >&2
+    printf '%s%s %s' "$NDS_UI_INDENT_B" "$(nds_ui_step_icon start)" "$message" >&2
 }
 
 step_complete() {
     local message="${1:-$CURRENT_STEP_NAME}"
-    printf "\r\033[K%s %s\n" "$(nds_ui_step_icon ok)" "$message" >&2
+    printf '\r\033[K%s%s %s\n' "$NDS_UI_INDENT_B" "$(nds_ui_step_icon ok)" "$message" >&2
     CURRENT_STEP_NAME=""
 }
 
 step_fail() {
     local message="${1:-$CURRENT_STEP_NAME}"
-    printf "\r\033[K%s %s\n" "$(nds_ui_step_icon fail)" "$message" >&2
+    printf '\r\033[K%s%s %s\n' "$NDS_UI_INDENT_B" "$(nds_ui_step_icon fail)" "$message" >&2
     CURRENT_STEP_NAME=""
 }
 

@@ -67,12 +67,6 @@ nds_nixos_install() {
         return 1
     fi
 
-    if [[ "$(nds_config_get "disk" "ENCRYPTION")" == "true" ]]; then
-        NDS_UI_QUIET=false
-        nds_secrets_create_bundle || return 1
-        NDS_UI_QUIET=true
-    fi
-
     if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
         cp /mnt/etc/nixos/hardware-configuration.nix "$NDS_RUNTIME_DIR/config/"
     fi
@@ -125,11 +119,6 @@ nds_nixos_install_flake() {
     else
         if ! nds_nixinstall_auto; then
             return 1
-        fi
-        if [[ "$encryption" == "true" ]]; then
-            NDS_UI_QUIET=false
-            nds_secrets_create_bundle || return 1
-            NDS_UI_QUIET=true
         fi
     fi
 
