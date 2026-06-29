@@ -232,6 +232,8 @@ _nds_select_action() {
     section_header "Choose Bootstrap Action"
 
     console "  0) Abort - Exit the script"
+    console ""
+    console "  After choosing an action, press b at any prompt to return here."
 
     local i=1
     for action_name in "${ACTION_NAMES[@]}"; do
@@ -270,20 +272,19 @@ _nds_execute_action() {
     local action_name="$1"
     local action_path="${ACTION_DATA[${action_name}_path]}"
     local setup_script="${action_path}setup.sh"
+    local rc=0
 
     if [[ ! -f "$setup_script" ]]; then
         error "Setup script not found: $setup_script"
         return 1
     fi
 
-    # Import the setup script with validation
     info "Loading $action_name action..."
     if ! nds_import_file "$setup_script"; then
         error "Failed to import action setup script"
         return 1
     fi
 
-    # Call action_config to setup fields and defaults
     if declare -f action_config &>/dev/null; then
         info "Configuring $action_name..."
         action_config
@@ -292,12 +293,16 @@ _nds_execute_action() {
         return 1
     fi
 
-    # Execute the setup function
     info "Executing $action_name..."
     section_title "Action: $action_name"
-    if ! action_setup; then
+    action_setup || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
+            info "Returning to action menu"
+            return "$NDS_ACTION_BACK"
+        fi
         error "Action setup failed for: $action_name"
-        return 1
+        return "$rc"
     fi
 
     success "Action completed: $action_name"
@@ -373,10 +378,19 @@ success "Bootstrapper 'NDS' libraries loaded"
 
 # Select action
 declare -g current_action
-_nds_select_action
-
-# Execute selected action
-_nds_execute_action "$current_action" || crash "Failed to execute action"
+rc=0
+while true; do
+    _nds_select_action
+    _nds_execute_action "$current_action"
+    rc=$?
+    if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
+        continue
+    fi
+    if [[ "$rc" -ne 0 ]]; then
+        crash "Failed to execute action"
+    fi
+    break
+done
 
 # =============================================================================
 # END

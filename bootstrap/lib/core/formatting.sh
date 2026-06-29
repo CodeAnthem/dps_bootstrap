@@ -30,13 +30,13 @@ log() {
         nds_install_log "$1"
     fi
 }
-info() { logDate "ℹ️  [INFO] -" "$1"; }
-error() { logDate "❌ [FAIL] -" "$1"; }
-fatal() { logDate "❌ [FATAL] -" "$1"; }
-success() { logDate "✅ [PASS] -" "$1"; }
-debug() { [[ "${DEBUG:-0}" == "1" ]] && logDate "🐛 [DEBUG] -" "$1" || true; }
-warn() { logDate "⚠️  [WARN] -" "$1"; }
-validation_error() { logDate "❌ [VALIDATION] - " "$1"; }
+info() { logDate "$(nds_ui_log_tag info)" "$1"; }
+error() { logDate "$(nds_ui_log_tag error)" "$1"; }
+fatal() { logDate "$(nds_ui_log_tag fatal)" "$1"; }
+success() { logDate "$(nds_ui_log_tag success)" "$1"; }
+debug() { [[ "${DEBUG:-0}" == "1" ]] && logDate "$(nds_ui_log_tag debug)" "$1" || true; }
+warn() { logDate "$(nds_ui_log_tag warn)" "$1"; }
+validation_error() { logDate "$(nds_ui_log_tag validation)" "$1"; }
 
 # =============================================================================
 # VISUAL FORMATTING FUNCTIONS
@@ -45,15 +45,7 @@ validation_error() { logDate "❌ [VALIDATION] - " "$1"; }
 # Draw a box with title
 # Usage: draw_title "title" [length]
 draw_title() {
-    local title="$1"
-    local length="${2:-100}"
-    local inner_length=$((length - 2))
-    local border
-    border=$(printf '─%.0s' $(seq 1 "$inner_length"))
-    
-    printf "╭%s╮\n" "$border" >&2
-    printf "│%-*s│\n" "$inner_length" "$title" >&2
-    printf "╰%s╯\n" "$border" >&2
+    nds_ui_draw_box "$1" "${2:-100}"
 }
 
 # Section header (small box)
@@ -83,15 +75,14 @@ declare -g CURRENT_STEP_NAME=""
 step_start() {
     local message="$1"
     CURRENT_STEP_NAME="$message"
-    printf "⏳ %s" "$message" >&2
+    printf "%s %s" "$(nds_ui_step_icon start)" "$message" >&2
 }
 
 # Complete a step successfully
 # Usage: step_complete "message"
 step_complete() {
     local message="${1:-$CURRENT_STEP_NAME}"
-    # Clear line completely before printing to avoid leftover text
-    printf "\r\033[K✅ %s\n" "$message" >&2
+    printf "\r\033[K%s %s\n" "$(nds_ui_step_icon ok)" "$message" >&2
     CURRENT_STEP_NAME=""
 }
 
@@ -99,8 +90,7 @@ step_complete() {
 # Usage: step_fail "message"
 step_fail() {
     local message="${1:-$CURRENT_STEP_NAME}"
-    # Clear line completely before printing to avoid leftover text
-    printf "\r\033[K❌ %s\n" "$message" >&2
+    printf "\r\033[K%s %s\n" "$(nds_ui_step_icon fail)" "$message" >&2
     CURRENT_STEP_NAME=""
 }
 

@@ -16,7 +16,7 @@ action_setup() {
     console "  NDS writes configuration.nix + hardware-configuration.nix into /etc/nixos."
     console "  Timezone, locale, network, user, and bootloader come from the menu."
 
-    nds_askUserToProceed "Ready to configure?" || exit 130
+    nds_askUserContinue_or_exit "Ready to configure?" || return $?
 
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors

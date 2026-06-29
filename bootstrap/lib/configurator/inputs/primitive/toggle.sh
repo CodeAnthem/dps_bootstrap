@@ -29,12 +29,7 @@ normalize_toggle() {
 }
 
 display_toggle() {
-    local value="$1"
-    case "$value" in
-        true) echo "✓" ;;
-        false) echo "✗" ;;
-        *) echo "$value" ;;
-    esac
+    nds_ui_format_bool "$1"
 }
 
 error_msg_toggle() {

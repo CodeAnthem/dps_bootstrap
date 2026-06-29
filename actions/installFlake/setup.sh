@@ -125,7 +125,7 @@ action_setup() {
     console "Install NixOS from your flake."
     console "  Disk + hardware options: see menu sections Disk and Your flake."
 
-    nds_askUserToProceed "Ready to configure?" || exit 130
+    nds_askUserContinue_or_exit "Ready to configure?" || return $?
 
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors

@@ -124,8 +124,8 @@ nds_configurator_preset_display() {
         
         # Transform for display if function exists
         type "display_${input}" &>/dev/null && value=$("display_${input}" "$value")
-        
-        console "   > $display: $value"
+
+        nds_ui_kv_row "$display" "$value"
     done
 }
 

@@ -91,7 +91,7 @@ action_setup() {
     console "Install from a flake that may ship its own NDS action (.nds/action.sh)."
     console "  If no remote action is found, NDS falls back to a standard flake install."
 
-    nds_askUserToProceed "Ready to configure?" || exit 130
+    nds_askUserContinue_or_exit "Ready to configure?" || return $?
 
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
