@@ -234,39 +234,40 @@ _nds_select_action() {
     new_section
     section_header "Choose Bootstrap Action"
 
-    console "  0) Abort - Exit the script"
     console ""
-    console "  After choosing an action, press b at any prompt to return here."
+    nds_ui_choice_row "0" "Abort" "Exit the script"
+    console ""
 
     local i=1
     for action_name in "${ACTION_NAMES[@]}"; do
         local description="${ACTION_DATA[${action_name}_description]}"
-        console "  $i) $action_name - $description"
+        nds_ui_choice_row "$i" "$action_name" "$description"
         ((i++))
     done
+
+    console ""
+    console "  Press b at any later prompt to return to this menu."
+    console ""
 
     local choice max_choice
     max_choice="${#ACTION_NAMES[@]}"
 
-    # Loop until valid choice
     while true; do
         read -rsn1 -p "     -> Select action [0-$max_choice]: " choice < /dev/tty
+        echo >&2
 
-        # Handle abort
         if [[ "$choice" == "0" ]]; then
             console "Operation aborted"
             exit 130
         fi
 
-        # Validate choice is a number and in range
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
-            console "$selected_action"
-            current_action="$selected_action" # return value
+            console "Selected: $selected_action"
+            current_action="$selected_action"
             return 0
         fi
 
-        # Invalid selection
         console "Invalid selection. Choose 0-$max_choice"
     done
 }

@@ -126,6 +126,21 @@ nds_ui_kv_row() {
     fi
 }
 
+# Description: Print a numbered menu row (action picker, option lists).
+# Arguments:
+# - number: <String> Option number shown as "N)"
+# - name:   <String> Short label (action name, Abort, etc.)
+# - detail: <String> Description text in the second column
+# - width:  <String> Label column width (optional)
+nds_ui_choice_row() {
+    local number="$1"
+    local name="$2"
+    local detail="$3"
+    local width="${4:-26}"
+
+    nds_ui_kv_row "${number}) ${name}" "$detail" "$width"
+}
+
 # Description: Draw a titled box (unicode or ASCII depending on mode).
 nds_ui_draw_box() {
     local title="$1"
