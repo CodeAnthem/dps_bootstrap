@@ -3,7 +3,7 @@
 # NDS - Remote action from target flake
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-06-29 | Modified: 2026-06-29
-# Description:   Clone a flake and run .nds/action.sh if present, else installFlake
+# Description:   Clone a flake and run its .nds/action.sh if present, else fall back to a flake install
 # ==================================================================================================
 
 action_config() {
@@ -88,10 +88,12 @@ _remoteaction_find_script() {
 }
 
 action_setup() {
-    console "Install from a flake that may ship its own NDS action (.nds/action.sh)."
-    console "  If no remote action is found, NDS falls back to a standard flake install."
+    nds_action_overview \
+        "Run a custom install action from your flake" \
+        "flake Git URL, host name, host directory, hardware placement, disk, plus any fields your .nds/action.sh adds" \
+        "clone the flake, load its .nds/action.sh, run your install script (or fall back to a standard flake install), reboot"
 
-    nds_askUserContinue_or_exit "Ready to configure?" || return $?
+    nds_askUserContinue_or_exit "Proceed to configuration wizard?" || return $?
 
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
@@ -136,9 +138,9 @@ action_setup() {
             exit 14
         fi
     else
-        warn "No .nds/action.sh found — using standard flake install"
+        warn "No .nds/action.sh found — using a standard flake install"
         nds_askUserToProceed "Install ${NDS_FLAKE_HOST} from flake?" || exit 13
-        nds_install_log "remoteAction: fallback installFlake"
+        nds_install_log "remoteAction: fallback to flake install"
         nds_nixos_install_flake || exit 15
     fi
 

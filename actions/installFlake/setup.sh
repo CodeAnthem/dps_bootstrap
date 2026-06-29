@@ -3,7 +3,7 @@
 # NDS - Install from Nix flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-06-28 | Modified: 2026-06-29
-# Description:   Generic nixos-install --flake from the live ISO
+# Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
 action_config() {
@@ -122,10 +122,12 @@ action_show_completion() {
 }
 
 action_setup() {
-    console "Install NixOS from your flake."
-    console "  Disk + hardware options: see menu sections Disk and Your flake."
+    nds_action_overview \
+        "Install NixOS from your flake" \
+        "flake source and URL/path, host name, host directory, hardware placement, disk" \
+        "partition the target disk (or defer to your flake), generate hardware-configuration.nix, stage the flake, run nixos-install --flake, reboot"
 
-    nds_askUserContinue_or_exit "Ready to configure?" || return $?
+    nds_askUserContinue_or_exit "Proceed to configuration wizard?" || return $?
 
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors

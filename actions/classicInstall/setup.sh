@@ -3,7 +3,7 @@
 # NDS - Classic install action (no flake)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-06-29 | Modified: 2026-06-29
-# Description:   Install NixOS with a generated /etc/nixos configuration (Person A)
+# Description:   Install NixOS with a generated /etc/nixos configuration (no flake needed)
 # ==================================================================================================
 
 action_config() {
@@ -12,11 +12,12 @@ action_config() {
 }
 
 action_setup() {
-    console "Classic NixOS install — no flake required."
-    console "  NDS writes configuration.nix + hardware-configuration.nix into /etc/nixos."
-    console "  Timezone, locale, network, user, and bootloader come from the menu."
+    nds_action_overview \
+        "Classic NixOS installation (no flake required)" \
+        "timezone, locales, keyboard, network, admin user, bootloader, disk" \
+        "partition the target disk, generate configuration.nix and hardware-configuration.nix, run nixos-install, reboot"
 
-    nds_askUserContinue_or_exit "Ready to configure?" || return $?
+    nds_askUserContinue_or_exit "Proceed to configuration wizard?" || return $?
 
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
@@ -53,8 +54,7 @@ action_setup() {
     nds_nixos_install || exit 15
 
     new_section
-    console ""
-    console "Installed with classic /etc/nixos configuration."
+    console "Installed with a classic /etc/nixos configuration."
     console "  Flakes are enabled — you can migrate to a flake later."
     console ""
     nds_secrets_offer_backup

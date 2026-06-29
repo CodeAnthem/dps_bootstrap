@@ -125,6 +125,9 @@ _main_stopHandler() {
             0)
                 success "Script completed successfully"
             ;;
+            10)
+                # NDS_ACTION_BACK — return to menu, not an error
+            ;;
             130)
                 warn "Script aborted by user"
             ;;
@@ -298,7 +301,6 @@ _nds_execute_action() {
     action_setup || rc=$?
     if [[ "$rc" -ne 0 ]]; then
         if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
-            info "Returning to action menu"
             return "$NDS_ACTION_BACK"
         fi
         error "Action setup failed for: $action_name"

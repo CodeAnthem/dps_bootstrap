@@ -1,6 +1,6 @@
 # classicConfig
 
-Builds a **classic `/etc/nixos/configuration.nix`** for the `classicInstall` action (Person A — no flake).
+Builds a **classic `/etc/nixos/configuration.nix`** for the `classicInstall` action (no flake).
 
 ## Layout
 

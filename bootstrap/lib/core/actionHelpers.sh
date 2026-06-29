@@ -8,6 +8,47 @@
 # ==================================================================================================
 
 # =============================================================================
+# ACTION OVERVIEW
+# =============================================================================
+
+# Description: Print a formatted action overview with a "You will" + "NDS will" list.
+# Arguments:
+# - title:   <String> Short action name shown as the heading
+# - youwill: <String> Comma-separated list of things the user configures
+# - ndswill: <String> Comma-separated list of steps NDS performs after confirm
+# Returns:
+# - Prints the overview to stderr
+nds_action_overview() {
+    local title="$1"
+    local youwill="$2"
+    local ndswill="$3"
+    local item
+
+    console "$title"
+    console ""
+    console "  You will configure:"
+    IFS=',' read -ra _items <<< "$youwill"
+    for item in "${_items[@]}"; do
+        console "    - $(nds_trim "$item")"
+    done
+    console ""
+    console "  After confirmation, NDS will:"
+    IFS=',' read -ra _items <<< "$ndswill"
+    for item in "${_items[@]}"; do
+        console "    - $(nds_trim "$item")"
+    done
+    console ""
+}
+
+# Description: Trim leading/trailing whitespace from a string.
+nds_trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf '%s' "$s"
+}
+
+# =============================================================================
 # USER INTERACTION HELPERS
 # =============================================================================
 
