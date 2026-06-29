@@ -36,7 +36,8 @@ nds_resolve_repo_url() {
 # ----------------------------------------------------------------------------------
 # SCRIPT METADATA
 # ----------------------------------------------------------------------------------
-readonly REPO_URL="$(nds_resolve_repo_url)"
+REPO_URL="$(nds_resolve_repo_url)"
+readonly REPO_URL
 readonly REPO_NAME="${NDS_REPO_NAME:-$(basename "${REPO_URL%.git}")}"
 readonly REPO_PATH="/tmp/${REPO_NAME}"
 readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"

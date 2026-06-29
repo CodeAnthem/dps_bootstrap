@@ -20,7 +20,7 @@ This repository contains **no cluster secrets**, no private keys, and no org-spe
    ls /tmp/dps_bootstrap   # or /tmp/<NDS_REPO_NAME> when using a fork
    ```
 3. **Manual steps** — clone with git and run `sudo bash bootstrap/main.sh` yourself when you are satisfied.
-4. **CI** — shell scripts are linted with [ShellCheck](https://www.shellcheck.net/) on every push ([workflow](.github/workflows/shellcheck.yml)).
+4. **CI** — on every push: [ShellCheck](.github/workflows/shellcheck.yml) (`bash scripts/shellcheck.sh`) and [self-tests](.github/workflows/selftest.yml) (`bash scripts/selftest.sh`). Run the same locally before opening a PR.
 
 ## Forks and renamed repositories
 

@@ -3,6 +3,7 @@
 [![Version](https://img.shields.io/badge/version-4.0.1-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
+[![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)
 
 **Installing NixOS on bare metal is a long checklist.** Partition disks, set up encryption, generate hardware facts, stage your config, run `nixos-install` — in order, without wiping the wrong disk.
 
@@ -117,9 +118,10 @@ Leaf repos can link here for live-ISO installs. For custom flows, ship `.nds/act
 ## Develop
 
 ```bash
+bash scripts/shellcheck.sh              # lint (installs ShellCheck to ~/.cache if needed)
+bash scripts/selftest.sh                # read-only self-tests
 DEBUG=1 sudo bash bootstrap/main.sh
 NDS_TEST=true sudo bash bootstrap/main.sh   # self-test action only
-bash bootstrap/tests/run.sh                 # same tests, no menu
 ```
 
 Contributor notes: [bootstrap/README.md](bootstrap/README.md) · [bootstrap/lib/README.md](bootstrap/lib/README.md) · [actions/remoteAction/README.md](actions/remoteAction/README.md)

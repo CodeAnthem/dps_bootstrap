@@ -53,19 +53,22 @@ action_config() {
 }
 
 _remoteaction_prepare() {
-    local host repo_url install_path
+    local host repo_url install_path host_dir hw_placement disk_strategy
     host=$(nds_configurator_config_get "FLAKE_HOST")
     repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
     install_path=$(nds_configurator_config_get "FLAKE_INSTALL_PATH")
+    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
+    hw_placement=$(nds_configurator_config_get "HARDWARE_PLACEMENT")
+    disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
 
     nds_configurator_config_set "HOSTNAME" "$host"
     export NDS_FLAKE_HOST="$host"
     export NDS_FLAKE_SOURCE="remote"
     export NDS_FLAKE_REPO_URL="$repo_url"
     export NDS_FLAKE_INSTALL_PATH="$install_path"
-    export NDS_FLAKE_HOST_DIR="$(nds_configurator_config_get "FLAKE_HOST_DIR")"
-    export NDS_HARDWARE_PLACEMENT="$(nds_configurator_config_get "HARDWARE_PLACEMENT")"
-    export NDS_DISK_STRATEGY="$(nds_config_get "disk" "DISK_STRATEGY")"
+    export NDS_FLAKE_HOST_DIR="$host_dir"
+    export NDS_HARDWARE_PLACEMENT="$hw_placement"
+    export NDS_DISK_STRATEGY="$disk_strategy"
 }
 
 _remoteaction_find_script() {
