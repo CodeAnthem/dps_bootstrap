@@ -336,6 +336,7 @@ _nds_execute_action() {
 
     if declare -f action_config &>/dev/null; then
         info "Configuring $action_name..."
+        nds_configurator_reset_for_action "$SCRIPT_DIR" || return 1
         action_config
     else
         error "action_config() not found in $setup_script"

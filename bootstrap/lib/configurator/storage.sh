@@ -108,6 +108,27 @@ nds_configurator_preset_get_display() {
     echo "$display"
 }
 
+# Reset preset enablement to bootstrap defaults before each action's action_config().
+# Usage: nds_configurator_reset_for_action "bootstrap_dir"
+nds_configurator_reset_for_action() {
+    local bootstrap_dir="${1:?bootstrap dir}"
+    local preset preset_file
+
+    for preset_file in "${bootstrap_dir}/lib/configurator/presets/"*.sh; do
+        [[ -f "$preset_file" ]] || continue
+        preset=$(basename "$preset_file" .sh)
+        nds_configurator_preset_enable "$preset"
+        nds_configurator_preset_set_priority "$preset" 50
+        unset "PRESET_META[${preset}__display]"
+    done
+
+    for preset in installFlake remoteAction; do
+        nds_configurator_preset_disable "$preset"
+        unset "PRESET_META[${preset}__display]"
+        unset "PRESET_META[${preset}__priority]"
+    done
+}
+
 # Check if preset has cached function
 _nds_configurator_preset_has_function() {
     [[ "${PRESET_FUNCTIONS[${1}__${2}]:-}" == "true" ]]
@@ -122,10 +143,9 @@ nds_configurator_var_declare() {
     shift
     local preset="${PRESET_CONTEXT}"
 
-    # Validate unique
+    # Skip re-declare when switching actions in the same session
     if _nds_configurator_var_exists "$varname"; then
-        error "ConfigVar already declared: $varname"
-        return 1
+        return 0
     fi
 
     # Store preset ownership
