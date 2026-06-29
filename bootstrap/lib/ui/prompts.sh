@@ -45,15 +45,26 @@ nds_askUserToProceed() {
         return 0
     fi
 
-    read -rsp "${NDS_UI_INDENT_B}${prompt} (y/n): " -n 1 confirm < /dev/tty
-    echo >&2
-    if [[ "${confirm,,}" != "y" ]]; then
-        nds_ui_b "No"
-        return 1
-    fi
-
-    nds_ui_b "Yes"
-    return 0
+    while true; do
+        read -rsp "${NDS_UI_INDENT_B}${prompt} (y/n): " -n 1 confirm < /dev/tty
+        echo >&2
+        case "${confirm,,}" in
+            y)
+                nds_ui_b "Yes"
+                return 0
+                ;;
+            n)
+                nds_ui_b "No"
+                return 1
+                ;;
+            "")
+                continue
+                ;;
+            *)
+                nds_ui_b "Press y (yes) or n (no)"
+                ;;
+        esac
+    done
 }
 
 nds_askUserContinue_or_exit() {

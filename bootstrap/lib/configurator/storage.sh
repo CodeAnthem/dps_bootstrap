@@ -220,20 +220,18 @@ nds_configurator_print_config_backup() {
     new_section
     section_header "Save your configuration"
     nds_ui_b "Copy the export block below — paste it before your next NDS run"
-    nds_ui_b "to reuse the same hostname, disk, flake URL, and other menu choices."
+    nds_ui_b "to reuse the same configuration."
     nds_ui_b ""
     while IFS= read -r line; do
         nds_ui_i "$line"
     done < <(nds_configurator_config_export_script)
     nds_ui_b ""
-    nds_ui_b "LUKS keys are created during installation."
-    nds_ui_b "You will be prompted to back them up after installation, before reboot."
-    nds_ui_b ""
 }
 
-# Confirm the user saved the export block before continuing to install.
+# Acknowledge the export block is optional backup for repeating this setup.
 nds_configurator_confirm_config_saved() {
-    nds_askUserToProceed "I have copied this configuration" || return 1
+    nds_askUserToProceed \
+        "I understand I can save the export above to recreate this setup" || return 1
     return 0
 }
 

@@ -99,7 +99,7 @@ nds_configurator_menu() {
                 success "Configuration confirmed"
                 nds_configurator_print_config_backup
                 nds_configurator_confirm_config_saved || {
-                    last_status="Copy the configuration export above, then confirm to continue."
+                    last_status="Confirm to continue, or press X again after reviewing the export."
                     warn "$last_status"
                     break
                 }

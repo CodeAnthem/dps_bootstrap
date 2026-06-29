@@ -142,11 +142,16 @@ nds_ui_choice_row() {
 
 nds_ui_draw_box() {
     local title="$1"
-    local length="${2:-50}"
-    local inner_length=$((length - 2))
-    local border
+    local length="${2:-0}"
+    local inner_length border
 
     nds_ui_init
+
+    if [[ "$length" -le 0 ]]; then
+        length=$(( ${#title} + 4 ))
+        (( length < 40 )) && length=40
+    fi
+    inner_length=$((length - 2))
 
     if [[ "$NDS_UI_MODE" == "unicode" ]]; then
         border=$(printf '─%.0s' $(seq 1 "$inner_length"))

@@ -32,11 +32,35 @@ debug() { [[ "${DEBUG:-0}" == "1" ]] && logDate "$(nds_ui_log_tag debug)" "$1" |
 warn() { logDate "$(nds_ui_log_tag warn)" "$1"; }
 validation_error() { logDate "$(nds_ui_log_tag validation)" "$1"; }
 
-draw_title() {
-    nds_ui_draw_box "$1" "${2:-100}"
+declare -g NDS_CURRENT_ACTION=""
+
+# Description: Build a section title with optional current action prefix.
+nds_section_title_format() {
+    local label="$1"
+    if [[ "$label" == NDS:* ]]; then
+        printf '%s' "$label"
+        return 0
+    fi
+    if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
+        printf 'NDS: %s — %s' "$NDS_CURRENT_ACTION" "$label"
+    else
+        printf 'NDS: %s' "$label"
+    fi
 }
 
-section_header() { new_section; draw_title "  $1" 50; }
+draw_title() {
+    local title="$1"
+    local width="${2:-0}"
+    nds_ui_draw_box "$title" "$width"
+}
+
+section_header() {
+    local label="$1"
+    local title
+    new_section
+    title=$(nds_section_title_format "$label")
+    nds_ui_draw_box "  ${title}"
+}
 
 section_title() {
     new_section

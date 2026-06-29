@@ -256,7 +256,7 @@ _nds_discover_actions() {
 
 _nds_select_action() {
     new_section
-    section_header "NDS: Choose an action"
+    section_header "Choose an action"
 
     nds_ui_b ""
     nds_ui_choice_row "0" "Abort" "Exit the script"
@@ -302,7 +302,7 @@ _nds_run_action_preview() {
     fi
 
     new_section
-    section_header "Action: ${action_name}"
+    section_header "Install preview"
     action_preview
     nds_ui_b "Press Y to continue, B to go back to the action menu."
     nds_ui_b ""
@@ -320,6 +320,8 @@ _nds_execute_action() {
     local action_path="${ACTION_DATA[${action_name}_path]}"
     local setup_script="${action_path}setup.sh"
     local rc=0
+
+    export NDS_CURRENT_ACTION="$action_name"
 
     if [[ ! -f "$setup_script" ]]; then
         error "Setup script not found: $setup_script"
@@ -438,6 +440,7 @@ nds_main() {
         rc=0
         _nds_execute_action "$current_action" || rc=$?
         if [[ "$rc" -eq "$NDS_ACTION_BACK" ]]; then
+            NDS_CURRENT_ACTION=""
             continue
         fi
         if [[ "$rc" -ne 0 ]]; then
