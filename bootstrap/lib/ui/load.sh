@@ -3,7 +3,7 @@
 # NDS - UI package loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-06-29 | Modified: 2026-06-29
-# Description:   Load terminal, output, prompts, and action UI modules in dependency order
+# Description:   Load terminal, output, step animation, prompts, and action UI modules
 # ==================================================================================================
 
 # Description: Load all UI modules and initialize terminal mode.
@@ -16,6 +16,7 @@ nds_ui_load() {
 
     nds_import_file "${lib_dir}/ui/terminal.sh" || return 1
     nds_import_file "${lib_dir}/ui/output.sh" || return 1
+    nds_import_file "${lib_dir}/ui/stepAnimation.sh" || return 1
     nds_import_file "${lib_dir}/ui/prompts.sh" || return 1
     nds_import_file "${lib_dir}/ui/actions.sh" || return 1
     nds_ui_init

@@ -148,8 +148,8 @@ nds_ui_draw_box() {
     nds_ui_init
 
     if [[ "$length" -le 0 ]]; then
-        length=$(( ${#title} + 4 ))
-        (( length < 40 )) && length=40
+        length=$(( ${#title} + 2 ))
+        (( length < 42 )) && length=42
     fi
     inner_length=$((length - 2))
 
@@ -165,14 +165,4 @@ nds_ui_draw_box() {
     printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
     printf "%s|%-*s|\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
     printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
-}
-
-nds_ui_step_icon() {
-    local state="$1"
-    nds_ui_init
-    case "$state" in
-        start) echo "..." ;;
-        ok) echo "[OK]" ;;
-        fail) echo "[FAIL]" ;;
-    esac
 }
