@@ -118,9 +118,13 @@ nds_bootstrap_load_libs() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
     local lib_dir="${script_dir}/lib"
 
-    nds_import_file "${lib_dir}/core/ui.sh" || return 1
     nds_import_dir "${lib_dir}/core" false || return 1
-    nds_ui_init
+
+    nds_import_file "${lib_dir}/ui/load.sh" || return 1
+    nds_ui_load "$lib_dir" || return 1
+
+    nds_import_file "${lib_dir}/security/crypto.sh" || return 1
+
     nds_import_file "${lib_dir}/load.sh" || return 1
     nds_configurator_init || return 1
     nds_installation_init || return 1

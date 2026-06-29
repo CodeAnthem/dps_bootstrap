@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Terminal UI helpers
+# NDS - UI - Terminal capabilities and layout
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-06-29 | Modified: 2026-06-29
-# Description:   Terminal capability detection, colors, and two-column menu formatting
+# Description:   Terminal mode detection, indentation, boxes, columns, boolean display
 # ==================================================================================================
-
-[[ -n "${_NDS_UI_SH_LOADED:-}" ]] && return 0
-_NDS_UI_SH_LOADED=1
 
 declare -g NDS_UI_MODE=""
 declare -g NDS_UI_COLOR=false
@@ -15,22 +12,16 @@ declare -g NDS_UI_LABEL_WIDTH=38
 declare -g NDS_UI_INDENT_H=' '
 declare -g NDS_UI_INDENT_B='  '
 
-# Return code: action_setup should return this to re-open the action menu.
 readonly NDS_ACTION_BACK=10
 
-# Description: Print a single line with header indent (1 space).
 nds_ui_h() {
     printf '%s%s\n' "$NDS_UI_INDENT_H" "${1:-}" >&2
 }
 
-# Description: Print a single line with body indent (2 spaces).
 nds_ui_b() {
     printf '%s%s\n' "$NDS_UI_INDENT_B" "${1:-}" >&2
 }
 
-# Description: Detect terminal capabilities and pick a display mode.
-# Modes: plain (no color), color (ANSI + true/false), unicode (box drawing + symbols).
-# Override with NDS_UI_MODE=plain|color|unicode or NDS_UI_MODE=auto (default).
 nds_ui_init() {
     [[ -n "${NDS_UI_INIT_DONE:-}" ]] && return 0
     NDS_UI_INIT_DONE=1
@@ -62,7 +53,6 @@ nds_ui_init() {
     NDS_UI_MODE="$mode"
 }
 
-# Description: Prefix string for log levels (emoji only in unicode mode).
 nds_ui_log_tag() {
     local level="$1"
     nds_ui_init
@@ -91,7 +81,6 @@ nds_ui_log_tag() {
     esac
 }
 
-# Description: Format boolean values for menus (true/false; optional ANSI color).
 nds_ui_format_bool() {
     local value="$1"
     local text
@@ -123,7 +112,6 @@ nds_ui_format_bool() {
     echo "$text"
 }
 
-# Description: Print a label/value row for configuration menus.
 nds_ui_kv_row() {
     local label="$1"
     local value="$2"
@@ -138,12 +126,6 @@ nds_ui_kv_row() {
     fi
 }
 
-# Description: Print a numbered menu row (action picker, option lists).
-# Arguments:
-# - number: <String> Option number shown as "N)"
-# - name:   <String> Short label (action name, Abort, etc.)
-# - detail: <String> Description text in the second column
-# - width:  <String> Label column width (optional)
 nds_ui_choice_row() {
     local number="$1"
     local name="$2"
@@ -153,7 +135,6 @@ nds_ui_choice_row() {
     nds_ui_kv_row "${number}) ${name}" "$detail" "$width"
 }
 
-# Description: Draw a titled box (unicode or ASCII depending on mode).
 nds_ui_draw_box() {
     local title="$1"
     local length="${2:-50}"
@@ -176,18 +157,9 @@ nds_ui_draw_box() {
     printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
 }
 
-# Description: Step progress icons for step_start / step_complete / step_fail.
 nds_ui_step_icon() {
     local state="$1"
     nds_ui_init
-    if [[ "$NDS_UI_MODE" == "unicode" ]]; then
-        case "$state" in
-            start) echo "..." ;;
-            ok) echo "[OK]" ;;
-            fail) echo "[FAIL]" ;;
-        esac
-        return 0
-    fi
     case "$state" in
         start) echo "..." ;;
         ok) echo "[OK]" ;;
