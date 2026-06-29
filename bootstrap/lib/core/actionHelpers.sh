@@ -24,20 +24,20 @@ nds_action_overview() {
     local ndswill="$3"
     local item
 
-    console "$title"
-    console ""
-    console "  You will configure:"
+    nds_ui_h "$title"
+    nds_ui_b ""
+    nds_ui_b "You will configure:"
     IFS=',' read -ra _items <<< "$youwill"
     for item in "${_items[@]}"; do
-        console "    - $(nds_trim "$item")"
+        nds_ui_b "- $(nds_trim "$item")"
     done
-    console ""
-    console "  After confirmation, NDS will:"
+    nds_ui_b ""
+    nds_ui_b "After confirmation, NDS will:"
     IFS=',' read -ra _items <<< "$ndswill"
     for item in "${_items[@]}"; do
-        console "    - $(nds_trim "$item")"
+        nds_ui_b "- $(nds_trim "$item")"
     done
-    console ""
+    nds_ui_b ""
 }
 
 # Description: Trim leading/trailing whitespace from a string.
@@ -60,28 +60,28 @@ nds_askUserContinue() {
     local prompt="${1:-Do you want to proceed?}"
 
     if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
-        console "$prompt [y/n/b]: y (auto-confirmed)"
+        nds_ui_b "$prompt [y/n/b]: y (auto-confirmed)"
         return 0
     fi
 
     while true; do
-        read -rsp "$prompt [y/n/b]: " -n 1 confirm < /dev/tty
+        read -rsp "${NDS_UI_INDENT_B}${prompt} [y/n/b]: " -n 1 confirm < /dev/tty
         echo >&2
         case "${confirm,,}" in
             y)
-                console "Yes"
+                nds_ui_b "Yes"
                 return 0
                 ;;
             n)
-                console "No"
+                nds_ui_b "No"
                 return 1
                 ;;
             b)
-                console "Back to action menu"
+                nds_ui_b "Back to action menu"
                 return 2
                 ;;
             *)
-                console "Enter y (yes), n (no), or b (back)"
+                nds_ui_b "Enter y (yes), n (no), or b (back)"
                 ;;
         esac
     done
@@ -96,17 +96,18 @@ nds_askUserToProceed() {
     
     # Auto-confirm if NDS_AUTO_CONFIRM is set to true
     if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
-        console "$prompt (y/n): y (auto-confirmed)"
+        nds_ui_b "$prompt (y/n): y (auto-confirmed)"
         return 0
     fi
-    
-    read -rsp "$prompt (y/n): " -n 1 confirm < /dev/tty
+
+    read -rsp "${NDS_UI_INDENT_B}${prompt} (y/n): " -n 1 confirm < /dev/tty
+    echo >&2
     if [[ "${confirm,,}" != "y" ]]; then
-        console "No!"
+        nds_ui_b "No"
         return 1
     fi
-    
-    console "Yes!"
+
+    nds_ui_b "Yes"
     return 0
 }
 

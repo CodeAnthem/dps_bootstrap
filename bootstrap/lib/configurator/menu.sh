@@ -22,10 +22,10 @@ nds_configurator_validate_all() {
 
 nds_configurator_wizard_intro() {
     section_header "Configuration wizard"
-    console "NDS will ask only for missing required fields."
-    console "Everything else keeps sensible defaults for now."
-    console "You can fine-tune all options in the full menu afterward."
-    console ""
+    nds_ui_b "NDS will ask only for missing required fields."
+    nds_ui_b "Everything else keeps sensible defaults for now."
+    nds_ui_b "You can fine-tune all options in the full menu afterward."
+    nds_ui_b ""
 }
 
 nds_configurator_prompt_errors() {
@@ -69,20 +69,20 @@ nds_configurator_menu() {
     
     while true; do
         section_header "Configuration Menu"
-        [[ -n "$last_status" ]] && console "$last_status" && console ""
-        console "Fine-tune any section below, or press X when ready to proceed."
-        console ""
+        [[ -n "$last_status" ]] && nds_ui_b "$last_status" && nds_ui_b ""
+        nds_ui_b "Fine-tune any section below, or press X when ready to proceed."
+        nds_ui_b ""
         
         local i=0
         for preset in "${presets[@]}"; do
             ((++i))
             nds_configurator_preset_display "$preset" "$i"
-            console ""
+            nds_ui_b ""
         done
         
         # Inner loop for re-prompting without redrawing menu
         while true; do
-            read -sr -n 1 -p "Select preset (1-$i or X to proceed): " sel < /dev/tty
+            read -sr -n 1 -p "${NDS_UI_INDENT_B}Select preset (1-$i or X to proceed): " sel < /dev/tty
             echo
             
             # Handle empty input (just ENTER) - re-prompt
@@ -104,8 +104,8 @@ nds_configurator_menu() {
 
                 while true; do
                     section_header "$(nds_configurator_preset_get_display "$preset") Configuration"
-                    console " Press ENTER to keep current value, or type a new value"
-                    console ""
+                    nds_ui_b "Press ENTER to keep current value, or type a new value"
+                    nds_ui_b ""
 
                     nds_configurator_preset_prompt_all "$preset"
 

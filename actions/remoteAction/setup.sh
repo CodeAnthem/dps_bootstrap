@@ -145,7 +145,7 @@ action_setup() {
     fi
 
     new_section
-    console "Install complete: ${NDS_FLAKE_HOST}"
+    nds_ui_h "Install complete: ${NDS_FLAKE_HOST}"
     nds_secrets_offer_backup
     nds_askUserToProceed "Reboot now?" && reboot
 }

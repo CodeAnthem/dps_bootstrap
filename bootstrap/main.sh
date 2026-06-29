@@ -236,7 +236,7 @@ _nds_select_action() {
 
     console ""
     nds_ui_choice_row "0" "Abort" "Exit the script"
-    console ""
+    nds_ui_b ""
 
     local i=1
     for action_name in "${ACTION_NAMES[@]}"; do
@@ -245,30 +245,30 @@ _nds_select_action() {
         ((i++))
     done
 
-    console ""
-    console "  Press b at any later prompt to return to this menu."
-    console ""
+    nds_ui_b ""
+    nds_ui_b "Press b at any later prompt to return to this menu."
+    nds_ui_b ""
 
     local choice max_choice
     max_choice="${#ACTION_NAMES[@]}"
 
     while true; do
-        read -rsn1 -p "     -> Select action [0-$max_choice]: " choice < /dev/tty
+        read -rsn1 -p "${NDS_UI_INDENT_B}-> Select action [0-$max_choice]: " choice < /dev/tty
         echo >&2
 
         if [[ "$choice" == "0" ]]; then
-            console "Operation aborted"
+            nds_ui_b "Operation aborted"
             exit 130
         fi
 
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
             local selected_action="${ACTION_NAMES[$((choice-1))]}"
-            console "Selected: $selected_action"
+            nds_ui_b "Selected: $selected_action"
             current_action="$selected_action"
             return 0
         fi
 
-        console "Invalid selection. Choose 0-$max_choice"
+        nds_ui_b "Invalid selection. Choose 0-$max_choice"
     done
 }
 

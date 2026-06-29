@@ -73,9 +73,9 @@ _nds_configurator_prompt_generic() {
     
     while true; do
         if [[ -n "$hint" ]]; then
-            printf "  %-20s [%s] %s: " "$display" "$current" "$hint" >&2
+            printf "%s%-20s [%s] %s: " "$NDS_UI_INDENT_B" "$display" "$current" "$hint" >&2
         else
-            printf "  %-20s [%s]: " "$display" "$current" >&2
+            printf "%s%-20s [%s]: " "$NDS_UI_INDENT_B" "$display" "$current" >&2
         fi
         
         local value
@@ -96,7 +96,7 @@ _nds_configurator_prompt_generic() {
         
         local error="Invalid input"
         type "error_msg_${input}" &>/dev/null && error=$("error_msg_${input}" "$value")
-        console "    Error: $error"
+        nds_ui_b "  Error: $error"
     done
 }
 
@@ -138,16 +138,15 @@ nds_configurator_var_prompt() {
         
         if [[ "$current" != "$new_value" ]]; then
             if [[ -n "$current" ]]; then
-                console "    -> Updated: $current -> $new_value"
+                nds_ui_b "  -> Updated: $current -> $new_value"
             else
-                console "    -> Set: $new_value"
+                nds_ui_b "  -> Set: $new_value"
             fi
         fi
-        
-        # Special hook for COUNTRY field
+
         if [[ "$varname" == "COUNTRY" && -n "$new_value" ]]; then
             if type apply_country_defaults &>/dev/null; then
-                apply_country_defaults "$new_value" && console "    -> Applied country defaults"
+                apply_country_defaults "$new_value" && nds_ui_b "  -> Applied country defaults"
             fi
         fi
         

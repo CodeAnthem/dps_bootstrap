@@ -74,11 +74,11 @@ nds_configurator_preset_prompt_errors() {
         display=$(nds_configurator_preset_get_display "$preset")
         # Only add Configuration suffix if display name doesn't already contain it
         [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
-        console "${display}:"
+        nds_ui_h "${display}:"
         for varname in "${vars_to_prompt[@]}"; do
             nds_configurator_var_prompt "$varname"
         done
-        console ""
+        nds_ui_b ""
     fi
 }
 
@@ -89,9 +89,9 @@ nds_configurator_preset_prompt_all() {
     display=$(nds_configurator_preset_get_display "$preset")
     # Only add Configuration suffix if display name doesn't already contain it
     [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
-    console "${display}:"
-    console ""
-    
+    nds_ui_h "${display}:"
+    nds_ui_b ""
+
     for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
         nds_configurator_var_prompt "$varname"
     done
@@ -111,7 +111,7 @@ nds_configurator_preset_display() {
     [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
     header="${display}:"
     [[ -n "$number" ]] && header="$number. $header"
-    console "$header"
+    nds_ui_h "$header"
     
     for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
         local display

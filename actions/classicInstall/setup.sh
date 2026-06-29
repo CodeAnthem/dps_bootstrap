@@ -54,9 +54,9 @@ action_setup() {
     nds_nixos_install || exit 15
 
     new_section
-    console "Installed with a classic /etc/nixos configuration."
-    console "  Flakes are enabled — you can migrate to a flake later."
-    console ""
+    nds_ui_h "Installed with a classic /etc/nixos configuration."
+    nds_ui_b "Flakes are enabled — you can migrate to a flake later."
+    nds_ui_b ""
     nds_secrets_offer_backup
     nds_askUserToProceed "Reboot now?" && reboot
 }

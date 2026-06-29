@@ -12,9 +12,21 @@ _NDS_UI_SH_LOADED=1
 declare -g NDS_UI_MODE=""
 declare -g NDS_UI_COLOR=false
 declare -g NDS_UI_LABEL_WIDTH=38
+declare -g NDS_UI_INDENT_H=' '
+declare -g NDS_UI_INDENT_B='  '
 
 # Return code: action_setup should return this to re-open the action menu.
 readonly NDS_ACTION_BACK=10
+
+# Description: Print a single line with header indent (1 space).
+nds_ui_h() {
+    printf '%s%s\n' "$NDS_UI_INDENT_H" "${1:-}" >&2
+}
+
+# Description: Print a single line with body indent (2 spaces).
+nds_ui_b() {
+    printf '%s%s\n' "$NDS_UI_INDENT_B" "${1:-}" >&2
+}
 
 # Description: Detect terminal capabilities and pick a display mode.
 # Modes: plain (no color), color (ANSI + true/false), unicode (box drawing + symbols).
@@ -120,9 +132,9 @@ nds_ui_kv_row() {
     nds_ui_init
 
     if [[ "$NDS_UI_COLOR" == true ]]; then
-        printf "     \033[1m%-${width}s\033[0m %s\n" "${label}:" "$value" >&2
+        printf "%s\033[1m%-${width}s\033[0m %s\n" "$NDS_UI_INDENT_B" "${label}:" "$value" >&2
     else
-        printf "     %-${width}s %s\n" "${label}:" "$value" >&2
+        printf "%s%-${width}s %s\n" "$NDS_UI_INDENT_B" "${label}:" "$value" >&2
     fi
 }
 
@@ -152,16 +164,16 @@ nds_ui_draw_box() {
 
     if [[ "$NDS_UI_MODE" == "unicode" ]]; then
         border=$(printf '─%.0s' $(seq 1 "$inner_length"))
-        printf "╭%s╮\n" "$border" >&2
-        printf "│%-*s│\n" "$inner_length" "$title" >&2
-        printf "╰%s╯\n" "$border" >&2
+        printf "%s╭%s╮\n" "$NDS_UI_INDENT_H" "$border" >&2
+        printf "%s│%-*s│\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
+        printf "%s╰%s╯\n" "$NDS_UI_INDENT_H" "$border" >&2
         return 0
     fi
 
     border=$(printf -- '-%.0s' $(seq 1 "$inner_length"))
-    printf "+%s+\n" "$border" >&2
-    printf "|%-*s|\n" "$inner_length" "$title" >&2
-    printf "+%s+\n" "$border" >&2
+    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
+    printf "%s|%-*s|\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
+    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
 }
 
 # Description: Step progress icons for step_start / step_complete / step_fail.

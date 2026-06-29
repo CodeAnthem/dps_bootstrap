@@ -111,14 +111,14 @@ _installflake_detect_disko() {
 }
 
 action_show_completion() {
-    console ""
-    console "Installed: ${NDS_FLAKE_HOST:-unknown}"
-    console "  Flake on disk: ${NDS_FLAKE_ROOT:-unknown}"
-    console ""
-    console "Next steps:"
-    console "  1. Back up runtime secrets (LUKS key, if encryption was enabled)"
-    console "  2. Reboot into the installed system"
-    console ""
+    nds_ui_b ""
+    nds_ui_h "Installed: ${NDS_FLAKE_HOST:-unknown}"
+    nds_ui_b "Flake on disk: ${NDS_FLAKE_ROOT:-unknown}"
+    nds_ui_b ""
+    nds_ui_b "Next steps:"
+    nds_ui_b "1. Back up runtime secrets (LUKS key, if encryption was enabled)"
+    nds_ui_b "2. Reboot into the installed system"
+    nds_ui_b ""
 }
 
 action_setup() {
