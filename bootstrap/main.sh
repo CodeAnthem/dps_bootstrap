@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="4.0.2"
+readonly SCRIPT_VERSION="4.0.3"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -58,33 +58,25 @@ _nds_callHook() {
 
 
 # =============================================================================
-# ROOT CHECK
+# ROOT ELEVATION
 # =============================================================================
-# Root privilege check with sudo fallback
-runWithRoot() {
-    if [[ $EUID -ne 0 ]]; then
-        new_section
-        section_header "Administrator privileges required"
-        warn "NDS must run as root to partition disks and install."
-        info "On the live ISO, log in as nixos and run with sudo — restarting now..."
+# Elevate via sudo before loading libraries (avoids double init on the live ISO).
+_nds_elevate_to_root() {
+    [[ $EUID -eq 0 ]] && return 0
 
-        # Preserve NDS_* environment variables through sudo
-        nds_vars=()
-        while IFS='=' read -r name value; do
-            if [[ "$name" =~ ^NDS_ ]]; then
-                nds_vars+=("$name=$value")
-            fi
-        done < <(env)
+    printf '[INFO] - NDS needs root — elevating via sudo...\n' >&2
 
-        # Restart with sudo, preserving NDS_* and DEBUG variables
-        if [[ ${#nds_vars[@]} -gt 0 ]]; then
-            exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
-        else
-            exec sudo DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "$@"
+    local nds_vars=()
+    while IFS='=' read -r name value; do
+        if [[ "$name" =~ ^NDS_ ]]; then
+            nds_vars+=("$name=$value")
         fi
-    else
-        success "Root privileges confirmed"
+    done < <(env)
+
+    if [[ ${#nds_vars[@]} -gt 0 ]]; then
+        exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${ORIGINAL_ARGS[@]}"
     fi
+    exec sudo DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${ORIGINAL_ARGS[@]}"
 }
 
 
@@ -264,12 +256,11 @@ _nds_discover_actions() {
         return 1
     fi
 
-    info "Discovered ${#ACTION_NAMES[@]} valid actions"
+    debug "Discovered ${#ACTION_NAMES[@]} valid actions"
     return 0
 }
 
 _nds_select_action() {
-    new_section
     section_header "Choose an action"
 
     nds_ui_b ""
@@ -315,7 +306,6 @@ _nds_run_action_preview() {
         return 1
     fi
 
-    new_section
     section_header "Install preview"
     action_preview
     nds_ui_b "Press Y to continue, B to go back to the action menu."
@@ -411,29 +401,21 @@ done
 # =============================================================================
 # MAIN WORKFLOW
 # =============================================================================
-# Load libraries
+# Load libraries (once, as root)
 nds_import_file "${LIB_DIR}/core/import.sh" || exit 1
+_nds_elevate_to_root
 nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
 
-# Run with root (pass original args for sudo restart)
-if [[ ${#ORIGINAL_ARGS[@]} -gt 0 ]]; then
-    runWithRoot "${ORIGINAL_ARGS[@]}"
-else
-    runWithRoot
-fi
-
-# Display script header
 section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
 
 # Signal handlers
 trap 'newline; exit 130' SIGINT # Interrupt handler
 trap _main_stopHandler EXIT # Setup cleanup trap
-success "Signal handlers initialized"
 
 # Setup runtime directory
 declare -g RUNTIME_DIR
 if ! setupRuntimeDir; then crash "Failed to setup runtime directory"; fi
-info "Runtime directory: $RUNTIME_DIR"
+debug "Runtime directory: $RUNTIME_DIR"
 nds_install_log "NDS session started (v$SCRIPT_VERSION)"
 
 # Discover available actions
@@ -442,8 +424,7 @@ declare -a ACTION_NAMES=()
 declare -gA ACTION_DATA=()
 if ! _nds_discover_actions; then crash "Failed to discover actions"; fi
 
-# Initialize configurator and installation (loaded by nds_bootstrap_load_libs)
-success "Bootstrapper 'NDS' libraries loaded"
+debug "Discovered ${#ACTION_NAMES[@]} valid actions"
 
 # Select action
 declare -g current_action

@@ -236,7 +236,6 @@ nds_configurator_config_export_script() {
 nds_configurator_print_config_backup() {
     local line
 
-    new_section
     section_header "Configuration export"
     nds_ui_b "If you plan to finish installation, you do not need to copy anything here."
     nds_ui_b "NDS includes this configuration in the install backup zip when installation completes."

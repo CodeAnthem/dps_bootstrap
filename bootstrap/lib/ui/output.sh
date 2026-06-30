@@ -35,6 +35,8 @@ warn() { logDate "$(nds_ui_log_tag warn)" "$1"; }
 validation_error() { logDate "$(nds_ui_log_tag validation)" "$1"; }
 
 declare -g NDS_CURRENT_ACTION=""
+declare -g NDS_UI_BANNER=""
+declare -g NDS_UI_BANNER_WIDTH=100
 
 # Description: Build a section title with optional current action prefix.
 nds_section_title_format() {
@@ -50,23 +52,35 @@ nds_section_title_format() {
     fi
 }
 
+# Description: Redraw the persistent main title bar when set.
+nds_ui_redraw_banner() {
+    [[ -n "${NDS_UI_BANNER:-}" ]] || return 0
+    nds_ui_draw_box "$NDS_UI_BANNER" "$NDS_UI_BANNER_WIDTH"
+}
+
 draw_title() {
     local title="$1"
-    local width="${2:-0}"
+    local width="${2:-$NDS_UI_BANNER_WIDTH}"
     nds_ui_draw_box "$title" "$width"
 }
 
+# Description: Clear the screen and redraw the main title bar if configured.
+new_section() {
+    printf "\033[2J\033[H" >&2
+    nds_ui_redraw_banner
+}
+
+# Description: Set the persistent main title (wide box) and show it.
+section_title() {
+    NDS_UI_BANNER=" === $1 === "
+    new_section
+}
+
+# Description: Start a screen with the main title and a subsection box below.
 section_header() {
     local label="$1"
     local title
     new_section
     title=$(nds_section_title_format "$label")
-    nds_ui_draw_box "  ${title}  "
+    nds_ui_draw_box "  ${title}  " "$NDS_UI_BANNER_WIDTH"
 }
-
-section_title() {
-    new_section
-    draw_title " === $1 === " 100
-}
-
-new_section() { printf "\033[2J\033[H" >&2; }

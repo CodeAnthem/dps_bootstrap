@@ -55,7 +55,6 @@ nds_configurator_prompt_errors() {
     for preset in "${presets[@]}"; do
         nds_configurator_preset_prompt_errors "$preset"
     done
-    new_section
 }
 
 nds_configurator_menu() {

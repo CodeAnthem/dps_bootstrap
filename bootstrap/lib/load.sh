@@ -11,7 +11,7 @@
 # =============================================================================
 
 nds_configurator_init() {
-    info "Initializing configurator..."
+    debug "Initializing configurator..."
 
     nds_import_file "${SCRIPT_DIR}/lib/setup/platform.sh" || {
         fatal "Failed to load platform helpers"
@@ -52,7 +52,7 @@ nds_configurator_init() {
 
     _nds_configurator_apply_env
 
-    success "Configurator initialized (${#PRESET_REGISTRY[@]} presets)"
+    debug "Configurator initialized (${#PRESET_REGISTRY[@]} presets)"
     return 0
 }
 
@@ -108,7 +108,7 @@ _nds_configurator_apply_env() {
 # =============================================================================
 
 nds_installation_init() {
-    info "Loading installation stack..."
+    debug "Loading installation stack..."
 
     nds_import_dir "${SCRIPT_DIR}/lib/installer" false || {
         fatal "Failed to load installer"
@@ -140,6 +140,6 @@ nds_installation_init() {
         return 1
     }
 
-    success "Installation stack loaded"
+    debug "Installation stack loaded"
     return 0
 }
