@@ -156,13 +156,13 @@ nds_ui_draw_box() {
     if [[ "$NDS_UI_MODE" == "unicode" ]]; then
         border=$(printf '─%.0s' $(seq 1 "$inner_length"))
         printf "%s╭%s╮\n" "$NDS_UI_INDENT_H" "$border" >&2
-        printf "%s│%-*s│\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
+        printf "%s │%-*s│\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
         printf "%s╰%s╯\n" "$NDS_UI_INDENT_H" "$border" >&2
         return 0
     fi
 
     border=$(printf -- '-%.0s' $(seq 1 "$inner_length"))
     printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
-    printf "%s|%-*s|\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
+    printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
     printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
 }

@@ -101,11 +101,11 @@ sudo bash bootstrap/main.sh
 
 Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → optionally save the export block (or get it in the final zip) → confirm the destructive step → install → back up the install package → reboot manually.
 
-Install log on the live system: `/tmp/nds_install.log`
+Logs on the live system: `/tmp/nds_install.log` (verbose nix install output), `/tmp/nds_session.log` (NDS session events).
 
 ### 6. Back up install package
 
-After install, NDS creates a zip in `/home/nixos/` (owned by the `nixos` user so `scp`/`ssh` work). It includes your NDS config export, install logs, and LUKS keys when encryption was enabled.
+After install, NDS creates a zip in `/home/nixos/` (owned by the `nixos` user so `scp`/`ssh` work). It includes your NDS config export, generated configs, install logs, and LUKS keys when encryption was enabled.
 
 NDS prints the full path and copy commands with your machine's IP — paste one of these from a **second terminal** on your PC:
 

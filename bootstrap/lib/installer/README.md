@@ -12,6 +12,7 @@ NixOS install pipeline: disk prep, hardware facts, flake staging, `nixos-install
 | `machineFacts.sh` | `machine.nix` (LUKS UUID) — dynamic LUKS detection |
 | `remoteUnlock.sh` | Initrd SSH for remote unlock |
 | `preflight.sh` | Disk / nix / network / SSH checks, disko auto-detect |
-| `secrets.sh` | LUKS key backup prompt |
+| `secrets.sh` | Locate runtime secret files (LUKS keys) |
+| `bundle.sh` | End-of-install backup zip (config, logs, keys) + finish screen |
 
 Used by `installFlake`, `classicInstall`, and `remoteAction` (fallback).

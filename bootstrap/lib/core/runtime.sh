@@ -2,11 +2,11 @@
 # ==================================================================================================
 # NDS - Runtime directory and install logging
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-06-30
 # Description:   Central runtime dir and persistent install log
 # ==================================================================================================
 
-readonly NDS_INSTALL_LOG="/tmp/nds_install.log"
+readonly NDS_INSTALL_LOG="/tmp/nds_session.log"
 
 # Setup runtime directory for config/secrets scratch space.
 # Usage: nds_runtime_init
@@ -36,7 +36,8 @@ nds_runtime_purge() {
     fi
 }
 
-# Append a line to the install log (survives reboot in /tmp).
+# Description: Append a line to the session log (events, warnings, info).
+# The verbose nix install output goes to NDS_INSTALL_DETAIL_LOG instead.
 # Usage: nds_install_log "message"
 nds_install_log() {
     local message="$1"

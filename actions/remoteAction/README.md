@@ -53,7 +53,7 @@ remote_action_run() {
 | `nds_preflight_install` | Disk / nix / network checks |
 | `nds_preflight_ssh_for_git` | SSH key reminder |
 | `nds_secrets_offer_backup` | LUKS key copy prompt |
-| `nds_install_log` | Append to `/tmp/nds_install.log` |
+| `nds_install_log` | Append to `/tmp/nds_session.log` |
 
 Environment: `NDS_FLAKE_*`, `NDS_DISK_STRATEGY`, `NDS_HARDWARE_PLACEMENT`, `NDS_RUNTIME_DIR`.
 
