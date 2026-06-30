@@ -42,7 +42,7 @@ nds_ui_install_warning() {
 
     nds_ui_h "Target disk"
     if [[ "$NDS_UI_COLOR" == true ]]; then
-        nds_ui_i "$(printf '\033[31;1m%s — all data will be permanently erased\033[0m' "$disk")"
+        nds_ui_i "$(printf '%s\033[31;1m — all data will be permanently erased\033[0m' "$disk")"
     else
         nds_ui_i "${disk} — all data will be permanently erased"
     fi
@@ -50,10 +50,6 @@ nds_ui_install_warning() {
 
     nds_ui_h "Partitioning"
     nds_ui_i "$strategy_label"
-    nds_ui_b ""
-
-    nds_ui_h "Estimated time"
-    nds_ui_i "10–30 minutes (depends on disk speed and download size)"
     nds_ui_b ""
 
     nds_ui_h "Steps"

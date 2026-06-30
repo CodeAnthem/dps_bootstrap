@@ -23,9 +23,9 @@ nds_ui_step_icon() {
             ;;
         ok)
             if [[ "$NDS_UI_COLOR" == true ]]; then
-                printf '\033[32m[ OK]\033[0m'
+                printf '\033[32m[OK]\033[0m'
             else
-                printf '[ OK]'
+                printf '[OK]'
             fi
             ;;
         fail)
@@ -73,7 +73,7 @@ show_spinner() {
     local char
     while ps -p "$pid" > /dev/null 2>&1; do
         char="${spinstr:0:1}"
-        printf '\r\033[K%s[ %s ] %s' "$NDS_UI_INDENT_B" "$char" "$message" >&2
+        printf '\r\033[K%s[%s%s] %s' "$NDS_UI_INDENT_B" "$char" "$char" "$message" >&2
         spinstr="${spinstr:1}${spinstr:0:1}"
         sleep "$delay"
     done

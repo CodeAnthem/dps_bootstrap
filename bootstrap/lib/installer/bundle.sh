@@ -137,7 +137,7 @@ _nds_install_bundle_remote_copy_hint() {
     bundle_name=$(basename "$bundle_path")
     [[ -z "$host" ]] && return 0
 
-    nds_ui_h "Backup it from your local machine:"
+    nds_ui_b "Backup it from your local machine:"
     nds_ui_i "SCP:"
     nds_ui_i "  scp ${ssh_user}@${host}:${bundle_path} ."
     nds_ui_b ""
@@ -151,28 +151,17 @@ nds_install_bundle_finish() {
     local bundle_ok=1
     nds_install_bundle_create || bundle_ok=0
 
-    new_section
-    _nds_ui_colored 32 "Installation successful."
-
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
         nds_ui_b ""
         nds_ui_h "Save the restore package for future use"
         nds_ui_b "Copy this zip off the machine before you reboot."
         nds_ui_b "It includes your NDS configuration, install logs, and encryption keys (if any)."
         nds_ui_b ""
-        nds_ui_i "$NDS_INSTALL_BUNDLE"
-        nds_ui_b ""
 
         if [[ "$(nds_config_get "disk" "ENCRYPTION")" == "true" ]]; then
-            _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
-            nds_ui_b ""
             _nds_ui_colored 35 "Encryption was enabled — saving this zip is important."
             _nds_ui_colored 35 "Without the LUKS key inside it, the installed system will not boot."
             nds_ui_b ""
-            nds_askUserToProceed "I will back up the install package before rebooting" || return 1
-            nds_ui_b ""
-            nds_ui_b "Reboot manually once the package is safe offline: sudo reboot"
-            return 0
         fi
 
         _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
