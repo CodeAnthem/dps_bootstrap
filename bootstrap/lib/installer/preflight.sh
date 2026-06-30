@@ -29,6 +29,17 @@ nds_preflight_install() {
         fi
     fi
 
+    # Warn when the user picked a UEFI bootloader but the live ISO is BIOS-boototed.
+    local uefi
+    uefi=$(nds_config_get "boot" "UEFI_MODE" 2>/dev/null || true)
+    if [[ "$uefi" == "true" && ! -d /sys/firmware/efi/efivars ]]; then
+        warn "UEFI bootloader selected but the live system is not booted in UEFI mode."
+        warn "The installed system will not boot. Reboot the ISO in UEFI mode, or use GRUB (BIOS)."
+        if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+            nds_askUserToProceed "Continue anyway?" || return 1
+        fi
+    fi
+
     if [[ -n "$remote_url" ]]; then
         if [[ "$remote_url" == git@* || "$remote_url" == ssh://* ]]; then
             nds_preflight_ssh_for_git "$remote_url" || return 1

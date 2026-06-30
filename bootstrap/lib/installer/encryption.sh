@@ -58,11 +58,12 @@ _nixinstall_setup_encryption() {
         encryption_key=$(echo -n "${encryption_key}${passphrase}" | openssl dgst -sha256 -hex | cut -d' ' -f2)
     fi
     
-    # Save to runtime directory
+    # Save to runtime directory (no trailing newline — must match the bytes
+    # passed to cryptsetup luksFormat so the keyfile is directly usable).
     local runtime_dir="${NDS_RUNTIME_DIR:-/tmp/nds_runtime_$$}"
     mkdir -p "$runtime_dir/secrets"
     local key_file="${runtime_dir}/secrets/luks_key.txt"
-    echo "$encryption_key" > "$key_file"
+    printf '%s' "$encryption_key" > "$key_file"
     chmod 600 "$key_file"
     
     # Export for use by other functions

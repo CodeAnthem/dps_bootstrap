@@ -14,5 +14,6 @@ NixOS install pipeline: disk prep, hardware facts, flake staging, `nixos-install
 | `preflight.sh` | Disk / nix / network / SSH checks, disko auto-detect |
 | `secrets.sh` | Locate runtime secret files (LUKS keys) |
 | `bundle.sh` | End-of-install backup zip (config, logs, keys) + finish screen |
+| `boot.sh` | LUKS keyfile install + EFI NVRAM entry registration |
 
 Used by `installFlake`, `classicInstall`, and `remoteAction` (fallback).

@@ -72,7 +72,12 @@ nds_nixos_install() {
     fi
 
     nds_step_exec "Installing configuration files" _nixinstall_install_configs || return 1
+    nds_step_exec "Installing LUKS keyfile" _nixinstall_install_luks_keyfile || return 1
     nds_step_exec "Installing NixOS" _nixinstall_install_nixos || return 1
+
+    local disk
+    disk=$(nds_config_get "disk" "DISK_TARGET")
+    nds_step_exec "Registering EFI boot entry" _nixinstall_register_efi_entry "$disk" || true
 
     nds_install_log "classicInstall: completed"
     return 0
@@ -181,6 +186,9 @@ nds_nixos_install_flake() {
 
     nds_step_exec "Installing NixOS from flake" \
         _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$hw_mode" || return 1
+
+    nds_step_exec "Registering EFI boot entry" \
+        _nixinstall_register_efi_entry "$disk" || true
 
     nds_install_log "installFlake: completed ${flake_root}#${hostname}"
     return 0
