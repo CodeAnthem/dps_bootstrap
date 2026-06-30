@@ -63,6 +63,37 @@ nds_secrets_create_bundle() {
     return 0
 }
 
+# Build scp hint for the machine that SSH'd into this host (run on your PC).
+_nds_secrets_scp_hint() {
+    local bundle="$1"
+    local ssh_user host published scp_path
+
+    ssh_user="${SUDO_USER:-}"
+    [[ -z "$ssh_user" || "$ssh_user" == root ]] && ssh_user="${LOGNAME:-${USER:-nixos}}"
+
+    if [[ "$ssh_user" != root && -d "/home/${ssh_user}" ]]; then
+        published="/home/${ssh_user}/$(basename "$bundle")"
+        cp "$bundle" "$published"
+        chown "${ssh_user}:${ssh_user}" "$published"
+        chmod 600 "$published"
+        scp_path="$published"
+    else
+        scp_path="$bundle"
+    fi
+
+    if [[ -n "${SSH_CONNECTION:-}" ]]; then
+        read -r _ _ host _ <<< "$SSH_CONNECTION"
+    elif command -v ip &>/dev/null; then
+        host=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") print $(i+1); exit}')
+    fi
+    host="${host:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+    [[ -z "$host" ]] && return 0
+
+    nds_ui_b "From your PC (open a second terminal), run:"
+    nds_ui_i "scp ${ssh_user}@${host}:${scp_path} ."
+    nds_ui_b ""
+}
+
 # Post-install screen: show bundle path, acknowledge backup before manual reboot.
 # Usage: nds_secrets_finish_install
 nds_secrets_finish_install() {
@@ -78,6 +109,7 @@ nds_secrets_finish_install() {
     nds_ui_b ""
     nds_ui_i "$NDS_SECRETS_BUNDLE"
     nds_ui_b ""
+    _nds_secrets_scp_hint "$NDS_SECRETS_BUNDLE"
     nds_ui_b "Install log (verbose output): ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
     nds_ui_b ""
     nds_askUserToProceed "I will back up these keys before rebooting" || return 1
