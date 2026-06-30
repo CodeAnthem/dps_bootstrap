@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install pre-flight checks
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-06-30
 # Description:   Disk, nix, network, and SSH checks before destructive install steps
 # ==================================================================================================
 
@@ -29,12 +29,23 @@ nds_preflight_install() {
         fi
     fi
 
-    # Warn when the user picked a UEFI bootloader but the live ISO is BIOS-boototed.
-    local uefi
+    local uefi bootloader
     uefi=$(nds_config_get "boot" "UEFI_MODE" 2>/dev/null || true)
+    bootloader=$(nds_config_get "boot" "BOOTLOADER" 2>/dev/null || true)
+
+    if [[ "$uefi" != "true" && "$bootloader" == "systemd-boot" ]]; then
+        error "systemd-boot requires UEFI — pick GRUB in Boot settings or enable UEFI mode"
+        return 1
+    fi
+
+    if [[ "$uefi" != "true" && "$bootloader" == "refind" ]]; then
+        error "rEFInd requires UEFI — pick GRUB in Boot settings or enable UEFI mode"
+        return 1
+    fi
+
     if [[ "$uefi" == "true" && ! -d /sys/firmware/efi/efivars ]]; then
-        warn "UEFI bootloader selected but the live system is not booted in UEFI mode."
-        warn "The installed system will not boot. Reboot the ISO in UEFI mode, or use GRUB (BIOS)."
+        warn "UEFI mode is on but the live ISO is BIOS-booted."
+        warn "Reboot the ISO in UEFI mode, or disable UEFI mode and use GRUB."
         if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
             nds_askUserToProceed "Continue anyway?" || return 1
         fi

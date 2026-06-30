@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - classicConfig builder tests (read-only — writes to temp dir only)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-06-30
 # ==================================================================================================
 
 suite_classic_config() {
@@ -39,6 +39,24 @@ suite_classic_config() {
     assert_contains "$content" 'Europe/Zurich' "configuration.nix"
     assert_contains "$content" 'testhost' "configuration.nix"
     assert_contains "$content" 'hardware-configuration.nix' "configuration.nix"
+
+    rm -rf "$tmp_dir"
+
+    # BIOS + mismatched bootloader: must emit GRUB on the target disk, not systemd-boot
+    tmp_dir=$(mktemp -d)
+    output="${tmp_dir}/configuration.nix"
+
+    CONFIG_DATA[DISK_TARGET]="/dev/sda"
+    CONFIG_DATA[BOOTLOADER]="systemd-boot"
+    CONFIG_DATA[UEFI_MODE]="false"
+
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$output"
+
+    content=$(<"$output")
+    assert_contains "$content" 'boot.loader.grub' "BIOS configuration.nix"
+    assert_contains "$content" 'device = "/dev/sda"' "BIOS configuration.nix"
+    assert_not_contains "$content" 'systemd-boot.enable' "BIOS configuration.nix"
 
     rm -rf "$tmp_dir"
 }

@@ -50,6 +50,20 @@ assert_contains() {
     fi
 }
 
+assert_not_contains() {
+    local haystack="$1"
+    local needle="$2"
+    local label="${3:-output}"
+
+    if [[ "$haystack" != *"$needle"* ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ ${label} excludes: ${needle}"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ ${label} should not contain: ${needle}"
+    fi
+}
+
 run_named_suite() {
     local suite_name="$1"
     shift

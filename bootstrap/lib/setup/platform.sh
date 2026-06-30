@@ -6,6 +6,13 @@
 # Description:   Detect virtual machine type on the live ISO
 # ==================================================================================================
 
+# Description: Return true when the live system is booted in UEFI mode.
+# Returns:
+# - <Int> 0 when UEFI firmware is active, 1 for legacy BIOS
+nds_platform_is_uefi() {
+    [[ -d /sys/firmware/efi/efivars ]]
+}
+
 # Description: Detect hypervisor / VM type.
 # Returns:
 # - <String> none | vmware | qemu | kvm | xen | hyperv | virtualbox | other
