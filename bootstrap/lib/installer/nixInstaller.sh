@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2025-10-28
+# Date:          Created: 2025-10-28 | Modified: 2026-06-30
 # Description:   Main NixOS installation orchestration
 # Feature:       Orchestrates disk setup, encryption, mounting, and NixOS installation
 # ==================================================================================================
@@ -36,6 +36,7 @@ nds_nixinstall_auto() {
     else
         if [[ "$encryption" == "true" ]]; then
             nds_step_exec "Generating encryption key" _nixinstall_setup_encryption || return 1
+            _nixinstall_load_encryption_key || return 1
         fi
         nds_step_exec "Partitioning disk" _nixinstall_partition_disk "$disk" "$encryption" || return 1
         nds_step_exec "Mounting filesystems" _nixinstall_mount_filesystems "$encryption" || return 1

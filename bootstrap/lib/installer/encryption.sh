@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2025-10-28
+# Date:          Created: 2025-10-28 | Modified: 2026-06-30
 # Description:   LUKS encryption setup for NixOS installation
 # Feature:       Encryption key generation, LUKS setup
 # ==================================================================================================
@@ -71,8 +71,29 @@ _nixinstall_setup_encryption() {
     export NDS_KEY_FILE="$key_file"
 
     log "Encryption key saved to $key_file (bundle will be offered after disk setup)"
-    
+
     return 0
+}
+
+# Description: Load the LUKS key from env or the runtime secrets file.
+# Returns:
+# - <Int> 0 when a non-empty key is available, 1 otherwise
+_nixinstall_load_encryption_key() {
+    if [[ -n "${NDS_ENCRYPTION_KEY:-}" ]]; then
+        return 0
+    fi
+    if [[ -n "${NDS_KEY_FILE:-}" && -f "$NDS_KEY_FILE" ]]; then
+        NDS_ENCRYPTION_KEY=$(<"$NDS_KEY_FILE")
+        export NDS_ENCRYPTION_KEY
+        [[ -n "$NDS_ENCRYPTION_KEY" ]] && return 0
+    fi
+    if [[ -f "${NDS_RUNTIME_DIR:-}/secrets/luks_key.txt" ]]; then
+        NDS_ENCRYPTION_KEY=$(<"${NDS_RUNTIME_DIR}/secrets/luks_key.txt")
+        export NDS_ENCRYPTION_KEY
+        export NDS_KEY_FILE="${NDS_RUNTIME_DIR}/secrets/luks_key.txt"
+        [[ -n "$NDS_ENCRYPTION_KEY" ]] && return 0
+    fi
+    return 1
 }
 
 # Setup encrypted partition
@@ -81,18 +102,10 @@ _nixinstall_setup_luks_partition() {
     local partition="$1"
 
     if [[ -z "${NDS_ENCRYPTION_KEY:-}" ]]; then
-        if [[ -n "${NDS_KEY_FILE:-}" && -f "$NDS_KEY_FILE" ]]; then
-            NDS_ENCRYPTION_KEY=$(<"$NDS_KEY_FILE")
-            export NDS_ENCRYPTION_KEY
-        elif [[ -f "${NDS_RUNTIME_DIR:-}/secrets/luks_key.txt" ]]; then
-            NDS_ENCRYPTION_KEY=$(<"${NDS_RUNTIME_DIR}/secrets/luks_key.txt")
-            export NDS_ENCRYPTION_KEY
-            export NDS_KEY_FILE="${NDS_RUNTIME_DIR}/secrets/luks_key.txt"
-        fi
-    fi
-
-    if [[ -z "${NDS_ENCRYPTION_KEY:-}" ]]; then
-        error "Encryption key not available - run _nixinstall_setup_encryption first"
+        _nixinstall_load_encryption_key || {
+            error "Encryption key not available - run _nixinstall_setup_encryption first"
+            return 1
+        }
     fi
     
     log "Setting up LUKS encryption on $partition"

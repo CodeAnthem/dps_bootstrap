@@ -21,8 +21,12 @@ nds_nixcfg_luks_auto() {
 
     local block
     block=$(cat <<'EOF'
-# LUKS root unlocked via keyfile embedded in the initrd
+# LUKS root unlocked via keyfile copied into the initrd at install time
 boot.initrd.luks.devices."cryptroot".keyFile = "/etc/luks-keys/cryptroot";
+
+boot.initrd.secrets = {
+  "/etc/luks-keys/cryptroot" = /etc/luks-keys/cryptroot;
+};
 EOF
 )
     nds_nixcfg_register "luks" "$block" 12

@@ -59,4 +59,21 @@ suite_classic_config() {
     assert_not_contains "$content" 'systemd-boot.enable' "BIOS configuration.nix"
 
     rm -rf "$tmp_dir"
+
+    # LUKS keyfile unlock must embed the key in the initrd via boot.initrd.secrets
+    tmp_dir=$(mktemp -d)
+    output="${tmp_dir}/configuration.nix"
+
+    CONFIG_DATA[ENCRYPTION]="true"
+    CONFIG_DATA[ENCRYPTION_USE_PASSPHRASE]="false"
+    CONFIG_DATA[REMOTE_UNLOCK]="false"
+
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$output"
+
+    content=$(<"$output")
+    assert_contains "$content" 'boot.initrd.secrets' "LUKS configuration.nix"
+    assert_contains "$content" '"/etc/luks-keys/cryptroot"' "LUKS configuration.nix"
+
+    rm -rf "$tmp_dir"
 }
