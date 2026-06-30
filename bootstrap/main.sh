@@ -64,9 +64,9 @@ _nds_callHook() {
 runWithRoot() {
     if [[ $EUID -ne 0 ]]; then
         new_section
-        section_header "Root Privilege Required"
-        warn "This script requires root privileges."
-        info "Attempting to restart with sudo..."
+        section_header "Administrator privileges required"
+        warn "NDS must run as root to partition disks and install."
+        info "On the live ISO, log in as nixos and run with sudo — restarting now..."
 
         # Preserve NDS_* environment variables through sudo
         nds_vars=()

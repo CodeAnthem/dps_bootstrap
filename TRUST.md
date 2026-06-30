@@ -1,6 +1,6 @@
 # Trust and verification
 
-NDS runs as **root** on the NixOS live ISO and can **erase disks**. Do not pipe scripts into `bash` without understanding what they do.
+NDS runs with **root privileges** (via `sudo` from the **`nixos`** live-ISO user) and can **erase disks**. Do not pipe scripts into `bash` without understanding what they do.
 
 ## What runs on your machine
 
@@ -9,7 +9,7 @@ NDS runs as **root** on the NixOS live ISO and can **erase disks**. Do not pipe 
 | **`start.sh`** | Clones or refreshes this repo under `/tmp/<repo-name>`, optionally warns about untracked files, then runs `bootstrap/main.sh` |
 | **`bootstrap/main.sh`** | Loads shell libraries, shows the configuration menu, partitions the target disk, and runs `nixos-install` |
 
-This repository contains **no cluster secrets**, no private keys, and no org-specific credentials. LUKS keys and similar material are generated at install time and written to a temporary runtime directory on the live system — you must copy them before reboot.
+This repository contains **no cluster secrets**, no private keys, and no org-specific credentials. LUKS keys are generated at install time; NDS packs them into a zip under `/tmp` (and shows `scp` / `ssh` copy commands for your PC). Copy them before reboot.
 
 ## Verify before you run
 

@@ -63,22 +63,22 @@ nds_secrets_create_bundle() {
     return 0
 }
 
-# Build scp hint for the machine that SSH'd into this host (run on your PC).
-_nds_secrets_scp_hint() {
+# Build copy hints for the PC that SSH'd into this host (run on your PC).
+_nds_secrets_remote_copy_hint() {
     local bundle="$1"
-    local ssh_user host published scp_path
+    local ssh_user host remote_path published bundle_name
 
-    ssh_user="${SUDO_USER:-}"
-    [[ -z "$ssh_user" || "$ssh_user" == root ]] && ssh_user="${LOGNAME:-${USER:-nixos}}"
+    ssh_user="${SUDO_USER:-nixos}"
+    [[ "$ssh_user" == root ]] && ssh_user=nixos
 
-    if [[ "$ssh_user" != root && -d "/home/${ssh_user}" ]]; then
-        published="/home/${ssh_user}/$(basename "$bundle")"
+    remote_path="$bundle"
+    bundle_name=$(basename "$bundle")
+    if [[ -d "/home/${ssh_user}" ]]; then
+        published="/home/${ssh_user}/${bundle_name}"
         cp "$bundle" "$published"
         chown "${ssh_user}:${ssh_user}" "$published"
         chmod 600 "$published"
-        scp_path="$published"
-    else
-        scp_path="$bundle"
+        remote_path="$published"
     fi
 
     if [[ -n "${SSH_CONNECTION:-}" ]]; then
@@ -89,8 +89,10 @@ _nds_secrets_scp_hint() {
     host="${host:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
     [[ -z "$host" ]] && return 0
 
-    nds_ui_b "From your PC (open a second terminal), run:"
-    nds_ui_i "scp ${ssh_user}@${host}:${scp_path} ."
+    nds_ui_b "From your PC (open a second terminal), run one of:"
+    nds_ui_i "scp ${ssh_user}@${host}:${remote_path} ."
+    nds_ui_i "ssh ${ssh_user}@${host} \"cat ${remote_path}\" > ${bundle_name}"
+    nds_ui_b "(scp and ssh work on Linux, macOS, and Windows 10+ OpenSSH client)"
     nds_ui_b ""
 }
 
@@ -109,7 +111,7 @@ nds_secrets_finish_install() {
     nds_ui_b ""
     nds_ui_i "$NDS_SECRETS_BUNDLE"
     nds_ui_b ""
-    _nds_secrets_scp_hint "$NDS_SECRETS_BUNDLE"
+    _nds_secrets_remote_copy_hint "$NDS_SECRETS_BUNDLE"
     nds_ui_b "Install log (verbose output): ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
     nds_ui_b ""
     nds_askUserToProceed "I will back up these keys before rebooting" || return 1

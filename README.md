@@ -28,7 +28,7 @@
 
 | Path | Action | You need |
 |------|--------|----------|
-| **A** — first install, no flake | `classicInstall` | Live ISO + root |
+| **A** — first install, no flake | `classicInstall` | Live ISO + `nixos` user (sudo) |
 | **B** — existing flake | `installFlake` | `nixosConfigurations.<host>`, Git SSH for private repos |
 | **C** — custom leaf flow | `remoteAction` | Same as B + `.nds/action.sh` ([API](actions/remoteAction/README.md)) |
 
@@ -38,15 +38,16 @@
 
 ### 1. Boot the live ISO
 
-Download the [NixOS minimal ISO](https://nixos.org/download/), boot the target machine or VM, log in as **root**.
+Download the [NixOS minimal ISO](https://nixos.org/download/), boot the target machine or VM, log in as **`nixos`** (passwordless on the console).
 
 ### 2. Remote shell (optional)
 
-Use the live console, or SSH from **Linux, macOS, or WSL** after setting a root password on the live system:
+Use the live console, or SSH from **Linux, macOS, Windows 10+ (OpenSSH), or WSL**:
 
 ```bash
-passwd && ip -4 a    # on the live system — note the IP
-ssh root@<ip>        # from your dev machine
+passwd               # on the live system — set a password for nixos
+ip -4 a              # note the IP
+ssh nixos@<ip>       # from your PC
 ```
 
 ### 3. Run NDS
@@ -64,7 +65,7 @@ curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.
 ```bash
 git clone https://github.com/CodeAnthem/dps_bootstrap.git /tmp/dps_bootstrap
 cd /tmp/dps_bootstrap
-sudo bash bootstrap/main.sh
+sudo bash bootstrap/main.sh    # nixos user — NDS re-execs with sudo if needed
 ```
 
 Fork or offline? Set `NDS_REPO_URL` before the one-liner, or clone your fork in option B. See [TRUST.md](TRUST.md).
@@ -98,9 +99,25 @@ sudo bash bootstrap/main.sh
 | **installFlake** | Generic `nixos-install --flake` |
 | **remoteAction** | Your repo ships `.nds/action.sh` (e.g. dps_swarm) |
 
-Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → save the new export block → confirm the destructive step → back up secrets → reboot.
+Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → optionally save the export block → confirm the destructive step → install → back up encryption keys if enabled → reboot manually.
 
 Install log on the live system: `/tmp/nds_install.log`
+
+### 6. Back up encryption keys (LUKS installs)
+
+After install, NDS prints a secrets bundle under `/tmp` and a copy command for your **PC** (use a **second terminal** while the installer session stays open). NDS also places a copy in `/home/nixos/` when you ran via `sudo` from the `nixos` user.
+
+Replace `<ip>` and the filename with what NDS shows on screen:
+
+```bash
+# Option A — scp (Linux, macOS, Windows 10+ OpenSSH)
+scp nixos@<ip>:/home/nixos/nds-secrets-<hostname>-<timestamp>.zip .
+
+# Option B — ssh + redirect (same platforms; no scp subcommand needed)
+ssh nixos@<ip> "cat /home/nixos/nds-secrets-<hostname>-<timestamp>.zip" > nds-secrets-<hostname>-<timestamp>.zip
+```
+
+NDS does not reboot automatically when encryption is enabled — reboot only after the bundle is safe offline.
 
 ---
 
