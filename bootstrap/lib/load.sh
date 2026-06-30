@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Library loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-27 | Modified: 2026-06-29
+# Date:          Created: 2026-06-27 | Modified: 2026-06-30
 # Description:   Load feature packages (configurator, installer, classicConfig, partition, setup)
 # ==================================================================================================
 
@@ -12,6 +12,11 @@
 
 nds_configurator_init() {
     info "Initializing configurator..."
+
+    nds_import_file "${SCRIPT_DIR}/lib/setup/platform.sh" || {
+        fatal "Failed to load platform helpers"
+        return 1
+    }
 
     nds_import_dir "${SCRIPT_DIR}/lib/configurator" false || {
         fatal "Failed to load configurator logic"

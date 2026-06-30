@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-23 | Modified: 2025-10-23
+# Date:          Created: 2025-10-23 | Modified: 2026-06-30
 # Description:   Input Handler - Choice
 # Feature:       Multiple choice selection from predefined options
 # ==================================================================================================
@@ -12,11 +12,40 @@
 # =============================================================================
 
 prompt_hint_choice() {
-    local options
+    local options labels hint
     options=$(_nds_configurator_get_validator_opt "options" "")
+    labels=$(_nds_configurator_get_validator_opt "option_labels" "")
+    if [[ -n "$labels" ]]; then
+        hint="("
+        local pair value label
+        IFS='|' read -ra pairs <<< "$labels"
+        for pair in "${pairs[@]}"; do
+            value="${pair%%=*}"
+            label="${pair#*=}"
+            hint+="${value}=${label}, "
+        done
+        hint="${hint%, })"
+        echo "$hint"
+        return 0
+    fi
     if [[ -n "$options" ]]; then
         echo "(${options//|/, })"
     fi
+}
+
+display_choice() {
+    local value="$1"
+    local labels pair option label
+    labels=$(_nds_configurator_get_validator_opt "option_labels" "")
+    if [[ -n "$labels" ]]; then
+        IFS='|' read -ra pairs <<< "$labels"
+        for pair in "${pairs[@]}"; do
+            option="${pair%%=*}"
+            label="${pair#*=}"
+            [[ "$value" == "$option" ]] && { echo "$label"; return 0; }
+        done
+    fi
+    echo "$value"
 }
 
 validate_choice() {

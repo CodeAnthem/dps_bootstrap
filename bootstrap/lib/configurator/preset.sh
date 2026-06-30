@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Configurator - ConfigPreset Operations
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-30
+# Date:          Created: 2025-10-24 | Modified: 2026-06-30
 # Description:   ConfigPreset validation, prompting, and display
 # Dependencies:  storage.sh, var.sh
 # ==================================================================================================
@@ -122,8 +122,12 @@ nds_configurator_preset_display() {
         value=$(nds_configurator_config_get "$varname")
         input=$(nds_configurator_var_get_meta "$varname" "input")
         
-        # Transform for display if function exists
-        type "display_${input}" &>/dev/null && value=$("display_${input}" "$value")
+        # Transform for display if function exists (choice labels need validator context)
+        _nds_configurator_set_validator_context "$varname"
+        if type "display_${input}" &>/dev/null; then
+            value=$("display_${input}" "$value")
+        fi
+        _nds_configurator_clear_validator_context
 
         nds_ui_kv_row "$display" "$value"
     done

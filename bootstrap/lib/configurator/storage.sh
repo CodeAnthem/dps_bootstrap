@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Configurator - Storage Layer
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-30
+# Date:          Created: 2025-10-24 | Modified: 2026-06-30
 # Description:   Data layer - registries and storage (no logic)
 # Dependencies:  None (pure data layer)
 # ==================================================================================================
@@ -118,7 +118,6 @@ nds_configurator_reset_for_action() {
         [[ -f "$preset_file" ]] || continue
         preset=$(basename "$preset_file" .sh)
         nds_configurator_preset_enable "$preset"
-        nds_configurator_preset_set_priority "$preset" 50
         unset "PRESET_META[${preset}__display]"
     done
 
@@ -233,14 +232,17 @@ nds_configurator_config_export_script() {
     done
 }
 
-# Print configuration as copy-pasteable NDS_* exports for backup / repeat installs.
+# Print configuration export before install confirmation (copy optional).
 nds_configurator_print_config_backup() {
     local line
 
     new_section
-    section_header "Save your configuration"
-    nds_ui_b "Copy the export block below — paste it before your next NDS run"
-    nds_ui_b "to reuse the same configuration."
+    section_header "Configuration export"
+    nds_ui_b "If you plan to finish installation, you do not need to copy anything here."
+    nds_ui_b "NDS includes this configuration in the install backup zip when installation completes."
+    nds_ui_b ""
+    nds_ui_b "Copy the export below only if you might stop before installing,"
+    nds_ui_b "or want a record outside this live session."
     nds_ui_b ""
     while IFS= read -r line; do
         nds_ui_i "$line"
@@ -248,10 +250,9 @@ nds_configurator_print_config_backup() {
     nds_ui_b ""
 }
 
-# Acknowledge the export block is optional backup for repeating this setup.
+# Continue to install review — does not start partitioning yet.
 nds_configurator_confirm_config_saved() {
-    nds_askUserToProceed \
-        "I understand I can save the export above to recreate this setup" || return 1
+    nds_askUserToProceed "Continue to installation review" || return 1
     return 0
 }
 

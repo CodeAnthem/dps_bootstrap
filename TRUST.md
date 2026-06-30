@@ -9,7 +9,7 @@ NDS runs with **root privileges** (via `sudo` from the **`nixos`** live-ISO user
 | **`start.sh`** | Clones or refreshes this repo under `/tmp/<repo-name>`, optionally warns about untracked files, then runs `bootstrap/main.sh` |
 | **`bootstrap/main.sh`** | Loads shell libraries, shows the configuration menu, partitions the target disk, and runs `nixos-install` |
 
-This repository contains **no cluster secrets**, no private keys, and no org-specific credentials. LUKS keys are generated at install time; NDS packs them into a zip under `/tmp` (and shows `scp` / `ssh` copy commands for your PC). Copy them before reboot.
+This repository contains **no cluster secrets**, no private keys, and no org-specific credentials. LUKS keys are generated at install time; NDS packs them with your config and logs into a zip under `/home/nixos/` (and shows `scp` / `ssh` copy commands with your machine's IP). Copy the package before reboot.
 
 ## Verify before you run
 

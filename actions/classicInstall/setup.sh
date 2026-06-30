@@ -2,13 +2,14 @@
 # ==================================================================================================
 # NDS - Classic install action (no flake)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-06-30
 # Description:   Install NixOS with a generated /etc/nixos configuration (no flake needed)
 # ==================================================================================================
 
 action_config() {
     nds_configurator_preset_disable installFlake
     nds_configurator_preset_disable security
+    nds_configurator_preset_disable remoteAction
 }
 
 _classicinstall_write_config() {
@@ -26,7 +27,8 @@ action_preview() {
     nds_ui_b "After confirmation, NDS will:"
     nds_ui_i "partition the target disk"
     nds_ui_i "generate configuration.nix and hardware-configuration.nix"
-    nds_ui_i "run nixos-install and reboot"
+    nds_ui_i "run nixos-install"
+    nds_ui_i "offer an install backup zip, then reboot"
     nds_ui_b ""
 }
 
@@ -56,10 +58,5 @@ action_setup() {
 
     nds_nixos_install || exit 15
 
-    new_section
-    section_header "Installation complete"
-    nds_ui_h "Installed with a classic /etc/nixos configuration."
-    nds_ui_b "Flakes are enabled — you can migrate to a flake later."
-    nds_ui_b ""
     nds_install_finish || exit 16
 }

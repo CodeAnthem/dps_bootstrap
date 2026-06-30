@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - UI - Terminal capabilities and layout
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-06-30
 # Description:   Terminal mode detection, indentation, boxes, columns, boolean display
 # ==================================================================================================
 
@@ -148,7 +148,7 @@ nds_ui_draw_box() {
     nds_ui_init
 
     if [[ "$length" -le 0 ]]; then
-        length=$(( ${#title} + 2 ))
+        length=$(( ${#title} + 4 ))
         (( length < 42 )) && length=42
     fi
     inner_length=$((length - 2))

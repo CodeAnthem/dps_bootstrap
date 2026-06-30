@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Configurator - Workflows
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2025-10-30
+# Date:          Created: 2025-10-24 | Modified: 2026-06-30
 # Description:   High-level user workflows and interactive menu
 # Dependencies:  storage.sh, var.sh, preset.sh
 # ==================================================================================================
@@ -99,7 +99,7 @@ nds_configurator_menu() {
                 success "Configuration confirmed"
                 nds_configurator_print_config_backup
                 nds_configurator_confirm_config_saved || {
-                    last_status="Confirm to continue, or press X again after reviewing the export."
+                    last_status="Press Y to continue to installation review, or X to try again."
                     warn "$last_status"
                     break
                 }

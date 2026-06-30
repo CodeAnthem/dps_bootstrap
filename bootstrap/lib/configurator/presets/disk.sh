@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2025-10-27
+# Date:          Created: 2025-10-21 | Modified: 2026-06-30
 # Description:   Disk Module - Configuration
 # Feature:       Disk partitioning, encryption, swap configuration
 # ==================================================================================================
@@ -26,11 +26,12 @@ disk_init() {
         required=true
 
     nds_configurator_var_declare DISK_STRATEGY \
-        display="Disk strategy" \
+        display="Partitioning method" \
         input=choice \
         default="nds" \
         options="nds|disko|flake" \
-        help="nds: simple EFI+root. disko: NDS Disko template. flake: your flake owns disk (disko in flake)."
+        option_labels="nds=NDS built-in (EFI + root)|disko=Disko template|flake=Your flake (NDS skips disk)" \
+        help="How the target disk is prepared. NDS built-in is the default guided layout."
 
     nds_configurator_var_declare FS_TYPE \
         display="Root filesystem" \

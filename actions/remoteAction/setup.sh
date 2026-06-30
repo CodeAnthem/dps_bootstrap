@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Remote action from target flake
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-06-30
 # Description:   Clone a flake and run its .nds/action.sh if present, else fall back to a flake install
 # ==================================================================================================
 
@@ -12,6 +12,7 @@ action_config() {
     nds_configurator_preset_disable network
     nds_configurator_preset_disable boot
     nds_configurator_preset_disable security
+    nds_configurator_preset_disable platform
     nds_configurator_preset_disable installFlake
 
     nds_configurator_preset_enable remoteAction
@@ -158,7 +159,5 @@ action_setup() {
         nds_nixos_install_flake || exit 15
     fi
 
-    new_section
-    nds_ui_h "Install complete: ${NDS_FLAKE_HOST}"
     nds_install_finish || exit 16
 }

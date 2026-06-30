@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from Nix flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-06-29
+# Date:          Created: 2026-06-28 | Modified: 2026-06-30
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
@@ -12,6 +12,7 @@ action_config() {
     nds_configurator_preset_disable network
     nds_configurator_preset_disable boot
     nds_configurator_preset_disable security
+    nds_configurator_preset_disable platform
 
     nds_configurator_preset_enable installFlake
     nds_configurator_preset_set_display installFlake "Your flake"
@@ -110,17 +111,6 @@ _installflake_detect_disko() {
     esac
 }
 
-action_show_completion() {
-    nds_ui_b ""
-    nds_ui_h "Installed: ${NDS_FLAKE_HOST:-unknown}"
-    nds_ui_b "Flake on disk: ${NDS_FLAKE_ROOT:-unknown}"
-    nds_ui_b ""
-    nds_ui_b "Next steps:"
-    nds_ui_b "1. Back up runtime secrets (LUKS key, if encryption was enabled)"
-    nds_ui_b "2. Reboot into the installed system"
-    nds_ui_b ""
-}
-
 action_preview() {
     nds_ui_h "Install NixOS from your flake"
     nds_ui_b ""
@@ -131,7 +121,8 @@ action_preview() {
     nds_ui_b "After confirmation, NDS will:"
     nds_ui_i "partition the target disk (or defer to your flake)"
     nds_ui_i "generate hardware-configuration.nix and stage the flake"
-    nds_ui_i "run nixos-install --flake and reboot"
+    nds_ui_i "run nixos-install --flake"
+    nds_ui_i "offer an install backup zip, then reboot"
     nds_ui_b ""
 }
 
@@ -160,7 +151,5 @@ action_setup() {
     nds_install_log "installFlake: action starting"
     nds_nixos_install_flake || exit 15
 
-    new_section
-    action_show_completion
     nds_install_finish || exit 16
 }

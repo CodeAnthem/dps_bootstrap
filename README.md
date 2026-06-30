@@ -99,25 +99,24 @@ sudo bash bootstrap/main.sh
 | **installFlake** | Generic `nixos-install --flake` |
 | **remoteAction** | Your repo ships `.nds/action.sh` (e.g. dps_swarm) |
 
-Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → optionally save the export block → confirm the destructive step → install → back up encryption keys if enabled → reboot manually.
+Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → optionally save the export block (or get it in the final zip) → confirm the destructive step → install → back up the install package → reboot manually.
 
 Install log on the live system: `/tmp/nds_install.log`
 
-### 6. Back up encryption keys (LUKS installs)
+### 6. Back up install package
 
-After install, NDS prints a secrets bundle under `/tmp` and a copy command for your **PC** (use a **second terminal** while the installer session stays open). NDS also places a copy in `/home/nixos/` when you ran via `sudo` from the `nixos` user.
+After install, NDS creates a zip in `/home/nixos/` (owned by the `nixos` user so `scp`/`ssh` work). It includes your NDS config export, install logs, and LUKS keys when encryption was enabled.
 
-Replace `<ip>` and the filename with what NDS shows on screen:
+NDS prints the full path and copy commands with your machine's IP — paste one of these from a **second terminal** on your PC:
 
 ```bash
-# Option A — scp (Linux, macOS, Windows 10+ OpenSSH)
-scp nixos@<ip>:/home/nixos/nds-secrets-<hostname>-<timestamp>.zip .
+# Example — use the exact path and IP NDS shows on screen
+scp nixos@192.168.1.50:/home/nixos/nds_install_backup_20260629_225213_myhost.zip .
 
-# Option B — ssh + redirect (same platforms; no scp subcommand needed)
-ssh nixos@<ip> "cat /home/nixos/nds-secrets-<hostname>-<timestamp>.zip" > nds-secrets-<hostname>-<timestamp>.zip
+ssh nixos@192.168.1.50 "cat /home/nixos/nds_install_backup_20260629_225213_myhost.zip" > nds_install_backup_20260629_225213_myhost.zip
 ```
 
-NDS does not reboot automatically when encryption is enabled — reboot only after the bundle is safe offline.
+NDS does not reboot automatically when encryption is enabled — reboot only after the package is safe offline.
 
 ---
 

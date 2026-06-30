@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2025-10-29
+# Date:          Created: 2025-10-12 | Modified: 2026-06-30
 # Description:   Entry point selector for DPS Bootstrap - dynamically discovers and executes actions
 # Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
@@ -149,14 +149,28 @@ _main_stopHandler() {
     fi
 
     if [[ "$exit_code" -ne 0 ]]; then
+        nds_ui_init
+        if [[ "$NDS_UI_COLOR" == true ]]; then
+            printf '%s\033[31;1mInstallation failed (exit code %s).\033[0m\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
+        else
+            printf '%sInstallation failed (exit code %s).\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
+        fi
+        nds_ui_b ""
+        nds_ui_b "What to do now:"
+        nds_ui_i "Do not reboot — the target disk may be in a partial state."
+        nds_ui_i "Review the install log at ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+        nds_ui_i "Fix the issue above, then re-run NDS from the action menu."
+        nds_ui_b ""
+        if [[ -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
+            nds_ui_i "Install backup preserved at: ${NDS_INSTALL_BUNDLE}"
+        elif [[ -n "${NDS_SECRETS_BUNDLE:-}" && -f "$NDS_SECRETS_BUNDLE" ]]; then
+            nds_ui_i "Install backup preserved at: ${NDS_SECRETS_BUNDLE}"
+        fi
         if [[ -d "${RUNTIME_DIR:-}" ]]; then
-            warn "Install failed — runtime preserved at: ${RUNTIME_DIR}"
-            [[ -d "${RUNTIME_DIR}/secrets" ]] && warn "Secrets in: ${RUNTIME_DIR}/secrets/"
+            nds_ui_i "Runtime preserved at: ${RUNTIME_DIR}"
+            [[ -d "${RUNTIME_DIR}/secrets" ]] && nds_ui_i "Secrets in: ${RUNTIME_DIR}/secrets/"
         fi
-        if [[ -n "${NDS_SECRETS_BUNDLE:-}" && -f "$NDS_SECRETS_BUNDLE" ]]; then
-            warn "Secrets bundle preserved at: ${NDS_SECRETS_BUNDLE}"
-        fi
-        warn "Install log: ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+        nds_ui_b ""
         return 0
     fi
 
