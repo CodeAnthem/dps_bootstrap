@@ -6,7 +6,7 @@
 # ==================================================================================================
 
 network_defaults() {
-    nds_cfg_set HOSTNAME "nixos"
+    nds_cfg_set HOSTNAME ""
     nds_cfg_set NETWORK_METHOD "dhcp"
     nds_cfg_set NETWORK_IP ""
     nds_cfg_set NETWORK_MASK "255.255.255.0"
