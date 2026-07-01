@@ -121,7 +121,7 @@ disk_init() {
 
     nds_configurator_var_declare REMOTE_UNLOCK_SSH_KEY \
         display="Authorized SSH public key" \
-        input=text \
+        input=string \
         default="" \
         required=false \
         help="Your SSH public key (the client key that will connect to the initrd SSH server). Paste the full key, e.g. ssh-ed25519 AAAA... user@host"
@@ -226,6 +226,17 @@ disk_validate_extra() {
         if [[ -z "$ssh_key" ]]; then
             validation_error "Authorized SSH public key is required for remote unlock"
             return 1
+        fi
+
+        local net_mode
+        net_mode=$(nds_configurator_config_get "REMOTE_UNLOCK_NETWORK")
+        if [[ "$net_mode" == "static" ]]; then
+            local net_ip
+            net_ip=$(nds_configurator_config_get "NETWORK_IP")
+            if [[ -z "$net_ip" ]]; then
+                validation_error "Static remote unlock needs NETWORK_IP — set it in Network, or use DHCP"
+                return 1
+            fi
         fi
 
         if [[ "$use_password" != "true" ]]; then
