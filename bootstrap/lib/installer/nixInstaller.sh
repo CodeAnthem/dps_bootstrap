@@ -35,8 +35,7 @@ nds_nixinstall_auto() {
         nds_step_exec "Running disko" nds_partition_run_disko_from_config || return 1
     else
         if [[ "$encryption" == "true" ]]; then
-            nds_step_exec "Generating encryption key" _nixinstall_setup_encryption || return 1
-            _nixinstall_load_encryption_key || return 1
+            nds_step_exec "Generating encryption secrets" _nixinstall_generate_encryption_secrets || return 1
         fi
         nds_step_exec "Partitioning disk" _nixinstall_partition_disk "$disk" "$encryption" || return 1
         nds_step_exec "Mounting filesystems" _nixinstall_mount_filesystems "$encryption" || return 1
@@ -73,7 +72,6 @@ nds_nixos_install() {
     fi
 
     nds_step_exec "Installing configuration files" _nixinstall_install_configs || return 1
-    nds_step_exec "Installing LUKS keyfile" _nixinstall_install_luks_keyfile || return 1
     nds_step_exec "Installing NixOS" _nixinstall_install_nixos || return 1
 
     local disk

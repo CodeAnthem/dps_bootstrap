@@ -114,6 +114,7 @@ nds_nixcfg_build_classic_auto() {
     nds_nixcfg_base_auto
     nds_nixcfg_boot_auto
     nds_nixcfg_luks_auto
+    nds_nixcfg_remoteUnlock_auto
     nds_nixcfg_network_auto
     nds_nixcfg_access_auto
     nds_nixcfg_region_auto

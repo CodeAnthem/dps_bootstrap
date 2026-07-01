@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - classicConfig builder tests (read-only — writes to temp dir only)
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-30
+# Date:          Created: 2026-06-29 | Modified: 2026-07-01
+# Description:   classicConfig builder tests (read-only — writes to temp dir only)
 # ==================================================================================================
 
+# Reset all encryption-related config vars to a clean state.
+_test_reset_encryption_vars() {
+    local v
+    for v in ENCRYPTION ENCRYPTION_PASSWORD ENCRYPTION_PASSWORD_AUTO \
+             ENCRYPTION_PASSWORD_LENGTH ENCRYPTION_KEY ENCRYPTION_KEY_AUTO \
+             ENCRYPTION_KEY_LENGTH ENCRYPTION_KEY_BOOT_DEVICE \
+             ENCRYPTION_KEY_BOOT_FILE REMOTE_UNLOCK REMOTE_UNLOCK_SSH_KEY \
+             REMOTE_UNLOCK_NETWORK; do
+        unset "CONFIG_DATA[$v]"
+    done
+}
+
 suite_classic_config() {
-    local tmp_dir output
+    local tmp_dir output content
 
     if ! declare -f nds_nixcfg_build_classic_auto &>/dev/null; then
         warn "classicConfig not loaded — skipping builder tests"
@@ -29,12 +42,11 @@ suite_classic_config() {
     CONFIG_DATA[BOOTLOADER]="systemd-boot"
     CONFIG_DATA[UEFI_MODE]="true"
 
+    _test_reset_encryption_vars
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
 
-    local content
     content=$(<"$output")
-
     assert_contains "$content" 'experimental-features' "configuration.nix"
     assert_contains "$content" 'Europe/Zurich' "configuration.nix"
     assert_contains "$content" 'testhost' "configuration.nix"
@@ -50,6 +62,7 @@ suite_classic_config() {
     CONFIG_DATA[BOOTLOADER]="systemd-boot"
     CONFIG_DATA[UEFI_MODE]="false"
 
+    _test_reset_encryption_vars
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
 
@@ -60,20 +73,119 @@ suite_classic_config() {
 
     rm -rf "$tmp_dir"
 
-    # LUKS keyfile unlock must embed the key in the initrd via boot.initrd.secrets
+    # Password only: no keyFile block (NixOS prompts at boot)
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
 
+    _test_reset_encryption_vars
     CONFIG_DATA[ENCRYPTION]="true"
-    CONFIG_DATA[ENCRYPTION_USE_PASSPHRASE]="false"
+    CONFIG_DATA[ENCRYPTION_PASSWORD]="true"
+    CONFIG_DATA[ENCRYPTION_KEY]="false"
     CONFIG_DATA[REMOTE_UNLOCK]="false"
 
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
 
     content=$(<"$output")
-    assert_contains "$content" 'boot.initrd.secrets' "LUKS configuration.nix"
-    assert_contains "$content" '"/etc/luks-keys/cryptroot"' "LUKS configuration.nix"
+    assert_not_contains "$content" 'keyFile' "password-only configuration.nix"
+    assert_not_contains "$content" 'boot.initrd.secrets' "password-only configuration.nix"
+
+    rm -rf "$tmp_dir"
+
+    # Key only (raw device): keyFile = device, keyFileSize, keyFileTimeout, no fallback
+    tmp_dir=$(mktemp -d)
+    output="${tmp_dir}/configuration.nix"
+
+    _test_reset_encryption_vars
+    CONFIG_DATA[ENCRYPTION]="true"
+    CONFIG_DATA[ENCRYPTION_PASSWORD]="false"
+    CONFIG_DATA[ENCRYPTION_KEY]="true"
+    CONFIG_DATA[ENCRYPTION_KEY_BOOT_DEVICE]="/dev/disk/by-uuid/abcd-1234"
+    CONFIG_DATA[ENCRYPTION_KEY_BOOT_FILE]=""
+    CONFIG_DATA[ENCRYPTION_KEY_LENGTH]="4096"
+    CONFIG_DATA[REMOTE_UNLOCK]="false"
+
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$output"
+
+    content=$(<"$output")
+    assert_contains "$content" 'keyFile = "/dev/disk/by-uuid/abcd-1234"' "key-raw configuration.nix"
+    assert_contains "$content" 'keyFileSize = 4096' "key-raw configuration.nix"
+    assert_contains "$content" 'keyFileTimeout = 30' "key-raw configuration.nix"
+    assert_not_contains "$content" 'fallbackToPassword' "key-raw configuration.nix"
+    assert_not_contains "$content" 'boot.initrd.secrets' "key-raw configuration.nix"
+    assert_not_contains "$content" 'systemd.mounts' "key-raw configuration.nix"
+
+    rm -rf "$tmp_dir"
+
+    # Key only (file on filesystem): systemd mount + keyFile on mounted path
+    tmp_dir=$(mktemp -d)
+    output="${tmp_dir}/configuration.nix"
+
+    _test_reset_encryption_vars
+    CONFIG_DATA[ENCRYPTION]="true"
+    CONFIG_DATA[ENCRYPTION_PASSWORD]="false"
+    CONFIG_DATA[ENCRYPTION_KEY]="true"
+    CONFIG_DATA[ENCRYPTION_KEY_BOOT_DEVICE]="/dev/disk/by-uuid/abcd-1234"
+    CONFIG_DATA[ENCRYPTION_KEY_BOOT_FILE]="/key.bin"
+    CONFIG_DATA[ENCRYPTION_KEY_LENGTH]="4096"
+    CONFIG_DATA[REMOTE_UNLOCK]="false"
+
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$output"
+
+    content=$(<"$output")
+    assert_contains "$content" 'systemd.mounts' "key-file configuration.nix"
+    assert_contains "$content" '/mnt-keyusb' "key-file configuration.nix"
+    assert_contains "$content" 'keyFile = "/mnt-keyusb/key.bin"' "key-file configuration.nix"
+    assert_not_contains "$content" 'keyFileSize' "key-file configuration.nix"
+    assert_not_contains "$content" 'fallbackToPassword' "key-file configuration.nix"
+
+    rm -rf "$tmp_dir"
+
+    # Both (raw device + password): keyFile + fallbackToPassword + short timeout
+    tmp_dir=$(mktemp -d)
+    output="${tmp_dir}/configuration.nix"
+
+    _test_reset_encryption_vars
+    CONFIG_DATA[ENCRYPTION]="true"
+    CONFIG_DATA[ENCRYPTION_PASSWORD]="true"
+    CONFIG_DATA[ENCRYPTION_KEY]="true"
+    CONFIG_DATA[ENCRYPTION_KEY_BOOT_DEVICE]="/dev/disk/by-uuid/abcd-1234"
+    CONFIG_DATA[ENCRYPTION_KEY_BOOT_FILE]=""
+    CONFIG_DATA[ENCRYPTION_KEY_LENGTH]="4096"
+    CONFIG_DATA[REMOTE_UNLOCK]="false"
+
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$output"
+
+    content=$(<"$output")
+    assert_contains "$content" 'keyFile = "/dev/disk/by-uuid/abcd-1234"' "both-raw configuration.nix"
+    assert_contains "$content" 'fallbackToPassword = true' "both-raw configuration.nix"
+    assert_contains "$content" 'keyFileTimeout = 10' "both-raw configuration.nix"
+
+    rm -rf "$tmp_dir"
+
+    # Remote unlock: initrd SSH + hostKeys + systemd network
+    tmp_dir=$(mktemp -d)
+    output="${tmp_dir}/configuration.nix"
+
+    _test_reset_encryption_vars
+    CONFIG_DATA[ENCRYPTION]="true"
+    CONFIG_DATA[ENCRYPTION_PASSWORD]="true"
+    CONFIG_DATA[ENCRYPTION_KEY]="false"
+    CONFIG_DATA[REMOTE_UNLOCK]="true"
+    CONFIG_DATA[REMOTE_UNLOCK_SSH_KEY]="ssh-ed25519 AAAAfakeKey test@host"
+    CONFIG_DATA[REMOTE_UNLOCK_NETWORK]="dhcp"
+
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "$output"
+
+    content=$(<"$output")
+    assert_contains "$content" 'boot.initrd.network.ssh' "remote-unlock configuration.nix"
+    assert_contains "$content" 'ssh-ed25519 AAAAfakeKey test@host' "remote-unlock configuration.nix"
+    assert_contains "$content" '/etc/secrets/initrd/ssh_host_ed25519_key' "remote-unlock configuration.nix"
+    assert_contains "$content" 'boot.initrd.systemd.network' "remote-unlock configuration.nix"
 
     rm -rf "$tmp_dir"
 }

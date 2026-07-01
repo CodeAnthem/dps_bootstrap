@@ -57,10 +57,11 @@ nds_partition_run_disko_from_config() {
     home_size=$(nds_configurator_config_get_env "HOME_SIZE" "20G")
     enc=$(nds_configurator_config_get_env "ENCRYPTION" "true")
     unlock="manual"
-    use_pass=$(nds_configurator_config_get_env "ENCRYPTION_USE_PASSPHRASE" "false")
+    use_pass=$(nds_configurator_config_get_env "ENCRYPTION_PASSWORD" "false")
+    use_key=$(nds_configurator_config_get_env "ENCRYPTION_KEY" "false")
     disko_user=$(nds_configurator_config_get_env "DISKO_CONFIG" "")
 
-    if [[ "$enc" == "true" && "$use_pass" != "true" ]]; then
+    if [[ "$enc" == "true" && "$use_key" == "true" && "$use_pass" != "true" ]]; then
         unlock="keyfile"
     fi
 

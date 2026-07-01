@@ -80,7 +80,10 @@ Created: $(date -Iseconds 2>/dev/null || date)
 Contents:
   nds-config.env          — paste before a future NDS run
   config/*.nix            — generated NixOS configs (if present)
-  secrets/                — LUKS keys (if encryption was enabled)
+  secrets/                — unlock material (if encryption was enabled):
+    luks_password.txt       LUKS passphrase (if password slot enabled)
+    luks_key.bin            LUKS keyfile (if key slot enabled) — copy to USB
+    initrd_ssh_host_ed25519_key[.pub]  initrd SSH host key (if remote unlock)
   logs/install.log        — verbose nix install output
   logs/session.log        — NDS session events (info/warnings/errors)
 EOF
@@ -146,6 +149,63 @@ _nds_install_bundle_remote_copy_hint() {
     nds_ui_b ""
 }
 
+# Description: Print post-install instructions for preparing the USB key and
+# remote unlock, based on the chosen encryption model.
+_nds_install_bundle_encryption_instructions() {
+    local encryption use_password use_key key_device key_file remote_unlock
+    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    [[ "$encryption" == "true" ]] || return 0
+
+    use_password=$(nds_config_get "disk" "ENCRYPTION_PASSWORD")
+    use_key=$(nds_config_get "disk" "ENCRYPTION_KEY")
+    key_device=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_DEVICE")
+    key_file=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_FILE")
+    remote_unlock=$(nds_config_get "disk" "REMOTE_UNLOCK")
+
+    if [[ "$use_key" == "true" ]]; then
+        nds_ui_b ""
+        nds_ui_h "Prepare your USB key (required to boot)"
+        nds_ui_i "The LUKS key is in this zip at secrets/luks_key.bin."
+
+        if [[ -z "$key_file" ]]; then
+            nds_ui_i "Copy it to a USB stick as RAW bytes BEFORE rebooting:"
+            nds_ui_i "  dd if=luks_key.bin of=<usb-device> bs=4096 count=1"
+            nds_ui_i "Plug that USB in at every boot. Its device path must match:"
+            nds_ui_i "  ENCRYPTION_KEY_BOOT_DEVICE = ${key_device}"
+        else
+            nds_ui_i "Copy it to a file on a USB stick BEFORE rebooting:"
+            nds_ui_i "  mount <usb-device> /mnt/usb"
+            nds_ui_i "  cp luks_key.bin /mnt/usb/${key_file}"
+            nds_ui_i "  umount /mnt/usb"
+            nds_ui_i "Plug that USB in at every boot. Its device path must match:"
+            nds_ui_i "  ENCRYPTION_KEY_BOOT_DEVICE = ${key_device}"
+        fi
+
+        if [[ "$use_password" != "true" ]]; then
+            nds_ui_b ""
+            _nds_ui_colored 31 "WARNING: key-only mode (no password)."
+            _nds_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
+            _nds_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
+        fi
+    fi
+
+    if [[ "$remote_unlock" == "true" ]]; then
+        nds_ui_b ""
+        nds_ui_h "Remote unlock (initrd SSH)"
+        nds_ui_i "Initrd SSH will be available at boot on port 22."
+        local net_mode
+        net_mode=$(nds_config_get "disk" "REMOTE_UNLOCK_NETWORK")
+        if [[ "$net_mode" == "dhcp" ]]; then
+            nds_ui_i "IP is assigned by DHCP — check your router/DHCP logs for the address."
+        else
+            nds_ui_i "Static IP from your network settings."
+        fi
+        nds_ui_i "Unlock with:  ssh -t root@<ip> 'systemctl default'"
+        nds_ui_i "Authorized key: the public key you provided during configuration."
+        nds_ui_i "Initrd SSH host key is in this zip at secrets/initrd_ssh_host_ed25519_key"
+    fi
+}
+
 # Post-install screen: success banner, bundle path, copy commands, reboot prompt.
 nds_install_bundle_finish() {
     local bundle_ok=1
@@ -155,15 +215,18 @@ nds_install_bundle_finish() {
         nds_ui_b ""
         nds_ui_h "Save the restore package for future use"
         nds_ui_b "Copy this zip off the machine before you reboot."
-        nds_ui_b "It includes your NDS configuration, install logs, and encryption keys (if any)."
+        nds_ui_b "It includes your NDS configuration, install logs, and unlock material (if encrypted)."
         nds_ui_b ""
 
         if [[ "$(nds_config_get "disk" "ENCRYPTION")" == "true" ]]; then
             _nds_ui_colored 35 "Encryption was enabled — saving this zip is important."
-            _nds_ui_colored 35 "Without the LUKS key inside it, the installed system will not boot."
+            _nds_ui_colored 35 "Keep it somewhere safe and offline; it contains your unlock secrets."
             nds_ui_b ""
         fi
 
+        _nds_install_bundle_encryption_instructions
+
+        nds_ui_b ""
         _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
         nds_ui_b ""
         nds_askUserToProceed "I have copied the package (or do not need it)" || return 1

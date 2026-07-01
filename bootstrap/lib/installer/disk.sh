@@ -84,7 +84,7 @@ _nixinstall_partition_disk() {
     # Setup root partition (encrypted or standard)
     if [[ "$use_encryption" == "true" ]]; then
         log "Setting up encrypted root partition"
-        _nixinstall_setup_luks_partition "$root_part" || return 1
+        _nixinstall_format_luks "$root_part" || return 1
     else
         log "Setting up standard root partition"
         mkfs.ext4 -L nixos "$root_part" || return 1
