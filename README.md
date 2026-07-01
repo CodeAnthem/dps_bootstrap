@@ -1,6 +1,6 @@
 # Nix Deploy System (NDS)
 
-[![Version](https://img.shields.io/badge/version-4.0.4-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
+[![Version](https://img.shields.io/badge/version-4.1.4-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 [![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)
@@ -13,6 +13,7 @@
 - Install from **your flake** — clone, place hardware facts, `nixos-install --flake` (`installFlake`)
 - Run a **custom install script** from your repo — `.nds/action.sh` (`remoteAction`)
 - Partition with NDS layouts, **Disko**, or defer to your flake
+- Optional **LUKS2 encryption**: passphrase, USB keyfile, or both — plus initrd SSH **remote unlock**
 - Print a **saved `NDS_*` config** you can reuse on the next machine
 
 **NDS does not:**
@@ -75,7 +76,7 @@ Fork or offline? Set `NDS_REPO_URL` before the one-liner, or clone your fork in 
 Skip re-entering the menu by **exporting `NDS_*` variables** before step 3:
 
 - **From a previous install** — when you press **X** in the menu, NDS prints an `export NDS_…` block. Save it. Paste or `source` that file before running NDS again.
-- **From the template** — copy [`config-example.sh`](config-example.sh), edit values, then `source config-example.sh` before `bootstrap/main.sh`.
+- The same export is included in the install backup zip, so you can recover it from there too.
 
 Any `NDS_<FIELD>` overrides the matching menu field (same names as the backup export). Example for a flake install:
 
@@ -105,7 +106,9 @@ Logs on the live system: `/tmp/nds_install.log` (verbose nix install output), `/
 
 ### 6. Back up install package
 
-After install, NDS creates a zip in `/home/nixos/` (owned by the `nixos` user so `scp`/`ssh` work). It includes your NDS config export, generated configs, install logs, and LUKS keys when encryption was enabled.
+After install, NDS creates a zip in `/home/nixos/` (owned by the `nixos` user so `scp`/`ssh` work). It includes your NDS config export, generated configs, install logs, and unlock material when encryption was enabled (LUKS passphrase, keyfile, and/or initrd SSH host key).
+
+If you enabled a **USB key**, the finish screen tells you exactly how to copy `secrets/luks_key.bin` onto a USB stick (raw `dd` to the device, or a file on a mounted USB) before rebooting — the key is never written to the target disk, so you must stage it on the USB yourself.
 
 NDS prints the full path and copy commands with your machine's IP — paste one of these from a **second terminal** on your PC:
 
@@ -154,5 +157,3 @@ bash scripts/selftest.sh                # read-only self-tests
 DEBUG=1 sudo bash bootstrap/main.sh
 NDS_TEST=true sudo bash bootstrap/main.sh   # self-test action only
 ```
-
-Contributor notes: [bootstrap/README.md](bootstrap/README.md) · [bootstrap/lib/README.md](bootstrap/lib/README.md) · [actions/remoteAction/README.md](actions/remoteAction/README.md)
