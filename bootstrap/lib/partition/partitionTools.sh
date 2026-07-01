@@ -10,7 +10,6 @@ nds_partition_load() {
     local dir="${SCRIPT_DIR}/lib/partition"
     nds_import_file "${dir}/compat.sh" || return 1
     nds_import_file "${dir}/detect.sh" || return 1
-    nds_import_file "${dir}/manual.sh" || return 1
     nds_import_file "${dir}/disko.sh" || return 1
     return 0
 }

@@ -123,8 +123,6 @@ nds_bootstrap_load_libs() {
     nds_import_file "${lib_dir}/ui/load.sh" || return 1
     nds_ui_load "$lib_dir" || return 1
 
-    nds_import_file "${lib_dir}/security/crypto.sh" || return 1
-
     nds_import_file "${lib_dir}/load.sh" || return 1
     nds_configurator_init || return 1
     nds_installation_init || return 1

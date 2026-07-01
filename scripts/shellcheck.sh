@@ -60,9 +60,6 @@ _nds_shellcheck_platform() {
 _nds_shellcheck_collect_scripts() {
     mapfile -t _NDS_LINT_SCRIPTS < <(
         find "${ROOT}/bootstrap" "${ROOT}/actions" -name '*.sh' \
-            ! -path '*/_CleanupLater/*' \
-            ! -path '*/setup_old.sh' \
-            ! -path '*/deployTools/*' \
             ! -path '*/tests/*' \
             | sort
     )
