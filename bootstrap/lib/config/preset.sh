@@ -63,37 +63,57 @@ nds_configurator_preset_validate_all() {
 
 nds_configurator_preset_prompt_errors() {
     local preset="$1"
-    local vars_to_prompt=()
-    
-    for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
-        nds_configurator_var_validate "$varname" 2>/dev/null || vars_to_prompt+=("$varname")
-    done
-    
-    if [[ ${#vars_to_prompt[@]} -gt 0 ]]; then
-        local display
-        display=$(nds_configurator_preset_get_display "$preset")
-        # Only add Configuration suffix if display name doesn't already contain it
-        [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
-        nds_ui_h "${display}:"
-        for varname in "${vars_to_prompt[@]}"; do
-            nds_configurator_var_prompt "$varname"
+    local display header_shown=false
+
+    display=$(nds_configurator_preset_get_display "$preset")
+    [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
+
+    # Re-evaluate active fields after each prompt (same as prompt_all).
+    declare -A _nds_prompted=()
+    while true; do
+        local varname prompted_any=false
+        for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
+            [[ -n "${_nds_prompted[$varname]:-}" ]] && continue
+            if ! nds_configurator_var_validate "$varname" 2>/dev/null; then
+                if [[ "$header_shown" != true ]]; then
+                    nds_ui_h "${display}:"
+                    header_shown=true
+                fi
+                nds_configurator_var_prompt "$varname"
+                _nds_prompted[$varname]=1
+                prompted_any=true
+                break
+            fi
+            _nds_prompted[$varname]=1
         done
-        nds_ui_b ""
-    fi
+        [[ "$prompted_any" == false ]] && break
+    done
+
+    [[ "$header_shown" == true ]] && nds_ui_b ""
 }
 
 nds_configurator_preset_prompt_all() {
     local preset="$1"
-    
+
     local display
     display=$(nds_configurator_preset_get_display "$preset")
-    # Only add Configuration suffix if display name doesn't already contain it
     [[ "$display" != *"Configuration"* ]] && display="${display} Configuration"
     nds_ui_h "${display}:"
     nds_ui_b ""
 
-    for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
-        nds_configurator_var_prompt "$varname"
+    # Re-evaluate active fields after every prompt so toggles (e.g. remote unlock,
+    # encryption on/off) immediately surface dependent questions in the same pass.
+    declare -A _nds_prompted=()
+    while true; do
+        local varname prompted_any=false
+        for varname in $(nds_configurator_preset_get_active_vars "$preset"); do
+            [[ -n "${_nds_prompted[$varname]:-}" ]] && continue
+            nds_configurator_var_prompt "$varname"
+            _nds_prompted[$varname]=1
+            prompted_any=true
+            break
+        done
+        [[ "$prompted_any" == false ]] && break
     done
 }
 

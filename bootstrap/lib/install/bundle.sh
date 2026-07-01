@@ -190,14 +190,14 @@ _nds_install_bundle_access_instructions() {
 # remote unlock, based on the chosen encryption model.
 _nds_install_bundle_encryption_instructions() {
     local encryption use_password use_key key_device key_file remote_unlock
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    encryption=$(nds_config_get "encryption" "ENCRYPTION")
     [[ "$encryption" == "true" ]] || return 0
 
-    use_password=$(nds_config_get "disk" "ENCRYPTION_PASSWORD")
-    use_key=$(nds_config_get "disk" "ENCRYPTION_KEY")
-    key_device=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_DEVICE")
-    key_file=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_FILE")
-    remote_unlock=$(nds_config_get "disk" "ENCRYPTION_REMOTE_UNLOCK")
+    use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD")
+    use_key=$(nds_config_get "encryption" "ENCRYPTION_KEY")
+    key_device=$(nds_config_get "encryption" "ENCRYPTION_KEY_BOOT_DEVICE")
+    key_file=$(nds_config_get "encryption" "ENCRYPTION_KEY_BOOT_FILE")
+    remote_unlock=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_UNLOCK")
 
     if [[ "$use_key" == "true" ]]; then
         nds_ui_b ""
@@ -231,7 +231,7 @@ _nds_install_bundle_encryption_instructions() {
         nds_ui_h "Remote unlock (initrd SSH)"
         nds_ui_i "Initrd SSH will be available at boot on port 22."
         local net_mode
-        net_mode=$(nds_config_get "disk" "ENCRYPTION_REMOTE_NETWORK")
+        net_mode=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_NETWORK")
         if [[ "$net_mode" == "dhcp" ]]; then
             nds_ui_i "IP is assigned by DHCP — check your router/DHCP logs for the address."
         else
@@ -255,7 +255,7 @@ nds_install_bundle_finish() {
         nds_ui_b "It includes your NDS configuration, install logs, and unlock material (if encrypted)."
         nds_ui_b ""
 
-        if [[ "$(nds_config_get "disk" "ENCRYPTION")" == "true" ]]; then
+        if [[ "$(nds_config_get "encryption" "ENCRYPTION")" == "true" ]]; then
             _nds_ui_colored 35 "Encryption was enabled — saving this zip is important."
             _nds_ui_colored 35 "Keep it somewhere safe and offline; it contains your unlock secrets."
             nds_ui_b ""

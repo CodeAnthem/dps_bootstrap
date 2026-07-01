@@ -12,19 +12,19 @@
 # =============================================================================
 
 prompt_hint_toggle() {
-    echo "(true/false, enabled/disabled)"
+    echo "(yes/no, true/false, enabled/disabled)"
 }
 
 validate_toggle() {
     local value="$1"
-    [[ "${value,,}" =~ ^(true|false|enabled|disabled|1|0)$ ]]
+    [[ "${value,,}" =~ ^(true|false|enabled|disabled|yes|no|y|n|1|0)$ ]]
 }
 
 normalize_toggle() {
     local value="$1"
     case "${value,,}" in
-        true|enabled|1) echo "true" ;;
-        false|disabled|0) echo "false" ;;
+        true|enabled|yes|y|1) echo "true" ;;
+        false|disabled|no|n|0) echo "false" ;;
     esac
 }
 
@@ -37,5 +37,5 @@ error_msg_toggle() {
     local code="${2:-0}"
     
     # Simple validator - only one failure mode
-    echo "Enter true, false, enabled, or disabled"
+    echo "Enter yes, no, true, false, enabled, or disabled"
 }

@@ -18,19 +18,19 @@
 #   both (file)    -> systemd mount + keyFile + fallbackToPassword
 nds_nixcfg_luks_auto() {
     local encryption use_password use_key key_device key_file key_length
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    encryption=$(nds_config_get "encryption" "ENCRYPTION")
     [[ "$encryption" == "true" ]] || return 0
 
-    use_password=$(nds_config_get "disk" "ENCRYPTION_PASSWORD")
-    use_key=$(nds_config_get "disk" "ENCRYPTION_KEY")
+    use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD")
+    use_key=$(nds_config_get "encryption" "ENCRYPTION_KEY")
 
     # Password-only: hardware-configuration.nix already declares the device;
     # NixOS prompts for the passphrase at boot (or via initrd SSH). Nothing to add.
     [[ "$use_key" == "true" ]] || return 0
 
-    key_device=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_DEVICE")
-    key_file=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_FILE")
-    key_length=$(nds_config_get "disk" "ENCRYPTION_KEY_LENGTH")
+    key_device=$(nds_config_get "encryption" "ENCRYPTION_KEY_BOOT_DEVICE")
+    key_file=$(nds_config_get "encryption" "ENCRYPTION_KEY_BOOT_FILE")
+    key_length=$(nds_config_get "encryption" "ENCRYPTION_KEY_LENGTH")
 
     local timeout
     if [[ "$use_password" == "true" ]]; then

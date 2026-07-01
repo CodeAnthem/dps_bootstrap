@@ -15,7 +15,7 @@ suite_configurator() {
     TEST_PASSED=$((TEST_PASSED + 1))
     console "  ✓ presets registered: ${#PRESET_REGISTRY[@]}"
 
-    local required_presets=(disk region network boot access quick)
+    local required_presets=(disk encryption region network boot access quick)
     local preset
     for preset in "${required_presets[@]}"; do
         if [[ "${PRESET_REGISTRY[$preset]:-}" == "enabled" ]]; then

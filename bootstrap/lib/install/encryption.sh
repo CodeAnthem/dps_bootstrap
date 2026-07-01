@@ -30,12 +30,12 @@ _nixinstall_generate_encryption_secrets() {
     local use_password use_key password_auto password_length use_key_auto key_length
     local runtime_secrets
 
-    use_password=$(nds_config_get "disk" "ENCRYPTION_PASSWORD")
-    use_key=$(nds_config_get "disk" "ENCRYPTION_KEY")
-    password_auto=$(nds_config_get "disk" "ENCRYPTION_PASSWORD_AUTO")
-    password_length=$(nds_config_get "disk" "ENCRYPTION_PASSWORD_LENGTH")
-    use_key_auto=$(nds_config_get "disk" "ENCRYPTION_KEY_AUTO")
-    key_length=$(nds_config_get "disk" "ENCRYPTION_KEY_LENGTH")
+    use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD")
+    use_key=$(nds_config_get "encryption" "ENCRYPTION_KEY")
+    password_auto=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD_AUTO")
+    password_length=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD_LENGTH")
+    use_key_auto=$(nds_config_get "encryption" "ENCRYPTION_KEY_AUTO")
+    key_length=$(nds_config_get "encryption" "ENCRYPTION_KEY_LENGTH")
 
     runtime_secrets="${NDS_RUNTIME_DIR:-/tmp/nds_runtime_$$}/secrets"
     mkdir -p "$runtime_secrets" || { error "Cannot create secrets dir"; return 1; }
@@ -115,8 +115,8 @@ _nixinstall_format_luks() {
     local partition="$1"
     local use_password use_key runtime_secrets
 
-    use_password=$(nds_config_get "disk" "ENCRYPTION_PASSWORD")
-    use_key=$(nds_config_get "disk" "ENCRYPTION_KEY")
+    use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD")
+    use_key=$(nds_config_get "encryption" "ENCRYPTION_KEY")
     runtime_secrets="${NDS_RUNTIME_DIR:-/tmp/nds_runtime_$$}/secrets"
 
     log "Formatting LUKS2 on $partition"

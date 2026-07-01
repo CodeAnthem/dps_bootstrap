@@ -16,9 +16,9 @@
 nds_nixinstall_auto() {
     local disk encryption hostname remote_unlock
     disk=$(nds_config_get "disk" "DISK_TARGET")
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    encryption=$(nds_config_get "encryption" "ENCRYPTION")
     hostname=$(nds_config_get "network" "HOSTNAME")
-    remote_unlock=$(nds_config_get "disk" "ENCRYPTION_REMOTE_UNLOCK")
+    remote_unlock=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_UNLOCK")
     local disk_strategy
     disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
     disk_strategy="${disk_strategy:-nds}"
@@ -98,7 +98,7 @@ nds_nixos_install_flake() {
     disk_strategy="${disk_strategy:-nds}"
     hw_mode="${NDS_HARDWARE_PLACEMENT:-$(nds_configurator_config_get "HARDWARE_PLACEMENT")}"
     hw_mode="${hw_mode:-host-dir}"
-    encryption=$(nds_config_get "disk" "ENCRYPTION")
+    encryption=$(nds_config_get "encryption" "ENCRYPTION")
     disk=$(nds_config_get "disk" "DISK_TARGET")
 
     if [[ -z "$hostname" ]]; then
