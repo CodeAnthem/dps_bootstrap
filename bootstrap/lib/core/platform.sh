@@ -53,10 +53,19 @@ nds_platform_detect_virt() {
 # Returns:
 # - <String> Label for UI
 nds_disk_strategy_label() {
-    case "${1:-nds}" in
-        nds) printf 'NDS built-in partitioning (EFI + root)' ;;
+    local strategy="${1:-nds}"
+    case "$strategy" in
+        nds)
+            local mode
+            mode=$(nds_configurator_config_get "UEFI_MODE" 2>/dev/null || true)
+            if [[ "$mode" == "true" ]]; then
+                printf 'NDS built-in partitioning (UEFI + root)'
+            else
+                printf 'NDS built-in partitioning (BIOS + root)'
+            fi
+            ;;
         disko) printf 'Disko template' ;;
         flake) printf 'No NDS partitioning (your flake owns disk)' ;;
-        *) printf '%s' "$1" ;;
+        *) printf '%s' "$strategy" ;;
     esac
 }

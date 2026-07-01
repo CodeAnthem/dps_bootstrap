@@ -48,6 +48,7 @@ action_setup() {
     nds_install_log "classicInstall: action starting"
 
     NDS_UI_QUIET=true
+    nds_step_exec "Generating access secrets" _nixinstall_generate_access_secrets || exit 14
     nds_step_exec "Generating configuration.nix" nds_nixcfg_write_classic || exit 14
 
     nds_nixos_install || exit 15

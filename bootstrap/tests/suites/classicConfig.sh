@@ -38,9 +38,15 @@ suite_classic_config() {
     CONFIG_DATA[SUDO_PASSWORD_REQUIRED]="true"
     CONFIG_DATA[SSH_ENABLE]="true"
     CONFIG_DATA[SSH_PORT]="22"
-    CONFIG_DATA[SSH_USE_KEY]="true"
+    CONFIG_DATA[SSH_PASSWORD_AUTH]="true"
+    CONFIG_DATA[ADMIN_SSH_KEY]=""
     CONFIG_DATA[BOOTLOADER]="systemd-boot"
     CONFIG_DATA[UEFI_MODE]="true"
+
+    # Access block reads the resolved admin password from the runtime secrets dir.
+    mkdir -p "$tmp_dir/secrets"
+    printf '%s' 'testpass0123456789' > "$tmp_dir/secrets/admin_password.txt"
+    export NDS_RUNTIME_DIR="$tmp_dir"
 
     _test_reset_encryption_vars
     nds_nixcfg_build_classic_auto

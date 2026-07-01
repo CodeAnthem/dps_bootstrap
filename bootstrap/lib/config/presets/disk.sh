@@ -28,7 +28,7 @@ disk_init() {
         input=choice \
         default="nds" \
         options="nds|disko|flake" \
-        option_labels="nds=NDS built-in (EFI + root)|disko=Disko template|flake=Your flake (NDS skips disk)" \
+        option_labels="nds=NDS built-in (UEFI or BIOS)|disko=Disko template|flake=Your flake (NDS skips disk)" \
         help="How the target disk is prepared. NDS built-in is the default guided layout."
 
     nds_configurator_var_declare FS_TYPE \

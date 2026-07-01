@@ -180,7 +180,7 @@ nds_ui_banner() {
     (( ${#sub_line} > max_len )) && max_len=${#sub_line}
     # minimum inner width so short subtitles still get a reasonably wide box
     (( max_len < 56 )) && max_len=56
-    local inner=$((max_len + 2))
+    local inner=$max_len
     local border
     nds_ui_init
     border=$(printf -- '-%.0s' $(seq 1 "$inner"))

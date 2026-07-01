@@ -80,12 +80,18 @@ Created: $(date -Iseconds 2>/dev/null || date)
 Contents:
   nds-config.env          — paste before a future NDS run
   config/*.nix            — generated NixOS configs (if present)
-  secrets/                — unlock material (if encryption was enabled):
+  secrets/                — credentials and unlock material:
+    admin_password.txt      Admin user's initial password (save this!)
     luks_password.txt       LUKS passphrase (if password slot enabled)
     luks_key.bin            LUKS keyfile (if key slot enabled) — copy to USB
     initrd_ssh_host_ed25519_key[.pub]  initrd SSH host key (if remote unlock)
   logs/install.log        — verbose nix install output
   logs/session.log        — NDS session events (info/warnings/errors)
+
+First login:
+  Console:  log in as the admin user with admin_password.txt
+  SSH:      ssh <admin_user>@<host>   (password login unless you set a key)
+  Change the admin password after first login with: passwd
 EOF
 
     mkdir -p "/home/${user}"
@@ -147,6 +153,37 @@ _nds_install_bundle_remote_copy_hint() {
     nds_ui_i "SSH:"
     nds_ui_i "  ssh ${ssh_user}@${host} \"cat ${bundle_path}\" > ${bundle_name}"
     nds_ui_b ""
+}
+
+# Description: Print post-install login instructions for the admin user.
+_nds_install_bundle_access_instructions() {
+    local admin_user ssh_enable ssh_pw_auth ssh_port
+    admin_user=$(nds_config_get "access" "ADMIN_USER")
+    ssh_enable=$(nds_config_get "access" "SSH_ENABLE")
+    ssh_pw_auth=$(nds_config_get "access" "SSH_PASSWORD_AUTH")
+    ssh_port=$(nds_config_get "access" "SSH_PORT")
+
+    nds_ui_b ""
+    nds_ui_h "First login"
+    nds_ui_i "Admin user: ${admin_user}"
+    nds_ui_i "Admin password: in this zip at secrets/admin_password.txt"
+    if [[ "$ssh_enable" == "true" ]]; then
+        local host
+        host=$(nds_install_bundle_host_ip)
+        if [[ -n "$host" ]]; then
+            nds_ui_i "SSH (from your local machine):"
+            nds_ui_i "  ssh ${admin_user}@${host}$([[ "$ssh_port" != "22" ]] && printf ' -p %s' "$ssh_port")"
+        else
+            nds_ui_i "SSH: ssh ${admin_user}@<host-ip>"
+        fi
+        if [[ "$ssh_pw_auth" == "true" ]]; then
+            nds_ui_i "Password login is enabled — use the password above."
+        else
+            nds_ui_i "Password login is OFF — use your configured SSH key."
+        fi
+    fi
+    nds_ui_i "Console login also works with the admin user + password."
+    _nds_ui_colored 33 "Change the admin password after first login: passwd"
 }
 
 # Description: Print post-install instructions for preparing the USB key and
@@ -225,6 +262,8 @@ nds_install_bundle_finish() {
         fi
 
         _nds_install_bundle_encryption_instructions
+
+        _nds_install_bundle_access_instructions
 
         nds_ui_b ""
         _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"

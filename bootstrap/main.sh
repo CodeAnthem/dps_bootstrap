@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="4.2.0"
+readonly SCRIPT_VERSION="4.3.0"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -441,8 +441,6 @@ done
 nds_import_file "${LIB_DIR}/core/import.sh" || exit 1
 _nds_elevate_to_root
 nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
-
-section_title ""
 
 # Signal handlers
 trap 'newline; exit 130' SIGINT # Interrupt handler
