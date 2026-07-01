@@ -66,51 +66,6 @@ action_config() {
     PRESET_CONTEXT=""
 }
 
-_installflake_prepare() {
-    local host source repo_url local_path install_path host_dir hw_placement disk_strategy
-    source=$(nds_configurator_config_get "FLAKE_SOURCE")
-    host=$(nds_configurator_config_get "FLAKE_HOST")
-    repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
-    local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
-    install_path=$(nds_configurator_config_get "FLAKE_INSTALL_PATH")
-    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
-    hw_placement=$(nds_configurator_config_get "HARDWARE_PLACEMENT")
-    disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
-
-    nds_configurator_config_set "HOSTNAME" "$host"
-    export NDS_FLAKE_HOST="$host"
-    export NDS_FLAKE_SOURCE="$source"
-    export NDS_FLAKE_REPO_URL="$repo_url"
-    export NDS_FLAKE_LOCAL_PATH="$local_path"
-    export NDS_FLAKE_INSTALL_PATH="$install_path"
-    export NDS_FLAKE_HOST_DIR="$host_dir"
-    export NDS_HARDWARE_PLACEMENT="$hw_placement"
-    export NDS_DISK_STRATEGY="$disk_strategy"
-
-    log "Flake target: ${NDS_FLAKE_INSTALL_PATH}#${host} (source: ${source})"
-}
-
-_installflake_detect_disko() {
-    local source host host_dir local_path repo_url probe_root
-    source=$(nds_configurator_config_get "FLAKE_SOURCE")
-    host=$(nds_configurator_config_get "FLAKE_HOST")
-    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
-    host_dir="${host_dir:-hosts/x86_64-linux}"
-
-    case "$source" in
-        local)
-            local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
-            [[ -d "$local_path" ]] && nds_preflight_apply_disko_strategy "$local_path" "$host" "$host_dir"
-            ;;
-        remote)
-            repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
-            [[ -z "$repo_url" ]] && return 0
-            probe_root=$(nds_preflight_probe_flake "$repo_url") || return 0
-            nds_preflight_apply_disko_strategy "$probe_root" "$host" "$host_dir"
-            ;;
-    esac
-}
-
 action_preview() {
     nds_ui_h "Install NixOS from your flake"
     nds_ui_b ""
@@ -133,8 +88,8 @@ action_setup() {
     fi
 
     nds_configurator_menu || exit 12
-    _installflake_prepare
-    _installflake_detect_disko
+    nds_flake_prepare
+    nds_flake_detect_disko
 
     local disk_strategy disk_target repo_url
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"

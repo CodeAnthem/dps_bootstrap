@@ -12,11 +12,6 @@ action_config() {
     nds_configurator_preset_disable remoteAction
 }
 
-_classicinstall_write_config() {
-    nds_nixcfg_build_classic_auto
-    nds_nixcfg_write "$NDS_RUNTIME_DIR/config/configuration.nix"
-}
-
 action_preview() {
     nds_ui_h "Classic NixOS installation (no flake required)"
     nds_ui_b ""
@@ -53,7 +48,7 @@ action_setup() {
     nds_install_log "classicInstall: action starting"
 
     NDS_UI_QUIET=true
-    nds_step_exec "Generating configuration.nix" _classicinstall_write_config || exit 14
+    nds_step_exec "Generating configuration.nix" nds_nixcfg_write_classic || exit 14
 
     nds_nixos_install || exit 15
 

@@ -121,3 +121,10 @@ nds_nixcfg_build_classic_auto() {
     nds_nixcfg_virtualisation_auto
     return 0
 }
+
+# Build and write the classic configuration.nix to the runtime config dir.
+# Usage: nds_nixcfg_write_classic
+nds_nixcfg_write_classic() {
+    nds_nixcfg_build_classic_auto
+    nds_nixcfg_write "${NDS_RUNTIME_DIR}/config/configuration.nix"
+}

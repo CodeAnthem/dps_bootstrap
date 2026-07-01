@@ -53,41 +53,6 @@ action_config() {
     PRESET_CONTEXT=""
 }
 
-_remoteaction_prepare() {
-    local host repo_url install_path host_dir hw_placement disk_strategy
-    host=$(nds_configurator_config_get "FLAKE_HOST")
-    repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
-    install_path=$(nds_configurator_config_get "FLAKE_INSTALL_PATH")
-    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
-    hw_placement=$(nds_configurator_config_get "HARDWARE_PLACEMENT")
-    disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
-
-    nds_configurator_config_set "HOSTNAME" "$host"
-    export NDS_FLAKE_HOST="$host"
-    export NDS_FLAKE_SOURCE="remote"
-    export NDS_FLAKE_REPO_URL="$repo_url"
-    export NDS_FLAKE_INSTALL_PATH="$install_path"
-    export NDS_FLAKE_HOST_DIR="$host_dir"
-    export NDS_HARDWARE_PLACEMENT="$hw_placement"
-    export NDS_DISK_STRATEGY="$disk_strategy"
-}
-
-_remoteaction_find_script() {
-    local flake_root="$1"
-    local candidate
-
-    for candidate in \
-        "${flake_root}/.nds/action.sh" \
-        "${flake_root}/nds-action/setup.sh" \
-        "${flake_root}/.nds/setup.sh"; do
-        if [[ -f "$candidate" ]]; then
-            echo "$candidate"
-            return 0
-        fi
-    done
-    return 1
-}
-
 action_preview() {
     nds_ui_h "Run a custom install action from your flake"
     nds_ui_b ""
@@ -109,7 +74,7 @@ action_setup() {
     fi
 
     nds_configurator_menu || exit 12
-    _remoteaction_prepare
+    nds_flake_prepare remote
 
     local repo_url="${NDS_FLAKE_REPO_URL}"
     local host_dir="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
@@ -122,14 +87,14 @@ action_setup() {
 
     nds_preflight_apply_disko_strategy "$probe_dir" "${NDS_FLAKE_HOST}" "$host_dir"
 
-    if remote_script=$(_remoteaction_find_script "$probe_dir"); then
+    if remote_script=$(nds_flake_find_action_script "$probe_dir"); then
         info "Found remote action: $remote_script"
         nds_import_file "$remote_script" || exit 14
 
         if declare -f remote_action_config &>/dev/null; then
             remote_action_config
             nds_configurator_menu || exit 12
-            _remoteaction_prepare
+            nds_flake_prepare remote
         fi
     else
         warn "No .nds/action.sh found — will use a standard flake install"
