@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Platform preset (physical vs virtual machine)
+# NDS - Platform preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-06-30
-# Description:   VM detection and guest tools for classic installs
+# Date:          Created: 2026-07-01 | Modified: 2026-07-01
 # ==================================================================================================
 
-platform_init() {
+platform_defaults() {
     local detected virt_default on_vm_default tools_default
-
     detected=$(nds_platform_detect_virt)
     if [[ "$detected" != none ]]; then
         virt_default="$detected"
@@ -19,39 +17,34 @@ platform_init() {
         on_vm_default=false
         tools_default=false
     fi
-
-    nds_configurator_preset_set_display "platform" "Platform"
-    nds_configurator_preset_set_priority "platform" 25
-
-    nds_configurator_var_declare RUN_ON_VM \
-        display="Running in a virtual machine" \
-        input=toggle \
-        default="$on_vm_default" \
-        help="Auto-detected from the live system. Change if detection is wrong."
-
-    nds_configurator_var_declare VM_TYPE \
-        display="Virtual machine type" \
-        input=choice \
-        default="$virt_default" \
-        options="none|vmware|qemu|kvm|xen|hyperv|virtualbox|other" \
-        option_labels="none=Physical / unknown|vmware=VMware|qemu=QEMU|kvm=KVM|xen=Xen|hyperv=Hyper-V|virtualbox=VirtualBox|other=Other hypervisor" \
-        help="Used to enable the right guest tools in configuration.nix."
-
-    nds_configurator_var_declare VM_GUEST_TOOLS \
-        display="Install VM guest tools" \
-        input=toggle \
-        default="$tools_default" \
-        help="Adds open-vm-tools, qemu-guest-agent, or similar to the installed system."
+    nds_cfg_set RUN_ON_VM "$on_vm_default"
+    nds_cfg_set VM_TYPE "$virt_default"
+    nds_cfg_set VM_GUEST_TOOLS "$tools_default"
 }
 
-platform_get_active() {
-    local on_vm
-
-    echo "RUN_ON_VM"
-
-    on_vm=$(nds_configurator_config_get "RUN_ON_VM")
-    if [[ "$on_vm" == "true" ]]; then
-        echo "VM_TYPE"
-        echo "VM_GUEST_TOOLS"
+platform_configure() {
+    nds_cfg_section_title "Platform"
+    nds_cfg_ask_toggle RUN_ON_VM "Running in a virtual machine" "$(nds_cfg_get RUN_ON_VM)"
+    if nds_cfg_true RUN_ON_VM; then
+        nds_cfg_ask_choice VM_TYPE "Virtual machine type" \
+            "none|vmware|qemu|kvm|xen|hyperv|virtualbox|other" \
+            "none=Physical / unknown|vmware=VMware|qemu=QEMU|kvm=KVM|xen=Xen|hyperv=Hyper-V|virtualbox=VirtualBox|other=Other" \
+            "$(nds_cfg_get VM_TYPE)"
+        nds_cfg_ask_toggle VM_GUEST_TOOLS "Install VM guest tools" true
     fi
 }
+
+platform_summary() {
+    nds_cfg_summary_row "Virtual machine" "$(nds_cfg_display_toggle "$(nds_cfg_get RUN_ON_VM)")"
+    if nds_cfg_true RUN_ON_VM; then
+        nds_cfg_summary_row "VM type" "$(nds_cfg_get VM_TYPE)"
+        nds_cfg_summary_row "Guest tools" "$(nds_cfg_display_toggle "$(nds_cfg_get VM_GUEST_TOOLS)")"
+    fi
+}
+
+platform_validate() {
+    return 0
+}
+
+NDS_PRESET_PRIORITY=25
+NDS_PRESET_DISPLAY="Platform"

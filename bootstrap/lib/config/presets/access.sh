@@ -1,111 +1,60 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Access preset (admin user, SSH)
+# NDS - Access preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-01
-# Description:   Admin user credentials and SSH access for the installed system
+# Date:          Created: 2026-07-01 | Modified: 2026-07-01
 # ==================================================================================================
 
-access_init() {
-    nds_configurator_preset_set_display "access" "Access"
-    nds_configurator_preset_set_priority "access" 15
-
-    nds_configurator_var_declare ADMIN_USER \
-        display="Admin username" \
-        input=username \
-        default="admin" \
-        required=true
-
-    nds_configurator_var_declare ADMIN_PASSWORD_AUTO \
-        display="Auto-generate admin password" \
-        input=toggle \
-        default=true \
-        help="Generate a random admin password from /dev/urandom and save it in the install backup. Disable to type your own."
-
-    nds_configurator_var_declare ADMIN_PASSWORD_LENGTH \
-        display="Admin password length (bytes)" \
-        input=int \
-        default=32 \
-        min=16 \
-        max=128 \
-        help="Random bytes from /dev/urandom (hex-encoded). 32 bytes = 64 hex chars."
-
-    nds_configurator_var_declare ADMIN_PASSWORD \
-        display="Admin password" \
-        input=secret \
-        default="" \
-        required=false \
-        minlen=12 \
-        help="Type the admin user's password (hidden). Used when auto-generate is off."
-
-    nds_configurator_var_declare ADMIN_SSH_KEY \
-        display="Admin SSH public key (optional)" \
-        input=string \
-        default="" \
-        required=false \
-        help="Your SSH public key for the admin user, e.g. ssh-ed25519 AAAA... user@host. Leave empty to rely on the password."
-
-    nds_configurator_var_declare SUDO_PASSWORD_REQUIRED \
-        display="Sudo requires password" \
-        input=toggle \
-        default=true
-
-    nds_configurator_var_declare SSH_ENABLE \
-        display="Enable SSH" \
-        input=toggle \
-        default=true
-
-    nds_configurator_var_declare SSH_PORT \
-        display="SSH port" \
-        input=port \
-        default="22"
-
-    nds_configurator_var_declare SSH_PASSWORD_AUTH \
-        display="Allow SSH password login" \
-        input=toggle \
-        default=true \
-        help="Let the admin user log in over SSH with the password. Disable after you set up key auth."
+access_defaults() {
+    nds_cfg_set ADMIN_USER "admin"
+    nds_cfg_set ADMIN_PASSWORD_AUTO "true"
+    nds_cfg_set ADMIN_PASSWORD_LENGTH "32"
+    nds_cfg_set ADMIN_PASSWORD ""
+    nds_cfg_set ADMIN_SSH_KEY ""
+    nds_cfg_set SUDO_PASSWORD_REQUIRED "true"
+    nds_cfg_set SSH_ENABLE "true"
+    nds_cfg_set SSH_PORT "22"
+    nds_cfg_set SSH_PASSWORD_AUTH "true"
 }
 
-access_get_active() {
-    local auto
-    auto=$(nds_configurator_config_get "ADMIN_PASSWORD_AUTO")
-
-    echo "ADMIN_USER"
-    echo "ADMIN_PASSWORD_AUTO"
-    if [[ "$auto" == "true" ]]; then
-        echo "ADMIN_PASSWORD_LENGTH"
+access_configure() {
+    nds_cfg_section_title "Access"
+    nds_cfg_ask_username ADMIN_USER "Admin username" "admin" true
+    nds_cfg_ask_toggle ADMIN_PASSWORD_AUTO "Auto-generate admin password" true
+    if nds_cfg_true ADMIN_PASSWORD_AUTO; then
+        nds_cfg_ask_int ADMIN_PASSWORD_LENGTH "Admin password length (bytes)" 32 16 128
     else
-        echo "ADMIN_PASSWORD"
+        nds_cfg_ask_secret ADMIN_PASSWORD "Admin password" 12 true
     fi
-    echo "ADMIN_SSH_KEY"
-    echo "SUDO_PASSWORD_REQUIRED"
-    echo "SSH_ENABLE"
-    if [[ "$(nds_configurator_config_get "SSH_ENABLE")" == "true" ]]; then
-        echo "SSH_PORT"
-        echo "SSH_PASSWORD_AUTH"
+    nds_cfg_ask_string ADMIN_SSH_KEY "Admin SSH public key (optional)" "" false
+    nds_cfg_ask_toggle SUDO_PASSWORD_REQUIRED "Sudo requires password" true
+    nds_cfg_ask_toggle SSH_ENABLE "Enable SSH" true
+    if nds_cfg_true SSH_ENABLE; then
+        nds_cfg_ask_port SSH_PORT "SSH port" 22
+        nds_cfg_ask_toggle SSH_PASSWORD_AUTH "Allow SSH password login" true
     fi
 }
 
-access_validate_extra() {
-    local ssh_enable ssh_pw_auth admin_ssh_key auto admin_pw
+access_summary() {
+    nds_cfg_summary_row "Admin user" "$(nds_cfg_get ADMIN_USER)"
+    nds_cfg_summary_row "Auto-generate password" "$(nds_cfg_display_toggle "$(nds_cfg_get ADMIN_PASSWORD_AUTO)")"
+    nds_cfg_summary_row "SSH" "$(nds_cfg_display_toggle "$(nds_cfg_get SSH_ENABLE)")"
+    if nds_cfg_true SSH_ENABLE; then
+        nds_cfg_summary_row "SSH password login" "$(nds_cfg_display_toggle "$(nds_cfg_get SSH_PASSWORD_AUTH)")"
+    fi
+}
 
-    ssh_enable=$(nds_configurator_config_get "SSH_ENABLE")
-    ssh_pw_auth=$(nds_configurator_config_get "SSH_PASSWORD_AUTH")
-    admin_ssh_key=$(nds_configurator_config_get "ADMIN_SSH_KEY")
-    auto=$(nds_configurator_config_get "ADMIN_PASSWORD_AUTO")
-    admin_pw=$(nds_configurator_config_get "ADMIN_PASSWORD")
-
-    if [[ "$auto" != "true" && -z "$admin_pw" ]]; then
-        validation_error "Auto-generate is off — an admin password is required"
+access_validate() {
+    if nds_cfg_is ADMIN_PASSWORD_AUTO false && [[ -z "$(nds_cfg_get ADMIN_PASSWORD)" ]]; then
+        validation_error "Admin password is required when auto-generate is off"
         return 1
     fi
-
-    # No way to log in over SSH: key auth only (password disabled) but no key set.
-    if [[ "$ssh_enable" == "true" && "$ssh_pw_auth" != "true" && -z "$admin_ssh_key" ]]; then
-        validation_error "SSH password login is off and no admin SSH key is set — you would be locked out"
+    if nds_cfg_true SSH_ENABLE && nds_cfg_is SSH_PASSWORD_AUTH false && [[ -z "$(nds_cfg_get ADMIN_SSH_KEY)" ]]; then
+        validation_error "SSH password login is off and no admin SSH key is set"
         return 1
     fi
-
     return 0
 }
+
+NDS_PRESET_PRIORITY=15
+NDS_PRESET_DISPLAY="Access"

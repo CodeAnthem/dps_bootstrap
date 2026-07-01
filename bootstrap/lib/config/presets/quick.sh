@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# NDS - Quick setup preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2025-10-28
-# Description:   Quick Setup Module - Fast configuration with smart defaults
-# Feature:       Country-based automatic configuration for rapid deployment
+# Date:          Created: 2026-07-01 | Modified: 2026-07-01
 # ==================================================================================================
 
-# =============================================================================
-# CONFIGURATION - Field Declarations
-# =============================================================================
-quick_init() {
-    # Set preset metadata
-    nds_configurator_preset_set_display "quick" "Quick Setup"
-    nds_configurator_preset_set_priority "quick" 1
-    
-    # Country selection for auto-defaults
-    nds_configurator_var_declare COUNTRY \
-        display="Country (Quick Setup)" \
-        input=country \
-        default="" \
-        help="Select your country to automatically configure timezone, locale, and keyboard. This is the fastest way to get started! Leave empty to configure manually in other modules."
+quick_defaults() {
+    nds_cfg_set COUNTRY ""
 }
+
+quick_configure() {
+    nds_cfg_section_title "Quick Setup"
+    nds_cfg_ask_country COUNTRY "Country (quick setup)"
+}
+
+quick_summary() {
+    local c
+    c=$(nds_cfg_get COUNTRY)
+    if [[ -n "$c" ]]; then
+        nds_cfg_summary_row "Country" "$c"
+    else
+        nds_cfg_summary_row "Country" "(manual region setup)"
+    fi
+}
+
+quick_validate() {
+    return 0
+}
+
+NDS_PRESET_PRIORITY=1
+NDS_PRESET_DISPLAY="Quick Setup"

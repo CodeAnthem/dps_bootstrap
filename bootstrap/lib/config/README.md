@@ -1,20 +1,31 @@
-# configurator
+# config
 
-Interactive wizard: presets, fields, validation, menu, and `NDS_*` env export.
+Interactive configuration: scripted presets, shared prompts/validators, menu, and `NDS_*` env export.
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `storage.sh` | Config get/set, export script |
-| `var.sh` | Field declarations |
-| `preset.sh` | Preset enable/disable/registry |
-| `menu.sh` | Interactive menu loop |
-| `presets/` | Domain field groups (disk, region, network, …) |
-| `inputs/` | Validators co-located by domain (`network/`, `region/`, …) |
+| `store.sh` | `CONFIG_DATA`, preset registry, get/set, env export |
+| `validate.sh` | Field validators (`validate_*`) |
+| `ask.sh` | Prompt helpers (`nds_cfg_ask_*`) |
+| `country.sh` | Country → timezone/locale defaults |
+| `registry.sh` | Preset load, defaults seed, validate/configure dispatch |
+| `menu.sh` | Category menu (no hook replay loop) |
+| `presets/` | One file per domain: defaults, configure, summary, validate |
 
-Validators live **next to their domain** (group by what it is), not in a separate validation tree.
+## Preset contract
+
+Each preset in `presets/*.sh` defines:
+
+- `${name}_defaults` — seed `CONFIG_DATA`
+- `${name}_configure` — explicit prompt flow (`nds_cfg_ask_*`)
+- `${name}_summary` — menu summary lines
+- `${name}_validate` — cross-field checks
+- `NDS_PRESET_PRIORITY` / `NDS_PRESET_DISPLAY` at file end (registry calls `nds_preset_register`)
+
+Logic lives in configure/validate functions; types and defaults stay in the preset file.
 
 ## Tests
 
-`bootstrap/tests/suites/configurator.sh` and `suites/inputs.sh`.
+`bootstrap/tests/suites/configurator.sh` and `suites/inputs.sh` (validators in `validate.sh`).

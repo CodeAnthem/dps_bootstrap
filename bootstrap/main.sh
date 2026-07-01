@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="4.5.0"
+readonly SCRIPT_VERSION="5.0.0"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -378,6 +378,7 @@ _nds_execute_action() {
         info "Configuring $action_name..."
         nds_configurator_reset_for_action "$SCRIPT_DIR" || return 1
         action_config
+        nds_config_seed_defaults
     else
         error "action_config() not found in $setup_script"
         return 1

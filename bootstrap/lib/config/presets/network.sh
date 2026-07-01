@@ -1,146 +1,63 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# NDS - Network preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2025-10-27
-# Description:   Network Module - Configuration & NixOS Generation
-# Feature:       Network method (DHCP/static), IP, DNS, gateway configuration and NixOS generation
+# Date:          Created: 2026-07-01 | Modified: 2026-07-01
 # ==================================================================================================
 
-# =============================================================================
-# CONFIGURATION - Field Declarations
-# =============================================================================
-network_init() {
-    # Set preset metadata
-    nds_configurator_preset_set_display "network" "Network"
-    nds_configurator_preset_set_priority "network" 10
-    
-    nds_configurator_var_declare HOSTNAME \
-        display="Hostname" \
-        input=hostname \
-        required=true
-    
-    nds_configurator_var_declare NETWORK_METHOD \
-        display="Network Method" \
-        input=choice \
-        default="dhcp" \
-        required=true \
-        options="dhcp|static"
-    
-    nds_configurator_var_declare NETWORK_IP \
-        display="IP Address" \
-        required=true \
-        input=ip
-    
-    nds_configurator_var_declare NETWORK_MASK \
-        display="Network Mask" \
-        required=true \
-        input=mask \
-        default="255.255.255.0"
-    
-    nds_configurator_var_declare NETWORK_GATEWAY \
-        display="Gateway" \
-        required=true \
-        input=ip
-    
-    nds_configurator_var_declare NETWORK_DNS_PRIMARY \
-        display="Primary DNS" \
-        input=ip \
-        required=true \
-        default="1.1.1.1"
-    
-    nds_configurator_var_declare NETWORK_DNS_SECONDARY \
-        display="Secondary DNS" \
-        input=ip \
-        required=true \
-        default="1.0.0.1"
+network_defaults() {
+    nds_cfg_set HOSTNAME "nixos"
+    nds_cfg_set NETWORK_METHOD "dhcp"
+    nds_cfg_set NETWORK_IP ""
+    nds_cfg_set NETWORK_MASK "255.255.255.0"
+    nds_cfg_set NETWORK_GATEWAY ""
+    nds_cfg_set NETWORK_DNS_PRIMARY "1.1.1.1"
+    nds_cfg_set NETWORK_DNS_SECONDARY "1.0.0.1"
 }
 
-# =============================================================================
-# CONFIGURATION - Active Fields Logic
-# =============================================================================
-network_get_active() {
-    local method
-    method=$(nds_configurator_config_get "NETWORK_METHOD")
-    
-    # Base fields always active
-    echo "HOSTNAME"
-    echo "NETWORK_METHOD"
-    echo "NETWORK_DNS_PRIMARY"
-    echo "NETWORK_DNS_SECONDARY"
-    
-    # Conditional fields for static configuration
-    if [[ "$method" == "static" ]]; then
-        echo "NETWORK_IP"
-        echo "NETWORK_MASK"
-        echo "NETWORK_GATEWAY"
+network_configure() {
+    nds_cfg_section_title "Network"
+    nds_cfg_ask_hostname HOSTNAME "Hostname"
+    nds_cfg_ask_choice NETWORK_METHOD "Network method" "dhcp|static" "dhcp=DHCP|static=Static IP" "dhcp"
+    nds_cfg_ask_ip NETWORK_DNS_PRIMARY "Primary DNS" "1.1.1.1" true
+    nds_cfg_ask_ip NETWORK_DNS_SECONDARY "Secondary DNS" "1.0.0.1" true
+    if nds_cfg_is NETWORK_METHOD static; then
+        nds_cfg_ask_ip NETWORK_IP "IP address" "" true
+        nds_cfg_ask_mask NETWORK_MASK "Network mask" "255.255.255.0"
+        nds_cfg_ask_ip NETWORK_GATEWAY "Gateway" "" true
     fi
 }
 
-# =============================================================================
-# CONFIGURATION - Cross-Field Validation
-# =============================================================================
-network_validate_extra() {
-    local method
-    method=$(nds_configurator_config_get "NETWORK_METHOD")
-    
-    if [[ "$method" == "static" ]]; then
-        local ip
-        local mask
-        local gateway
-        
-        ip=$(nds_configurator_config_get "NETWORK_IP")
-        mask=$(nds_configurator_config_get "NETWORK_MASK")
-        gateway=$(nds_configurator_config_get "NETWORK_GATEWAY")
-        
-        # Check if Gateway is same as IP
-        if [[ -n "$ip" && -n "$gateway" && "$ip" == "$gateway" ]]; then
+network_summary() {
+    nds_cfg_summary_row "Hostname" "$(nds_cfg_get HOSTNAME)"
+    nds_cfg_summary_row "Network method" "$(nds_cfg_display_choice "$(nds_cfg_get NETWORK_METHOD)" "dhcp=DHCP|static=Static IP")"
+    if nds_cfg_is NETWORK_METHOD static; then
+        nds_cfg_summary_row "IP address" "$(nds_cfg_get NETWORK_IP)"
+        nds_cfg_summary_row "Gateway" "$(nds_cfg_get NETWORK_GATEWAY)"
+    fi
+    nds_cfg_summary_row "Primary DNS" "$(nds_cfg_get NETWORK_DNS_PRIMARY)"
+}
+
+network_validate() {
+    if nds_cfg_is NETWORK_METHOD static; then
+        local ip mask gateway
+        ip=$(nds_cfg_get NETWORK_IP)
+        mask=$(nds_cfg_get NETWORK_MASK)
+        gateway=$(nds_cfg_get NETWORK_GATEWAY)
+        [[ -n "$ip" && -n "$gateway" ]] || { validation_error "Static network needs IP and gateway"; return 1; }
+        if [[ "$ip" == "$gateway" ]]; then
             validation_error "Gateway cannot be the same as IP address"
             return 1
         fi
-
-        # All three must be present for subnet validation
         if [[ -n "$ip" && -n "$mask" && -n "$gateway" ]]; then
-            # Validate gateway is in same subnet
-            if ! validate_subnet "$ip" "$mask" "$gateway"; then
-                validation_error "Gateway $gateway must be in the same subnet as $ip/$mask"
+            nds_validate_same_subnet "$ip" "$mask" "$gateway" || {
+                validation_error "Gateway must be in the same subnet as $ip/$mask"
                 return 1
-            fi
+            }
         fi
     fi
-    
     return 0
 }
 
-# =============================================================================
-# CONFIGURATION - Helper Functions
-# =============================================================================
-
-# Convert IP address to integer
-ip_to_int() {
-    local ip="$1"
-    local a b c d
-    IFS='.' read -r a b c d <<< "$ip"
-    echo "$((a * 256**3 + b * 256**2 + c * 256 + d))"
-}
-
-# Validate subnet relationship
-validate_subnet() {
-    local ip="$1"
-    local mask="$2"
-    local gateway="$3"
-    
-    local ip_int
-    local gateway_int
-    local mask_int
-    
-    ip_int=$(ip_to_int "$ip")
-    gateway_int=$(ip_to_int "$gateway")
-    mask_int=$(ip_to_int "$mask")
-    
-    # Apply mask to both IPs and compare
-    local ip_network=$((ip_int & mask_int))
-    local gateway_network=$((gateway_int & mask_int))
-    
-    [[ "$ip_network" -eq "$gateway_network" ]]
-}
+NDS_PRESET_PRIORITY=10
+NDS_PRESET_DISPLAY="Network"

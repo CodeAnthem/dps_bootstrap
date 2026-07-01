@@ -18,39 +18,6 @@ action_config() {
     nds_configurator_preset_enable remoteAction
     nds_configurator_preset_set_display remoteAction "Remote flake action"
     nds_configurator_preset_set_priority remoteAction 20
-
-    PRESET_CONTEXT="remoteAction"
-
-    nds_configurator_var_declare FLAKE_REPO_URL \
-        display="Remote flake Git URL" \
-        input=url \
-        default="" \
-        required=true
-
-    nds_configurator_var_declare FLAKE_INSTALL_PATH \
-        display="Flake path on installed disk" \
-        input=path \
-        default="/mnt/opt/flake" \
-        required=true
-
-    nds_configurator_var_declare FLAKE_HOST \
-        display="nixosConfigurations host name" \
-        input=hostname \
-        required=true
-
-    nds_configurator_var_declare FLAKE_HOST_DIR \
-        display="Host directory inside flake" \
-        input=path \
-        default="hosts/x86_64-linux" \
-        required=false
-
-    nds_configurator_var_declare HARDWARE_PLACEMENT \
-        display="Hardware configuration" \
-        input=choice \
-        default="host-dir" \
-        options="host-dir|etc-nixos|skip"
-
-    PRESET_CONTEXT=""
 }
 
 action_preview() {

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Install from Nix flake action
+# NDS - Install from flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-06-30
+# Date:          Created: 2026-06-28 | Modified: 2026-07-01
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
@@ -13,57 +13,9 @@ action_config() {
     nds_configurator_preset_disable boot
     nds_configurator_preset_disable security
     nds_configurator_preset_disable platform
-
     nds_configurator_preset_enable installFlake
     nds_configurator_preset_set_display installFlake "Your flake"
     nds_configurator_preset_set_priority installFlake 20
-
-    PRESET_CONTEXT="installFlake"
-
-    nds_configurator_var_declare FLAKE_SOURCE \
-        display="Flake source" \
-        input=choice \
-        default="remote" \
-        options="remote|local" \
-        required=true
-
-    nds_configurator_var_declare FLAKE_REPO_URL \
-        display="Remote flake Git URL" \
-        input=url \
-        default="" \
-        required=false
-
-    nds_configurator_var_declare FLAKE_LOCAL_PATH \
-        display="Local flake path (on live system)" \
-        input=path \
-        default="" \
-        required=false
-
-    nds_configurator_var_declare FLAKE_INSTALL_PATH \
-        display="Flake path on installed disk" \
-        input=path \
-        default="/mnt/opt/flake" \
-        required=true
-
-    nds_configurator_var_declare FLAKE_HOST \
-        display="nixosConfigurations host name" \
-        input=hostname \
-        required=true
-
-    nds_configurator_var_declare FLAKE_HOST_DIR \
-        display="Host directory inside flake" \
-        input=path \
-        default="hosts/x86_64-linux" \
-        required=false
-
-    nds_configurator_var_declare HARDWARE_PLACEMENT \
-        display="Hardware configuration" \
-        input=choice \
-        default="host-dir" \
-        options="host-dir|etc-nixos|skip" \
-        help="host-dir: copy into flake host folder (gitignored). etc-nixos: keep in /etc/nixos + override-input. skip: flake handles hardware."
-
-    PRESET_CONTEXT=""
 }
 
 action_preview() {

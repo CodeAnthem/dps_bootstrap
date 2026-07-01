@@ -1,71 +1,38 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# NDS - Security preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-26 | Modified: 2025-10-28
-# Description:   Security Module - Configuration & NixOS Generation
-# Feature:       Secure boot, firewall, hardening, and security configuration
+# Date:          Created: 2026-07-01 | Modified: 2026-07-01
 # ==================================================================================================
 
-# =============================================================================
-# CONFIGURATION - Field Declarations
-# =============================================================================
-security_init() {
-    # Set preset metadata
-    nds_configurator_preset_set_display "security" "Security"
-    nds_configurator_preset_set_priority "security" 40
-    
-    nds_configurator_var_declare SECURE_BOOT \
-        display="Enable Secure Boot" \
-        input=toggle \
-        default=false
-    
-    nds_configurator_var_declare SECURE_BOOT_METHOD \
-        display="Secure Boot Method" \
-        input=choice \
-        default="lanzaboote" \
-        options="lanzaboote|sbctl"
-    
-    nds_configurator_var_declare FIREWALL_ENABLE \
-        display="Enable Firewall" \
-        input=toggle \
-        required=true \
-        default=true
-    
-    nds_configurator_var_declare HARDENING_ENABLE \
-        display="Apply Security Hardening" \
-        input=toggle \
-        default=true
-    
-    nds_configurator_var_declare FAIL2BAN_ENABLE \
-        display="Enable Fail2Ban" \
-        input=toggle \
-        default=false
+security_defaults() {
+    nds_cfg_set SECURE_BOOT "false"
+    nds_cfg_set SECURE_BOOT_METHOD "lanzaboote"
+    nds_cfg_set FIREWALL_ENABLE "true"
+    nds_cfg_set HARDENING_ENABLE "true"
+    nds_cfg_set FAIL2BAN_ENABLE "false"
 }
 
-# =============================================================================
-# CONFIGURATION - Active Fields Logic
-# =============================================================================
-security_get_active() {
-    local secure_boot
-    secure_boot=$(nds_configurator_config_get "SECURE_BOOT")
-    
-    echo "SECURE_BOOT"
-    
-    if [[ "$secure_boot" == "true" ]]; then
-        echo "SECURE_BOOT_METHOD"
+security_configure() {
+    nds_cfg_section_title "Security"
+    nds_cfg_ask_toggle SECURE_BOOT "Enable Secure Boot" false
+    if nds_cfg_true SECURE_BOOT; then
+        nds_cfg_ask_choice SECURE_BOOT_METHOD "Secure Boot method" "lanzaboote|sbctl" "" "lanzaboote"
     fi
-    
-    echo "FIREWALL_ENABLE"
-    echo "HARDENING_ENABLE"
-    echo "FAIL2BAN_ENABLE"
+    nds_cfg_ask_toggle FIREWALL_ENABLE "Enable firewall" true
+    nds_cfg_ask_toggle HARDENING_ENABLE "Apply security hardening" true
+    nds_cfg_ask_toggle FAIL2BAN_ENABLE "Enable Fail2Ban" false
 }
 
-# =============================================================================
-# CONFIGURATION - Cross-Field Validation
-# =============================================================================
-security_validate_extra() {
-    # No cross-field validation needed
+security_summary() {
+    nds_cfg_summary_row "Secure Boot" "$(nds_cfg_display_toggle "$(nds_cfg_get SECURE_BOOT)")"
+    nds_cfg_summary_row "Firewall" "$(nds_cfg_display_toggle "$(nds_cfg_get FIREWALL_ENABLE)")"
+    nds_cfg_summary_row "Hardening" "$(nds_cfg_display_toggle "$(nds_cfg_get HARDENING_ENABLE)")"
+}
+
+security_validate() {
     return 0
 }
 
+NDS_PRESET_PRIORITY=40
+NDS_PRESET_DISPLAY="Security"
