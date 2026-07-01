@@ -17,7 +17,7 @@ network_defaults() {
 
 network_configure() {
     nds_cfg_section_title "Network"
-    nds_cfg_ask_hostname HOSTNAME "Hostname"
+    nds_cfg_ask_hostname HOSTNAME "Hostname" "" true
     nds_cfg_ask_choice NETWORK_METHOD "Network method" "dhcp|static" "dhcp=DHCP|static=Static IP" "dhcp"
     nds_cfg_ask_ip NETWORK_DNS_PRIMARY "Primary DNS" "1.1.1.1" true
     nds_cfg_ask_ip NETWORK_DNS_SECONDARY "Secondary DNS" "1.0.0.1" true
@@ -39,6 +39,17 @@ network_summary() {
 }
 
 network_validate() {
+    local hostname
+    hostname=$(nds_cfg_get HOSTNAME)
+    if [[ -z "$hostname" ]]; then
+        validation_error "Hostname is required"
+        return 1
+    fi
+    validate_hostname "$hostname" || {
+        validation_error "Invalid hostname"
+        return 1
+    }
+
     if nds_cfg_is NETWORK_METHOD static; then
         local ip mask gateway
         ip=$(nds_cfg_get NETWORK_IP)

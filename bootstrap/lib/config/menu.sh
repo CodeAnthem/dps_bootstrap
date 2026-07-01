@@ -65,8 +65,14 @@ nds_configurator_menu() {
 
             if [[ "${sel,,}" == "x" ]]; then
                 if ! nds_configurator_validate_all "${presets[@]}"; then
-                    last_status="Configuration has errors — open the relevant category and fix them."
-                    warn "$last_status"
+                    nds_configurator_prompt_errors "${presets[@]}"
+                    if ! nds_configurator_validate_all "${presets[@]}"; then
+                        last_status="Configuration has errors — complete the required fields above."
+                        warn "$last_status"
+                        break
+                    fi
+                    last_status="Required fields updated"
+                    success "$last_status"
                     break
                 fi
                 success "Configuration confirmed"

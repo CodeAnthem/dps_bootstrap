@@ -26,4 +26,22 @@ suite_configurator() {
             console "  ✗ preset missing or disabled: $preset"
         fi
     done
+
+    CONFIG_DATA[HOSTNAME]=""
+    if network_validate &>/dev/null; then
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ network_validate should reject empty hostname"
+    else
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ network_validate rejects empty hostname"
+    fi
+
+    CONFIG_DATA[HOSTNAME]="myhost"
+    if network_validate &>/dev/null; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ network_validate accepts valid hostname"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ network_validate should accept valid hostname"
+    fi
 }
