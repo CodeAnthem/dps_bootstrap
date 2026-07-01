@@ -114,7 +114,7 @@ nds_configurator_reset_for_action() {
     local bootstrap_dir="${1:?bootstrap dir}"
     local preset preset_file
 
-    for preset_file in "${bootstrap_dir}/lib/configurator/presets/"*.sh; do
+    for preset_file in "${bootstrap_dir}/lib/config/presets/"*.sh; do
         [[ -f "$preset_file" ]] || continue
         preset=$(basename "$preset_file" .sh)
         nds_configurator_preset_enable "$preset"

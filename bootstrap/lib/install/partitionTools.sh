@@ -1,18 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Partition tools public API
+# DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-04 | Modified: 2026-06-28
-# Description:   Disk partitioning via NDS layout or Disko
+# Date:          Created: 2025-11-04 | Modified: 2026-07-01
+# Description:   Disk partitioning via NDS layout or Disko (public API)
 # ==================================================================================================
-
-nds_partition_load() {
-    local dir="${SCRIPT_DIR}/lib/partition"
-    nds_import_file "${dir}/compat.sh" || return 1
-    nds_import_file "${dir}/detect.sh" || return 1
-    nds_import_file "${dir}/disko.sh" || return 1
-    return 0
-}
 
 nds_partition_get_disk_state() {
     local disk="$1"

@@ -3,7 +3,7 @@
 # NDS - Library loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-06-27 | Modified: 2026-06-30
-# Description:   Load feature packages (configurator, installer, classicConfig, partition, setup)
+# Description:   Load feature packages (config, install, nixcfg)
 # ==================================================================================================
 
 # =============================================================================
@@ -13,22 +13,19 @@
 nds_configurator_init() {
     debug "Initializing configurator..."
 
-    nds_import_file "${SCRIPT_DIR}/lib/setup/platform.sh" || {
-        fatal "Failed to load platform helpers"
-        return 1
-    }
+    # platform.sh lives in lib/core and is auto-loaded by nds_bootstrap_load_libs.
 
-    nds_import_dir "${SCRIPT_DIR}/lib/configurator" false || {
+    nds_import_dir "${SCRIPT_DIR}/lib/config" false || {
         fatal "Failed to load configurator logic"
         return 1
     }
 
-    nds_import_dir "${SCRIPT_DIR}/lib/configurator/inputs" true || {
+    nds_import_dir "${SCRIPT_DIR}/lib/config/inputs" true || {
         fatal "Failed to load input validators"
         return 1
     }
 
-    for preset_file in "${SCRIPT_DIR}/lib/configurator/presets/"*.sh; do
+    for preset_file in "${SCRIPT_DIR}/lib/config/presets/"*.sh; do
         [[ -f "$preset_file" ]] || continue
 
         local preset_name
@@ -110,33 +107,20 @@ _nds_configurator_apply_env() {
 nds_installation_init() {
     debug "Loading installation stack..."
 
-    nds_import_dir "${SCRIPT_DIR}/lib/installer" false || {
-        fatal "Failed to load installer"
+    # install/ holds the installer + merged partition modules (disk, disko,
+    # detect, compat, partitionTools, encryption, boot, bundle, etc.).
+    nds_import_dir "${SCRIPT_DIR}/lib/install" false || {
+        fatal "Failed to load install modules"
         return 1
     }
 
-    nds_import_file "${SCRIPT_DIR}/lib/classicConfig/builder.sh" || {
-        fatal "Failed to load classicConfig builder"
+    nds_import_file "${SCRIPT_DIR}/lib/nixcfg/builder.sh" || {
+        fatal "Failed to load nixcfg builder"
         return 1
     }
 
-    nds_import_dir "${SCRIPT_DIR}/lib/classicConfig/blocks" false || {
-        fatal "Failed to load classicConfig blocks"
-        return 1
-    }
-
-    nds_import_dir "${SCRIPT_DIR}/lib/setup" false || {
-        fatal "Failed to load setup helpers"
-        return 1
-    }
-
-    nds_import_file "${SCRIPT_DIR}/lib/partition/partitionTools.sh" || {
-        fatal "Failed to load partition tools"
-        return 1
-    }
-
-    nds_partition_load || {
-        fatal "Failed to load partition tool modules"
+    nds_import_dir "${SCRIPT_DIR}/lib/nixcfg/blocks" false || {
+        fatal "Failed to load nixcfg blocks"
         return 1
     }
 
