@@ -166,3 +166,26 @@ nds_ui_draw_box() {
     printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
     printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
 }
+
+# Description: Render the persistent NDS banner as a single box containing the
+# fixed script title line (name + version) and an optional section subtitle.
+# The box width expands to fit the longest line, with a sane minimum.
+# Arguments:
+# - subtitle: <String> Current section/screen name (may be empty)
+nds_ui_banner() {
+    local subtitle="${1:-}"
+    local title_line=" === ${SCRIPT_NAME:-Nix Deploy System} v${SCRIPT_VERSION:-} === "
+    local sub_line="  ${subtitle}"
+    local max_len=${#title_line}
+    (( ${#sub_line} > max_len )) && max_len=${#sub_line}
+    # minimum inner width so short subtitles still get a reasonably wide box
+    (( max_len < 56 )) && max_len=56
+    local inner=$((max_len + 2))
+    local border
+    nds_ui_init
+    border=$(printf -- '-%.0s' $(seq 1 "$inner"))
+    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
+    printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner" "$title_line" >&2
+    [[ -n "$subtitle" ]] && printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner" "$sub_line" >&2
+    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
+}

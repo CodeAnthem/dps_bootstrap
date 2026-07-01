@@ -4,12 +4,21 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-28 | Modified: 2026-07-01
 # Description:   LUKS2 encryption setup for NixOS installation
-# Feature:       Password and/or keyfile LUKS slots, openssl rand generation
+# Feature:       Password and/or keyfile LUKS slots, /dev/urandom generation
 # ==================================================================================================
 
 # =============================================================================
 # ENCRYPTION SETUP
 # =============================================================================
+
+# Description: Generate N hex chars from /dev/urandom (openssl-free; the NixOS
+# live ISO does not ship openssl by default). N is the byte count; output is
+# 2N lowercase hex chars with no spaces or newlines.
+# Usage: _nds_urandom_hex <byte_count>
+_nds_urandom_hex() {
+    local n="$1"
+    od -An -tx1 -v -N "$n" /dev/urandom | tr -d ' \n'
+}
 
 # Description: Generate or collect unlock secrets (password and/or keyfile)
 # and save them to the runtime secrets directory for the backup bundle and
@@ -29,13 +38,17 @@ _nixinstall_generate_encryption_secrets() {
     key_length=$(nds_config_get "disk" "ENCRYPTION_KEY_LENGTH")
 
     runtime_secrets="${NDS_RUNTIME_DIR:-/tmp/nds_runtime_$$}/secrets"
-    mkdir -p "$runtime_secrets"
+    mkdir -p "$runtime_secrets" || { error "Cannot create secrets dir"; return 1; }
 
     if [[ "$use_password" == "true" ]]; then
-        local passphrase
+        local passphrase pw_file="$runtime_secrets/luks_password.txt"
         if [[ "$password_auto" == "true" ]]; then
-            log "Generating password (openssl rand, $password_length bytes)"
-            passphrase=$(openssl rand -hex "$password_length")
+            log "Generating password (/dev/urandom, $password_length bytes -> $((password_length * 2)) hex chars)"
+            passphrase=$(_nds_urandom_hex "$password_length")
+            if [[ -z "$passphrase" ]]; then
+                error "Password generation from /dev/urandom failed"
+                return 1
+            fi
         else
             local pw1="" pw2=""
             while true; do
@@ -61,16 +74,18 @@ _nixinstall_generate_encryption_secrets() {
             passphrase="$pw1"
         fi
 
-        printf '%s' "$passphrase" > "$runtime_secrets/luks_password.txt"
-        chmod 600 "$runtime_secrets/luks_password.txt"
+        printf '%s' "$passphrase" > "$pw_file"
+        chmod 600 "$pw_file"
+        [[ -s "$pw_file" ]] || { error "Failed to write password file"; return 1; }
         nds_install_log "Generated LUKS password (saved to secrets/luks_password.txt)"
     fi
 
     if [[ "$use_key" == "true" ]]; then
         local keyfile_path="$runtime_secrets/luks_key.bin"
         if [[ "$use_key_auto" == "true" ]]; then
-            log "Generating keyfile (openssl rand, $key_length bytes)"
-            openssl rand -raw "$key_length" > "$keyfile_path" || return 1
+            log "Generating keyfile (/dev/urandom, $key_length bytes)"
+            head -c "$key_length" /dev/urandom > "$keyfile_path" || { error "Keyfile generation failed"; return 1; }
+            [[ -s "$keyfile_path" ]] || { error "Keyfile is empty"; return 1; }
         else
             local src_path
             while true; do

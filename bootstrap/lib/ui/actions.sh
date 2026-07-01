@@ -55,15 +55,18 @@ nds_ui_install_warning() {
     nds_ui_h "Steps"
     case "$strategy" in
         flake)
-            nds_ui_i "Verify /mnt is mounted (NDS does not partition)"
+            nds_ui_i "1. Verify /mnt is already mounted (NDS does not partition)"
+            nds_ui_i "2. Generate hardware-configuration.nix on the live system"
+            nds_ui_i "3. Run nixos-install from your flake (Nix downloads and builds packages)"
+            nds_ui_i "4. Offer an install backup zip (config and logs)"
             ;;
         *)
-            nds_ui_i "Partition and format ${disk}"
+            nds_ui_i "1. Partition and format ${disk} (LUKS2 if encryption is enabled)"
+            nds_ui_i "2. Generate hardware-configuration.nix on the live system"
+            nds_ui_i "3. Run nixos-install — Nix downloads and builds packages"
+            nds_ui_i "4. Offer an install backup zip (config, logs, and encryption keys if encrypted)"
             ;;
     esac
-    nds_ui_i "Generate hardware-configuration.nix on the live system"
-    nds_ui_i "Run nixos-install (Nix downloads packages)"
-    nds_ui_i "Offer an install backup zip (config, logs, keys if encrypted)"
     nds_ui_b ""
 
     [[ -n "$extra" ]] && nds_ui_b "$extra" && nds_ui_b ""

@@ -35,52 +35,49 @@ warn() { logDate "$(nds_ui_log_tag warn)" "$1"; }
 validation_error() { logDate "$(nds_ui_log_tag validation)" "$1"; }
 
 declare -g NDS_CURRENT_ACTION=""
-declare -g NDS_UI_BANNER=""
-declare -g NDS_UI_BANNER_WIDTH=100
+declare -g NDS_UI_BANNER_SUBTITLE=""
 
-# Description: Build a section title with optional current action prefix.
+# Description: Format a section subtitle. Inside an action, prefix the action
+# name for context; otherwise just the label. (No "NDS:" prefix — the banner
+# already shows the NDS title line.)
 nds_section_title_format() {
     local label="$1"
     if [[ "$label" == NDS:* ]]; then
-        printf '%s' "$label"
+        printf '%s' "${label#NDS: }"
         return 0
     fi
     if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
-        printf 'NDS: %s — %s' "$NDS_CURRENT_ACTION" "$label"
+        printf '%s — %s' "$NDS_CURRENT_ACTION" "$label"
     else
-        printf 'NDS: %s' "$label"
+        printf '%s' "$label"
     fi
 }
 
-# Description: Redraw the persistent main title bar when set.
+# Description: Redraw the persistent NDS banner (title + current subtitle).
 nds_ui_redraw_banner() {
-    [[ -n "${NDS_UI_BANNER:-}" ]] || return 0
-    nds_ui_draw_box "$NDS_UI_BANNER" "$NDS_UI_BANNER_WIDTH"
+    nds_ui_banner "${NDS_UI_BANNER_SUBTITLE:-}"
 }
 
 draw_title() {
     local title="$1"
-    local width="${2:-$NDS_UI_BANNER_WIDTH}"
-    nds_ui_draw_box "$title" "$width"
+    nds_ui_banner "$title"
 }
 
-# Description: Clear the screen and redraw the main title bar if configured.
+# Description: Clear the screen and redraw the NDS banner.
 new_section() {
     printf "\033[2J\033[H" >&2
     nds_ui_redraw_banner
 }
 
-# Description: Set the persistent main title (wide box) and show it.
+# Description: Show the title screen (banner with the given subtitle).
 section_title() {
-    NDS_UI_BANNER=" === $1 === "
+    NDS_UI_BANNER_SUBTITLE="${1#NDS: }"
     new_section
 }
 
-# Description: Start a screen with the main title and a subsection box below.
+# Description: Start a screen with the NDS banner title + this section as subtitle.
 section_header() {
     local label="$1"
-    local title
+    NDS_UI_BANNER_SUBTITLE=$(nds_section_title_format "$label")
     new_section
-    title=$(nds_section_title_format "$label")
-    nds_ui_draw_box "  ${title}  " "$NDS_UI_BANNER_WIDTH"
 }

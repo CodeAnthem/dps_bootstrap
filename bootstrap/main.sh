@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="4.1.5"
+readonly SCRIPT_VERSION="4.2.0"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -64,7 +64,19 @@ _nds_callHook() {
 _nds_elevate_to_root() {
     [[ $EUID -eq 0 ]] && return 0
 
-    printf '[INFO] - NDS needs root — elevating via sudo...\n' >&2
+    if ! command -v sudo &>/dev/null; then
+        printf '[ERROR] - NDS must run as root, but sudo is not available. Re-run as root.\n' >&2
+        exit 1
+    fi
+
+    # The NixOS live ISO's nixos user has passwordless sudo, so elevation
+    # happens with no prompt. Say so explicitly to avoid the "it said
+    # elevating but never asked" confusion.
+    if sudo -n true 2>/dev/null; then
+        printf '[INFO] - NDS requires root — re-running as root (sudo is passwordless).\n' >&2
+    else
+        printf '[INFO] - NDS requires root — re-running as root via sudo (enter your password if prompted).\n' >&2
+    fi
 
     local nds_vars=()
     while IFS='=' read -r name value; do
@@ -148,9 +160,32 @@ _main_stopHandler() {
             printf '%sInstallation failed (exit code %s).\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
         fi
         nds_ui_b ""
+
+        # Situation-aware: surface the tail of the install detail log so the
+        # real error (e.g. a missing binary, a cryptsetup failure) is visible
+        # without having to open the file.
+        local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+        if [[ -f "$log" ]]; then
+            nds_ui_b "Last lines of the install log:"
+            local _line
+            while IFS= read -r _line; do
+                printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
+            done < <(tail -n 12 "$log" 2>/dev/null)
+            nds_ui_b ""
+            nds_ui_i "Full log: ${log}"
+            local live_ip
+            live_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+            nds_ui_i "Copy it to your local machine with:"
+            if [[ -n "$live_ip" ]]; then
+                nds_ui_i "    scp nixos@${live_ip}:${log} ./nds_install.log"
+            else
+                nds_ui_i "    scp nixos@<live-ip>:${log} ./nds_install.log"
+            fi
+            nds_ui_b ""
+        fi
+
         nds_ui_b "What to do now:"
         nds_ui_i "Do not reboot — the target disk may be in a partial state."
-        nds_ui_i "Review the install log at ${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
         nds_ui_i "Fix the issue above, then re-run NDS from the action menu."
         nds_ui_b ""
         if [[ -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
@@ -158,9 +193,10 @@ _main_stopHandler() {
         elif [[ -n "${NDS_SECRETS_BUNDLE:-}" && -f "$NDS_SECRETS_BUNDLE" ]]; then
             nds_ui_i "Install backup preserved at: ${NDS_SECRETS_BUNDLE}"
         fi
+        # Keep the runtime dir hint (config lives there, useful for re-running);
+        # drop the secrets hint — on failure the generated secrets are useless.
         if [[ -d "${RUNTIME_DIR:-}" ]]; then
             nds_ui_i "Runtime preserved at: ${RUNTIME_DIR}"
-            [[ -d "${RUNTIME_DIR}/secrets" ]] && nds_ui_i "Secrets in: ${RUNTIME_DIR}/secrets/"
         fi
         nds_ui_b ""
         return 0
@@ -406,7 +442,7 @@ nds_import_file "${LIB_DIR}/core/import.sh" || exit 1
 _nds_elevate_to_root
 nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
 
-section_title "$SCRIPT_NAME v$SCRIPT_VERSION"
+section_title ""
 
 # Signal handlers
 trap 'newline; exit 130' SIGINT # Interrupt handler

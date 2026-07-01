@@ -20,10 +20,10 @@ action_preview() {
     nds_ui_i "bootloader and disk"
     nds_ui_b ""
     nds_ui_b "After confirmation, NDS will:"
-    nds_ui_i "partition the target disk"
-    nds_ui_i "generate configuration.nix and hardware-configuration.nix"
-    nds_ui_i "run nixos-install"
-    nds_ui_i "offer an install backup zip, then reboot"
+    nds_ui_i "1. partition the target disk (and set up LUKS2 if encryption is enabled)"
+    nds_ui_i "2. generate configuration.nix and hardware-configuration.nix"
+    nds_ui_i "3. run nixos-install (Nix downloads and builds packages)"
+    nds_ui_i "4. offer an install backup zip, then reboot"
     nds_ui_b ""
 }
 
