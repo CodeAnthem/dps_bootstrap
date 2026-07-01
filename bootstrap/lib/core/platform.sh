@@ -57,7 +57,7 @@ nds_disk_strategy_label() {
     case "$strategy" in
         nds)
             local mode
-            mode=$(nds_configurator_config_get "UEFI_MODE" 2>/dev/null || true)
+            mode=$(nds_configurator_config_get "BOOT_UEFI_MODE" 2>/dev/null || true)
             if [[ "$mode" == "true" ]]; then
                 printf 'NDS built-in partitioning (UEFI + root)'
             else

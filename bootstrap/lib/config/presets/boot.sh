@@ -24,14 +24,14 @@ boot_init() {
     nds_configurator_preset_set_display "boot" "Boot"
     nds_configurator_preset_set_priority "boot" 30
 
-    nds_configurator_var_declare UEFI_MODE \
+    nds_configurator_var_declare BOOT_UEFI_MODE \
         display="UEFI Mode" \
         input=toggle \
         required=true \
         default="$uefi_default" \
         help="Auto-detected from firmware. systemd-boot needs UEFI; GRUB works on BIOS and UEFI."
 
-    nds_configurator_var_declare BOOTLOADER \
+    nds_configurator_var_declare BOOT_LOADER \
         display="Bootloader" \
         input=choice \
         required=true \
@@ -44,15 +44,15 @@ boot_init() {
 # CONFIGURATION - Active Fields Logic
 # =============================================================================
 boot_get_active() {
-    echo "UEFI_MODE"
-    echo "BOOTLOADER"
+    echo "BOOT_UEFI_MODE"
+    echo "BOOT_LOADER"
 }
 
 boot_validate_extra() {
     local uefi bootloader
 
-    uefi=$(nds_configurator_config_get "UEFI_MODE")
-    bootloader=$(nds_configurator_config_get "BOOTLOADER")
+    uefi=$(nds_configurator_config_get "BOOT_UEFI_MODE")
+    bootloader=$(nds_configurator_config_get "BOOT_LOADER")
 
     if [[ "$uefi" != "true" && "$bootloader" == "systemd-boot" ]]; then
         validation_error "systemd-boot requires UEFI — pick GRUB or enable UEFI mode"

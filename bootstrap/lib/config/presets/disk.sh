@@ -113,20 +113,20 @@ disk_init() {
         required=false \
         help="Empty: key is raw bytes written with dd to the device (no filesystem). Set: key is a file on a mounted USB filesystem, e.g. /key.bin — NixOS mounts the USB in initrd."
 
-    nds_configurator_var_declare REMOTE_UNLOCK \
+    nds_configurator_var_declare ENCRYPTION_REMOTE_UNLOCK \
         display="Enable SSH remote unlock in initrd" \
         input=toggle \
         default=false \
         help="SSH daemon in initrd so you can unlock LUKS over the network at boot."
 
-    nds_configurator_var_declare REMOTE_UNLOCK_SSH_KEY \
+    nds_configurator_var_declare ENCRYPTION_REMOTE_SSH_KEY \
         display="Authorized SSH public key" \
         input=string \
         default="" \
         required=false \
         help="Your SSH public key (the client key that will connect to the initrd SSH server). Paste the full key, e.g. ssh-ed25519 AAAA... user@host"
 
-    nds_configurator_var_declare REMOTE_UNLOCK_NETWORK \
+    nds_configurator_var_declare ENCRYPTION_REMOTE_NETWORK \
         display="Initrd network mode" \
         input=choice \
         default="dhcp" \
@@ -146,7 +146,7 @@ disk_get_active() {
     use_key=$(nds_configurator_config_get "ENCRYPTION_KEY")
     password_auto=$(nds_configurator_config_get "ENCRYPTION_PASSWORD_AUTO")
     key_auto=$(nds_configurator_config_get "ENCRYPTION_KEY_AUTO")
-    use_remote=$(nds_configurator_config_get "REMOTE_UNLOCK")
+    use_remote=$(nds_configurator_config_get "ENCRYPTION_REMOTE_UNLOCK")
 
     echo "DISK_TARGET"
     echo "DISK_STRATEGY"
@@ -163,7 +163,7 @@ disk_get_active() {
     if [[ "$encryption" == "true" ]]; then
         echo "ENCRYPTION_PASSWORD"
         echo "ENCRYPTION_KEY"
-        echo "REMOTE_UNLOCK"
+        echo "ENCRYPTION_REMOTE_UNLOCK"
 
         if [[ "$use_password" == "true" ]]; then
             echo "ENCRYPTION_PASSWORD_AUTO"
@@ -182,8 +182,8 @@ disk_get_active() {
         fi
 
         if [[ "$use_remote" == "true" ]]; then
-            echo "REMOTE_UNLOCK_SSH_KEY"
-            echo "REMOTE_UNLOCK_NETWORK"
+            echo "ENCRYPTION_REMOTE_SSH_KEY"
+            echo "ENCRYPTION_REMOTE_NETWORK"
         fi
     fi
 }
@@ -199,7 +199,7 @@ disk_validate_extra() {
 
     use_password=$(nds_configurator_config_get "ENCRYPTION_PASSWORD")
     use_key=$(nds_configurator_config_get "ENCRYPTION_KEY")
-    use_remote=$(nds_configurator_config_get "REMOTE_UNLOCK")
+    use_remote=$(nds_configurator_config_get "ENCRYPTION_REMOTE_UNLOCK")
 
     if [[ "$use_password" != "true" && "$use_key" != "true" ]]; then
         validation_error "At least one unlock method (password or key) must be enabled"
@@ -222,14 +222,14 @@ disk_validate_extra() {
 
     if [[ "$use_remote" == "true" ]]; then
         local ssh_key
-        ssh_key=$(nds_configurator_config_get "REMOTE_UNLOCK_SSH_KEY")
+        ssh_key=$(nds_configurator_config_get "ENCRYPTION_REMOTE_SSH_KEY")
         if [[ -z "$ssh_key" ]]; then
             validation_error "Authorized SSH public key is required for remote unlock"
             return 1
         fi
 
         local net_mode
-        net_mode=$(nds_configurator_config_get "REMOTE_UNLOCK_NETWORK")
+        net_mode=$(nds_configurator_config_get "ENCRYPTION_REMOTE_NETWORK")
         if [[ "$net_mode" == "static" ]]; then
             local net_ip
             net_ip=$(nds_configurator_config_get "NETWORK_IP")

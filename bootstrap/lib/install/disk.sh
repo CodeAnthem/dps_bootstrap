@@ -29,7 +29,7 @@ _nixinstall_partition_disk() {
     local use_encryption="${2:-false}"
     local uefi_mode boot_idx root_idx
 
-    uefi_mode=$(nds_config_get "boot" "UEFI_MODE")
+    uefi_mode=$(nds_config_get "boot" "BOOT_UEFI_MODE")
     uefi_mode="${uefi_mode:-true}"
 
     # Validate disk exists

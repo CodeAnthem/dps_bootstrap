@@ -15,11 +15,11 @@
 nds_nixcfg_remoteUnlock_auto() {
     local encryption remote_unlock ssh_key net_mode
     encryption=$(nds_config_get "disk" "ENCRYPTION")
-    remote_unlock=$(nds_config_get "disk" "REMOTE_UNLOCK")
+    remote_unlock=$(nds_config_get "disk" "ENCRYPTION_REMOTE_UNLOCK")
     [[ "$encryption" == "true" && "$remote_unlock" == "true" ]] || return 0
 
-    ssh_key=$(nds_config_get "disk" "REMOTE_UNLOCK_SSH_KEY")
-    net_mode=$(nds_config_get "disk" "REMOTE_UNLOCK_NETWORK")
+    ssh_key=$(nds_config_get "disk" "ENCRYPTION_REMOTE_SSH_KEY")
+    net_mode=$(nds_config_get "disk" "ENCRYPTION_REMOTE_NETWORK")
 
     local net_block
     if [[ "$net_mode" == "static" ]]; then

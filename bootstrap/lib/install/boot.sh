@@ -17,7 +17,7 @@ _nixinstall_register_efi_entry() {
     local disk="$1"
     local uefi
 
-    uefi=$(nds_config_get "boot" "UEFI_MODE")
+    uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE")
     [[ "$uefi" == "true" ]] || return 0
 
     if [[ ! -d /sys/firmware/efi/efivars ]]; then

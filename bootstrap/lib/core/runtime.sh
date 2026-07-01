@@ -7,6 +7,9 @@
 # ==================================================================================================
 
 readonly NDS_INSTALL_LOG="/tmp/nds_session.log"
+# Verbose nix install output (nixos-install, partitioning, step exec). Kept
+# alongside the session log so all log paths live in one place.
+readonly NDS_INSTALL_DETAIL_LOG="/tmp/nds_install.log"
 
 # Setup runtime directory for config/secrets scratch space.
 # Usage: nds_runtime_init

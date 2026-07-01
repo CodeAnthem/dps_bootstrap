@@ -13,9 +13,7 @@ newline() { echo >&2; }
 logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "${1:-"  "}" "$2" >&2; }
 
 declare -g NDS_UI_QUIET=false
-# Verbose nix install output (nixos-install, partitioning, step exec). The
-# session log (events/info/warnings) is NDS_INSTALL_LOG in core/runtime.sh.
-declare -g NDS_INSTALL_DETAIL_LOG="/tmp/nds_install.log"
+# NDS_INSTALL_DETAIL_LOG lives in core/runtime.sh next to NDS_INSTALL_LOG.
 
 log() {
     if [[ "${NDS_UI_QUIET:-false}" != true ]]; then

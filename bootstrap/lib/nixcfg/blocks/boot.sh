@@ -14,8 +14,8 @@
 # Auto-mode: reads from configuration modules
 nds_nixcfg_boot_auto() {
     local bootloader uefi
-    bootloader=$(nds_config_get "boot" "BOOTLOADER")
-    uefi=$(nds_config_get "boot" "UEFI_MODE")
+    bootloader=$(nds_config_get "boot" "BOOT_LOADER")
+    uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE")
 
     _nixcfg_boot_generate "$bootloader" "$uefi"
 }

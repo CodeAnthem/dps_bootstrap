@@ -12,8 +12,8 @@ _test_reset_encryption_vars() {
     for v in ENCRYPTION ENCRYPTION_PASSWORD ENCRYPTION_PASSWORD_AUTO \
              ENCRYPTION_PASSWORD_LENGTH ENCRYPTION_KEY ENCRYPTION_KEY_AUTO \
              ENCRYPTION_KEY_LENGTH ENCRYPTION_KEY_BOOT_DEVICE \
-             ENCRYPTION_KEY_BOOT_FILE REMOTE_UNLOCK REMOTE_UNLOCK_SSH_KEY \
-             REMOTE_UNLOCK_NETWORK; do
+             ENCRYPTION_KEY_BOOT_FILE ENCRYPTION_REMOTE_UNLOCK ENCRYPTION_REMOTE_SSH_KEY \
+             ENCRYPTION_REMOTE_NETWORK; do
         unset "CONFIG_DATA[$v]"
     done
 }
@@ -40,8 +40,8 @@ suite_classic_config() {
     CONFIG_DATA[SSH_PORT]="22"
     CONFIG_DATA[SSH_PASSWORD_AUTH]="true"
     CONFIG_DATA[ADMIN_SSH_KEY]=""
-    CONFIG_DATA[BOOTLOADER]="systemd-boot"
-    CONFIG_DATA[UEFI_MODE]="true"
+    CONFIG_DATA[BOOT_LOADER]="systemd-boot"
+    CONFIG_DATA[BOOT_UEFI_MODE]="true"
 
     # Access block reads the resolved admin password from the runtime secrets dir.
     mkdir -p "$tmp_dir/secrets"
@@ -65,8 +65,8 @@ suite_classic_config() {
     output="${tmp_dir}/configuration.nix"
 
     CONFIG_DATA[DISK_TARGET]="/dev/sda"
-    CONFIG_DATA[BOOTLOADER]="systemd-boot"
-    CONFIG_DATA[UEFI_MODE]="false"
+    CONFIG_DATA[BOOT_LOADER]="systemd-boot"
+    CONFIG_DATA[BOOT_UEFI_MODE]="false"
 
     _test_reset_encryption_vars
     nds_nixcfg_build_classic_auto
@@ -87,7 +87,7 @@ suite_classic_config() {
     CONFIG_DATA[ENCRYPTION]="true"
     CONFIG_DATA[ENCRYPTION_PASSWORD]="true"
     CONFIG_DATA[ENCRYPTION_KEY]="false"
-    CONFIG_DATA[REMOTE_UNLOCK]="false"
+    CONFIG_DATA[ENCRYPTION_REMOTE_UNLOCK]="false"
 
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
@@ -109,7 +109,7 @@ suite_classic_config() {
     CONFIG_DATA[ENCRYPTION_KEY_BOOT_DEVICE]="/dev/disk/by-uuid/abcd-1234"
     CONFIG_DATA[ENCRYPTION_KEY_BOOT_FILE]=""
     CONFIG_DATA[ENCRYPTION_KEY_LENGTH]="4096"
-    CONFIG_DATA[REMOTE_UNLOCK]="false"
+    CONFIG_DATA[ENCRYPTION_REMOTE_UNLOCK]="false"
 
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
@@ -135,7 +135,7 @@ suite_classic_config() {
     CONFIG_DATA[ENCRYPTION_KEY_BOOT_DEVICE]="/dev/disk/by-uuid/abcd-1234"
     CONFIG_DATA[ENCRYPTION_KEY_BOOT_FILE]="/key.bin"
     CONFIG_DATA[ENCRYPTION_KEY_LENGTH]="4096"
-    CONFIG_DATA[REMOTE_UNLOCK]="false"
+    CONFIG_DATA[ENCRYPTION_REMOTE_UNLOCK]="false"
 
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
@@ -160,7 +160,7 @@ suite_classic_config() {
     CONFIG_DATA[ENCRYPTION_KEY_BOOT_DEVICE]="/dev/disk/by-uuid/abcd-1234"
     CONFIG_DATA[ENCRYPTION_KEY_BOOT_FILE]=""
     CONFIG_DATA[ENCRYPTION_KEY_LENGTH]="4096"
-    CONFIG_DATA[REMOTE_UNLOCK]="false"
+    CONFIG_DATA[ENCRYPTION_REMOTE_UNLOCK]="false"
 
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
@@ -180,9 +180,9 @@ suite_classic_config() {
     CONFIG_DATA[ENCRYPTION]="true"
     CONFIG_DATA[ENCRYPTION_PASSWORD]="true"
     CONFIG_DATA[ENCRYPTION_KEY]="false"
-    CONFIG_DATA[REMOTE_UNLOCK]="true"
-    CONFIG_DATA[REMOTE_UNLOCK_SSH_KEY]="ssh-ed25519 AAAAfakeKey test@host"
-    CONFIG_DATA[REMOTE_UNLOCK_NETWORK]="dhcp"
+    CONFIG_DATA[ENCRYPTION_REMOTE_UNLOCK]="true"
+    CONFIG_DATA[ENCRYPTION_REMOTE_SSH_KEY]="ssh-ed25519 AAAAfakeKey test@host"
+    CONFIG_DATA[ENCRYPTION_REMOTE_NETWORK]="dhcp"
 
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"

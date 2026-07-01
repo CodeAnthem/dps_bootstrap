@@ -18,7 +18,7 @@ nds_nixinstall_auto() {
     disk=$(nds_config_get "disk" "DISK_TARGET")
     encryption=$(nds_config_get "disk" "ENCRYPTION")
     hostname=$(nds_config_get "network" "HOSTNAME")
-    remote_unlock=$(nds_config_get "disk" "REMOTE_UNLOCK")
+    remote_unlock=$(nds_config_get "disk" "ENCRYPTION_REMOTE_UNLOCK")
     local disk_strategy
     disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
     disk_strategy="${disk_strategy:-nds}"

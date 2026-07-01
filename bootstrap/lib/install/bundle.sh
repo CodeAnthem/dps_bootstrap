@@ -197,7 +197,7 @@ _nds_install_bundle_encryption_instructions() {
     use_key=$(nds_config_get "disk" "ENCRYPTION_KEY")
     key_device=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_DEVICE")
     key_file=$(nds_config_get "disk" "ENCRYPTION_KEY_BOOT_FILE")
-    remote_unlock=$(nds_config_get "disk" "REMOTE_UNLOCK")
+    remote_unlock=$(nds_config_get "disk" "ENCRYPTION_REMOTE_UNLOCK")
 
     if [[ "$use_key" == "true" ]]; then
         nds_ui_b ""
@@ -231,7 +231,7 @@ _nds_install_bundle_encryption_instructions() {
         nds_ui_h "Remote unlock (initrd SSH)"
         nds_ui_i "Initrd SSH will be available at boot on port 22."
         local net_mode
-        net_mode=$(nds_config_get "disk" "REMOTE_UNLOCK_NETWORK")
+        net_mode=$(nds_config_get "disk" "ENCRYPTION_REMOTE_NETWORK")
         if [[ "$net_mode" == "dhcp" ]]; then
             nds_ui_i "IP is assigned by DHCP — check your router/DHCP logs for the address."
         else

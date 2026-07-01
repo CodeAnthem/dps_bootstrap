@@ -30,8 +30,8 @@ nds_preflight_install() {
     fi
 
     local uefi bootloader
-    uefi=$(nds_config_get "boot" "UEFI_MODE" 2>/dev/null || true)
-    bootloader=$(nds_config_get "boot" "BOOTLOADER" 2>/dev/null || true)
+    uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE" 2>/dev/null || true)
+    bootloader=$(nds_config_get "boot" "BOOT_LOADER" 2>/dev/null || true)
 
     if [[ "$uefi" != "true" && "$bootloader" == "systemd-boot" ]]; then
         error "systemd-boot requires UEFI — pick GRUB in Boot settings or enable UEFI mode"
