@@ -71,12 +71,33 @@ boot.initrd.network.ssh = {
 };
 boot.initrd.systemd.enable = true;
 # Without this, systemd-networkd never starts in the initrd, the NIC stays
-# down, and initrd SSH is unreachable — this is required, not optional.
+# down, and initrd SSH is unreachable - this is required, not optional.
 boot.initrd.systemd.network.enable = true;
 # Common wired NIC drivers so the initrd can bring up the network for SSH.
 # availableKernelModules merges with hardware-configuration.nix; unknown
 # modules are simply ignored.
 boot.initrd.availableKernelModules = [ "e1000" "e1000e" "vmxnet3" "virtio_net" "r8169" "igb" "ixgbe" "tg3" ];
+# Print the address + a connect hint to the console once the network is up, so
+# the remote-unlock IP is visible instead of having to be guessed. Best-effort
+# and non-blocking: if it fails, unlocking still works.
+boot.initrd.systemd.initrdBin = [ pkgs.iproute2 ];
+boot.initrd.systemd.services.nds-show-ip = {
+  description = "Show IP address for remote LUKS unlock";
+  wantedBy = [ "initrd.target" ];
+  after = [ "systemd-networkd-wait-online.service" ];
+  wants = [ "systemd-networkd-wait-online.service" ];
+  unitConfig.DefaultDependencies = false;
+  serviceConfig = {
+    Type = "oneshot";
+    RemainAfterExit = true;
+    StandardOutput = "journal+console";
+    StandardError = "journal+console";
+    ExecStart = [
+      "\${pkgs.coreutils}/bin/echo '>>> Remote LUKS unlock ready. SSH to root@ the address below and enter the passphrase:'"
+      "\${pkgs.iproute2}/bin/ip -4 -brief address show scope global"
+    ];
+  };
+};
 ${net_block}
 EOF
 )

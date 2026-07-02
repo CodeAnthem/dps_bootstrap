@@ -1,6 +1,6 @@
 # Nix Deploy System (NDS)
 
-[![Version](https://img.shields.io/badge/version-5.0.8-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
+[![Version](https://img.shields.io/badge/version-5.0.9-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 [![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)
@@ -135,6 +135,8 @@ Post-install details live in each action's guide (kept out of this README to avo
 - **classicInstall** — [first login & remote unlock](actions/classicInstall/README.md#after-install)
 - **installFlake** — your flake owns users, services and unlocking; see [installFlake](actions/installFlake/README.md)
 - **remoteAction** — see [remoteAction](actions/remoteAction/README.md)
+
+Topic guides live in [`docs/`](docs/) (e.g. [remote unlock](docs/remote-unlock.md)).
 
 ---
 

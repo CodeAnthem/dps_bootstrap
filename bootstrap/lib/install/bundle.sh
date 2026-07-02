@@ -209,10 +209,10 @@ Before the disk is decrypted, a tiny SSH server runs so you can unlock over the 
 - ${ip_note}
 - The initrd host key is in \`secrets/initrd_ssh_host_ed25519_key\`.
 
-Unlock from your PC - use the **private** key matching the authorized key you provided:
+Unlock from your PC with your unlock key (\`~/.ssh/nixos-unlock\` in the guide):
 
 \`\`\`bash
-ssh -i <your-private-key> root@${unlock_ip}
+ssh -i ~/.ssh/nixos-unlock root@${unlock_ip}
 # the LUKS passphrase prompt appears automatically; type it and the machine boots
 \`\`\`
 
@@ -227,6 +227,7 @@ EOF
 
 Online docs: https://github.com/CodeAnthem/dps_bootstrap
 Classic install guide: https://github.com/CodeAnthem/dps_bootstrap/blob/main/actions/classicInstall/README.md
+Remote unlock guide: https://github.com/CodeAnthem/dps_bootstrap/blob/main/docs/remote-unlock.md
 EOF
     } > "$dest"
 }

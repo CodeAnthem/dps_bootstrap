@@ -11,15 +11,19 @@
 # ENCRYPTION SETUP
 # =============================================================================
 
-# Description: Generate exactly N random lowercase-hex characters from
-# /dev/urandom (openssl-free; the NixOS live ISO does not ship openssl by
-# default). Reads ceil(N/2) bytes and truncates to N chars, so the requested
-# length is the actual character count.
+# Description: Generate exactly N random alphanumeric characters (A-Za-z0-9)
+# from /dev/urandom (openssl-free; the NixOS live ISO ships no openssl). A 62
+# symbol alphabet gives ~5.95 bits/char, so N=32 is ~190 bits — far stronger
+# than the same length in hex. Reads a generous buffer via process
+# substitution (no pipe, so `set -o pipefail` cannot trip on SIGPIPE) and
+# truncates to N. Alphanumeric only, so it is safe on cryptsetup stdin and in
+# shell contexts.
 # Usage: _nds_urandom_chars <char_count>
 _nds_urandom_chars() {
     local n="$1"
-    local bytes=$(( (n + 1) / 2 ))
-    od -An -tx1 -v -N "$bytes" /dev/urandom | tr -d ' \n' | cut -c1-"$n"
+    local raw
+    raw=$(LC_ALL=C tr -dc 'A-Za-z0-9' < <(head -c "$(( n * 8 + 128 ))" /dev/urandom))
+    printf '%s' "${raw:0:n}"
 }
 
 # Description: Generate or collect unlock secrets (password and/or keyfile)

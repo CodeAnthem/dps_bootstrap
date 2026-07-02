@@ -2,13 +2,18 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
 declare -gA CONFIG_DATA=()
+declare -gA CONFIG_DEFAULTS=()
 declare -gA PRESET_REGISTRY=()
 declare -gA PRESET_META=()
+
+# Keys always shown in the concise export even when unchanged, because they are
+# auto-detected (not typed by the user) and useful to pin for a repeat install.
+_NDS_EXPORT_ALWAYS="DISK_TARGET BOOT_UEFI_MODE BOOT_LOADER RUN_ON_VM VM_TYPE"
 
 # =============================================================================
 # CONFIG ACCESS
@@ -49,11 +54,54 @@ nds_configurator_config_get_env() {
     fi
 }
 
+# Full export: every config value. Used for the install backup bundle so a
+# future run can reproduce the machine exactly.
 nds_configurator_config_export_script() {
     local varname
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
         echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
+    done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
+}
+
+# Snapshot the seeded defaults so the concise export can tell what the user
+# actually changed. Call after presets seed defaults, before env/menu edits.
+nds_config_snapshot_defaults() {
+    CONFIG_DEFAULTS=()
+    local k
+    for k in "${!CONFIG_DATA[@]}"; do
+        CONFIG_DEFAULTS["$k"]="${CONFIG_DATA[$k]}"
+    done
+}
+
+_nds_export_is_always() {
+    local key="$1" a
+    for a in $_NDS_EXPORT_ALWAYS; do
+        [[ "$key" == "$a" ]] && return 0
+    done
+    return 1
+}
+
+# Concise export: only values that differ from their seeded default (i.e. what
+# the user actually set), plus the auto-detected essentials. Used for the
+# on-screen export block so it isn't cluttered with untouched defaults.
+nds_configurator_config_export_modified() {
+    local varname cur def
+    while IFS= read -r varname; do
+        [[ -n "$varname" ]] || continue
+        cur="${CONFIG_DATA[$varname]}"
+        if _nds_export_is_always "$varname"; then
+            [[ -n "$cur" ]] && echo "export NDS_${varname}=\"${cur}\""
+            continue
+        fi
+        # Unchanged from default -> skip.
+        if [[ -v CONFIG_DEFAULTS[$varname] ]]; then
+            def="${CONFIG_DEFAULTS[$varname]}"
+            [[ "$cur" == "$def" ]] && continue
+        fi
+        # Never seeded and still empty -> nothing worth exporting.
+        [[ -z "$cur" ]] && continue
+        echo "export NDS_${varname}=\"${cur}\""
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 }
 
@@ -149,11 +197,12 @@ nds_configurator_print_config_backup() {
     local line
     section_header "Configuration export"
     nds_ui_b "If you plan to finish installation, you do not need to copy anything here."
-    nds_ui_b "NDS includes this configuration in the install backup zip when installation completes."
+    nds_ui_b "NDS includes the full configuration in the install backup zip when installation completes."
+    nds_ui_b "Below are only the values you changed (plus auto-detected disk/boot essentials):"
     nds_ui_b ""
     while IFS= read -r line; do
         nds_ui_i "$line"
-    done < <(nds_configurator_config_export_script)
+    done < <(nds_configurator_config_export_modified)
     nds_ui_b ""
 }
 

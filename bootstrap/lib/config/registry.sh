@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration registry & preset loading
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # Description:   Load presets, seed defaults, validate/configure dispatch
 # ==================================================================================================
 
@@ -32,6 +32,7 @@ nds_config_seed_defaults() {
             "${preset}_defaults"
         fi
     done < <(nds_configurator_preset_get_all_enabled)
+    nds_config_snapshot_defaults
     nds_config_apply_env
 }
 
