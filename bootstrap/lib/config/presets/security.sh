@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Security preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # ==================================================================================================
 
 security_defaults() {
@@ -26,8 +26,12 @@ security_configure() {
 
 security_summary() {
     nds_cfg_summary_row "Secure Boot" "$(nds_cfg_display_toggle "$(nds_cfg_get SECURITY_SECURE_BOOT)")"
+    if nds_cfg_true SECURITY_SECURE_BOOT; then
+        nds_cfg_summary_row "Secure Boot method" "$(nds_cfg_get SECURITY_SECURE_BOOT_METHOD)"
+    fi
     nds_cfg_summary_row "Firewall" "$(nds_cfg_display_toggle "$(nds_cfg_get SECURITY_FIREWALL_ENABLE)")"
     nds_cfg_summary_row "Hardening" "$(nds_cfg_display_toggle "$(nds_cfg_get SECURITY_HARDENING_ENABLE)")"
+    nds_cfg_summary_row "Fail2Ban" "$(nds_cfg_display_toggle "$(nds_cfg_get SECURITY_FAIL2BAN_ENABLE)")"
 }
 
 security_validate() {

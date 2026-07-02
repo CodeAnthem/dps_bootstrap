@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Encryption preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # ==================================================================================================
 
 encryption_defaults() {
@@ -59,9 +59,33 @@ encryption_configure() {
 encryption_summary() {
     nds_cfg_summary_row "Encryption" "$(nds_cfg_display_toggle "$(nds_cfg_get ENCRYPTION)")"
     nds_cfg_true ENCRYPTION || return 0
+
     nds_cfg_summary_row "Password" "$(nds_cfg_display_toggle "$(nds_cfg_get ENCRYPTION_PASSWORD)")"
+    if nds_cfg_true ENCRYPTION_PASSWORD; then
+        if nds_cfg_true ENCRYPTION_PASSWORD_AUTO; then
+            nds_cfg_summary_row "Password length" "$(nds_cfg_get ENCRYPTION_PASSWORD_LENGTH) chars (auto-generated)"
+        else
+            nds_cfg_summary_row "Password source" "manual entry"
+        fi
+    fi
+
     nds_cfg_summary_row "USB key" "$(nds_cfg_display_toggle "$(nds_cfg_get ENCRYPTION_KEY)")"
+    if nds_cfg_true ENCRYPTION_KEY; then
+        if nds_cfg_true ENCRYPTION_KEY_AUTO; then
+            nds_cfg_summary_row "Key length" "$(nds_cfg_get ENCRYPTION_KEY_LENGTH) bytes (auto-generated)"
+        fi
+        nds_cfg_summary_row "USB device" "$(nds_cfg_get ENCRYPTION_KEY_BOOT_DEVICE)"
+        local kf; kf=$(nds_cfg_get ENCRYPTION_KEY_BOOT_FILE)
+        nds_cfg_summary_row "Key file" "${kf:-(raw device)}"
+    fi
+
     nds_cfg_summary_row "Remote unlock" "$(nds_cfg_display_toggle "$(nds_cfg_get ENCRYPTION_REMOTE_UNLOCK)")"
+    if nds_cfg_true ENCRYPTION_REMOTE_UNLOCK; then
+        local rk; rk=$(nds_cfg_get ENCRYPTION_REMOTE_SSH_KEY)
+        nds_cfg_summary_row "Authorized key" "$([[ -n "$rk" ]] && echo set || echo "(not set)")"
+        nds_cfg_summary_row "Initrd network" "$(nds_cfg_display_choice "$(nds_cfg_get ENCRYPTION_REMOTE_NETWORK)" "dhcp=DHCP|static=Static IP")"
+        nds_cfg_summary_row "Unlock SSH port" "$(nds_cfg_get ENCRYPTION_REMOTE_PORT)"
+    fi
 }
 
 encryption_prompt_errors() {

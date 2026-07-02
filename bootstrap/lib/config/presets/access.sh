@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Access preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # ==================================================================================================
 
 access_defaults() {
@@ -37,9 +37,17 @@ access_configure() {
 
 access_summary() {
     nds_cfg_summary_row "Admin user" "$(nds_cfg_get ACCESS_ADMIN_USER)"
-    nds_cfg_summary_row "Auto-generate password" "$(nds_cfg_display_toggle "$(nds_cfg_get ACCESS_ADMIN_PASSWORD_AUTO)")"
+    if nds_cfg_true ACCESS_ADMIN_PASSWORD_AUTO; then
+        nds_cfg_summary_row "Admin password" "$(nds_cfg_get ACCESS_ADMIN_PASSWORD_LENGTH) chars (auto-generated)"
+    else
+        nds_cfg_summary_row "Admin password" "manual entry"
+    fi
+    local ak; ak=$(nds_cfg_get ACCESS_ADMIN_SSH_KEY)
+    nds_cfg_summary_row "Admin SSH key" "$([[ -n "$ak" ]] && echo set || echo "(none)")"
+    nds_cfg_summary_row "Sudo needs password" "$(nds_cfg_display_toggle "$(nds_cfg_get ACCESS_SUDO_PASSWORD_REQUIRED)")"
     nds_cfg_summary_row "SSH" "$(nds_cfg_display_toggle "$(nds_cfg_get ACCESS_SSH_ENABLE)")"
     if nds_cfg_true ACCESS_SSH_ENABLE; then
+        nds_cfg_summary_row "SSH port" "$(nds_cfg_get ACCESS_SSH_PORT)"
         nds_cfg_summary_row "SSH password login" "$(nds_cfg_display_toggle "$(nds_cfg_get ACCESS_SSH_PASSWORD_AUTH)")"
     fi
 }

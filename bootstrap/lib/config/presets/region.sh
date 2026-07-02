@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Region preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # ==================================================================================================
 
 region_defaults() {
@@ -25,7 +25,12 @@ region_configure() {
 region_summary() {
     nds_cfg_summary_row "Timezone" "$(nds_cfg_get REGION_TIMEZONE)"
     nds_cfg_summary_row "Locale" "$(nds_cfg_get REGION_LOCALE_MAIN)"
+    local extra; extra=$(nds_cfg_get REGION_LOCALE_EXTRA)
+    [[ -n "$extra" ]] && nds_cfg_summary_row "Extra locales" "$extra"
     nds_cfg_summary_row "Keyboard" "$(nds_cfg_get REGION_KEYBOARD_LAYOUT)"
+    local kv; kv=$(nds_cfg_get REGION_KEYBOARD_VARIANT)
+    [[ -n "$kv" ]] && nds_cfg_summary_row "Keyboard variant" "$kv"
+    return 0
 }
 
 region_validate() {

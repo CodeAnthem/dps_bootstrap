@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Disk preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # ==================================================================================================
 
 disk_defaults() {
@@ -30,6 +30,13 @@ disk_configure() {
 disk_summary() {
     nds_cfg_summary_row "Target disk" "$(nds_cfg_get DISK_TARGET)"
     nds_cfg_summary_row "Partitioning" "$(nds_cfg_display_choice "$(nds_cfg_get DISK_STRATEGY)" "nds=NDS built-in|disko=Disko|flake=Flake owns disk")"
+    if nds_cfg_is DISK_STRATEGY disko; then
+        nds_cfg_summary_row "Root filesystem" "$(nds_cfg_get DISK_FS_TYPE)"
+        nds_cfg_summary_row "Swap (MiB)" "$(nds_cfg_get DISK_SWAP_SIZE_MIB)"
+        local dc; dc=$(nds_cfg_get DISK_DISKO_CONFIG)
+        [[ -n "$dc" ]] && nds_cfg_summary_row "Disko config" "$dc"
+    fi
+    return 0
 }
 
 disk_prompt_errors() {
