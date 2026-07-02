@@ -53,6 +53,18 @@ nds_config_preset_configure() {
     return 0
 }
 
+nds_config_preset_prompt_errors() {
+    local preset="$1"
+    if declare -f "${preset}_prompt_errors" &>/dev/null; then
+        "${preset}_prompt_errors"
+        return $?
+    fi
+    if ! nds_config_preset_validate "$preset" 2>/dev/null; then
+        nds_config_preset_configure "$preset"
+    fi
+    return 0
+}
+
 nds_config_preset_summary() {
     local preset="$1" number="${2:-}"
     local display header

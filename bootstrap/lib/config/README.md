@@ -20,6 +20,7 @@ Each preset in `presets/*.sh` defines:
 
 - `${name}_defaults` — seed `CONFIG_DATA`
 - `${name}_configure` — explicit prompt flow (`nds_cfg_ask_*`)
+- `${name}_prompt_errors` — wizard: only prompts fields that fail validation
 - `${name}_summary` — menu summary lines
 - `${name}_validate` — cross-field checks
 - `NDS_PRESET_PRIORITY` / `NDS_PRESET_DISPLAY` at file end (registry calls `nds_preset_register`)

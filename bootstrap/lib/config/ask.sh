@@ -147,18 +147,7 @@ nds_cfg_ask_int() {
 nds_cfg_ask_choice() {
     local var="$1" label="$2" options="$3" labels="${4:-}" default="${5:-}"
     [[ -n "$(nds_cfg_get "$var")" ]] || nds_cfg_set "$var" "$default"
-    local hint value current display pair opt lbl
-    if [[ -n "$labels" ]]; then
-        hint="("
-        IFS='|' read -ra pairs <<< "$labels"
-        for pair in "${pairs[@]}"; do
-            opt="${pair%%=*}"; lbl="${pair#*=}"
-            hint+="${opt}=${lbl}, "
-        done
-        hint="${hint%, })"
-    else
-        hint="(${options//|/, })"
-    fi
+    local hint="(${options//|/, })" value current display
     current=$(nds_cfg_get "$var")
     while true; do
         display=$(nds_cfg_display_choice "$current" "$labels")
@@ -196,15 +185,14 @@ nds_cfg_ask_hostname() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(lowercase)" "$required") || continue
+        value=$(_nds_cfg_prompt_value "$var" "$label" "" "$required") || continue
         [[ -z "$value" ]] && return 0
-        value="${value,,}"
         if validate_hostname "$value"; then
             nds_cfg_set "$var" "$value"
             [[ "$current" != "$value" ]] && nds_ui_b "  -> Set: $value"
             return 0
         fi
-        nds_ui_b "  Error: Invalid hostname"
+        nds_ui_b "  Error: $(error_msg_hostname)"
     done
 }
 

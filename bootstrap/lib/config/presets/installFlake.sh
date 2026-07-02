@@ -40,6 +40,25 @@ installFlake_summary() {
     nds_cfg_summary_row "Host name" "$(nds_cfg_get FLAKE_HOST)"
 }
 
+installFlake_prompt_errors() {
+    nds_cfg_section_title "Your flake"
+    while ! installFlake_validate &>/dev/null; do
+        if nds_cfg_is FLAKE_SOURCE remote && [[ -z "$(nds_cfg_get FLAKE_REPO_URL)" ]]; then
+            nds_cfg_ask_url FLAKE_REPO_URL "Remote flake Git URL" "" true
+            continue
+        fi
+        if nds_cfg_is FLAKE_SOURCE local && [[ -z "$(nds_cfg_get FLAKE_LOCAL_PATH)" ]]; then
+            nds_cfg_ask_path FLAKE_LOCAL_PATH "Local flake path" "" true
+            continue
+        fi
+        if [[ -z "$(nds_cfg_get FLAKE_HOST)" ]] || ! validate_hostname "$(nds_cfg_get FLAKE_HOST)" 2>/dev/null; then
+            nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+            continue
+        fi
+        break
+    done
+}
+
 installFlake_validate() {
     if nds_cfg_is FLAKE_SOURCE remote && [[ -z "$(nds_cfg_get FLAKE_REPO_URL)" ]]; then
         validation_error "Remote flake Git URL is required"
@@ -50,6 +69,10 @@ installFlake_validate() {
         return 1
     fi
     [[ -n "$(nds_cfg_get FLAKE_HOST)" ]] || { validation_error "Host name is required"; return 1; }
+    validate_hostname "$(nds_cfg_get FLAKE_HOST)" || {
+        validation_error "$(error_msg_hostname)"
+        return 1
+    }
     return 0
 }
 

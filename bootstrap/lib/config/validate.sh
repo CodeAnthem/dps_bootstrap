@@ -34,6 +34,10 @@ validate_hostname() {
     [[ "$hostname" =~ $hostname_regex ]]
 }
 
+error_msg_hostname() {
+    echo "Invalid hostname (2-63 chars, lowercase alphanumeric, hyphens allowed in middle)"
+}
+
 validate_username() {
     local username="$1"
     [[ ${#username} -ge 2 ]] || return 1

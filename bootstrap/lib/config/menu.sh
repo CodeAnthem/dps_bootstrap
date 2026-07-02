@@ -31,10 +31,7 @@ nds_configurator_prompt_errors() {
     section_header "Required fields"
     for preset in "${presets[@]}"; do
         if ! nds_config_preset_validate "$preset" 2>/dev/null; then
-            section_header "$(nds_configurator_preset_get_display "$preset") Configuration"
-            nds_ui_b "Press ENTER to keep current value, or type a new value"
-            nds_ui_b ""
-            nds_config_preset_configure "$preset"
+            nds_config_preset_prompt_errors "$preset"
         fi
     done
 }

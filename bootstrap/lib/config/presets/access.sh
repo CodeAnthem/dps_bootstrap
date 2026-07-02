@@ -44,6 +44,21 @@ access_summary() {
     fi
 }
 
+access_prompt_errors() {
+    nds_cfg_section_title "Access"
+    while ! access_validate &>/dev/null; do
+        if nds_cfg_is ADMIN_PASSWORD_AUTO false && [[ -z "$(nds_cfg_get ADMIN_PASSWORD)" ]]; then
+            nds_cfg_ask_secret ADMIN_PASSWORD "Admin password" 12 true
+            continue
+        fi
+        if nds_cfg_true SSH_ENABLE && nds_cfg_is SSH_PASSWORD_AUTH false && [[ -z "$(nds_cfg_get ADMIN_SSH_KEY)" ]]; then
+            nds_cfg_ask_string ADMIN_SSH_KEY "Admin SSH public key" "" true
+            continue
+        fi
+        break
+    done
+}
+
 access_validate() {
     if nds_cfg_is ADMIN_PASSWORD_AUTO false && [[ -z "$(nds_cfg_get ADMIN_PASSWORD)" ]]; then
         validation_error "Admin password is required when auto-generate is off"

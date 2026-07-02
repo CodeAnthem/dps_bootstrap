@@ -29,9 +29,28 @@ remoteAction_summary() {
     nds_cfg_summary_row "Hardware" "$(nds_cfg_get HARDWARE_PLACEMENT)"
 }
 
+remoteAction_prompt_errors() {
+    nds_cfg_section_title "Remote flake action"
+    while ! remoteAction_validate &>/dev/null; do
+        if [[ -z "$(nds_cfg_get FLAKE_REPO_URL)" ]]; then
+            nds_cfg_ask_url FLAKE_REPO_URL "Remote flake Git URL" "" true
+            continue
+        fi
+        if [[ -z "$(nds_cfg_get FLAKE_HOST)" ]] || ! validate_hostname "$(nds_cfg_get FLAKE_HOST)" 2>/dev/null; then
+            nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+            continue
+        fi
+        break
+    done
+}
+
 remoteAction_validate() {
     [[ -n "$(nds_cfg_get FLAKE_REPO_URL)" ]] || { validation_error "Remote flake Git URL is required"; return 1; }
     [[ -n "$(nds_cfg_get FLAKE_HOST)" ]] || { validation_error "Host name is required"; return 1; }
+    validate_hostname "$(nds_cfg_get FLAKE_HOST)" || {
+        validation_error "$(error_msg_hostname)"
+        return 1
+    }
     return 0
 }
 

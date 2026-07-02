@@ -15,4 +15,5 @@ test_hostname() {
     assert_invalid "hostname" "in_valid"
     assert_invalid "hostname" "a"         # Too short
     assert_invalid "hostname" "UPPERCASE"
+    assert_invalid "hostname" "123VM"
 }

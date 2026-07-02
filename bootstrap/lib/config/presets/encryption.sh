@@ -60,6 +60,25 @@ encryption_summary() {
     nds_cfg_summary_row "Remote unlock" "$(nds_cfg_display_toggle "$(nds_cfg_get ENCRYPTION_REMOTE_UNLOCK)")"
 }
 
+encryption_prompt_errors() {
+    nds_cfg_section_title "Encryption"
+    while ! encryption_validate &>/dev/null; do
+        if ! nds_cfg_true ENCRYPTION_PASSWORD && ! nds_cfg_true ENCRYPTION_KEY; then
+            nds_cfg_ask_toggle ENCRYPTION_PASSWORD "Use password" true
+            continue
+        fi
+        if nds_cfg_true ENCRYPTION_KEY && [[ -z "$(nds_cfg_get ENCRYPTION_KEY_BOOT_DEVICE)" ]]; then
+            nds_cfg_ask_string ENCRYPTION_KEY_BOOT_DEVICE "USB device path at boot" "" true
+            continue
+        fi
+        if nds_cfg_true ENCRYPTION_REMOTE_UNLOCK && [[ -z "$(nds_cfg_get ENCRYPTION_REMOTE_SSH_KEY)" ]]; then
+            nds_cfg_ask_string ENCRYPTION_REMOTE_SSH_KEY "Authorized SSH public key" "" true
+            continue
+        fi
+        break
+    done
+}
+
 encryption_validate() {
     nds_cfg_true ENCRYPTION || return 0
 

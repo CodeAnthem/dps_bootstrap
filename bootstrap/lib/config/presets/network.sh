@@ -38,6 +38,33 @@ network_summary() {
     nds_cfg_summary_row "Primary DNS" "$(nds_cfg_get NETWORK_DNS_PRIMARY)"
 }
 
+network_prompt_errors() {
+    nds_cfg_section_title "Network"
+    while ! network_validate &>/dev/null; do
+        local hostname
+        hostname=$(nds_cfg_get HOSTNAME)
+        if [[ -z "$hostname" ]] || ! validate_hostname "$hostname" 2>/dev/null; then
+            nds_cfg_ask_hostname HOSTNAME "Hostname" "" true
+            continue
+        fi
+        if nds_cfg_is NETWORK_METHOD static; then
+            if [[ -z "$(nds_cfg_get NETWORK_IP)" ]] || ! validate_ip "$(nds_cfg_get NETWORK_IP)" 2>/dev/null; then
+                nds_cfg_ask_ip NETWORK_IP "IP address" "" true
+                continue
+            fi
+            if [[ -z "$(nds_cfg_get NETWORK_MASK)" ]] || ! validate_mask "$(nds_cfg_get NETWORK_MASK)" 2>/dev/null; then
+                nds_cfg_ask_mask NETWORK_MASK "Network mask" "255.255.255.0"
+                continue
+            fi
+            if [[ -z "$(nds_cfg_get NETWORK_GATEWAY)" ]] || ! validate_ip "$(nds_cfg_get NETWORK_GATEWAY)" 2>/dev/null; then
+                nds_cfg_ask_ip NETWORK_GATEWAY "Gateway" "" true
+                continue
+            fi
+        fi
+        break
+    done
+}
+
 network_validate() {
     local hostname
     hostname=$(nds_cfg_get HOSTNAME)
@@ -46,7 +73,7 @@ network_validate() {
         return 1
     fi
     validate_hostname "$hostname" || {
-        validation_error "Invalid hostname"
+        validation_error "$(error_msg_hostname)"
         return 1
     }
 

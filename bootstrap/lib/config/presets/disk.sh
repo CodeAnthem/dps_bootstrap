@@ -32,6 +32,17 @@ disk_summary() {
     nds_cfg_summary_row "Partitioning" "$(nds_cfg_display_choice "$(nds_cfg_get DISK_STRATEGY)" "nds=NDS built-in|disko=Disko|flake=Flake owns disk")"
 }
 
+disk_prompt_errors() {
+    nds_cfg_section_title "Disk"
+    while ! disk_validate &>/dev/null; do
+        if [[ -z "$(nds_cfg_get DISK_TARGET)" ]] || ! validate_disk "$(nds_cfg_get DISK_TARGET)" 2>/dev/null; then
+            nds_cfg_ask_disk DISK_TARGET "Target disk"
+            continue
+        fi
+        break
+    done
+}
+
 disk_validate() {
     [[ -n "$(nds_cfg_get DISK_TARGET)" ]] || { validation_error "Target disk is required"; return 1; }
     validate_disk "$(nds_cfg_get DISK_TARGET)" || { validation_error "Invalid target disk"; return 1; }
