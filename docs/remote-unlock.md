@@ -32,28 +32,44 @@ so the connection drops you **straight into the passphrase prompt**.
 ## Make an unlock key on your PC
 
 Use a **dedicated** key for unlocking (not your everyday `id_ed25519`). The
-canonical name in these docs is **`nixos-unlock`**. On the machine you connect
-**from** (Linux, macOS, Windows 10+, WSL):
+canonical name in these docs is **`nixos-unlock`**.
+
+**Linux / macOS / WSL:**
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/nixos-unlock
-```
-
-On Windows the path is e.g. `C:\Users\you\.ssh\nixos-unlock`. Leave the passphrase
-empty for unattended use, or set one for extra safety.
-
-Print the **public** key (note the `.pub`) and copy the whole line:
-
-```bash
 cat ~/.ssh/nixos-unlock.pub
-# Windows: type C:\Users\you\.ssh\nixos-unlock.pub
 ```
 
-It looks like `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... you@yourpc`. Paste **that
-full line** into the "Authorized SSH public key" prompt.
+**Windows (cmd.exe / PowerShell):** use `%USERPROFILE%` and backslashes - `~/`
+does not work here (see the note below).
+
+```bat
+ssh-keygen -t ed25519 -f "%USERPROFILE%\.ssh\nixos-unlock"
+type "%USERPROFILE%\.ssh\nixos-unlock.pub"
+```
+
+Leave the passphrase empty for unattended use, or set one for extra safety.
+
+The `.pub` line looks like `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... you@yourpc`.
+Paste **that full line** into the "Authorized SSH public key" prompt.
 
 > The `SHA256:...` line ssh-keygen prints is only a **fingerprint** (a hash for
 > visual ID) - it is **not** the key and will not work.
+
+### Why `~/` works for `ssh` but not `ssh-keygen`/`type` on Windows
+
+`cmd.exe` and PowerShell do **not** expand `~` - that's a Unix-shell feature. It
+looks inconsistent because:
+
+- `ssh -i ~/.ssh/nixos-unlock ...` **works**: the OpenSSH **client** expands a
+  leading `~/` in its identity-file argument itself.
+- `ssh-keygen -f ~/.ssh/nixos-unlock` **fails**: ssh-keygen writes the `-f` path
+  **literally**, so it tries to create a folder actually named `~` and reports
+  `No such file or directory`.
+- `type ~/.ssh/...` **fails**: `type` is a shell builtin that never expands `~`.
+
+On Windows, always pass a real path: `"%USERPROFILE%\.ssh\nixos-unlock"`.
 
 ### Reuse vs. per-machine
 
@@ -71,6 +87,7 @@ When the machine reaches the LUKS prompt (watch the console for the address):
 
 ```bash
 ssh -i ~/.ssh/nixos-unlock root@<machine-ip>
+# Windows also accepts:  ssh -i "%USERPROFILE%\.ssh\nixos-unlock" root@<machine-ip>
 # the passphrase prompt appears automatically; type it and the machine boots
 ```
 

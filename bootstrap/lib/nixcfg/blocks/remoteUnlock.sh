@@ -65,8 +65,12 @@ boot.initrd.network.ssh = {
   enable = true;
   port = 22;
   # command="systemctl default" makes the SSH login run the unlock prompt
-  # directly instead of dropping into an initrd shell.
-  authorizedKeys = [ ''command="systemctl default" ${ssh_key}'' ];
+  # directly instead of dropping into an initrd shell. stderr is dropped to
+  # silence the harmless "Failed to connect to system scope bus via local
+  # transport" notice: there is no D-Bus daemon in the initrd, so systemctl
+  # falls back to systemd's private socket - the passphrase prompt (written to
+  # the tty, not stderr) still appears and unlocking works.
+  authorizedKeys = [ ''command="systemctl default 2>/dev/null" ${ssh_key}'' ];
   hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
 };
 boot.initrd.systemd.enable = true;

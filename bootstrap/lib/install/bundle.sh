@@ -209,11 +209,24 @@ Before the disk is decrypted, a tiny SSH server runs so you can unlock over the 
 - ${ip_note}
 - The initrd host key is in \`secrets/initrd_ssh_host_ed25519_key\`.
 
-Unlock from your PC with your unlock key (\`~/.ssh/nixos-unlock\` in the guide):
+Unlock from your PC with the private key whose public key you authorized
+(\`nixos-unlock\` in the guide):
 
 \`\`\`bash
+# Linux / macOS / WSL
 ssh -i ~/.ssh/nixos-unlock root@${unlock_ip}
-# the LUKS passphrase prompt appears automatically; type it and the machine boots
+
+# Windows (cmd.exe / PowerShell) - use %USERPROFILE%, ~/ is not expanded there
+ssh -i "%USERPROFILE%\.ssh\nixos-unlock" root@${unlock_ip}
+\`\`\`
+
+The LUKS passphrase prompt appears automatically; type it and the machine boots.
+
+Need to create that key first? On Windows:
+
+\`\`\`bat
+ssh-keygen -t ed25519 -f "%USERPROFILE%\.ssh\nixos-unlock"
+type "%USERPROFILE%\.ssh\nixos-unlock.pub"
 \`\`\`
 
 The safety net is always the **LUKS passphrase** - you can unlock at the physical/VM
