@@ -80,7 +80,7 @@ nds_cfg_ask_toggle() {
             fi
             return 0
         fi
-        nds_ui_b "  Error: Enter yes, no, true, false, enabled, or disabled"
+        nds_ui_b "  Error: $(error_msg_toggle)"
     done
 }
 

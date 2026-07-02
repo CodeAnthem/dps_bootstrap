@@ -74,6 +74,14 @@ validate_choice() {
     return 1
 }
 
+validate_toggle() {
+    [[ "${1,,}" =~ ^(true|false|enabled|disabled|yes|no|y|n|1|0)$ ]]
+}
+
+error_msg_toggle() {
+    echo "Enter yes, no, true, false, enabled, or disabled"
+}
+
 validate_path() {
     local path="$1"
     [[ "$path" =~ ^(/|~|\.) ]]
