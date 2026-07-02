@@ -83,11 +83,14 @@ boot.initrd.systemd.network.enable = true;
 # availableKernelModules merges with hardware-configuration.nix; unknown
 # modules are simply ignored.
 boot.initrd.availableKernelModules = [ "e1000" "e1000e" "vmxnet3" "virtio_net" "r8169" "igb" "ixgbe" "tg3" ];
-# Print a single clean, colored connect hint to the console once the network is
-# up, so the remote-unlock address is visible instead of having to be guessed.
-# Writes straight to /dev/console (StandardOutput = null) so systemd does not
-# prefix it with "nds-show-ip[pid]:". Best-effort and non-blocking.
-boot.initrd.systemd.storePaths = [ pkgs.iproute2 pkgs.gawk ];
+# Print a single colored connect hint once the network is up, so the
+# remote-unlock address is visible instead of having to be guessed. Routed via
+# systemd's console (StandardOutput = journal+console) because that is the
+# channel that reliably reaches the visible VT - a manual "> /dev/console"
+# redirect can land on a different console (e.g. serial) and show nothing.
+# systemd tags the line with "nds-show-ip:"; that is the trade-off for it
+# actually appearing. Best-effort and non-blocking.
+boot.initrd.systemd.initrdBin = [ pkgs.iproute2 pkgs.gawk ];
 boot.initrd.systemd.services.nds-show-ip = {
   description = "Show IP address for remote LUKS unlock";
   wantedBy = [ "initrd.target" ];
@@ -97,11 +100,11 @@ boot.initrd.systemd.services.nds-show-ip = {
   serviceConfig = {
     Type = "oneshot";
     RemainAfterExit = true;
-    StandardOutput = "null";
-    StandardError = "journal";
+    StandardOutput = "journal+console";
+    StandardError = "journal+console";
     ExecStart = pkgs.writeShellScript "nds-show-ip" ''
       ip="\$(\${pkgs.iproute2}/bin/ip -4 -brief address show scope global | \${pkgs.gawk}/bin/awk 'NR==1 {sub(/\/.*/, "", \$3); print \$3}')"
-      printf '\n\033[1;35m>>> Remote LUKS unlock:  ssh -p ${remote_port} root@%s\033[0m\n\n' "\$ip" > /dev/console
+      printf '\n\033[1;35m>>> Remote LUKS unlock:  ssh -p ${remote_port} root@%s\033[0m\n' "\$ip"
     '';
   };
 };
