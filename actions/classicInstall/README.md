@@ -55,15 +55,15 @@ passphrase remotely, so the machine boots without a physical keyboard.
 
 Quick version:
 
-- Login is **root**, **pubkey-only**, on **port 22**. Use a dedicated key
-  (`~/.ssh/nixos-unlock`) - see the guide below.
+- Login is **root**, **pubkey-only**, on **port 2222** (configurable; kept off the
+  system's port 22 so host keys don't clash). Use a dedicated key (`~/.ssh/nixos-unlock`).
 - Logging in drops you **straight into the passphrase prompt** (`command="systemctl default"`).
-- NDS prints the address on the **console** at boot. With DHCP the initrd requests its lease
-  by MAC, so it gets the **same** IP as the booted machine; static is always exact.
+- NDS prints the exact connect command in **magenta** on the console at boot. With DHCP the
+  initrd requests its lease by MAC, so it gets the **same** IP as the booted machine.
 - The initrd host key is in the backup zip at `secrets/initrd_ssh_host_ed25519_key`.
 
 ```bash
-ssh -i ~/.ssh/nixos-unlock root@<machine-ip>
+ssh -p 2222 -i ~/.ssh/nixos-unlock root@<machine-ip>
 ```
 
 **Full guide (key generation, connecting, recovery, quirks):**

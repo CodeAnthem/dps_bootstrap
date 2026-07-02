@@ -205,7 +205,9 @@ suite_classic_config() {
     assert_contains "$content" 'systemd.network.networks."10-wired"' "remote-unlock configuration.nix"
     assert_not_contains "$content" 'networkmanager.enable = true' "remote-unlock configuration.nix"
     assert_contains "$content" 'nds-show-ip' "remote-unlock configuration.nix"
-    assert_contains "$content" 'boot.initrd.systemd.initrdBin' "remote-unlock configuration.nix"
+    assert_contains "$content" 'boot.initrd.systemd.storePaths' "remote-unlock configuration.nix"
+    assert_contains "$content" 'Remote LUKS unlock:' "remote-unlock configuration.nix"
+    assert_contains "$content" 'port = 2222' "remote-unlock configuration.nix"
 
     rm -rf "$tmp_dir"
 }

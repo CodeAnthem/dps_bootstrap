@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Encryption preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # ==================================================================================================
 
 encryption_defaults() {
@@ -18,6 +18,7 @@ encryption_defaults() {
     nds_cfg_set ENCRYPTION_REMOTE_UNLOCK "false"
     nds_cfg_set ENCRYPTION_REMOTE_SSH_KEY ""
     nds_cfg_set ENCRYPTION_REMOTE_NETWORK "dhcp"
+    nds_cfg_set ENCRYPTION_REMOTE_PORT "2222"
 }
 
 encryption_configure() {
@@ -49,6 +50,9 @@ encryption_configure() {
         nds_cfg_ask_string ENCRYPTION_REMOTE_SSH_KEY "Authorized SSH public key" "" true
         nds_cfg_ask_choice ENCRYPTION_REMOTE_NETWORK "Initrd network mode" "dhcp|static" \
             "dhcp=DHCP (automatic)|static=Static IP (from network settings)" "dhcp"
+        # Default 2222 keeps the initrd sshd off the booted system's port 22, so
+        # the two different host keys never collide in known_hosts.
+        nds_cfg_ask_port ENCRYPTION_REMOTE_PORT "Remote unlock SSH port" 2222
     fi
 }
 

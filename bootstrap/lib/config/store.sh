@@ -15,6 +15,10 @@ declare -gA PRESET_META=()
 # auto-detected (not typed by the user) and useful to pin for a repeat install.
 _NDS_EXPORT_ALWAYS="DISK_TARGET BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PLATFORM_VM_TYPE"
 
+# Machine/hardware-specific keys. The concise export splits these from portable
+# policy so a portable profile can be reused across machines untouched.
+_NDS_EXPORT_HARDWARE="DISK_TARGET DISK_STRATEGY DISK_FS_TYPE DISK_SWAP_SIZE_MIB DISK_DISKO_CONFIG BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PLATFORM_VM_TYPE PLATFORM_VM_GUEST_TOOLS NETWORK_HOSTNAME NETWORK_IP NETWORK_MASK NETWORK_GATEWAY"
+
 # =============================================================================
 # CONFIG ACCESS
 # =============================================================================
@@ -82,27 +86,63 @@ _nds_export_is_always() {
     return 1
 }
 
-# Concise export: only values that differ from their seeded default (i.e. what
-# the user actually set), plus the auto-detected essentials. Used for the
-# on-screen export block so it isn't cluttered with untouched defaults.
+_nds_export_is_hardware() {
+    local key="$1" a
+    for a in $_NDS_EXPORT_HARDWARE; do
+        [[ "$key" == "$a" ]] && return 0
+    done
+    return 1
+}
+
+# Whether a key belongs in the concise export: auto-detected essentials always,
+# otherwise only when the user changed it from the seeded default.
+_nds_export_should_include() {
+    local key="$1" cur="${CONFIG_DATA[$1]}"
+    if _nds_export_is_always "$key"; then
+        [[ -n "$cur" ]]
+        return
+    fi
+    if [[ -v CONFIG_DEFAULTS[$key] && "$cur" == "${CONFIG_DEFAULTS[$key]}" ]]; then
+        return 1
+    fi
+    [[ -n "$cur" ]]
+}
+
+# Concise export, one `export` per line (plain listing). Only values the user
+# set, plus the auto-detected essentials.
 nds_configurator_config_export_modified() {
-    local varname cur def
+    local varname
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
-        cur="${CONFIG_DATA[$varname]}"
-        if _nds_export_is_always "$varname"; then
-            [[ -n "$cur" ]] && echo "export NDS_${varname}=\"${cur}\""
-            continue
-        fi
-        # Unchanged from default -> skip.
-        if [[ -v CONFIG_DEFAULTS[$varname] ]]; then
-            def="${CONFIG_DEFAULTS[$varname]}"
-            [[ "$cur" == "$def" ]] && continue
-        fi
-        # Never seeded and still empty -> nothing worth exporting.
-        [[ -z "$cur" ]] && continue
-        echo "export NDS_${varname}=\"${cur}\""
+        _nds_export_should_include "$varname" || continue
+        echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
+}
+
+# Concise export as at most two single-line `export` commands: portable settings
+# and machine-specific ones. Pasting adds at most two shell-history entries
+# instead of one per variable.
+nds_configurator_config_export_grouped() {
+    local varname portable=() hardware=()
+    while IFS= read -r varname; do
+        [[ -n "$varname" ]] || continue
+        _nds_export_should_include "$varname" || continue
+        if _nds_export_is_hardware "$varname"; then
+            hardware+=("NDS_${varname}=\"${CONFIG_DATA[$varname]}\"")
+        else
+            portable+=("NDS_${varname}=\"${CONFIG_DATA[$varname]}\"")
+        fi
+    done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
+
+    if [[ ${#portable[@]} -gt 0 ]]; then
+        echo "# Portable - safe to reuse on any machine:"
+        echo "export ${portable[*]}"
+    fi
+    if [[ ${#hardware[@]} -gt 0 ]]; then
+        [[ ${#portable[@]} -gt 0 ]] && echo ""
+        echo "# This machine only - disk / boot / VM / static addressing:"
+        echo "export ${hardware[*]}"
+    fi
 }
 
 nds_config_apply_env() {
@@ -196,13 +236,13 @@ nds_configurator_reset_for_action() {
 nds_configurator_print_config_backup() {
     local line
     section_header "Configuration export"
-    nds_ui_b "If you plan to finish installation, you do not need to copy anything here."
-    nds_ui_b "NDS includes the full configuration in the install backup zip when installation completes."
-    nds_ui_b "Below are only the values you changed (plus auto-detected disk/boot essentials):"
+    nds_ui_b "The full configuration is saved in the install backup zip when installation completes."
+    nds_ui_b "Below are only the values you changed (plus auto-detected disk/boot essentials),"
+    nds_ui_b "as two single-line commands - paste a whole line to set it in one shot:"
     nds_ui_b ""
     while IFS= read -r line; do
         nds_ui_i "$line"
-    done < <(nds_configurator_config_export_modified)
+    done < <(nds_configurator_config_export_grouped)
     nds_ui_b ""
 }
 

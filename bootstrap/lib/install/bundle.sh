@@ -52,7 +52,7 @@ _nds_install_bundle_quickstart() {
     local dest="$1"
     local hostname admin_user ssh_port ssh_pw_auth admin_ssh_key port_opt host_ip
     local encryption use_password use_key key_device key_file
-    local remote_unlock remote_net remote_ip unlock_ip ip_note
+    local remote_unlock remote_net remote_ip remote_port unlock_ip ip_note
 
     hostname=$(nds_config_get "network" "NETWORK_HOSTNAME" 2>/dev/null || echo unknown)
     admin_user=$(nds_config_get "access" "ACCESS_ADMIN_USER" 2>/dev/null || echo admin)
@@ -67,6 +67,8 @@ _nds_install_bundle_quickstart() {
     remote_unlock=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_UNLOCK" 2>/dev/null || true)
     remote_net=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_NETWORK" 2>/dev/null || true)
     remote_ip=$(nds_config_get "network" "NETWORK_IP" 2>/dev/null || true)
+    remote_port=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_PORT" 2>/dev/null || true)
+    [[ -n "$remote_port" ]] || remote_port=2222
 
     # The address this install was reached on - the booted machine gets the same
     # DHCP lease (MAC-based client id), so this is the address to connect to.
@@ -205,7 +207,8 @@ EOF
 
 Before the disk is decrypted, a tiny SSH server runs so you can unlock over the network.
 
-- Listens on **port 22** as user **root** (pubkey-only).
+- Listens on **port ${remote_port}** as user **root** (pubkey-only). This differs from the
+  system SSH port so the two host keys never clash in known_hosts.
 - ${ip_note}
 - The initrd host key is in \`secrets/initrd_ssh_host_ed25519_key\`.
 
@@ -214,10 +217,10 @@ Unlock from your PC with the private key whose public key you authorized
 
 \`\`\`bash
 # Linux / macOS / WSL
-ssh -i ~/.ssh/nixos-unlock root@${unlock_ip}
+ssh -p ${remote_port} -i ~/.ssh/nixos-unlock root@${unlock_ip}
 
 # Windows (cmd.exe / PowerShell) - use %USERPROFILE%, ~/ is not expanded there
-ssh -i "%USERPROFILE%\.ssh\nixos-unlock" root@${unlock_ip}
+ssh -p ${remote_port} -i "%USERPROFILE%\.ssh\nixos-unlock" root@${unlock_ip}
 \`\`\`
 
 The LUKS passphrase prompt appears automatically; type it and the machine boots.

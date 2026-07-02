@@ -44,4 +44,26 @@ suite_configurator() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ network_validate should accept valid hostname"
     fi
+
+    nds_config_snapshot_defaults
+    CONFIG_DATA[DISK_TARGET]="/dev/testdisk"
+    CONFIG_DATA[REGION_TIMEZONE]="Europe/Test"
+    local grouped
+    grouped="$(nds_configurator_config_export_grouped)"
+    if [[ "$(grep -c '^export ' <<<"$grouped")" -le 2 ]] \
+       && grep -q 'NDS_REGION_TIMEZONE="Europe/Test"' <<<"$grouped"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ grouped export: <=2 single-line commands, portable value present"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ grouped export malformed"
+    fi
+    if grep -qE '^# This machine only' <<<"$grouped" \
+       && grep -q 'NDS_DISK_TARGET="/dev/testdisk"' <<<"$grouped"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ grouped export: hardware split holds DISK_TARGET"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ grouped export: hardware split missing DISK_TARGET"
+    fi
 }
