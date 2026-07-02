@@ -1,6 +1,6 @@
 # Nix Deploy System (NDS)
 
-[![Version](https://img.shields.io/badge/version-5.2.1-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
+[![Version](https://img.shields.io/badge/version-5.3.0-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 [![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)

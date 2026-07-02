@@ -81,20 +81,20 @@ _nixcfg_network_static() {
     # does not exist on predictable-name systems (ens33, enp0s3, …), so the
     # static address would never be applied.
     local block
-    block=$(cat <<EOF
+    block=$(nds_nixcfg_subst "$(cat <<'EOF'
 networking = {
-  hostName = "$hostname";
-  useDHCP = false;${ns_line}
+  hostName = "@@HOSTNAME@@";
+  useDHCP = false;@@NS_LINE@@
 };
 systemd.network.enable = true;
 systemd.network.networks."10-wired" = {
   matchConfig.Type = "ether";
-  address = [ "$ip/$mask" ];
-  gateway = [ "$gateway" ];
+  address = [ "@@IP@@/@@MASK@@" ];
+  gateway = [ "@@GATEWAY@@" ];
   linkConfig.RequiredForOnline = "routable";
 };
 EOF
-)
+)" @@HOSTNAME@@ "$hostname" @@IP@@ "$ip" @@MASK@@ "$mask" @@GATEWAY@@ "$gateway" @@NS_LINE@@ "$ns_line")
 
     nds_nixcfg_register "network" "$block" 20
 }
@@ -117,10 +117,10 @@ _nixcfg_network_dhcp() {
         # same identity as the initrd (see remoteUnlock.sh) — the DHCP server
         # then hands out the SAME lease in the initrd and after boot, so the
         # initrd is reachable on the machine's normal address.
-        block=$(cat <<EOF
+        block=$(nds_nixcfg_subst "$(cat <<'EOF'
 networking = {
-  hostName = "$hostname";
-  useDHCP = false;${ns_line}
+  hostName = "@@HOSTNAME@@";
+  useDHCP = false;@@NS_LINE@@
 };
 systemd.network.enable = true;
 systemd.network.networks."10-wired" = {
@@ -130,15 +130,15 @@ systemd.network.networks."10-wired" = {
   linkConfig.RequiredForOnline = "routable";
 };
 EOF
-)
+)" @@HOSTNAME@@ "$hostname" @@NS_LINE@@ "$ns_line")
     else
-        block=$(cat <<EOF
+        block=$(nds_nixcfg_subst "$(cat <<'EOF'
 networking = {
-  hostName = "$hostname";
-  networkmanager.enable = true;${ns_line}
+  hostName = "@@HOSTNAME@@";
+  networkmanager.enable = true;@@NS_LINE@@
 };
 EOF
-)
+)" @@HOSTNAME@@ "$hostname" @@NS_LINE@@ "$ns_line")
     fi
 
     nds_nixcfg_register "network" "$block" 20

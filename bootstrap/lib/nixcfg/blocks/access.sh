@@ -81,30 +81,32 @@ _nixcfg_access_generate() {
         key_block=$'\n  openssh.authorizedKeys.keys = [ "'"${escaped_key}"'" ];'
     fi
 
+    # Quoted heredoc + @@TOKEN@@ substitution: no bash expansion, no escaping.
+    # User-controlled values (key block, password) filled last.
     local block
-    block=$(cat <<EOF
+    block=$(nds_nixcfg_subst "$(cat <<'EOF'
 # Admin User
-users.users.$admin_user = {
+users.users.@@ADMIN_USER@@ = {
   isNormalUser = true;
   extraGroups = [ "wheel" "networkmanager" ];
-  initialPassword = "${escaped_pw}";${key_block}
+  initialPassword = "@@PASSWORD@@";@@KEY_BLOCK@@
 };
 
 # Sudo Configuration
-security.sudo.wheelNeedsPassword = $sudo_password;
+security.sudo.wheelNeedsPassword = @@SUDO_PASSWORD@@;
 
 # SSH Configuration
 services.openssh = {
-  enable = $ssh_enable;
-  ports = [ $ssh_port ];
+  enable = @@SSH_ENABLE@@;
+  ports = [ @@SSH_PORT@@ ];
   settings = {
-    PasswordAuthentication = $ssh_pw_nix;
+    PasswordAuthentication = @@SSH_PW_NIX@@;
     PermitRootLogin = "no";
     X11Forwarding = false;
   };
 };
 EOF
-)
+)" @@ADMIN_USER@@ "$admin_user" @@SUDO_PASSWORD@@ "$sudo_password" @@SSH_ENABLE@@ "$ssh_enable" @@SSH_PORT@@ "$ssh_port" @@SSH_PW_NIX@@ "$ssh_pw_nix" @@KEY_BLOCK@@ "$key_block" @@PASSWORD@@ "$escaped_pw")
 
     nds_nixcfg_register "access" "$block" 30
 }

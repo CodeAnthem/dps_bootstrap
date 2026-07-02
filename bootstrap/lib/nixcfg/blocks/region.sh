@@ -45,40 +45,40 @@ _nixcfg_region_generate() {
     local keyboard_layout="$4"
     local keyboard_variant="$5"
     
-    local output
-    
-    # Build config block
-    output="time.timeZone = \"$timezone\";
-
-i18n.defaultLocale = \"$locale_main\";"
-    
-    # Extra locales if specified
+    # Dynamic pieces built first, then dropped into a quoted-heredoc skeleton
+    # via @@TOKEN@@ substitution (no bash expansion, no escaping).
+    local extra_block=""
     if [[ -n "$locale_extra" ]]; then
-        output+="
-i18n.extraLocaleSettings = {"
-        # Split by space and add each locale
+        extra_block=$'\ni18n.extraLocaleSettings = {'
         local locale
         for locale in $locale_extra; do
-            output+="
-  LC_ALL = \"$locale\";"
+            extra_block+=$'\n  LC_ALL = "'"$locale"'";'
         done
-        output+="
-};"
+        extra_block+=$'\n};'
     fi
-    
-    output+="
 
-"
-    
-    # Keyboard layout
+    local kb_block
     if [[ -n "$keyboard_variant" ]]; then
-        output+="services.xserver.xkb = {
-  layout = \"$keyboard_layout\";
-  variant = \"$keyboard_variant\";
-};"
+        kb_block=$(nds_nixcfg_subst "$(cat <<'EOF'
+services.xserver.xkb = {
+  layout = "@@LAYOUT@@";
+  variant = "@@VARIANT@@";
+};
+EOF
+)" @@LAYOUT@@ "$keyboard_layout" @@VARIANT@@ "$keyboard_variant")
     else
-        output+="services.xserver.xkb.layout = \"$keyboard_layout\";"
+        kb_block=$(nds_nixcfg_subst 'services.xserver.xkb.layout = "@@LAYOUT@@";' @@LAYOUT@@ "$keyboard_layout")
     fi
-    
+
+    local output
+    output=$(nds_nixcfg_subst "$(cat <<'EOF'
+time.timeZone = "@@TIMEZONE@@";
+
+i18n.defaultLocale = "@@LOCALE_MAIN@@";@@EXTRA_BLOCK@@
+
+@@KB_BLOCK@@
+EOF
+)" @@TIMEZONE@@ "$timezone" @@LOCALE_MAIN@@ "$locale_main" @@EXTRA_BLOCK@@ "$extra_block" @@KB_BLOCK@@ "$kb_block")
+
     nds_nixcfg_register "region" "$output" 40
 }

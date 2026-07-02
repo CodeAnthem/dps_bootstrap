@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-06-30
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   NixOS Configuration Builder - Registry and Merger
 # Feature:       Priority-based block assembly for NixOS configuration files
 # ==================================================================================================
@@ -30,6 +30,19 @@ declare -g NDS_NIXCFG_HEADER=""
 # =============================================================================
 # PUBLIC API
 # =============================================================================
+
+# Substitute @@TOKEN@@ placeholders in a block literally (no eval, no regex).
+# Lets blocks keep their Nix in a QUOTED heredoc (<<'EOF') so bash expands
+# nothing - no \$ / \${} escaping - and only these explicit tokens are filled.
+# Usage: nds_nixcfg_subst "<content>" [@@TOKEN@@ value]...
+# Note: replacement is literal; values must not contain a later @@TOKEN@@.
+nds_nixcfg_subst() {
+    local content="$1"; shift
+    while [[ $# -gt 0 ]]; do
+        content="${content//"$1"/$2}"; shift 2
+    done
+    printf '%s' "$content"
+}
 
 # Register a configuration block
 # Usage: nds_nixcfg_register "block_name" "content" [priority]

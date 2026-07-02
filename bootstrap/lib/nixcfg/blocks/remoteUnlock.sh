@@ -28,21 +28,21 @@ nds_nixcfg_remoteUnlock_auto() {
     # nothing and the interface never comes up.
     local net_block
     if [[ "$net_mode" == "static" ]]; then
-        local ip gateway mask_val prefix
+        local ip gateway mask_val prefix ip_only
         ip=$(nds_config_get "network" "NETWORK_IP")
         gateway=$(nds_config_get "network" "NETWORK_GATEWAY")
         mask_val=$(nds_config_get "network" "NETWORK_MASK")
         prefix=$(_nixcfg_netmask_to_prefix "${mask_val:-24}")
-        local ip_only="${ip%/*}"
-        net_block=$(cat <<EOF
+        ip_only="${ip%/*}"
+        net_block=$(nds_nixcfg_subst "$(cat <<'EOF'
 boot.initrd.systemd.network.networks."10-remote-unlock" = {
   matchConfig.Type = "ether";
-  address = [ "${ip_only}/${prefix}" ];
-  gateway = [ "${gateway}" ];
+  address = [ "@@IP@@/@@PREFIX@@" ];
+  gateway = [ "@@GATEWAY@@" ];
   linkConfig.RequiredForOnline = "routable";
 };
 EOF
-)
+)" @@IP@@ "$ip_only" @@PREFIX@@ "$prefix" @@GATEWAY@@ "$gateway")
     else
         # ClientIdentifier = "mac" makes the initrd request its DHCP lease by
         # MAC address — the same identity the booted system uses (see
@@ -59,20 +59,22 @@ EOF
 )
     fi
 
+    # Quoted heredoc: bash expands nothing, so Nix ${pkgs...}, $ip, $3 stay
+    # literal (no escaping). Only @@TOKEN@@ placeholders are filled below.
     local block
-    block=$(cat <<EOF
+    block=$(nds_nixcfg_subst "$(cat <<'EOF'
 # Initrd SSH for remote LUKS unlock
 boot.initrd.network.enable = true;
 boot.initrd.network.ssh = {
   enable = true;
-  port = ${remote_port};
+  port = @@REMOTE_PORT@@;
   # command="systemctl default" makes the SSH login run the unlock prompt
   # directly instead of dropping into an initrd shell. stderr is dropped to
   # silence the harmless "Failed to connect to system scope bus via local
   # transport" notice: there is no D-Bus daemon in the initrd, so systemctl
   # falls back to systemd's private socket - the passphrase prompt (written to
   # the tty, not stderr) still appears and unlocking works.
-  authorizedKeys = [ ''command="systemctl default 2>/dev/null" ${ssh_key}'' ];
+  authorizedKeys = [ ''command="systemctl default 2>/dev/null" @@SSH_KEY@@'' ];
   hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
 };
 boot.initrd.systemd.enable = true;
@@ -103,14 +105,14 @@ boot.initrd.systemd.services.nds-show-ip = {
     StandardOutput = "journal+console";
     StandardError = "journal+console";
     ExecStart = pkgs.writeShellScript "nds-show-ip" ''
-      ip="\$(\${pkgs.iproute2}/bin/ip -4 -brief address show scope global | \${pkgs.gawk}/bin/awk 'NR==1 {sub(/\/.*/, "", \$3); print \$3}')"
-      printf '\n\033[1;35m>>> Remote LUKS unlock:  ssh -p ${remote_port} root@%s\033[0m\n' "\$ip"
+      ip="$(${pkgs.iproute2}/bin/ip -4 -brief address show scope global | ${pkgs.gawk}/bin/awk 'NR==1 {sub(/\/.*/, "", $3); print $3}')"
+      printf '\n\033[1;35m>>> Remote LUKS unlock:  ssh -p @@REMOTE_PORT@@ root@%s\033[0m\n' "$ip"
     '';
   };
 };
-${net_block}
+@@NET_BLOCK@@
 EOF
-)
+)" @@REMOTE_PORT@@ "$remote_port" @@SSH_KEY@@ "$ssh_key" @@NET_BLOCK@@ "$net_block")
 
     nds_nixcfg_register "remoteUnlock" "$block" 13
 }

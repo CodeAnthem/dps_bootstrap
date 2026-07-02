@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-06-30
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   NixOS Config Generation - Boot Module
 # Feature:       Bootloader configuration (systemd-boot, GRUB, rEFInd)
 # ==================================================================================================
@@ -70,7 +70,7 @@ _nixcfg_boot_systemd() {
     fi
 
     local block
-    block=$(cat <<EOF
+    block=$(cat <<'EOF'
 boot.loader = {
   systemd-boot.enable = true;
   efi.canTouchEfiVariables = true;
@@ -89,7 +89,7 @@ _nixcfg_boot_grub() {
 
     local block
     if [[ "$uefi" == "true" ]]; then
-        block=$(cat <<EOF
+        block=$(cat <<'EOF'
 boot.loader = {
   grub = {
     enable = true;
@@ -102,13 +102,13 @@ boot.loader = {
 EOF
 )
     else
-        block=$(cat <<EOF
+        block=$(nds_nixcfg_subst "$(cat <<'EOF'
 boot.loader.grub = {
   enable = true;
-  device = "${disk}";
+  device = "@@DISK@@";
 };
 EOF
-)
+)" @@DISK@@ "$disk")
     fi
 
     nds_nixcfg_register "boot" "$block" 10
@@ -123,7 +123,7 @@ _nixcfg_boot_refind() {
     fi
 
     local block
-    block=$(cat <<EOF
+    block=$(cat <<'EOF'
 boot.loader = {
   refind.enable = true;
   efi.canTouchEfiVariables = true;
