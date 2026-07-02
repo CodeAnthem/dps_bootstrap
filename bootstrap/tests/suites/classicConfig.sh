@@ -197,7 +197,7 @@ suite_classic_config() {
     assert_contains "$content" 'matchConfig.Type = "ether"' "remote-unlock configuration.nix"
     assert_not_contains "$content" 'matchConfig.Name = "eth0"' "remote-unlock configuration.nix"
     assert_contains "$content" 'boot.initrd.availableKernelModules' "remote-unlock configuration.nix"
-    assert_contains "$content" 'command="systemctl default"' "remote-unlock configuration.nix"
+    assert_contains "$content" 'command="systemctl default 2>/dev/null"' "remote-unlock configuration.nix"
     assert_contains "$content" 'RequiredForOnline = "routable"' "remote-unlock configuration.nix"
     assert_contains "$content" 'boot.initrd.systemd.network.enable = true' "remote-unlock configuration.nix"
     assert_contains "$content" 'dhcpV4Config.ClientIdentifier = "mac"' "remote-unlock configuration.nix"
@@ -206,8 +206,10 @@ suite_classic_config() {
     assert_not_contains "$content" 'networkmanager.enable = true' "remote-unlock configuration.nix"
     assert_contains "$content" 'nds-show-ip' "remote-unlock configuration.nix"
     assert_contains "$content" 'boot.initrd.systemd.initrdBin' "remote-unlock configuration.nix"
-    assert_contains "$content" 'Remote LUKS unlock:' "remote-unlock configuration.nix"
+    assert_contains "$content" 'Remote LUKS unlock ready' "remote-unlock configuration.nix"
     assert_contains "$content" 'port = 2222' "remote-unlock configuration.nix"
+    # Must stay plain-binary ExecStart (no writeShellScript -> needs bash in initrd)
+    assert_not_contains "$content" 'writeShellScript' "remote-unlock configuration.nix"
 
     rm -rf "$tmp_dir"
 }

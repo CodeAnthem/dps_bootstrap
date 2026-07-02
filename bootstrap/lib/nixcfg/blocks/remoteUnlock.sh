@@ -59,42 +59,34 @@ EOF
 )
     fi
 
-    # Quoted heredoc: bash expands nothing, so Nix ${pkgs...}, $ip, $3 stay
-    # literal (no escaping). Only @@TOKEN@@ placeholders are filled below.
+    # Quoted heredoc: bash expands nothing, so Nix ${pkgs...} stays literal.
+    # Only @@TOKEN@@ placeholders are filled in.
+    #
+    # nds-show-ip uses two plain-binary ExecStart entries (echo + ip) on
+    # purpose: a writeShellScript needs bash inside the initrd, which is not
+    # guaranteed there, so the service would silently never run. echo and ip are
+    # pulled in via initrdBin and always work. StandardOutput=journal+console is
+    # the channel that reliably reaches the visible console in initrd.
+    #
+    # command="systemctl default" runs the unlock prompt directly on SSH login;
+    # 2>/dev/null hides the harmless "system scope bus" notice (no D-Bus in
+    # initrd). boot.initrd.systemd.network.enable is required or networkd never
+    # starts and SSH is unreachable.
     local block
     block=$(nds_nixcfg_subst "$(cat <<'EOF'
-# Initrd SSH for remote LUKS unlock
 boot.initrd.network.enable = true;
 boot.initrd.network.ssh = {
   enable = true;
   port = @@REMOTE_PORT@@;
-  # command="systemctl default" makes the SSH login run the unlock prompt
-  # directly instead of dropping into an initrd shell. stderr is dropped to
-  # silence the harmless "Failed to connect to system scope bus via local
-  # transport" notice: there is no D-Bus daemon in the initrd, so systemctl
-  # falls back to systemd's private socket - the passphrase prompt (written to
-  # the tty, not stderr) still appears and unlocking works.
   authorizedKeys = [ ''command="systemctl default 2>/dev/null" @@SSH_KEY@@'' ];
   hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
 };
 boot.initrd.systemd.enable = true;
-# Without this, systemd-networkd never starts in the initrd, the NIC stays
-# down, and initrd SSH is unreachable - this is required, not optional.
 boot.initrd.systemd.network.enable = true;
-# Common wired NIC drivers so the initrd can bring up the network for SSH.
-# availableKernelModules merges with hardware-configuration.nix; unknown
-# modules are simply ignored.
 boot.initrd.availableKernelModules = [ "e1000" "e1000e" "vmxnet3" "virtio_net" "r8169" "igb" "ixgbe" "tg3" ];
-# Print a single colored connect hint once the network is up, so the
-# remote-unlock address is visible instead of having to be guessed. Routed via
-# systemd's console (StandardOutput = journal+console) because that is the
-# channel that reliably reaches the visible VT - a manual "> /dev/console"
-# redirect can land on a different console (e.g. serial) and show nothing.
-# systemd tags the line with "nds-show-ip:"; that is the trade-off for it
-# actually appearing. Best-effort and non-blocking.
-boot.initrd.systemd.initrdBin = [ pkgs.iproute2 pkgs.gawk ];
+boot.initrd.systemd.initrdBin = [ pkgs.iproute2 ];
 boot.initrd.systemd.services.nds-show-ip = {
-  description = "Show IP address for remote LUKS unlock";
+  description = "Show IP for remote LUKS unlock";
   wantedBy = [ "initrd.target" ];
   after = [ "systemd-networkd-wait-online.service" ];
   wants = [ "systemd-networkd-wait-online.service" ];
@@ -104,10 +96,10 @@ boot.initrd.systemd.services.nds-show-ip = {
     RemainAfterExit = true;
     StandardOutput = "journal+console";
     StandardError = "journal+console";
-    ExecStart = pkgs.writeShellScript "nds-show-ip" ''
-      ip="$(${pkgs.iproute2}/bin/ip -4 -brief address show scope global | ${pkgs.gawk}/bin/awk 'NR==1 {sub(/\/.*/, "", $3); print $3}')"
-      printf '\n\033[1;35m>>> Remote LUKS unlock:  ssh -p @@REMOTE_PORT@@ root@%s\033[0m\n' "$ip"
-    '';
+    ExecStart = [
+      "${pkgs.coreutils}/bin/echo '>>> Remote LUKS unlock ready. Connect: ssh -p @@REMOTE_PORT@@ root@<address shown below>'"
+      "${pkgs.iproute2}/bin/ip -4 -brief address show scope global"
+    ];
   };
 };
 @@NET_BLOCK@@
