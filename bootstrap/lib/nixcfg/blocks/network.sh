@@ -14,7 +14,7 @@
 # Auto-mode: reads from configuration modules
 nds_nixcfg_network_auto() {
     local hostname method ip gateway dns1 dns2 mask_val prefix
-    hostname=$(nds_config_get "network" "HOSTNAME")
+    hostname=$(nds_config_get "network" "NETWORK_HOSTNAME")
     method=$(nds_config_get "network" "NETWORK_METHOD")
     ip=$(nds_config_get "network" "NETWORK_IP")
     gateway=$(nds_config_get "network" "NETWORK_GATEWAY")

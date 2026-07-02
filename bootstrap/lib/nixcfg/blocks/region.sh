@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2025-10-28
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   NixOS Config Generation - Region Module
 # Feature:       Timezone, locale, and keyboard configuration
 # ==================================================================================================
@@ -14,11 +14,11 @@
 # Auto-mode: reads from configuration modules
 nds_nixcfg_region_auto() {
     local timezone locale_main locale_extra keyboard_layout keyboard_variant
-    timezone=$(nds_config_get "region" "TIMEZONE")
-    locale_main=$(nds_config_get "region" "LOCALE_MAIN")
-    locale_extra=$(nds_config_get "region" "LOCALE_EXTRA")
-    keyboard_layout=$(nds_config_get "region" "KEYBOARD_LAYOUT")
-    keyboard_variant=$(nds_config_get "region" "KEYBOARD_VARIANT")
+    timezone=$(nds_config_get "region" "REGION_TIMEZONE")
+    locale_main=$(nds_config_get "region" "REGION_LOCALE_MAIN")
+    locale_extra=$(nds_config_get "region" "REGION_LOCALE_EXTRA")
+    keyboard_layout=$(nds_config_get "region" "REGION_KEYBOARD_LAYOUT")
+    keyboard_variant=$(nds_config_get "region" "REGION_KEYBOARD_VARIANT")
     
     _nixcfg_region_generate "$timezone" "$locale_main" "$locale_extra" "$keyboard_layout" "$keyboard_variant"
 }

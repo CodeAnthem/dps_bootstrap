@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Country defaults
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # Description:   Country → timezone/locale/keyboard defaults for quick setup
 # ==================================================================================================
 
@@ -52,10 +52,10 @@ nds_country_apply() {
     local country="$1" defaults timezone locale keyboard keyboard_variant
     defaults=$(nds_country_defaults "$country") || return 1
     IFS='|' read -r timezone locale keyboard keyboard_variant <<< "$defaults"
-    nds_cfg_set TIMEZONE "$timezone"
-    nds_cfg_set LOCALE_MAIN "$locale"
-    nds_cfg_set KEYBOARD_LAYOUT "$keyboard"
-    nds_cfg_set KEYBOARD_VARIANT "$keyboard_variant"
+    nds_cfg_set REGION_TIMEZONE "$timezone"
+    nds_cfg_set REGION_LOCALE_MAIN "$locale"
+    nds_cfg_set REGION_KEYBOARD_LAYOUT "$keyboard"
+    nds_cfg_set REGION_KEYBOARD_VARIANT "$keyboard_variant"
     return 0
 }
 

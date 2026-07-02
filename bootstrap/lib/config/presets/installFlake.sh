@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from flake preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # ==================================================================================================
 
 installFlake_defaults() {
@@ -12,7 +12,7 @@ installFlake_defaults() {
     nds_cfg_set FLAKE_INSTALL_PATH "/mnt/opt/flake"
     nds_cfg_set FLAKE_HOST ""
     nds_cfg_set FLAKE_HOST_DIR "hosts/x86_64-linux"
-    nds_cfg_set HARDWARE_PLACEMENT "host-dir"
+    nds_cfg_set FLAKE_HARDWARE_PLACEMENT "host-dir"
 }
 
 installFlake_configure() {
@@ -26,7 +26,7 @@ installFlake_configure() {
     nds_cfg_ask_path FLAKE_INSTALL_PATH "Flake path on installed disk" "/mnt/opt/flake" true
     nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
     nds_cfg_ask_path FLAKE_HOST_DIR "Host directory inside flake" "hosts/x86_64-linux" false
-    nds_cfg_ask_choice HARDWARE_PLACEMENT "Hardware configuration" "host-dir|etc-nixos|skip" \
+    nds_cfg_ask_choice FLAKE_HARDWARE_PLACEMENT "Hardware configuration" "host-dir|etc-nixos|skip" \
         "host-dir=Copy into flake host dir|etc-nixos=Keep in /etc/nixos|skip=Flake handles hardware" "host-dir"
 }
 

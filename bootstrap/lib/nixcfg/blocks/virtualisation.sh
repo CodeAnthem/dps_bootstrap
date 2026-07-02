@@ -2,15 +2,15 @@
 # ==================================================================================================
 # NDS - Classic config - Virtualisation guest tools
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-06-30
+# Date:          Created: 2026-06-30 | Modified: 2026-07-02
 # Description:   VM guest agents for classicInstall
 # ==================================================================================================
 
 nds_nixcfg_virtualisation_auto() {
     local on_vm vm_type guest_tools
-    on_vm=$(nds_config_get "platform" "RUN_ON_VM")
-    vm_type=$(nds_config_get "platform" "VM_TYPE")
-    guest_tools=$(nds_config_get "platform" "VM_GUEST_TOOLS")
+    on_vm=$(nds_config_get "platform" "PLATFORM_RUN_ON_VM")
+    vm_type=$(nds_config_get "platform" "PLATFORM_VM_TYPE")
+    guest_tools=$(nds_config_get "platform" "PLATFORM_VM_GUEST_TOOLS")
 
     [[ "$on_vm" == "true" && "$guest_tools" == "true" ]] || return 0
     _nixcfg_virtualisation_generate "$vm_type"

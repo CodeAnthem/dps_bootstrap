@@ -13,7 +13,7 @@ declare -gA PRESET_META=()
 
 # Keys always shown in the concise export even when unchanged, because they are
 # auto-detected (not typed by the user) and useful to pin for a repeat install.
-_NDS_EXPORT_ALWAYS="DISK_TARGET BOOT_UEFI_MODE BOOT_LOADER RUN_ON_VM VM_TYPE"
+_NDS_EXPORT_ALWAYS="DISK_TARGET BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PLATFORM_VM_TYPE"
 
 # =============================================================================
 # CONFIG ACCESS

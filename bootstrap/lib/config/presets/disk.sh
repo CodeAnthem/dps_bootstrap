@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Disk preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # ==================================================================================================
 
 disk_defaults() {
@@ -10,9 +10,9 @@ disk_defaults() {
     first_disk=$(find /dev \( -name 'sd[a-z]' -o -name 'nvme[0-9]*n[0-9]*' -o -name 'vd[a-z]' \) 2>/dev/null | sort | head -n1)
     nds_cfg_set DISK_TARGET "${first_disk:-}"
     nds_cfg_set DISK_STRATEGY "nds"
-    nds_cfg_set FS_TYPE "ext4"
-    nds_cfg_set SWAP_SIZE_MIB "0"
-    nds_cfg_set DISKO_CONFIG ""
+    nds_cfg_set DISK_FS_TYPE "ext4"
+    nds_cfg_set DISK_SWAP_SIZE_MIB "0"
+    nds_cfg_set DISK_DISKO_CONFIG ""
 }
 
 disk_configure() {
@@ -21,9 +21,9 @@ disk_configure() {
     nds_cfg_ask_choice DISK_STRATEGY "Partitioning method" "nds|disko|flake" \
         "nds=NDS built-in (UEFI or BIOS)|disko=Disko template|flake=Your flake (NDS skips disk)" "nds"
     if nds_cfg_is DISK_STRATEGY disko; then
-        nds_cfg_ask_choice FS_TYPE "Root filesystem" "ext4|btrfs" "" "ext4"
-        nds_cfg_ask_int SWAP_SIZE_MIB "Swap size (MiB, 0=none)" 0 0 65536
-        nds_cfg_ask_path DISKO_CONFIG "Disko config file (optional)" "" false
+        nds_cfg_ask_choice DISK_FS_TYPE "Root filesystem" "ext4|btrfs" "" "ext4"
+        nds_cfg_ask_int DISK_SWAP_SIZE_MIB "Swap size (MiB, 0=none)" 0 0 65536
+        nds_cfg_ask_path DISK_DISKO_CONFIG "Disko config file (optional)" "" false
     fi
 }
 

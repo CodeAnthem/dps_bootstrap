@@ -55,7 +55,7 @@ remote_action_run() {
 | `nds_secrets_offer_backup` | LUKS key copy prompt |
 | `nds_install_log` | Append to `/tmp/nds_session.log` |
 
-Environment: `NDS_FLAKE_*`, `NDS_DISK_STRATEGY`, `NDS_HARDWARE_PLACEMENT`, `NDS_RUNTIME_DIR`.
+Environment: `NDS_FLAKE_*`, `NDS_DISK_STRATEGY`, `NDS_FLAKE_HARDWARE_PLACEMENT`, `NDS_RUNTIME_DIR`.
 
 ## Examples
 

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-01
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   NixOS Config Generation - Access Module
 # Feature:       Admin user, sudo, and SSH configuration for NixOS
 # ==================================================================================================
@@ -14,12 +14,12 @@
 # Auto-mode: reads from configuration modules + the generated admin password.
 nds_nixcfg_access_auto() {
     local admin_user sudo_password ssh_enable ssh_port ssh_pw_auth admin_ssh_key
-    admin_user=$(nds_config_get "access" "ADMIN_USER")
-    sudo_password=$(nds_config_get "access" "SUDO_PASSWORD_REQUIRED")
-    ssh_enable=$(nds_config_get "access" "SSH_ENABLE")
-    ssh_port=$(nds_config_get "access" "SSH_PORT")
-    ssh_pw_auth=$(nds_config_get "access" "SSH_PASSWORD_AUTH")
-    admin_ssh_key=$(nds_config_get "access" "ADMIN_SSH_KEY")
+    admin_user=$(nds_config_get "access" "ACCESS_ADMIN_USER")
+    sudo_password=$(nds_config_get "access" "ACCESS_SUDO_PASSWORD_REQUIRED")
+    ssh_enable=$(nds_config_get "access" "ACCESS_SSH_ENABLE")
+    ssh_port=$(nds_config_get "access" "ACCESS_SSH_PORT")
+    ssh_pw_auth=$(nds_config_get "access" "ACCESS_SSH_PASSWORD_AUTH")
+    admin_ssh_key=$(nds_config_get "access" "ACCESS_ADMIN_SSH_KEY")
 
     _nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_pw_auth" "$admin_ssh_key"
 }

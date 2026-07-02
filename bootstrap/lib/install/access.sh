@@ -15,9 +15,9 @@
 _nixinstall_generate_access_secrets() {
     local auto length manual runtime_secrets pw_file pw
 
-    auto=$(nds_config_get "access" "ADMIN_PASSWORD_AUTO")
-    length=$(nds_config_get "access" "ADMIN_PASSWORD_LENGTH")
-    manual=$(nds_config_get "access" "ADMIN_PASSWORD")
+    auto=$(nds_config_get "access" "ACCESS_ADMIN_PASSWORD_AUTO")
+    length=$(nds_config_get "access" "ACCESS_ADMIN_PASSWORD_LENGTH")
+    manual=$(nds_config_get "access" "ACCESS_ADMIN_PASSWORD")
 
     runtime_secrets="${NDS_RUNTIME_DIR:-/tmp/nds_runtime_$$}/secrets"
     mkdir -p "$runtime_secrets" || { error "Cannot create secrets dir"; return 1; }

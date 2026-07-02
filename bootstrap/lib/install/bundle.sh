@@ -37,7 +37,7 @@ nds_install_bundle_path() {
 # keeps a meaningful name once it leaves the host.
 nds_install_bundle_local_name() {
     local hostname stamp
-    hostname=$(nds_config_get "network" "HOSTNAME" 2>/dev/null || true)
+    hostname=$(nds_config_get "network" "NETWORK_HOSTNAME" 2>/dev/null || true)
     hostname="${hostname:-nixos}"
     printf -v stamp '%(%Y%m%d_%H%M%S)T' -1
     printf 'nds_install_backup_%s_%s.zip' "$stamp" "$hostname"
@@ -54,11 +54,11 @@ _nds_install_bundle_quickstart() {
     local encryption use_password use_key key_device key_file
     local remote_unlock remote_net remote_ip unlock_ip ip_note
 
-    hostname=$(nds_config_get "network" "HOSTNAME" 2>/dev/null || echo unknown)
-    admin_user=$(nds_config_get "access" "ADMIN_USER" 2>/dev/null || echo admin)
-    ssh_port=$(nds_config_get "access" "SSH_PORT" 2>/dev/null || echo 22)
-    ssh_pw_auth=$(nds_config_get "access" "SSH_PASSWORD_AUTH" 2>/dev/null || true)
-    admin_ssh_key=$(nds_config_get "access" "ADMIN_SSH_KEY" 2>/dev/null || true)
+    hostname=$(nds_config_get "network" "NETWORK_HOSTNAME" 2>/dev/null || echo unknown)
+    admin_user=$(nds_config_get "access" "ACCESS_ADMIN_USER" 2>/dev/null || echo admin)
+    ssh_port=$(nds_config_get "access" "ACCESS_SSH_PORT" 2>/dev/null || echo 22)
+    ssh_pw_auth=$(nds_config_get "access" "ACCESS_SSH_PASSWORD_AUTH" 2>/dev/null || true)
+    admin_ssh_key=$(nds_config_get "access" "ACCESS_ADMIN_SSH_KEY" 2>/dev/null || true)
     encryption=$(nds_config_get "encryption" "ENCRYPTION" 2>/dev/null || true)
     use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD" 2>/dev/null || true)
     use_key=$(nds_config_get "encryption" "ENCRYPTION_KEY" 2>/dev/null || true)

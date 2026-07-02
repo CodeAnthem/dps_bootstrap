@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configurator smoke tests (read-only)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-29
+# Date:          Created: 2026-06-29 | Modified: 2026-07-02
 # ==================================================================================================
 
 suite_configurator() {
@@ -27,7 +27,7 @@ suite_configurator() {
         fi
     done
 
-    CONFIG_DATA[HOSTNAME]=""
+    CONFIG_DATA[NETWORK_HOSTNAME]=""
     if network_validate &>/dev/null; then
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ network_validate should reject empty hostname"
@@ -36,7 +36,7 @@ suite_configurator() {
         console "  ✓ network_validate rejects empty hostname"
     fi
 
-    CONFIG_DATA[HOSTNAME]="myhost"
+    CONFIG_DATA[NETWORK_HOSTNAME]="myhost"
     if network_validate &>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ network_validate accepts valid hostname"

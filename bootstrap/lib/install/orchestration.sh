@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-06-30
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   Main NixOS installation orchestration
 # Feature:       Orchestrates disk setup, encryption, mounting, and NixOS installation
 # ==================================================================================================
@@ -17,7 +17,7 @@ nds_nixinstall_auto() {
     local disk encryption hostname remote_unlock
     disk=$(nds_config_get "disk" "DISK_TARGET")
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
-    hostname=$(nds_config_get "network" "HOSTNAME")
+    hostname=$(nds_config_get "network" "NETWORK_HOSTNAME")
     remote_unlock=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_UNLOCK")
     local disk_strategy
     disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
@@ -88,7 +88,7 @@ nds_nixos_install() {
 nds_nixos_install_flake() {
     local flake_root repo_url install_path hostname host_dir_rel source local_path
     local disk_prep hw_mode encryption disk disk_strategy
-    hostname=$(nds_config_get "network" "HOSTNAME")
+    hostname=$(nds_config_get "network" "NETWORK_HOSTNAME")
     source="${NDS_FLAKE_SOURCE:-$(nds_configurator_config_get "FLAKE_SOURCE")}"
     repo_url="${NDS_FLAKE_REPO_URL:-$(nds_configurator_config_get "FLAKE_REPO_URL")}"
     local_path="${NDS_FLAKE_LOCAL_PATH:-$(nds_configurator_config_get "FLAKE_LOCAL_PATH")}"
@@ -96,13 +96,13 @@ nds_nixos_install_flake() {
     host_dir_rel="${NDS_FLAKE_HOST_DIR:-$(nds_configurator_config_get "FLAKE_HOST_DIR")}"
     disk_strategy="${NDS_DISK_STRATEGY:-$(nds_config_get "disk" "DISK_STRATEGY")}"
     disk_strategy="${disk_strategy:-nds}"
-    hw_mode="${NDS_HARDWARE_PLACEMENT:-$(nds_configurator_config_get "HARDWARE_PLACEMENT")}"
+    hw_mode="${NDS_HARDWARE_PLACEMENT:-$(nds_configurator_config_get "FLAKE_HARDWARE_PLACEMENT")}"
     hw_mode="${hw_mode:-host-dir}"
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
     disk=$(nds_config_get "disk" "DISK_TARGET")
 
     if [[ -z "$hostname" ]]; then
-        error "HOSTNAME must be set before flake install"
+        error "NETWORK_HOSTNAME must be set before flake install"
     fi
 
     nds_install_log "installFlake: host=${hostname} strategy=${disk_strategy} hw=${hw_mode}"
@@ -146,7 +146,7 @@ nds_nixos_install_flake() {
     local host_dir="${flake_root}/${host_dir_rel}/${hostname}"
     case "$hw_mode" in
         skip)
-            log "Skipping hardware-configuration.nix (HARDWARE_PLACEMENT=skip)"
+            log "Skipping hardware-configuration.nix (FLAKE_HARDWARE_PLACEMENT=skip)"
             ;;
         etc-nixos)
             log "Keeping hardware-configuration.nix in /etc/nixos only"

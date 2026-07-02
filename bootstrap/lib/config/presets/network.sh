@@ -2,11 +2,11 @@
 # ==================================================================================================
 # NDS - Network preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # ==================================================================================================
 
 network_defaults() {
-    nds_cfg_set HOSTNAME ""
+    nds_cfg_set NETWORK_HOSTNAME ""
     nds_cfg_set NETWORK_METHOD "dhcp"
     nds_cfg_set NETWORK_IP ""
     nds_cfg_set NETWORK_MASK "255.255.255.0"
@@ -17,7 +17,7 @@ network_defaults() {
 
 network_configure() {
     nds_cfg_section_title "Network"
-    nds_cfg_ask_hostname HOSTNAME "Hostname" "" true
+    nds_cfg_ask_hostname NETWORK_HOSTNAME "Hostname" "" true
     nds_cfg_ask_choice NETWORK_METHOD "Network method" "dhcp|static" "dhcp=DHCP|static=Static IP" "dhcp"
     nds_cfg_ask_ip NETWORK_DNS_PRIMARY "Primary DNS" "1.1.1.1" true
     nds_cfg_ask_ip NETWORK_DNS_SECONDARY "Secondary DNS" "1.0.0.1" true
@@ -29,7 +29,7 @@ network_configure() {
 }
 
 network_summary() {
-    nds_cfg_summary_row "Hostname" "$(nds_cfg_get HOSTNAME)"
+    nds_cfg_summary_row "Hostname" "$(nds_cfg_get NETWORK_HOSTNAME)"
     nds_cfg_summary_row "Network method" "$(nds_cfg_display_choice "$(nds_cfg_get NETWORK_METHOD)" "dhcp=DHCP|static=Static IP")"
     if nds_cfg_is NETWORK_METHOD static; then
         nds_cfg_summary_row "IP address" "$(nds_cfg_get NETWORK_IP)"
@@ -42,9 +42,9 @@ network_prompt_errors() {
     nds_cfg_section_title "Network"
     while ! network_validate &>/dev/null; do
         local hostname
-        hostname=$(nds_cfg_get HOSTNAME)
+        hostname=$(nds_cfg_get NETWORK_HOSTNAME)
         if [[ -z "$hostname" ]] || ! validate_hostname "$hostname" 2>/dev/null; then
-            nds_cfg_ask_hostname HOSTNAME "Hostname" "" true
+            nds_cfg_ask_hostname NETWORK_HOSTNAME "Hostname" "" true
             continue
         fi
         if nds_cfg_is NETWORK_METHOD static; then
@@ -67,7 +67,7 @@ network_prompt_errors() {
 
 network_validate() {
     local hostname
-    hostname=$(nds_cfg_get HOSTNAME)
+    hostname=$(nds_cfg_get NETWORK_HOSTNAME)
     if [[ -z "$hostname" ]]; then
         validation_error "Hostname is required"
         return 1
