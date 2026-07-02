@@ -6,7 +6,7 @@ NDS discovers subdirectories here that provide `action_config()` and `action_set
 
 | Action | Description |
 |--------|-------------|
-| [classicInstall](classicInstall/) | No flake — generates `/etc/nixos/configuration.nix` + `nixos-install` |
+| [classicInstall](classicInstall/README.md) | No flake — generates `/etc/nixos/configuration.nix` + `nixos-install` |
 | [installFlake](installFlake/README.md) | `nixos-install --flake` from remote Git or local path |
 | [remoteAction](remoteAction/) | Clone flake and run `.nds/action.sh` if present, else installFlake |
 
