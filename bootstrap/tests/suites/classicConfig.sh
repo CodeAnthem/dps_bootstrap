@@ -192,6 +192,9 @@ suite_classic_config() {
     assert_contains "$content" 'ssh-ed25519 AAAAfakeKey test@host' "remote-unlock configuration.nix"
     assert_contains "$content" '/etc/secrets/initrd/ssh_host_ed25519_key' "remote-unlock configuration.nix"
     assert_contains "$content" 'boot.initrd.systemd.network' "remote-unlock configuration.nix"
+    assert_contains "$content" 'matchConfig.Type = "ether"' "remote-unlock configuration.nix"
+    assert_not_contains "$content" 'matchConfig.Name = "eth0"' "remote-unlock configuration.nix"
+    assert_contains "$content" 'boot.initrd.availableKernelModules' "remote-unlock configuration.nix"
 
     rm -rf "$tmp_dir"
 }

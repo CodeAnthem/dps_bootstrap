@@ -21,6 +21,9 @@ nds_nixcfg_remoteUnlock_auto() {
     ssh_key=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_SSH_KEY")
     net_mode=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_NETWORK")
 
+    # Match any wired NIC by type instead of a fixed name — the initrd uses
+    # predictable names (ens33, enp0s3, …), so a hardcoded "eth0" matches
+    # nothing and the interface never comes up.
     local net_block
     if [[ "$net_mode" == "static" ]]; then
         local ip gateway mask_val prefix
@@ -30,8 +33,8 @@ nds_nixcfg_remoteUnlock_auto() {
         prefix=$(_nixcfg_netmask_to_prefix "${mask_val:-24}")
         local ip_only="${ip%/*}"
         net_block=$(cat <<EOF
-boot.initrd.systemd.network.networks."eth0" = {
-  matchConfig.Name = "eth0";
+boot.initrd.systemd.network.networks."10-remote-unlock" = {
+  matchConfig.Type = "ether";
   address = [ "${ip_only}/${prefix}" ];
   gateway = [ "${gateway}" ];
 };
@@ -39,8 +42,8 @@ EOF
 )
     else
         net_block=$(cat <<'EOF'
-boot.initrd.systemd.network.networks."eth0" = {
-  matchConfig.Name = "eth0";
+boot.initrd.systemd.network.networks."10-remote-unlock" = {
+  matchConfig.Type = "ether";
   networkConfig.DHCP = "ipv4";
 };
 EOF
@@ -58,6 +61,10 @@ boot.initrd.network.ssh = {
   hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
 };
 boot.initrd.systemd.enable = true;
+# Common wired NIC drivers so the initrd can bring up the network for SSH.
+# availableKernelModules merges with hardware-configuration.nix; unknown
+# modules are simply ignored.
+boot.initrd.availableKernelModules = [ "e1000" "e1000e" "vmxnet3" "virtio_net" "r8169" "igb" "ixgbe" "tg3" ];
 ${net_block}
 EOF
 )
