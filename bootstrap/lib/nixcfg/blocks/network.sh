@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2025-10-28
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   NixOS Config Generation - Network Module
 # Feature:       Network configuration (DHCP, static IP, hostname, DNS)
 # ==================================================================================================
@@ -71,36 +71,31 @@ _nixcfg_network_static() {
     local mask="$4"
     local dns_primary="$5"
     local dns_secondary="$6"
-    
-    local block
-    # Only include nameservers if at least one is set
+
+    local ns_line=""
     if [[ -n "$dns_primary" || -n "$dns_secondary" ]]; then
-        block=$(cat <<EOF
-networking = {
-  hostName = "$hostname";
-  interfaces.eth0.ipv4.addresses = [{
-    address = "$ip";
-    prefixLength = $mask;
-  }];
-  defaultGateway = "$gateway";
-  nameservers = [ "$dns_primary" "$dns_secondary" ];
-};
-EOF
-)
-    else
-        block=$(cat <<EOF
-networking = {
-  hostName = "$hostname";
-  interfaces.eth0.ipv4.addresses = [{
-    address = "$ip";
-    prefixLength = $mask;
-  }];
-  defaultGateway = "$gateway";
-};
-EOF
-)
+        ns_line=$'\n  nameservers = [ "'"$dns_primary"'" "'"$dns_secondary"'" ];'
     fi
-    
+
+    # Match any wired NIC via systemd-networkd instead of a fixed name — "eth0"
+    # does not exist on predictable-name systems (ens33, enp0s3, …), so the
+    # static address would never be applied.
+    local block
+    block=$(cat <<EOF
+networking = {
+  hostName = "$hostname";
+  useDHCP = false;${ns_line}
+};
+systemd.network.enable = true;
+systemd.network.networks."10-wired" = {
+  matchConfig.Type = "ether";
+  address = [ "$ip/$mask" ];
+  gateway = [ "$gateway" ];
+  linkConfig.RequiredForOnline = "routable";
+};
+EOF
+)
+
     nds_nixcfg_register "network" "$block" 20
 }
 
@@ -108,15 +103,31 @@ _nixcfg_network_dhcp() {
     local hostname="$1"
     local dns_primary="$2"
     local dns_secondary="$3"
-    
-    local block
-    # Only include nameservers if at least one is set
+
+    local remote_unlock ns_line=""
+    remote_unlock=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_UNLOCK" 2>/dev/null || true)
     if [[ -n "$dns_primary" || -n "$dns_secondary" ]]; then
+        ns_line=$'\n  nameservers = [ "'"$dns_primary"'" "'"$dns_secondary"'" ];'
+    fi
+
+    local block
+    if [[ "$remote_unlock" == "true" ]]; then
+        # Remote unlock needs a predictable IP. Drive the booted system with
+        # systemd-networkd and a MAC-based DHCP client id so it presents the
+        # same identity as the initrd (see remoteUnlock.sh) — the DHCP server
+        # then hands out the SAME lease in the initrd and after boot, so the
+        # initrd is reachable on the machine's normal address.
         block=$(cat <<EOF
 networking = {
   hostName = "$hostname";
-  networkmanager.enable = true;
-  nameservers = [ "$dns_primary" "$dns_secondary" ];
+  useDHCP = false;${ns_line}
+};
+systemd.network.enable = true;
+systemd.network.networks."10-wired" = {
+  matchConfig.Type = "ether";
+  networkConfig.DHCP = "ipv4";
+  dhcpV4Config.ClientIdentifier = "mac";
+  linkConfig.RequiredForOnline = "routable";
 };
 EOF
 )
@@ -124,12 +135,12 @@ EOF
         block=$(cat <<EOF
 networking = {
   hostName = "$hostname";
-  networkmanager.enable = true;
+  networkmanager.enable = true;${ns_line}
 };
 EOF
 )
     fi
-    
+
     nds_nixcfg_register "network" "$block" 20
 }
 

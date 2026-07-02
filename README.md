@@ -1,6 +1,6 @@
 # Nix Deploy System (NDS)
 
-[![Version](https://img.shields.io/badge/version-5.0.7-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
+[![Version](https://img.shields.io/badge/version-5.0.8-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 [![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)
@@ -110,13 +110,13 @@ After install, NDS creates a zip in `/home/nixos/` (owned by the `nixos` user so
 
 If you enabled a **USB key**, the finish screen tells you exactly how to copy `secrets/luks_key.bin` onto a USB stick (raw `dd` to the device, or a file on a mounted USB) before rebooting — the key is never written to the target disk, so you must stage it on the USB yourself.
 
-NDS prints the full path and copy commands with your machine's IP — paste one of these from a **second terminal** on your PC:
+The bundle always has the **fixed name `nds_bundle.zip`** on the host (so commands never have to guess a timestamp), and the copy command renames it to a descriptive, timestamped file on your machine. NDS prints these with your machine's IP — paste one from a **second terminal** on your PC:
 
 ```bash
-# Example — use the exact path and IP NDS shows on screen
-scp nixos@192.168.1.50:/home/nixos/nds_install_backup_20260629_225213_myhost.zip .
+# Example — use the exact IP NDS shows on screen
+scp nixos@192.168.1.50:/home/nixos/nds_bundle.zip ./nds_install_backup_20260629_225213_myhost.zip
 
-ssh nixos@192.168.1.50 "cat /home/nixos/nds_install_backup_20260629_225213_myhost.zip" > nds_install_backup_20260629_225213_myhost.zip
+ssh nixos@192.168.1.50 "cat /home/nixos/nds_bundle.zip" > nds_install_backup_20260629_225213_myhost.zip
 ```
 
 NDS does not reboot automatically when encryption is enabled — reboot only after the package is safe offline.

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # Description:   Admin user credential generation for NixOS installation
 # Feature:       Auto-generate or collect the admin password, save to runtime secrets
 # ==================================================================================================
@@ -24,8 +24,8 @@ _nixinstall_generate_access_secrets() {
     pw_file="$runtime_secrets/admin_password.txt"
 
     if [[ "$auto" == "true" ]]; then
-        log "Generating admin password (/dev/urandom, $length bytes -> $((length * 2)) hex chars)"
-        pw=$(od -An -tx1 -v -N "$length" /dev/urandom | tr -d ' \n')
+        log "Generating admin password (/dev/urandom, $length hex chars)"
+        pw=$(_nds_urandom_chars "$length")
         if [[ -z "$pw" ]]; then
             error "Admin password generation from /dev/urandom failed"
             return 1

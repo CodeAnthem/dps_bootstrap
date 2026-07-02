@@ -32,7 +32,7 @@ encryption_configure() {
     if nds_cfg_true ENCRYPTION_PASSWORD; then
         nds_cfg_ask_toggle ENCRYPTION_PASSWORD_AUTO "Auto-generate password" true
         if nds_cfg_true ENCRYPTION_PASSWORD_AUTO; then
-            nds_cfg_ask_int ENCRYPTION_PASSWORD_LENGTH "Password length (bytes)" 32 16 128
+            nds_cfg_ask_int ENCRYPTION_PASSWORD_LENGTH "Password length (characters)" 32 16 128
         fi
     fi
 

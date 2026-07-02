@@ -42,10 +42,15 @@ boot.initrd.systemd.network.networks."10-remote-unlock" = {
 EOF
 )
     else
+        # ClientIdentifier = "mac" makes the initrd request its DHCP lease by
+        # MAC address — the same identity the booted system uses (see
+        # network.sh) — so the DHCP server hands out the SAME IP in the initrd
+        # and after boot. Otherwise the initrd gets its own, unknowable lease.
         net_block=$(cat <<'EOF'
 boot.initrd.systemd.network.networks."10-remote-unlock" = {
   matchConfig.Type = "ether";
   networkConfig.DHCP = "ipv4";
+  dhcpV4Config.ClientIdentifier = "mac";
   linkConfig.RequiredForOnline = "routable";
 };
 EOF
@@ -65,6 +70,9 @@ boot.initrd.network.ssh = {
   hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
 };
 boot.initrd.systemd.enable = true;
+# Without this, systemd-networkd never starts in the initrd, the NIC stays
+# down, and initrd SSH is unreachable — this is required, not optional.
+boot.initrd.systemd.network.enable = true;
 # Common wired NIC drivers so the initrd can bring up the network for SSH.
 # availableKernelModules merges with hardware-configuration.nix; unknown
 # modules are simply ignored.

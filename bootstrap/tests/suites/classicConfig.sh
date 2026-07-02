@@ -57,6 +57,8 @@ suite_classic_config() {
     assert_contains "$content" 'Europe/Zurich' "configuration.nix"
     assert_contains "$content" 'testhost' "configuration.nix"
     assert_contains "$content" 'hardware-configuration.nix' "configuration.nix"
+    # Plain DHCP (no remote unlock) uses NetworkManager.
+    assert_contains "$content" 'networkmanager.enable = true' "configuration.nix"
 
     rm -rf "$tmp_dir"
 
@@ -197,6 +199,11 @@ suite_classic_config() {
     assert_contains "$content" 'boot.initrd.availableKernelModules' "remote-unlock configuration.nix"
     assert_contains "$content" 'command="systemctl default"' "remote-unlock configuration.nix"
     assert_contains "$content" 'RequiredForOnline = "routable"' "remote-unlock configuration.nix"
+    assert_contains "$content" 'boot.initrd.systemd.network.enable = true' "remote-unlock configuration.nix"
+    assert_contains "$content" 'dhcpV4Config.ClientIdentifier = "mac"' "remote-unlock configuration.nix"
+    # Booted system also uses networkd (MAC id) so its IP matches the initrd.
+    assert_contains "$content" 'systemd.network.networks."10-wired"' "remote-unlock configuration.nix"
+    assert_not_contains "$content" 'networkmanager.enable = true' "remote-unlock configuration.nix"
 
     rm -rf "$tmp_dir"
 }

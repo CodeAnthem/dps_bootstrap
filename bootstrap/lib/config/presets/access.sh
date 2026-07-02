@@ -22,7 +22,7 @@ access_configure() {
     nds_cfg_ask_username ADMIN_USER "Admin username" "admin" true
     nds_cfg_ask_toggle ADMIN_PASSWORD_AUTO "Auto-generate admin password" true
     if nds_cfg_true ADMIN_PASSWORD_AUTO; then
-        nds_cfg_ask_int ADMIN_PASSWORD_LENGTH "Admin password length (bytes)" 32 16 128
+        nds_cfg_ask_int ADMIN_PASSWORD_LENGTH "Admin password length (characters)" 32 16 128
     else
         nds_cfg_ask_secret ADMIN_PASSWORD "Admin password" 12 true
     fi

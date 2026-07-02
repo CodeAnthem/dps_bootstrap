@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-01
+# Date:          Created: 2025-10-28 | Modified: 2026-07-02
 # Description:   LUKS2 encryption setup for NixOS installation
 # Feature:       Password and/or keyfile LUKS slots, /dev/urandom generation
 # ==================================================================================================
@@ -11,13 +11,15 @@
 # ENCRYPTION SETUP
 # =============================================================================
 
-# Description: Generate N hex chars from /dev/urandom (openssl-free; the NixOS
-# live ISO does not ship openssl by default). N is the byte count; output is
-# 2N lowercase hex chars with no spaces or newlines.
-# Usage: _nds_urandom_hex <byte_count>
-_nds_urandom_hex() {
+# Description: Generate exactly N random lowercase-hex characters from
+# /dev/urandom (openssl-free; the NixOS live ISO does not ship openssl by
+# default). Reads ceil(N/2) bytes and truncates to N chars, so the requested
+# length is the actual character count.
+# Usage: _nds_urandom_chars <char_count>
+_nds_urandom_chars() {
     local n="$1"
-    od -An -tx1 -v -N "$n" /dev/urandom | tr -d ' \n'
+    local bytes=$(( (n + 1) / 2 ))
+    od -An -tx1 -v -N "$bytes" /dev/urandom | tr -d ' \n' | cut -c1-"$n"
 }
 
 # Description: Generate or collect unlock secrets (password and/or keyfile)
@@ -43,8 +45,8 @@ _nixinstall_generate_encryption_secrets() {
     if [[ "$use_password" == "true" ]]; then
         local passphrase pw_file="$runtime_secrets/luks_password.txt"
         if [[ "$password_auto" == "true" ]]; then
-            log "Generating password (/dev/urandom, $password_length bytes -> $((password_length * 2)) hex chars)"
-            passphrase=$(_nds_urandom_hex "$password_length")
+            log "Generating password (/dev/urandom, $password_length hex chars)"
+            passphrase=$(_nds_urandom_chars "$password_length")
             if [[ -z "$passphrase" ]]; then
                 error "Password generation from /dev/urandom failed"
                 return 1
