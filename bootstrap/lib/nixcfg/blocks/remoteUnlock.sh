@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-02
 # Description:   Initrd SSH remote-unlock Nix config
 # Feature:       boot.initrd.network.ssh (dropbear/unssh) + systemd initrd
 #                networking. Host key is embedded automatically via the
@@ -37,6 +37,7 @@ boot.initrd.systemd.network.networks."10-remote-unlock" = {
   matchConfig.Type = "ether";
   address = [ "${ip_only}/${prefix}" ];
   gateway = [ "${gateway}" ];
+  linkConfig.RequiredForOnline = "routable";
 };
 EOF
 )
@@ -45,6 +46,7 @@ EOF
 boot.initrd.systemd.network.networks."10-remote-unlock" = {
   matchConfig.Type = "ether";
   networkConfig.DHCP = "ipv4";
+  linkConfig.RequiredForOnline = "routable";
 };
 EOF
 )
@@ -57,7 +59,9 @@ boot.initrd.network.enable = true;
 boot.initrd.network.ssh = {
   enable = true;
   port = 22;
-  authorizedKeys = [ "${ssh_key}" ];
+  # command="systemctl default" makes the SSH login run the unlock prompt
+  # directly instead of dropping into an initrd shell.
+  authorizedKeys = [ ''command="systemctl default" ${ssh_key}'' ];
   hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
 };
 boot.initrd.systemd.enable = true;

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-01
+# Date:          Created: 2026-06-29 | Modified: 2026-07-02
 # Description:   classicConfig builder tests (read-only — writes to temp dir only)
 # ==================================================================================================
 
@@ -195,6 +195,8 @@ suite_classic_config() {
     assert_contains "$content" 'matchConfig.Type = "ether"' "remote-unlock configuration.nix"
     assert_not_contains "$content" 'matchConfig.Name = "eth0"' "remote-unlock configuration.nix"
     assert_contains "$content" 'boot.initrd.availableKernelModules' "remote-unlock configuration.nix"
+    assert_contains "$content" 'command="systemctl default"' "remote-unlock configuration.nix"
+    assert_contains "$content" 'RequiredForOnline = "routable"' "remote-unlock configuration.nix"
 
     rm -rf "$tmp_dir"
 }

@@ -1,6 +1,6 @@
 # Nix Deploy System (NDS)
 
-[![Version](https://img.shields.io/badge/version-5.0.5-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
+[![Version](https://img.shields.io/badge/version-5.0.6-0267c1?style=flat-square)](https://github.com/CodeAnthem/dps_bootstrap)
 [![NixOS](https://img.shields.io/badge/NixOS-Live%20ISO-5277C3?style=flat-square&logo=nixos&logoColor=white)](https://nixos.org)
 [![ShellCheck](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/shellcheck.yml)
 [![Self-test](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml/badge.svg)](https://github.com/CodeAnthem/dps_bootstrap/actions/workflows/selftest.yml)
@@ -155,7 +155,7 @@ When you enable **encryption → remote unlock**, NDS configures NixOS to start 
 At boot:
 
 - Initrd SSH listens on **port 22**.
-- With **DHCP** (default), the IP is assigned by your network — check your router/DHCP logs for the address. With a static IP, it uses your network settings.
+- With **DHCP** (default), the initrd requests its **own** lease, so its IP is often **not** the same one the fully-booted machine normally gets — check your router/DHCP server logs for the address that appears while the LUKS prompt is up. For a predictable, always-reachable address, pick a **static IP** for remote unlock.
 - The **authorized key** is the public key you provided during configuration.
 - The **initrd host key** is in the backup zip at `secrets/initrd_ssh_host_ed25519_key`.
 
@@ -203,14 +203,10 @@ After the machine reboots and reaches the LUKS prompt, from your PC:
 
 ```bash
 ssh -i ~/.ssh/nixosController root@<machine-ip>
-# then enter the LUKS passphrase at the prompt (or run: systemctl default)
+# the passphrase prompt appears automatically; type it and the machine boots
 ```
 
-Or unlock in one line:
-
-```bash
-ssh -t -i ~/.ssh/nixosController root@<machine-ip> 'systemctl default'
-```
+The authorized key is wired with `command="systemctl default"`, so logging in drops you **straight into the passphrase prompt** — no shell, no extra command to remember.
 
 Initrd SSH logs in as **root** (a minimal early-boot environment) — not your admin user, which only exists once the real system is booted.
 
