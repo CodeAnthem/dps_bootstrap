@@ -140,52 +140,29 @@ nds_ui_choice_row() {
     nds_ui_kv_row "${number}) ${name}" "$detail" "$width"
 }
 
-nds_ui_draw_box() {
-    local title="$1"
-    local length="${2:-0}"
-    local inner_length border
-
-    nds_ui_init
-
-    if [[ "$length" -le 0 ]]; then
-        length=$(( ${#title} + 4 ))
-        (( length < 42 )) && length=42
-    fi
-    inner_length=$((length - 2))
-
-    if [[ "$NDS_UI_MODE" == "unicode" ]]; then
-        border=$(printf '─%.0s' $(seq 1 "$inner_length"))
-        printf "%s╭%s╮\n" "$NDS_UI_INDENT_H" "$border" >&2
-        printf "%s │%-*s│\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
-        printf "%s╰%s╯\n" "$NDS_UI_INDENT_H" "$border" >&2
-        return 0
-    fi
-
-    border=$(printf -- '-%.0s' $(seq 1 "$inner_length"))
-    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
-    printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner_length" "$title" >&2
-    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
-}
-
 # Description: Render the persistent NDS banner as a single box containing the
 # fixed script title line (name + version) and an optional section subtitle.
-# The box width expands to fit the longest line, with a sane minimum.
+# The box width expands to fit the longest line, with a sane minimum. All lines
+# share one left margin so corners and pipes align, and content is padded by
+# character count (not bytes) so multibyte glyphs like the em dash stay square.
 # Arguments:
 # - subtitle: <String> Current section/screen name (may be empty)
 nds_ui_banner() {
     local subtitle="${1:-}"
     local title_line=" === ${SCRIPT_NAME:-Nix Deploy System} v${SCRIPT_VERSION:-} === "
     local sub_line="  ${subtitle}"
-    local max_len=${#title_line}
-    (( ${#sub_line} > max_len )) && max_len=${#sub_line}
-    # minimum inner width so short subtitles still get a reasonably wide box
-    (( max_len < 56 )) && max_len=56
-    local inner=$max_len
-    local border
+    local inner=${#title_line}
+    (( ${#sub_line} > inner )) && inner=${#sub_line}
+    (( inner < 56 )) && inner=56
+
     nds_ui_init
+
+    local margin='  '
+    local border
     border=$(printf -- '-%.0s' $(seq 1 "$inner"))
-    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
-    printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner" "$title_line" >&2
-    [[ -n "$subtitle" ]] && printf "%s |%-*s|\n" "$NDS_UI_INDENT_H" "$inner" "$sub_line" >&2
-    printf "%s+%s+\n" "$NDS_UI_INDENT_H" "$border" >&2
+
+    printf "%s+%s+\n" "$margin" "$border" >&2
+    printf "%s|%s%*s|\n" "$margin" "$title_line" "$(( inner - ${#title_line} ))" '' >&2
+    [[ -n "$subtitle" ]] && printf "%s|%s%*s|\n" "$margin" "$sub_line" "$(( inner - ${#sub_line} ))" '' >&2
+    printf "%s+%s+\n" "$margin" "$border" >&2
 }

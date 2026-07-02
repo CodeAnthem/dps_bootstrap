@@ -155,101 +155,55 @@ _nds_install_bundle_remote_copy_hint() {
     nds_ui_b ""
 }
 
-# Description: Print post-install login instructions for the admin user.
-_nds_install_bundle_access_instructions() {
-    local admin_user ssh_enable ssh_pw_auth ssh_port
-    admin_user=$(nds_config_get "access" "ADMIN_USER")
-    ssh_enable=$(nds_config_get "access" "SSH_ENABLE")
-    ssh_pw_auth=$(nds_config_get "access" "SSH_PASSWORD_AUTH")
-    ssh_port=$(nds_config_get "access" "SSH_PORT")
-
-    nds_ui_b ""
-    nds_ui_h "First login"
-    nds_ui_i "Admin user: ${admin_user}"
-    nds_ui_i "Admin password: in this zip at secrets/admin_password.txt"
-    if [[ "$ssh_enable" == "true" ]]; then
-        local host
-        host=$(nds_install_bundle_host_ip)
-        if [[ -n "$host" ]]; then
-            nds_ui_i "SSH (from your local machine):"
-            nds_ui_i "  ssh ${admin_user}@${host}$([[ "$ssh_port" != "22" ]] && printf ' -p %s' "$ssh_port")"
-        else
-            nds_ui_i "SSH: ssh ${admin_user}@<host-ip>"
-        fi
-        if [[ "$ssh_pw_auth" == "true" ]]; then
-            nds_ui_i "Password login is enabled — use the password above."
-        else
-            nds_ui_i "Password login is OFF — use your configured SSH key."
-        fi
-    fi
-    nds_ui_i "Console login also works with the admin user + password."
-    _nds_ui_colored 33 "Change the admin password after first login: passwd"
-}
-
-# Description: Print post-install instructions for preparing the USB key and
-# remote unlock, based on the chosen encryption model.
-_nds_install_bundle_encryption_instructions() {
-    local encryption use_password use_key key_device key_file remote_unlock
+# Description: USB key staging instructions. The keyfile is never written to the
+# target disk, so it must be copied onto the USB from the live system BEFORE the
+# reboot — this cannot wait for the README. Post-boot help (first login, remote
+# unlock) lives in the README instead.
+_nds_install_bundle_usbkey_instructions() {
+    local encryption use_password use_key key_device key_file
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
     [[ "$encryption" == "true" ]] || return 0
 
-    use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD")
     use_key=$(nds_config_get "encryption" "ENCRYPTION_KEY")
+    [[ "$use_key" == "true" ]] || return 0
+
+    use_password=$(nds_config_get "encryption" "ENCRYPTION_PASSWORD")
     key_device=$(nds_config_get "encryption" "ENCRYPTION_KEY_BOOT_DEVICE")
     key_file=$(nds_config_get "encryption" "ENCRYPTION_KEY_BOOT_FILE")
-    remote_unlock=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_UNLOCK")
 
-    if [[ "$use_key" == "true" ]]; then
-        nds_ui_b ""
-        nds_ui_h "Prepare your USB key (required to boot)"
-        nds_ui_i "The LUKS key is in this zip at secrets/luks_key.bin."
+    nds_ui_b ""
+    nds_ui_h "Prepare your USB key (required to boot)"
+    nds_ui_i "The LUKS key is in this zip at secrets/luks_key.bin."
 
-        if [[ -z "$key_file" ]]; then
-            nds_ui_i "Copy it to a USB stick as RAW bytes BEFORE rebooting:"
-            nds_ui_i "  dd if=luks_key.bin of=<usb-device> bs=4096 count=1"
-            nds_ui_i "Plug that USB in at every boot. Its device path must match:"
-            nds_ui_i "  ENCRYPTION_KEY_BOOT_DEVICE = ${key_device}"
-        else
-            nds_ui_i "Copy it to a file on a USB stick BEFORE rebooting:"
-            nds_ui_i "  mount <usb-device> /mnt/usb"
-            nds_ui_i "  cp luks_key.bin /mnt/usb/${key_file}"
-            nds_ui_i "  umount /mnt/usb"
-            nds_ui_i "Plug that USB in at every boot. Its device path must match:"
-            nds_ui_i "  ENCRYPTION_KEY_BOOT_DEVICE = ${key_device}"
-        fi
-
-        if [[ "$use_password" != "true" ]]; then
-            nds_ui_b ""
-            _nds_ui_colored 31 "WARNING: key-only mode (no password)."
-            _nds_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
-            _nds_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
-        fi
+    if [[ -z "$key_file" ]]; then
+        nds_ui_i "Copy it to a USB stick as RAW bytes BEFORE rebooting:"
+        nds_ui_i "  dd if=luks_key.bin of=<usb-device> bs=4096 count=1"
+        nds_ui_i "Plug that USB in at every boot. Its device path must match:"
+        nds_ui_i "  ENCRYPTION_KEY_BOOT_DEVICE = ${key_device}"
+    else
+        nds_ui_i "Copy it to a file on a USB stick BEFORE rebooting:"
+        nds_ui_i "  mount <usb-device> /mnt/usb"
+        nds_ui_i "  cp luks_key.bin /mnt/usb/${key_file}"
+        nds_ui_i "  umount /mnt/usb"
+        nds_ui_i "Plug that USB in at every boot. Its device path must match:"
+        nds_ui_i "  ENCRYPTION_KEY_BOOT_DEVICE = ${key_device}"
     fi
 
-    if [[ "$remote_unlock" == "true" ]]; then
+    if [[ "$use_password" != "true" ]]; then
         nds_ui_b ""
-        nds_ui_h "Remote unlock (initrd SSH)"
-        nds_ui_i "Initrd SSH will be available at boot on port 22."
-        local net_mode
-        net_mode=$(nds_config_get "encryption" "ENCRYPTION_REMOTE_NETWORK")
-        if [[ "$net_mode" == "dhcp" ]]; then
-            nds_ui_i "IP is assigned by DHCP — check your router/DHCP logs for the address."
-        else
-            nds_ui_i "Static IP from your network settings."
-        fi
-        nds_ui_i "Unlock with:  ssh -t root@<ip> 'systemctl default'"
-        nds_ui_i "Authorized key: the public key you provided during configuration."
-        nds_ui_i "Initrd SSH host key is in this zip at secrets/initrd_ssh_host_ed25519_key"
+        _nds_ui_colored 31 "WARNING: key-only mode (no password)."
+        _nds_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
+        _nds_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
     fi
 }
 
-# Post-install screen: success banner, bundle path, copy commands, reboot prompt.
+# Post-install screen: backup bundle, copy commands, README pointer, reboot prompt.
 nds_install_bundle_finish() {
     local bundle_ok=1
     nds_install_bundle_create || bundle_ok=0
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
-        nds_ui_b ""
+        section_header "Backup bundle"
         nds_ui_h "Save the restore package for future use"
         nds_ui_b "Copy this zip off the machine before you reboot."
         nds_ui_b "It includes your NDS configuration, install logs, and unlock material (if encrypted)."
@@ -261,14 +215,16 @@ nds_install_bundle_finish() {
             nds_ui_b ""
         fi
 
-        _nds_install_bundle_encryption_instructions
+        _nds_install_bundle_usbkey_instructions
 
-        _nds_install_bundle_access_instructions
-
-        nds_ui_b ""
         _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
-        nds_ui_b ""
+
         nds_askUserToProceed "I have copied the package (or do not need it)" || return 1
+
+        nds_ui_b ""
+        nds_ui_h "Next steps"
+        nds_ui_b "First login and remote unlock instructions are in the README:"
+        nds_ui_i "https://github.com/CodeAnthem/dps_bootstrap#after-install"
         nds_ui_b ""
         nds_ui_b "Reboot when ready: sudo reboot"
         nds_askUserToProceed "Reboot now?" && reboot
