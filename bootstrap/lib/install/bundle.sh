@@ -445,6 +445,26 @@ nds_install_finish() {
     return 0
 }
 
+# Post-install screen for remote nixos-anywhere (no local reboot).
+nds_install_remote_finish() {
+    local bundle_ok=1
+    nds_install_bundle_create || bundle_ok=0
+
+    section_header "Remote install complete"
+    nds_ui_h "Next steps"
+    nds_ui_b "nixos-anywhere reboots the target host when finished."
+    nds_ui_b "Commit the generated facter.json in your flake host directory."
+    nds_ui_b "Enroll the machine age key in .sops.yaml, then: sops updatekeys secrets/secrets.yaml"
+    nds_ui_b ""
+
+    if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
+        nds_ui_i "Install backup: ${NDS_INSTALL_BUNDLE}"
+        _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+    fi
+
+    return 0
+}
+
 # Legacy names (call sites / exports).
 nds_secrets_create_bundle() { nds_install_bundle_create "$@"; }
 nds_secrets_finish_install() { nds_install_bundle_finish "$@"; }

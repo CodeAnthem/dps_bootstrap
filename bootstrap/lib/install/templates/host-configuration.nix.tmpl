@@ -1,0 +1,18 @@
+{ config, lib, pkgs, inputs, ... }: {
+  imports = [
+    (import ../../../host-lib/mkHardware.nix ./.)
+    ../../../host-lib/sops-base.nix
+  ];
+
+  networking = {
+    hostName = "__HOSTNAME__";
+    interfaces.__INTERFACE__.ipv4.addresses = lib.mkForce [{
+      address = "__IP__";
+      prefixLength = __PREFIX__;
+    }];
+    defaultGateway = "__GATEWAY__";
+    nameservers = [ __NAMESERVERS__ ];
+  };
+
+  system.stateVersion = "__STATE_VERSION__";
+}

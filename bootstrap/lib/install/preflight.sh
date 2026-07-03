@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install pre-flight checks
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-30
+# Date:          Created: 2026-06-29 | Modified: 2026-07-03
 # Description:   Disk, nix, network, and SSH checks before destructive install steps
 # ==================================================================================================
 
@@ -58,6 +58,45 @@ nds_preflight_install() {
             if ! ping -c1 -W3 1.1.1.1 &>/dev/null; then
                 warn "Network may be unreachable — HTTPS git clone could fail"
             fi
+        fi
+    fi
+
+    return 0
+}
+
+# Verify operator machine and SSH access before remote nixos-anywhere install.
+# Usage: nds_preflight_remote_install "target_ip" ["remote_repo_url"]
+nds_preflight_remote_install() {
+    local target_ip="$1"
+    local remote_url="${2:-}"
+
+    if ! command -v nix &>/dev/null; then
+        error "nix not found — install Nix on the operator machine"
+        return 1
+    fi
+
+    if [[ -z "$target_ip" ]]; then
+        error "REMOTE_TARGET_IP is required for remote install"
+        return 1
+    fi
+
+    if [[ -n "$remote_url" ]]; then
+        if [[ "$remote_url" == git@* || "$remote_url" == ssh://* ]]; then
+            nds_preflight_ssh_for_git "$remote_url" || return 1
+        elif [[ "$remote_url" == http://* || "$remote_url" == https://* ]]; then
+            if ! ping -c1 -W3 1.1.1.1 &>/dev/null; then
+                warn "Network may be unreachable — HTTPS git clone could fail"
+            fi
+        fi
+    fi
+
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
+        "root@${target_ip}" true 2>/dev/null; then
+        debug "SSH reachable: root@${target_ip}"
+    else
+        warn "Cannot reach root@${target_ip} via SSH (passwordless root login required)"
+        if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+            nds_askUserToProceed "Continue without verified SSH access?" || return 1
         fi
     fi
 

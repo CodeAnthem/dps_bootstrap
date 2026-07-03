@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-02
+# Date:          Created: 2025-10-28 | Modified: 2026-07-03
 # Description:   Main NixOS installation orchestration
 # Feature:       Orchestrates disk setup, encryption, mounting, and NixOS installation
 # ==================================================================================================
@@ -69,6 +69,8 @@ nds_nixos_install() {
 
     if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
         cp /mnt/etc/nixos/hardware-configuration.nix "$NDS_RUNTIME_DIR/config/"
+    elif [[ -f /mnt/etc/nixos/facter.json ]]; then
+        cp /mnt/etc/nixos/facter.json "$NDS_RUNTIME_DIR/config/"
     fi
 
     nds_step_exec "Installing configuration files" _nixinstall_install_configs || return 1
@@ -87,7 +89,7 @@ nds_nixos_install() {
 # Usage: nds_nixos_install_flake
 nds_nixos_install_flake() {
     local flake_root repo_url install_path hostname host_dir_rel source local_path
-    local disk_prep hw_mode encryption disk disk_strategy
+    local disk_prep hw_mode encryption disk disk_strategy install_mode target_ip
     hostname=$(nds_config_get "network" "NETWORK_HOSTNAME")
     source="${NDS_FLAKE_SOURCE:-$(nds_configurator_config_get "FLAKE_SOURCE")}"
     repo_url="${NDS_FLAKE_REPO_URL:-$(nds_configurator_config_get "FLAKE_REPO_URL")}"
@@ -98,11 +100,38 @@ nds_nixos_install_flake() {
     disk_strategy="${disk_strategy:-nds}"
     hw_mode="${NDS_HARDWARE_PLACEMENT:-$(nds_configurator_config_get "FLAKE_HARDWARE_PLACEMENT")}"
     hw_mode="${hw_mode:-host-dir}"
+    install_mode="${NDS_INSTALL_MODE:-$(nds_configurator_config_get "INSTALL_MODE")}"
+    install_mode="${install_mode:-local}"
+    target_ip="${NDS_REMOTE_TARGET_IP:-$(nds_configurator_config_get "REMOTE_TARGET_IP")}"
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
     disk=$(nds_config_get "disk" "DISK_TARGET")
 
     if [[ -z "$hostname" ]]; then
         error "NETWORK_HOSTNAME must be set before flake install"
+    fi
+
+    if [[ "$install_mode" == "remote" ]]; then
+        if [[ -z "$target_ip" ]]; then
+            error "REMOTE_TARGET_IP is required when INSTALL_MODE=remote"
+        fi
+
+        nds_install_log "installFlake: remote host=${hostname} target=${target_ip}"
+        NDS_UI_QUIET=true
+
+        if ! flake_root=$(_nixinstall_resolve_flake_root "$source" "$local_path" "$repo_url"); then
+            return 1
+        fi
+        export NDS_FLAKE_ROOT="$flake_root"
+
+        if [[ "$encryption" == "true" ]]; then
+            nds_step_exec "Generating encryption secrets" _nixinstall_generate_encryption_secrets || return 1
+        fi
+
+        nds_step_exec "Installing via nixos-anywhere" \
+            _nixinstall_via_nixos_anywhere "$flake_root" "$hostname" "$target_ip" || return 1
+
+        nds_install_log "installFlake: remote completed ${flake_root}#${hostname}"
+        return 0
     fi
 
     nds_install_log "installFlake: host=${hostname} strategy=${disk_strategy} hw=${hw_mode}"
@@ -144,35 +173,38 @@ nds_nixos_install_flake() {
 
     [[ -z "$host_dir_rel" ]] && host_dir_rel="hosts/x86_64-linux"
     local host_dir="${flake_root}/${host_dir_rel}/${hostname}"
+    local hw_artifact
+    hw_artifact=$(_nixinstall_hardware_artifact_name)
     case "$hw_mode" in
         skip)
-            log "Skipping hardware-configuration.nix (FLAKE_HARDWARE_PLACEMENT=skip)"
+            log "Skipping ${hw_artifact} (FLAKE_HARDWARE_PLACEMENT=skip)"
             ;;
         etc-nixos)
-            log "Keeping hardware-configuration.nix in /etc/nixos only"
+            log "Keeping ${hw_artifact} in /etc/nixos only"
             mkdir -p /mnt/etc/nixos
             ;;
         host-dir|*)
             mkdir -p "$host_dir"
-            local hw_dest="${host_dir}/hardware-configuration.nix"
+            local hw_dest="${host_dir}/${hw_artifact}"
+            local hw_src="/mnt/etc/nixos/${hw_artifact}"
             local skip_hw_copy=false
             if [[ -f "$hw_dest" ]]; then
                 NDS_UI_QUIET=false
-                warn "hardware-configuration.nix already exists: $hw_dest"
+                warn "${hw_artifact} already exists: $hw_dest"
                 if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
-                    if ! nds_askUserToProceed "Overwrite existing hardware-configuration.nix?"; then
-                        log "Keeping existing hardware-configuration.nix"
+                    if ! nds_askUserToProceed "Overwrite existing ${hw_artifact}?"; then
+                        log "Keeping existing ${hw_artifact}"
                         skip_hw_copy=true
                     fi
                 fi
                 NDS_UI_QUIET=true
             fi
             if [[ "$skip_hw_copy" != "true" ]]; then
-                if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
-                    cp /mnt/etc/nixos/hardware-configuration.nix "$hw_dest"
+                if [[ -f "$hw_src" ]]; then
+                    cp "$hw_src" "$hw_dest"
                     chmod 600 "$hw_dest"
                 else
-                    warn "No hardware-configuration.nix generated — host may use eval stub"
+                    warn "No ${hw_artifact} generated — host may use eval stub"
                 fi
             fi
             ;;
@@ -185,6 +217,9 @@ nds_nixos_install_flake() {
 
     nds_step_exec "Installing NixOS from flake" \
         _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$hw_mode" || return 1
+
+    nds_step_exec "Enrolling sops age key" \
+        _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || true
 
     nds_step_exec "Registering EFI boot entry" \
         _nixinstall_register_efi_entry "$disk" || true

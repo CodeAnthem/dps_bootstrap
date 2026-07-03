@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Remote action from target flake
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-30
+# Date:          Created: 2026-06-29 | Modified: 2026-07-03
 # Description:   Clone a flake and run its .nds/action.sh if present, else fall back to a flake install
 # ==================================================================================================
 
@@ -51,6 +51,7 @@ action_setup() {
     step_start "Fetching flake for action probe"
     probe_dir=$(nds_preflight_probe_flake "$repo_url") || exit 14
     step_complete "Flake cloned for probe"
+    export NDS_FLAKE_PROBE_DIR="$probe_dir"
 
     nds_preflight_apply_disko_strategy "$probe_dir" "${NDS_FLAKE_HOST}" "$host_dir"
 
@@ -64,7 +65,12 @@ action_setup() {
             nds_flake_prepare remote
         fi
     else
-        warn "No .nds/action.sh found — will use a standard flake install"
+        warn "No .nds/action.sh found — using role discovery + scaffolding"
+        if nds_flake_scaffold_interactive "$probe_dir" "$(basename "$host_dir")"; then
+            nds_flake_prepare
+        else
+            warn "No profiles/ found in flake — falling back to a standard flake install"
+        fi
     fi
 
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"

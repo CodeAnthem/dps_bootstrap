@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2025-10-28
+# Date:          Created: 2025-10-28 | Modified: 2026-07-03
 # Description:   NixOS installation commands
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
@@ -11,22 +11,116 @@
 # NIXOS INSTALLATION
 # =============================================================================
 
+# Description: Return hardware artifact filename for the active generation mode.
+# Returns:
+# - <String> facter.json or hardware-configuration.nix
+_nixinstall_hardware_artifact_name() {
+    local facter_mode="${NDS_HARDWARE_GEN:-facter}"
+    if [[ "$facter_mode" == "facter" ]]; then
+        echo "facter.json"
+    else
+        echo "hardware-configuration.nix"
+    fi
+}
+
+# Description: Resolve flake root on the operator machine for remote install.
+# Arguments:
+# - source:     <String> remote | local
+# - local_path: <String> Local flake path when source=local
+# - repo_url:   <String> Git URL when source=remote
+# Returns:
+# - <String> Absolute flake root path (stdout)
+_nixinstall_resolve_flake_root() {
+    local source="$1"
+    local local_path="$2"
+    local repo_url="$3"
+    local install_dir="${NDS_RUNTIME_DIR}/flake_install"
+
+    case "$source" in
+        local)
+            if [[ -z "$local_path" || ! -d "$local_path" ]]; then
+                error "Local flake path not found: $local_path"
+            fi
+            echo "$local_path"
+            ;;
+        remote|*)
+            if [[ -z "$repo_url" ]]; then
+                error "Flake repo URL is required for remote install"
+            fi
+            if [[ -d "${install_dir}/.git" ]]; then
+                echo "$install_dir"
+                return 0
+            fi
+            rm -rf "$install_dir"
+            nds_preflight_ssh_for_git "$repo_url" || return 1
+            if ! git clone --depth 1 "$repo_url" "$install_dir"; then
+                error "Failed to clone $repo_url to $install_dir"
+            fi
+            echo "$install_dir"
+            ;;
+    esac
+}
+
+# Description: Install NixOS on a remote target via nixos-anywhere.
+# Arguments:
+# - flake_root: <String> Flake root on the operator machine
+# - hostname:   <String> nixosConfigurations name
+# - target_ip:  <String> Target host IP or hostname
+_nixinstall_via_nixos_anywhere() {
+    local flake_root="$1"
+    local hostname="$2"
+    local target_ip="$3"
+    local host_dir_rel="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
+    local facter_dest="${flake_root}/${host_dir_rel}/${hostname}/facter.json"
+    local -a cmd=(
+        nix run github:nix-community/nixos-anywhere --
+        --flake "${flake_root}#${hostname}"
+        --generate-hardware-config nixos-facter "$facter_dest"
+        --target-host "root@${target_ip}"
+    )
+    local encryption
+    encryption=$(nds_config_get "encryption" "ENCRYPTION")
+    if [[ "$encryption" == "true" ]]; then
+        local key_path="${NDS_RUNTIME_DIR}/secrets/luks_key.bin"
+        if [[ ! -f "$key_path" ]]; then
+            error "LUKS keyfile not found at $key_path — run encryption secret generation first"
+        fi
+        cmd+=(--disk-encryption-keys /tmp/luks.key "$key_path")
+    fi
+
+    log "Running: ${cmd[*]}"
+    if ! "${cmd[@]}" 2>&1 | tee -a "$NDS_INSTALL_LOG"; then
+        error "nixos-anywhere installation failed"
+    fi
+    log "Remote install completed — commit ${facter_dest} to your flake repo"
+    return 0
+}
+
 # Generate hardware configuration
 # Usage: _nixinstall_generate_hardware_config
 _nixinstall_generate_hardware_config() {
-    log "Generating hardware configuration"
-    
-    # Create directory if it doesn't exist
+    local facter_mode="${NDS_HARDWARE_GEN:-facter}"
+    local hw_artifact
+    hw_artifact=$(_nixinstall_hardware_artifact_name)
+
     mkdir -p /mnt/etc/nixos
-    
-    # Generate hardware configuration
-    if ! nixos-generate-config --root /mnt --show-hardware-config \
-        > /mnt/etc/nixos/hardware-configuration.nix \
-        2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
-        error "Failed to generate hardware configuration"
+
+    if [[ "$facter_mode" == "facter" ]]; then
+        log "Generating hardware report via nixos-facter"
+        if ! nix run github:numtide/nixos-facter -- -o "/mnt/etc/nixos/${hw_artifact}" \
+            2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
+            error "Failed to generate facter.json"
+        fi
+        log "Generated ${hw_artifact} at /mnt/etc/nixos/${hw_artifact}"
+    else
+        log "Generating hardware configuration (legacy)"
+        if ! nixos-generate-config --root /mnt --show-hardware-config \
+            > "/mnt/etc/nixos/${hw_artifact}" \
+            2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
+            error "Failed to generate hardware configuration"
+        fi
+        log "Generated ${hw_artifact} at /mnt/etc/nixos/${hw_artifact}"
     fi
-    
-    log "Hardware configuration generated at /mnt/etc/nixos/hardware-configuration.nix"
     return 0
 }
 
@@ -98,9 +192,13 @@ _nixinstall_install_nixos_flake() {
         error "Flake root not found: $flake_root"
     fi
 
-    if [[ "$hw_placement" == "etc-nixos" && -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
-        install_args+=(--override-input hardware "path:/etc/nixos/hardware-configuration.nix")
-        log "Using --override-input hardware path:/etc/nixos/hardware-configuration.nix"
+    if [[ "$hw_placement" == "etc-nixos" ]]; then
+        local hw_artifact
+        hw_artifact=$(_nixinstall_hardware_artifact_name)
+        if [[ "$hw_artifact" == "hardware-configuration.nix" && -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
+            install_args+=(--override-input hardware "path:/etc/nixos/hardware-configuration.nix")
+            log "Using --override-input hardware path:/etc/nixos/hardware-configuration.nix"
+        fi
     fi
 
     if ! nixos-install "${install_args[@]}"; then

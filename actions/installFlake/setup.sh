@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-07-01
+# Date:          Created: 2026-06-28 | Modified: 2026-07-03
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
@@ -22,14 +22,14 @@ action_preview() {
     nds_ui_h "Install NixOS from your flake"
     nds_ui_b ""
     nds_ui_b "You will configure:"
+    nds_ui_i "install mode (local live ISO or remote nixos-anywhere)"
     nds_ui_i "flake source and URL or path, host name, host directory"
-    nds_ui_i "hardware placement and disk"
+    nds_ui_i "hardware placement and disk (local mode)"
     nds_ui_b ""
     nds_ui_b "After confirmation, NDS will:"
-    nds_ui_i "partition the target disk (or defer to your flake)"
-    nds_ui_i "generate hardware-configuration.nix and stage the flake"
-    nds_ui_i "run nixos-install --flake"
-    nds_ui_i "offer an install backup zip, then reboot"
+    nds_ui_i "local: partition via disko or NDS, generate facter.json, run nixos-install --flake"
+    nds_ui_i "remote: delegate to nixos-anywhere (disko + nixos-facter + install)"
+    nds_ui_i "offer an install backup zip; reboot when done (local only)"
     nds_ui_b ""
 }
 
@@ -43,19 +43,30 @@ action_setup() {
     nds_flake_prepare
     nds_flake_detect_disko
 
-    local disk_strategy disk_target repo_url
+    local disk_strategy disk_target repo_url install_mode target_ip
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
     disk_strategy="${disk_strategy:-nds}"
     disk_target="$(nds_config_get "disk" "DISK_TARGET")"
     repo_url="$(nds_configurator_config_get "FLAKE_REPO_URL")"
+    install_mode="$(nds_configurator_config_get "INSTALL_MODE")"
+    install_mode="${install_mode:-local}"
+    target_ip="$(nds_configurator_config_get "REMOTE_TARGET_IP")"
 
-    nds_preflight_install "$disk_target" "$repo_url" || exit 11
-
-    nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
+    if [[ "$install_mode" == "remote" ]]; then
+        nds_preflight_remote_install "$target_ip" "$repo_url" || exit 11
+        nds_action_confirm_remote_install "$target_ip" || exit 13
+    else
+        nds_preflight_install "$disk_target" "$repo_url" || exit 11
+        nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
+    fi
 
     section_header "NixOS installation"
-    nds_install_log "installFlake: action starting"
+    nds_install_log "installFlake: action starting (mode=${install_mode})"
     nds_nixos_install_flake || exit 15
 
-    nds_install_finish || exit 16
+    if [[ "$install_mode" == "remote" ]]; then
+        nds_install_remote_finish || exit 16
+    else
+        nds_install_finish || exit 16
+    fi
 }

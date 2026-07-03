@@ -15,7 +15,3 @@ NDS discovers subdirectories here that provide `action_config()` and `action_set
 | Action | Description |
 |--------|-------------|
 | [test](test/README.md) | Self-tests (configurator, inputs, classicConfig) — `NDS_TEST=true` |
-
-## Archived
-
-Cluster-specific actions in [`_CleanupLater/`](../_CleanupLater/) (`deployVM`, `nixosNode`).

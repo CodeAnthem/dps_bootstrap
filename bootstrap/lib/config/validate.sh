@@ -168,6 +168,25 @@ nds_validate_cidr_to_netmask() {
     echo "${octets[0]}.${octets[1]}.${octets[2]}.${octets[3]}"
 }
 
+nds_validate_mask_to_prefix() {
+    local mask="$1" val=0 octet count=0
+    if [[ "$mask" =~ ^[0-9]+$ ]]; then
+        echo "$mask"
+        return 0
+    fi
+    local IFS=.
+    local -a octets
+    read -r -a octets <<< "$mask"
+    for octet in "${octets[@]}"; do
+        (( val = (val << 8) | octet ))
+    done
+    while (( val )); do
+        (( count += val & 1 ))
+        (( val >>= 1 ))
+    done
+    echo "$count"
+}
+
 nds_validate_ip_to_int() {
     local ip="$1" a b c d
     IFS='.' read -r a b c d <<< "$ip"
