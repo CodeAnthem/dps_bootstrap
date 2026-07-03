@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration prompts
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # Description:   Interactive field prompts — all types in one place
 # ==================================================================================================
 
@@ -240,7 +240,7 @@ nds_cfg_ask_url() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(https://, git://)" "$required") || continue
+        value=$(_nds_cfg_prompt_value "$var" "$label" "(https://, ssh://, git@host:owner/repo)" "$required") || continue
         [[ -z "$value" ]] && return 0
         if validate_url "$value"; then
             nds_cfg_set "$var" "$value"

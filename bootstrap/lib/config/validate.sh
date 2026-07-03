@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration validators
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # Description:   Shared field validators (used by ask helpers and self-tests)
 # ==================================================================================================
 
@@ -88,7 +88,9 @@ validate_path() {
 }
 
 validate_url() {
-    [[ "$1" =~ ^(https?|git|ssh):// ]]
+    [[ "$1" =~ ^(https?|git|ssh):// ]] && return 0
+    # SCP-style git remotes, e.g. git@github.com:owner/repo.git
+    [[ "$1" =~ ^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:.+ ]]
 }
 
 validate_disk() {

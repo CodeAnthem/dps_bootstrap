@@ -54,12 +54,21 @@ installFlake_summary() {
 
 installFlake_prompt_errors() {
     nds_cfg_section_title "Install mode"
+    nds_cfg_ask_choice INSTALL_MODE "Install mode" "local|remote" \
+        "local=On target (live ISO)|remote=From operator (nixos-anywhere)" "local"
+    if nds_cfg_is INSTALL_MODE remote; then
+        nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
+    fi
+
+    nds_cfg_section_title "Your flake"
+    nds_cfg_ask_choice FLAKE_SOURCE "Flake source" "remote|local" \
+        "remote=Git remote|local=Path on live system" "remote"
+
     while ! installFlake_validate &>/dev/null; do
         if nds_cfg_is INSTALL_MODE remote && [[ -z "$(nds_cfg_get REMOTE_TARGET_IP)" ]]; then
             nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
             continue
         fi
-        nds_cfg_section_title "Your flake"
         if nds_cfg_is FLAKE_SOURCE remote && [[ -z "$(nds_cfg_get FLAKE_REPO_URL)" ]]; then
             nds_cfg_ask_url FLAKE_REPO_URL "Remote flake Git URL" "" true
             continue
