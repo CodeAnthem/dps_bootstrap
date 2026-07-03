@@ -139,9 +139,8 @@ nds_preflight_probe_flake() {
     local probe_dir="${NDS_RUNTIME_DIR}/flake_probe"
 
     rm -rf "$probe_dir"
-    nds_preflight_ssh_for_git "$repo_url" || return 1
 
-    if ! git clone --depth 1 "$repo_url" "$probe_dir"; then
+    if ! nds_git_clone "$repo_url" "$probe_dir" 1; then
         error "Could not clone $repo_url for probe"
         return 1
     fi

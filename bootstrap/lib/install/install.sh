@@ -52,8 +52,7 @@ _nixinstall_resolve_flake_root() {
                 return 0
             fi
             rm -rf "$install_dir"
-            nds_preflight_ssh_for_git "$repo_url" || return 1
-            if ! git clone --depth 1 "$repo_url" "$install_dir"; then
+            if ! nds_git_clone "$repo_url" "$install_dir" 1; then
                 error "Failed to clone $repo_url to $install_dir"
             fi
             echo "$install_dir"
@@ -169,9 +168,7 @@ _nixinstall_ensure_flake_checkout() {
         return 0
     fi
 
-    nds_preflight_ssh_for_git "$repo_url" || return 1
-
-    if ! git clone --depth 1 "$repo_url" "$install_path"; then
+    if ! nds_git_clone "$repo_url" "$install_path" 1; then
         error "Failed to clone $repo_url to $install_path"
     fi
 

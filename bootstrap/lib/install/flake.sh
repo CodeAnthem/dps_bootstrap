@@ -14,13 +14,21 @@
 # Arguments:
 # - source: <String|optional> "remote" | "local" (default: read FLAKE_SOURCE)
 nds_flake_prepare() {
-    local source="${1:-$(nds_configurator_config_get "FLAKE_SOURCE")}"
-    [[ -z "$source" || "$source" == "none" ]] && source="remote"
+    local source="${1:-}"
 
     local host repo_url local_path install_path host_dir hw_placement disk_strategy install_mode target_ip
     host=$(nds_configurator_config_get "FLAKE_HOST")
     repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
     local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
+
+    # Derive source from whichever location field is populated (robust to env
+    # overrides and the auto-detecting single-location prompt).
+    if [[ -z "$source" || "$source" == "none" ]]; then
+        if [[ -n "$repo_url" ]]; then source="remote"
+        elif [[ -n "$local_path" ]]; then source="local"
+        else source="$(nds_configurator_config_get "FLAKE_SOURCE")"; fi
+        [[ -z "$source" ]] && source="remote"
+    fi
     install_path=$(nds_configurator_config_get "FLAKE_INSTALL_PATH")
     host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
     hw_placement=$(nds_configurator_config_get "FLAKE_HARDWARE_PLACEMENT")
@@ -47,24 +55,19 @@ nds_flake_prepare() {
 # disk strategy if the flake declares one. Best-effort — silently skips when no
 # disko config is found or the source is unavailable.
 nds_flake_detect_disko() {
-    local source host host_dir local_path repo_url probe_root
-    source=$(nds_configurator_config_get "FLAKE_SOURCE")
+    local host host_dir local_path repo_url probe_root
     host=$(nds_configurator_config_get "FLAKE_HOST")
     host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
     host_dir="${host_dir:-hosts/x86_64-linux}"
+    local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
+    repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
 
-    case "$source" in
-        local)
-            local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
-            [[ -d "$local_path" ]] && nds_preflight_apply_disko_strategy "$local_path" "$host" "$host_dir"
-            ;;
-        remote)
-            repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
-            [[ -z "$repo_url" ]] && return 0
-            probe_root=$(nds_preflight_probe_flake "$repo_url") || return 0
-            nds_preflight_apply_disko_strategy "$probe_root" "$host" "$host_dir"
-            ;;
-    esac
+    if [[ -n "$local_path" ]]; then
+        [[ -d "$local_path" ]] && nds_preflight_apply_disko_strategy "$local_path" "$host" "$host_dir"
+    elif [[ -n "$repo_url" ]]; then
+        probe_root=$(nds_preflight_probe_flake "$repo_url") || return 0
+        nds_preflight_apply_disko_strategy "$probe_root" "$host" "$host_dir"
+    fi
 }
 
 # Description: Absolute path to the NDS install templates directory.

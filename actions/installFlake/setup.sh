@@ -23,8 +23,11 @@ action_preview() {
     nds_ui_b ""
     nds_ui_b "You will configure:"
     nds_ui_i "install mode (local live ISO or remote nixos-anywhere)"
-    nds_ui_i "flake source and URL or path, host name, host directory"
+    nds_ui_i "flake location (git URL or path, auto-detected), host name, host directory"
     nds_ui_i "hardware placement and disk (local mode)"
+    nds_ui_b ""
+    nds_ui_b "For a private repo, NDS detects it and helps set up an SSH deploy key"
+    nds_ui_b "or an HTTPS token (token kept in memory only) before cloning."
     nds_ui_b ""
     nds_ui_b "After confirmation, NDS will:"
     nds_ui_i "local: partition via disko or NDS, generate facter.json, run nixos-install --flake"
@@ -41,6 +44,7 @@ action_setup() {
 
     nds_configurator_menu || exit 12
     nds_flake_prepare
+    nds_git_ensure_access "$(nds_configurator_config_get FLAKE_REPO_URL)" || exit 11
     nds_flake_detect_disko
 
     local disk_strategy disk_target repo_url install_mode target_ip
@@ -62,7 +66,8 @@ action_setup() {
 
     section_header "NixOS installation"
     nds_install_log "installFlake: action starting (mode=${install_mode})"
-    nds_nixos_install_flake || exit 15
+    nds_nixos_install_flake || { nds_git_access_cleanup; exit 15; }
+    nds_git_access_cleanup
 
     if [[ "$install_mode" == "remote" ]]; then
         nds_install_remote_finish || exit 16

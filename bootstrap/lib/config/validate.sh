@@ -93,6 +93,32 @@ validate_url() {
     [[ "$1" =~ ^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:.+ ]]
 }
 
+# Description: Classify a flake location string as a remote git URL or a local path.
+# Arguments:
+# - value: <String> Flake location (URL, SCP git remote, or filesystem path)
+# Returns:
+# - <String> "remote" | "local" (stdout)
+nds_detect_flake_source() {
+    local value="$1"
+    case "$value" in
+        http://*|https://*|git://*|ssh://*) echo "remote"; return 0 ;;
+        /*|~*|./*|../*|.) echo "local"; return 0 ;;
+    esac
+    if [[ "$value" =~ ^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:.+ ]]; then
+        echo "remote"; return 0
+    fi
+    if [[ -e "$value" ]]; then echo "local"; else echo "remote"; fi
+}
+
+# Description: Accept either a remote git URL or a local filesystem path.
+# Arguments:
+# - value: <String> Flake location
+# Returns:
+# - <Bool> 0 when it looks like a valid URL or path
+validate_flake_location() {
+    validate_url "$1" || validate_path "$1"
+}
+
 validate_disk() {
     [[ -n "$1" && -b "$1" ]]
 }

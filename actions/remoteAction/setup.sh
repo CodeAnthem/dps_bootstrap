@@ -43,6 +43,8 @@ action_setup() {
     nds_configurator_menu || exit 12
     nds_flake_prepare remote
 
+    nds_git_ensure_access "$(nds_configurator_config_get FLAKE_REPO_URL)" || exit 14
+
     local repo_url="${NDS_FLAKE_REPO_URL}"
     local host_dir="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     local probe_dir remote_script
@@ -94,8 +96,9 @@ action_setup() {
         fi
     else
         nds_install_log "remoteAction: fallback to flake install"
-        nds_nixos_install_flake || exit 15
+        nds_nixos_install_flake || { nds_git_access_cleanup; exit 15; }
     fi
 
+    nds_git_access_cleanup
     nds_install_finish || exit 16
 }

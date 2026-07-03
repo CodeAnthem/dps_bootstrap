@@ -2,17 +2,9 @@
 # ==================================================================================================
 # NDS - Configuration menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-01
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # Description:   Category menu — calls per-preset configure/summary/validate (no hook framework)
 # ==================================================================================================
-
-nds_configurator_wizard_intro() {
-    section_header "Configuration wizard"
-    nds_ui_b "NDS will ask only for missing required fields."
-    nds_ui_b "Everything else keeps sensible defaults for now."
-    nds_ui_b "You can fine-tune all options in the full menu afterward."
-    nds_ui_b ""
-}
 
 nds_configurator_prompt_errors() {
     local presets=("$@") preset fixed=false
@@ -27,7 +19,6 @@ nds_configurator_prompt_errors() {
     done
     [[ "$fixed" == true ]] || return 0
 
-    nds_configurator_wizard_intro
     section_header "Required fields"
     for preset in "${presets[@]}"; do
         if ! nds_config_preset_validate "$preset" 2>/dev/null; then

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-07-03
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -18,6 +18,10 @@ _NDS_EXPORT_ALWAYS="DISK_TARGET BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PL
 # Machine/hardware-specific keys. The concise export splits these from portable
 # policy so a portable profile can be reused across machines untouched.
 _NDS_EXPORT_HARDWARE="DISK_TARGET DISK_STRATEGY DISK_FS_TYPE DISK_SWAP_SIZE_MIB DISK_DISKO_CONFIG BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PLATFORM_VM_TYPE PLATFORM_VM_GUEST_TOOLS NETWORK_HOSTNAME NETWORK_IP NETWORK_MASK NETWORK_GATEWAY REMOTE_TARGET_IP"
+
+# Derived keys never shown in the concise export — reconstructed from other keys
+# (FLAKE_LOCATION / FLAKE_SOURCE are inferred from FLAKE_REPO_URL / FLAKE_LOCAL_PATH).
+_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_METHOD"
 
 # =============================================================================
 # CONFIG ACCESS
@@ -96,8 +100,17 @@ _nds_export_is_hardware() {
 
 # Whether a key belongs in the concise export: auto-detected essentials always,
 # otherwise only when the user changed it from the seeded default.
+_nds_export_is_skipped() {
+    local key="$1" a
+    for a in $_NDS_EXPORT_SKIP; do
+        [[ "$key" == "$a" ]] && return 0
+    done
+    return 1
+}
+
 _nds_export_should_include() {
     local key="$1" cur="${CONFIG_DATA[$1]}"
+    _nds_export_is_skipped "$key" && return 1
     if _nds_export_is_always "$key"; then
         [[ -n "$cur" ]]
         return
