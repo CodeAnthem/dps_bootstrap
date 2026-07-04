@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-02
+# Date:          Created: 2025-10-28 | Modified: 2026-07-04
 # Description:   NixOS Configuration Builder - Registry and Merger
 # Feature:       Priority-based block assembly for NixOS configuration files
 # ==================================================================================================
@@ -104,6 +104,39 @@ nds_nixcfg_write() {
     } > "$output_file"
     
     log "NixOS configuration written to: $output_file"
+}
+
+# Merge registered blocks into a standalone NixOS module file.
+# Usage: nds_nixcfg_write_module "/path/to/module.nix"
+nds_nixcfg_write_module() {
+    local output_file="$1"
+
+    mkdir -p "$(dirname "$output_file")"
+
+    {
+        echo '{ config, lib, pkgs, ... }: {'
+        for key in $(printf '%s\n' "${!NDS_NIXCFG_BLOCKS[@]}" | sort); do
+            local block_name="${key#*_}"
+            echo "  # === ${block_name} ==="
+            printf '%s\n' "${NDS_NIXCFG_BLOCKS[$key]}" | sed 's/^/  /'
+            echo ""
+        done
+        echo '}'
+    } > "$output_file"
+
+    log "NixOS module written to: $output_file"
+}
+
+# Write boot settings from the configurator boot preset into a flake host module.
+# Same nixcfg path as classicInstall; uses lib.mkForce so install-time boot wins
+# over eval stubs (e.g. grub.device = "nodev") in the flake.
+# Usage: nds_nixcfg_write_boot_module "/mnt/opt/flake/hosts/.../nds-boot.nix"
+nds_nixcfg_write_boot_module() {
+    local output_file="$1"
+    nds_nixcfg_clear
+    nds_nixcfg_boot_auto_flake
+    nds_nixcfg_write_module "$output_file"
+    nds_nixcfg_clear
 }
 
 # Clear all registered blocks

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-03
+# Date:          Created: 2025-10-28 | Modified: 2026-07-04
 # Description:   Main NixOS installation orchestration
 # Feature:       Orchestrates disk setup, encryption, mounting, and NixOS installation
 # ==================================================================================================
@@ -12,8 +12,11 @@
 # =============================================================================
 
 # Auto-mode: reads from configuration modules
-# Usage: nds_nixinstall_auto
+# Usage: nds_nixinstall_auto [skip_hardware]
+# - skip_hardware: <Bool> When "true", skip hardware/facter generation (flake install
+#   generates into the host dir after the flake is staged)
 nds_nixinstall_auto() {
+    local skip_hardware="${1:-false}"
     local disk encryption hostname remote_unlock
     disk=$(nds_config_get "disk" "DISK_TARGET")
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
@@ -45,7 +48,9 @@ nds_nixinstall_auto() {
         nds_step_exec "Setting up initrd SSH keys" _nixinstall_setup_initrd_ssh_keys || return 1
     fi
 
-    nds_step_exec "Generating hardware configuration" _nixinstall_generate_hardware_config || return 1
+    if [[ "$skip_hardware" != "true" ]]; then
+        nds_step_exec "Generating hardware configuration" _nixinstall_generate_hardware_config || return 1
+    fi
     log "NixOS disk preparation completed successfully"
     return 0
 }
@@ -146,11 +151,8 @@ nds_nixos_install_flake() {
             error "/mnt is not mounted — required when disk strategy is flake"
             return 1
         }
-        if [[ "$hw_mode" != "skip" ]]; then
-            nds_step_exec "Generating hardware configuration" _nixinstall_generate_hardware_config || return 1
-        fi
     else
-        if ! nds_nixinstall_auto; then
+        if ! nds_nixinstall_auto true; then
             return 1
         fi
     fi
@@ -173,42 +175,17 @@ nds_nixos_install_flake() {
 
     [[ -z "$host_dir_rel" ]] && host_dir_rel="hosts/x86_64-linux"
     local host_dir="${flake_root}/${host_dir_rel}/${hostname}"
-    local hw_artifact
-    hw_artifact=$(_nixinstall_hardware_artifact_name)
-    case "$hw_mode" in
-        skip)
-            log "Skipping ${hw_artifact} (FLAKE_HARDWARE_PLACEMENT=skip)"
-            ;;
-        etc-nixos)
-            log "Keeping ${hw_artifact} in /etc/nixos only"
-            mkdir -p /mnt/etc/nixos
-            ;;
-        host-dir|*)
-            mkdir -p "$host_dir"
-            local hw_dest="${host_dir}/${hw_artifact}"
-            local hw_src="/mnt/etc/nixos/${hw_artifact}"
-            local skip_hw_copy=false
-            if [[ -f "$hw_dest" ]]; then
-                NDS_UI_QUIET=false
-                warn "${hw_artifact} already exists: $hw_dest"
-                if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
-                    if ! nds_askUserToProceed "Overwrite existing ${hw_artifact}?"; then
-                        log "Keeping existing ${hw_artifact}"
-                        skip_hw_copy=true
-                    fi
-                fi
-                NDS_UI_QUIET=true
-            fi
-            if [[ "$skip_hw_copy" != "true" ]]; then
-                if [[ -f "$hw_src" ]]; then
-                    cp "$hw_src" "$hw_dest"
-                    chmod 600 "$hw_dest"
-                else
-                    warn "No ${hw_artifact} generated — host may use eval stub"
-                fi
-            fi
-            ;;
-    esac
+
+    if [[ "$hw_mode" != "skip" ]]; then
+        nds_step_exec "Generating hardware facts for flake host" \
+            _nixinstall_place_hardware_artifact "$host_dir" "$hw_mode" true || return 1
+    else
+        log "Skipping hardware artifact (FLAKE_HARDWARE_PLACEMENT=skip)"
+    fi
+
+    nds_step_exec "Writing boot module from preset" \
+        nds_nixcfg_write_boot_module "${host_dir}/nds-boot.nix" || return 1
+    nds_install_log "boot: wrote ${host_dir}/nds-boot.nix from boot preset"
 
     if [[ "$encryption" == "true" ]]; then
         nds_step_exec "Writing machine facts (LUKS UUID)" \

@@ -2,10 +2,22 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-01
+# Date:          Created: 2026-06-30 | Modified: 2026-07-04
 # Description:   Bootloader registration (EFI NVRAM entry)
 # Feature:       No keyfile is placed on the target — LUKS key (if used) lives on a USB stick
 # ==================================================================================================
+
+# Description: Whether the live system (or configured mode) is UEFI.
+# Uses BOOT_UEFI_MODE when set; otherwise detects from firmware.
+# Returns:
+# - <Bool> 0 when UEFI
+_nds_install_live_is_uefi() {
+    local configured
+    configured=$(nds_config_get "boot" "BOOT_UEFI_MODE" 2>/dev/null || true)
+    if [[ "$configured" == "true" ]]; then return 0; fi
+    if [[ "$configured" == "false" ]]; then return 1; fi
+    [[ -d /sys/firmware/efi/efivars ]]
+}
 
 # Description: Register the NixOS EFI boot entry in firmware NVRAM.
 # nixos-install runs bootctl in a chroot where efivars is not writable, so the
@@ -15,10 +27,8 @@
 # - disk: <String> Target block device (ESP is partition 1)
 _nixinstall_register_efi_entry() {
     local disk="$1"
-    local uefi
 
-    uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE")
-    [[ "$uefi" == "true" ]] || return 0
+    _nds_install_live_is_uefi || return 0
 
     if [[ ! -d /sys/firmware/efi/efivars ]]; then
         warn "Live system is not booted in UEFI mode — EFI NVRAM entry not written."

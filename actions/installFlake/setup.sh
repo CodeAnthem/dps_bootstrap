@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-07-03
+# Date:          Created: 2026-06-28 | Modified: 2026-07-04
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
@@ -10,12 +10,13 @@ action_config() {
     nds_configurator_preset_disable quick
     nds_configurator_preset_disable region
     nds_configurator_preset_disable network
-    nds_configurator_preset_disable boot
     nds_configurator_preset_disable security
     nds_configurator_preset_disable platform
     nds_configurator_preset_enable installFlake
     nds_configurator_preset_set_display installFlake "Your flake"
     nds_configurator_preset_set_priority installFlake 20
+    nds_configurator_preset_set_priority boot 21
+    nds_configurator_preset_set_priority encryption 22
 }
 
 action_preview() {
@@ -24,7 +25,7 @@ action_preview() {
     nds_ui_b "You will configure:"
     nds_ui_i "install mode (local live ISO or remote nixos-anywhere)"
     nds_ui_i "flake location (git URL or path, auto-detected), host name, host directory"
-    nds_ui_i "hardware placement and disk (local mode)"
+    nds_ui_i "bootloader (UEFI mode + GRUB / systemd-boot / rEFInd), disk (local mode)"
     nds_ui_b ""
     nds_ui_b "For a private repo, NDS detects it and helps set up an SSH deploy key"
     nds_ui_b "or an HTTPS token (token kept in memory only) before cloning."

@@ -1,6 +1,7 @@
 { config, lib, pkgs, inputs, ... }: {
   imports = [
     (import ../../../host-lib/mkHardware.nix ./.)
+    (import ../../../host-lib/mkNdsBoot.nix ./.)
     ../../../host-lib/sops-base.nix
   ];
 

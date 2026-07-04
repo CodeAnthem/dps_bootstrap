@@ -18,7 +18,18 @@ Installs `nixosConfigurations.<host>` from your flake. NDS handles disk prep, ha
 | `etc-nixos` | `/etc/nixos` + `--override-input hardware` |
 | `skip` | Flake handles hardware |
 
-## Menu fields
+## Menu categories
+
+installFlake exposes **Access**, **Disk**, **Your flake**, **Boot**, and **Encryption**.
+Boot uses the same **nixcfg** path as classicInstall: at install time NDS writes
+`nds-boot.nix` next to the host (imported via `mkNdsBoot.nix`) from the boot preset.
+
+### Boot
+
+| Field | Purpose |
+|-------|---------|
+| `BOOT_UEFI_MODE` | UEFI vs BIOS (auto-detected from live ISO firmware) |
+| `BOOT_LOADER` | `grub` \| `systemd-boot` \| `refind` |
 
 ### Your flake
 

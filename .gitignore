@@ -1,4 +1,5 @@
 .docs/
+.bundleBackups/
 PLAN.md
 ARCHITECTURE.md
 LIMITATIONS.md

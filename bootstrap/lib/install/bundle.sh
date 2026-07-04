@@ -274,6 +274,9 @@ nds_install_bundle_create() {
     if [[ -f "${NDS_RUNTIME_DIR:-}/config/hardware-configuration.nix" ]]; then
         cp "${NDS_RUNTIME_DIR}/config/hardware-configuration.nix" "${staging}/config/"
     fi
+    if [[ -f "${NDS_RUNTIME_DIR:-}/config/facter.json" ]]; then
+        cp "${NDS_RUNTIME_DIR}/config/facter.json" "${staging}/config/"
+    fi
 
     # Two logs: verbose nix install output and everything else (session events).
     [[ -f "$install_log" ]] && cp "$install_log" "${staging}/logs/install.log"

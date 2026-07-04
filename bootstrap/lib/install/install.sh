@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-03
+# Date:          Created: 2025-10-28 | Modified: 2026-07-04
 # Description:   NixOS installation commands
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
@@ -95,30 +95,107 @@ _nixinstall_via_nixos_anywhere() {
     return 0
 }
 
+# Description: Generate facter.json at dest via nixos-facter (live-ISO hardware scan).
+# Arguments:
+# - dest: <String> Absolute output path (e.g. .../facter.json)
+_nixinstall_generate_facter_report() {
+    local dest="$1"
+    mkdir -p "$(dirname "$dest")"
+    log "Generating hardware report via nixos-facter -> ${dest}"
+    if ! NIX_CONFIG="experimental-features = nix-command flakes" \
+        nix run nixpkgs#nixos-facter -- -o "$dest" \
+        >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
+        error "nixos-facter failed — see install log for details"
+    fi
+    if [[ ! -s "$dest" ]]; then
+        error "nixos-facter did not write ${dest}"
+    fi
+    log "Generated facter.json at ${dest}"
+    return 0
+}
+
+# Description: Generate legacy hardware-configuration.nix at dest.
+# Arguments:
+# - dest: <String> Absolute output path
+_nixinstall_generate_legacy_hardware() {
+    local dest="$1"
+    mkdir -p "$(dirname "$dest")"
+    log "Generating hardware configuration (legacy) -> ${dest}"
+    if ! nixos-generate-config --root /mnt --show-hardware-config > "$dest" \
+        >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
+        error "Failed to generate hardware configuration"
+    fi
+    if [[ ! -s "$dest" ]]; then
+        error "hardware-configuration.nix was not written to ${dest}"
+    fi
+    log "Generated hardware-configuration.nix at ${dest}"
+    return 0
+}
+
+# Description: Write the hardware artifact for a flake install (host-dir / etc-nixos).
+# Arguments:
+# - host_dir:      <String> Flake host directory (for host-dir placement)
+# - hw_mode:       <String> host-dir | etc-nixos | skip
+# - runtime_copy:  <Bool> When true, mirror into $NDS_RUNTIME_DIR/config/ for backup
+_nixinstall_place_hardware_artifact() {
+    local host_dir="$1"
+    local hw_mode="${2:-host-dir}"
+    local runtime_copy="${3:-true}"
+    local hw_artifact dest
+
+    hw_artifact=$(_nixinstall_hardware_artifact_name)
+
+    case "$hw_mode" in
+        skip)
+            log "Skipping ${hw_artifact} (FLAKE_HARDWARE_PLACEMENT=skip)"
+            return 0
+            ;;
+        etc-nixos)
+            dest="/mnt/etc/nixos/${hw_artifact}"
+            ;;
+        host-dir|*)
+            mkdir -p "$host_dir"
+            dest="${host_dir}/${hw_artifact}"
+            if [[ -f "$dest" ]]; then
+                NDS_UI_QUIET=false
+                warn "${hw_artifact} already exists: $dest"
+                if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+                    if ! nds_askUserToProceed "Overwrite existing ${hw_artifact}?"; then
+                        log "Keeping existing ${hw_artifact}"
+                        NDS_UI_QUIET=true
+                        [[ "$runtime_copy" == true ]] && cp "$dest" "${NDS_RUNTIME_DIR}/config/" 2>/dev/null || true
+                        return 0
+                    fi
+                fi
+                NDS_UI_QUIET=true
+            fi
+            ;;
+    esac
+
+    if [[ "$hw_artifact" == "facter.json" ]]; then
+        _nixinstall_generate_facter_report "$dest"
+    else
+        _nixinstall_generate_legacy_hardware "$dest"
+    fi
+    chmod 600 "$dest"
+
+    if [[ "$runtime_copy" == true ]]; then
+        mkdir -p "${NDS_RUNTIME_DIR}/config"
+        cp "$dest" "${NDS_RUNTIME_DIR}/config/"
+    fi
+    return 0
+}
+
 # Generate hardware configuration
 # Usage: _nixinstall_generate_hardware_config
 _nixinstall_generate_hardware_config() {
-    local facter_mode="${NDS_HARDWARE_GEN:-facter}"
     local hw_artifact
     hw_artifact=$(_nixinstall_hardware_artifact_name)
-
     mkdir -p /mnt/etc/nixos
-
-    if [[ "$facter_mode" == "facter" ]]; then
-        log "Generating hardware report via nixos-facter"
-        if ! nix run github:numtide/nixos-facter -- -o "/mnt/etc/nixos/${hw_artifact}" \
-            2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
-            error "Failed to generate facter.json"
-        fi
-        log "Generated ${hw_artifact} at /mnt/etc/nixos/${hw_artifact}"
+    if [[ "$hw_artifact" == "facter.json" ]]; then
+        _nixinstall_generate_facter_report "/mnt/etc/nixos/${hw_artifact}"
     else
-        log "Generating hardware configuration (legacy)"
-        if ! nixos-generate-config --root /mnt --show-hardware-config \
-            > "/mnt/etc/nixos/${hw_artifact}" \
-            2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
-            error "Failed to generate hardware configuration"
-        fi
-        log "Generated ${hw_artifact} at /mnt/etc/nixos/${hw_artifact}"
+        _nixinstall_generate_legacy_hardware "/mnt/etc/nixos/${hw_artifact}"
     fi
     return 0
 }
