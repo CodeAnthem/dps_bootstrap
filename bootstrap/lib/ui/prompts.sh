@@ -132,34 +132,3 @@ prompt_password() {
         nds_ui_b "Passwords do not match. Please try again."
     done
 }
-
-prompt_github_token() {
-    local token
-
-    nds_ui_b ""
-    nds_ui_h "GitHub token required"
-    nds_ui_b "A token is needed to clone your private NixOS flake repository."
-    nds_ui_b "Create one at: https://github.com/settings/tokens"
-    nds_ui_b "Required scope: repo (full repository access)"
-    nds_ui_b ""
-
-    if [[ -t 0 ]]; then
-        read -rsp "${NDS_UI_INDENT_B}Enter GitHub token (or press Enter to skip): " token < /dev/tty
-        echo >&2
-    elif [[ -c /dev/tty ]]; then
-        nds_ui_b "Enter GitHub token (or press Enter to skip):"
-        read -rs token < /dev/tty || token=""
-        echo >&2
-    else
-        nds_ui_b "No interactive terminal available, skipping token"
-        token=""
-    fi
-
-    if [[ -n "$token" ]]; then
-        nds_ui_b "Token received (hidden for security)"
-    else
-        warn "No token provided — set up repository access manually"
-    fi
-
-    printf '%s' "$token"
-}

@@ -56,7 +56,7 @@ nds_preflight_install() {
             nds_preflight_ssh_for_git "$remote_url" || return 1
         elif [[ "$remote_url" == http://* || "$remote_url" == https://* ]]; then
             if ! ping -c1 -W3 1.1.1.1 &>/dev/null; then
-                warn "Network may be unreachable — HTTPS git clone could fail"
+                warn "Network may be unreachable — SSH git access could fail"
             fi
         fi
     fi
@@ -85,7 +85,7 @@ nds_preflight_remote_install() {
             nds_preflight_ssh_for_git "$remote_url" || return 1
         elif [[ "$remote_url" == http://* || "$remote_url" == https://* ]]; then
             if ! ping -c1 -W3 1.1.1.1 &>/dev/null; then
-                warn "Network may be unreachable — HTTPS git clone could fail"
+                warn "Network may be unreachable — SSH git access could fail"
             fi
         fi
     fi
@@ -111,31 +111,20 @@ nds_preflight_remote_install() {
 nds_preflight_flake_buildable() {
     local flake_root="$1"
     local hostname="$2"
-    local -a git_env=() nix_cfg=() attr
+    local -a git_env=() attr
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
-    nds_flake_ensure_transitive_auth "$flake_root" || return 1
-    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
-        _nds_flake_patch_lock_to_github "${flake_root}/flake.lock" || return 1
-    fi
-    nds_flake_nix_config_args nix_cfg
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
     log "Preflight: building ${attr}"
 
-    if ! env "${git_env[@]}" nix build "${nix_cfg[@]}" --no-link --no-write-lock-file \
-        --print-build-logs "$attr" \
+    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+        "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Flake does not build — check install log for missing input access"
-        if grep -q 'HTTP error 404' "${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>/dev/null; then
-            warn "HTTP 404 on a private repo usually means the token was not sent — re-paste the token or widen repo access"
-        elif grep -q 'Permission denied (publickey)' "${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>/dev/null; then
-            warn "SSH locked inputs need a GitHub token on the live ISO — deploy keys must cover every input repo"
-        else
-            warn "Private flake inputs (e.g. thundercast) must be reachable with the same git auth you used for the root flake"
-        fi
+        warn "Add the same SSH deploy key to every private locked input (e.g. thundercast, thundercore)"
         return 1
     fi
     log "Preflight: flake build OK"

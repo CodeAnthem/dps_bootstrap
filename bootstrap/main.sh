@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="5.4.3"
+readonly SCRIPT_VERSION="5.4.4"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -118,7 +118,6 @@ crash() {
 # shellcheck disable=SC2329
 _main_stopHandler() {
     local exit_code=$?
-    _nds_callHook "exit_cleanup" "$exit_code" || true
     # Get custom exit message if exists
     local exit_msg=""
     exit_msg=$(_nds_callHook "exit_msg" "$exit_code" || true)
@@ -202,6 +201,9 @@ _main_stopHandler() {
 
     info "Cleaning up session"
     purgeRuntimeDir
+
+    # Call cleanup hook
+    _nds_callHook "exit_cleanup" "$exit_code" || true
 }
 
 

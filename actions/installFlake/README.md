@@ -41,18 +41,20 @@ Boot uses the same **nixcfg** path as classicInstall: at install time NDS writes
 | `FLAKE_HOST_DIR` | Host subtree (default `hosts/x86_64-linux`) |
 | `FLAKE_HARDWARE_PLACEMENT` | `host-dir` \| `etc-nixos` \| `skip` |
 
-Accepted flake locations: `https://…`, `ssh://…`, `git@host:owner/repo(.git)`, or a
-filesystem path (`/…`, `./…`, `~/…`). `git@`/`ssh` and paths are auto-classified.
+Accepted flake locations: `git@host:owner/repo(.git)`, `ssh://…`, `https://…` (converted
+to SSH), or a filesystem path (`/…`, `./…`, `~/…`). Remote URLs and paths are
+auto-classified.
 
 ### Private repositories
 
-When a remote flake isn't reachable anonymously, NDS detects it and offers, in-place:
+When a remote flake isn't reachable anonymously, NDS detects it and offers SSH
+deploy-key setup in-place:
 
-- **SSH deploy key** — generates a key on the live system (if missing), prints the
-  public key and the provider's deploy-key URL, switches the clone to SSH.
-- **HTTPS token** — prompts for a read-only token; it is held **in memory only**
-  (never written to config, disk, or the backup bundle) and the cloned repo's
-  remote is scrubbed back to the clean URL.
+- Generates an ed25519 key on the live system (if missing)
+- Prints the public key and the provider's deploy-key URL
+- Switches the clone URL to SSH (`git@host:owner/repo.git`)
+- Expects the **same public key** on every private repository in the flake closure
+  (root flake plus locked inputs such as thundercast)
 
 For env-driven installs you can still set `NDS_FLAKE_REPO_URL` (git URL) or
 `NDS_FLAKE_LOCAL_PATH` (path) directly; `FLAKE_SOURCE` is derived automatically.
