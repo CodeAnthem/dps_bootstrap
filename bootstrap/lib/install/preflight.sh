@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install pre-flight checks
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-03
+# Date:          Created: 2026-06-29 | Modified: 2026-07-04
 # Description:   Disk, nix, network, and SSH checks before destructive install steps
 # ==================================================================================================
 
@@ -100,6 +100,34 @@ nds_preflight_remote_install() {
         fi
     fi
 
+    return 0
+}
+
+# Description: Verify the flake evaluates and the system closure is buildable
+# before running nixos-install. Catches missing access to transitive inputs.
+# Arguments:
+# - flake_root: <String> Flake directory on disk
+# - hostname:   <String> nixosConfigurations name
+nds_preflight_flake_buildable() {
+    local flake_root="$1"
+    local hostname="$2"
+    local -a git_env=() attr
+
+    [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
+
+    nds_flake_normalize_lock_urls "$flake_root"
+    nds_git_export_nix_env git_env
+
+    attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
+    log "Preflight: building ${attr} (dry eval)"
+
+    if ! env "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
+        >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
+        error "Flake does not build — check install log for missing input access"
+        warn "Private flake inputs (e.g. thundercast) must be reachable with the same git auth you used for the root flake"
+        return 1
+    fi
+    log "Preflight: flake build OK"
     return 0
 }
 

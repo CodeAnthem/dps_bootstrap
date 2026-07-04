@@ -187,6 +187,9 @@ nds_nixos_install_flake() {
         nds_nixcfg_write_boot_module "${host_dir}/nds-boot.nix" || return 1
     nds_install_log "boot: wrote ${host_dir}/nds-boot.nix from boot preset"
 
+    nds_step_exec "Verifying flake builds" \
+        nds_preflight_flake_buildable "$flake_root" "$hostname" || return 1
+
     if [[ "$encryption" == "true" ]]; then
         nds_step_exec "Writing machine facts (LUKS UUID)" \
             _nixinstall_write_machine_facts "$disk" "$hostname" "$flake_root" "$encryption" "$host_dir_rel" || return 1

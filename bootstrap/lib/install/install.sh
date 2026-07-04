@@ -106,9 +106,11 @@ _nixinstall_generate_facter_report() {
         nix run nixpkgs#nixos-facter -- -o "$dest" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "nixos-facter failed — see install log for details"
+        return 1
     fi
     if [[ ! -s "$dest" ]]; then
         error "nixos-facter did not write ${dest}"
+        return 1
     fi
     log "Generated facter.json at ${dest}"
     return 0
@@ -124,9 +126,11 @@ _nixinstall_generate_legacy_hardware() {
     if ! nixos-generate-config --root /mnt --show-hardware-config > "$dest" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Failed to generate hardware configuration"
+        return 1
     fi
     if [[ ! -s "$dest" ]]; then
         error "hardware-configuration.nix was not written to ${dest}"
+        return 1
     fi
     log "Generated hardware-configuration.nix at ${dest}"
     return 0
@@ -259,11 +263,13 @@ _nixinstall_install_nixos_flake() {
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
     local -a install_args=(--root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd)
+    local -a git_env=()
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
 
     if [[ ! -d "$flake_root" ]]; then
         error "Flake root not found: $flake_root"
+        return 1
     fi
 
     if [[ "$hw_placement" == "etc-nixos" ]]; then
@@ -275,8 +281,11 @@ _nixinstall_install_nixos_flake() {
         fi
     fi
 
-    if ! nixos-install "${install_args[@]}"; then
+    nds_git_export_nix_env git_env
+
+    if ! env "${git_env[@]}" nixos-install "${install_args[@]}"; then
         error "Flake-based NixOS installation failed"
+        return 1
     fi
 
     log "Flake-based NixOS installation completed"
@@ -307,6 +316,7 @@ _nixinstall_install_nixos() {
     # Run nixos-install
     if ! nixos-install --root /mnt --no-root-passwd; then
         error "NixOS installation failed"
+        return 1
     fi
     
     log "NixOS installation completed"

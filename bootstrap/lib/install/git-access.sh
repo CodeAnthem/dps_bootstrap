@@ -3,7 +3,6 @@
 # NDS - Git access (private repo auth)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-04 | Modified: 2026-07-04
-# Description:   Detect private flake repos and set up SSH deploy keys or HTTPS tokens in-place.
 # Feature:       Interactive access gate + trace-free token clone wrapper (used by all clone sites)
 # ==================================================================================================
 
@@ -155,6 +154,38 @@ nds_git_clone() {
 # =============================================================================
 # ACCESS GATE
 # =============================================================================
+
+# Description: Environment for nix/git fetches during flake eval and nixos-install.
+# Applies in-memory HTTPS token auth when configured.
+# Returns:
+# - Sets _NDS_GIT_NIX_ENV array (nameref) of VAR=value pairs for env(1)
+nds_git_export_nix_env() {
+    local -n _out=$1
+    _out=()
+    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        _out+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
+    fi
+}
+
+# Description: When the root flake was cloned via HTTPS token, rewrite GitHub SSH
+# input URLs in flake.lock to HTTPS so transitive private inputs (e.g. thundercast)
+# use the same token instead of failing with "Permission denied (publickey)".
+# Arguments:
+# - flake_root: <String> Staged flake directory
+nds_flake_normalize_lock_urls() {
+    local flake_root="$1"
+    local lock="${flake_root}/flake.lock"
+
+    [[ -f "$lock" ]] || return 0
+    [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
+
+    if grep -q 'ssh://git@github.com/' "$lock"; then
+        log "Rewriting GitHub SSH flake input URLs to HTTPS (token auth)"
+        sed -i 's|ssh://git@github.com/|https://github.com/|g' "$lock"
+        nds_install_log "flake.lock: GitHub SSH inputs -> HTTPS for token auth"
+    fi
+    return 0
+}
 
 # Description: Point FLAKE_* config + env at a new (converted) remote URL.
 _nds_git_update_repo_url() {
