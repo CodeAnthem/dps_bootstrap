@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="5.3.6"
+readonly SCRIPT_VERSION="5.3.7"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -161,17 +161,8 @@ _main_stopHandler() {
         fi
         nds_ui_b ""
 
-        # Situation-aware: surface the tail of the install detail log so the
-        # real error (e.g. a missing binary, a cryptsetup failure) is visible
-        # without having to open the file.
         local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
         if [[ -f "$log" ]]; then
-            nds_ui_b "Last lines of the install log:"
-            local _line
-            while IFS= read -r _line; do
-                printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
-            done < <(tail -n 12 "$log" 2>/dev/null)
-            nds_ui_b ""
             nds_ui_i "Full log: ${log}"
             local live_ip
             live_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
@@ -181,6 +172,12 @@ _main_stopHandler() {
             else
                 nds_ui_i "    scp nixos@<live-ip>:${log} ./nds_install.log"
             fi
+            nds_ui_b ""
+            nds_ui_b "Last lines of the install log:"
+            local _line
+            while IFS= read -r _line; do
+                printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
+            done < <(tail -n 12 "$log" 2>/dev/null)
             nds_ui_b ""
         fi
 

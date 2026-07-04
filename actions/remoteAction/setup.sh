@@ -58,6 +58,10 @@ action_setup() {
 
     nds_preflight_apply_disko_strategy "$probe_dir" "${NDS_FLAKE_HOST}" "$host_dir"
 
+    step_start "Verifying flake builds"
+    nds_preflight_flake_buildable "$probe_dir" "${NDS_FLAKE_HOST}" || exit 14
+    step_complete "Flake builds"
+
     if remote_script=$(nds_flake_find_action_script "$probe_dir"); then
         info "Found remote action: $remote_script"
         nds_import_file "$remote_script" || exit 14

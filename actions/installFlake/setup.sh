@@ -27,7 +27,8 @@ action_preview() {
     nds_ui_i "flake location (git URL or path, auto-detected), host name, host directory"
     nds_ui_i "bootloader (UEFI mode + GRUB / systemd-boot / rEFInd), disk (local mode)"
     nds_ui_b ""
-    nds_ui_b "For a private repo, NDS detects it and helps set up an SSH deploy key"
+    nds_ui_b "For a private repo, NDS verifies access to the root flake and all"
+    nds_ui_b "locked inputs before partitioning, then helps set up an SSH deploy key"
     nds_ui_b "or an HTTPS token (token kept in memory only) before cloning."
     nds_ui_b ""
     nds_ui_b "After confirmation, NDS will:"
@@ -47,6 +48,19 @@ action_setup() {
     nds_flake_prepare
     nds_git_ensure_access "$(nds_configurator_config_get FLAKE_REPO_URL)" || exit 11
     nds_flake_detect_disko
+
+    local host probe_dir local_path
+    host="$(nds_configurator_config_get FLAKE_HOST)"
+    local_path="$(nds_configurator_config_get FLAKE_LOCAL_PATH)"
+    if [[ -n "$local_path" && -d "$local_path" ]]; then
+        probe_dir="$local_path"
+    elif [[ -d "${NDS_RUNTIME_DIR}/flake_probe" ]]; then
+        probe_dir="${NDS_RUNTIME_DIR}/flake_probe"
+    fi
+    if [[ -n "${probe_dir:-}" ]]; then
+        section_header "Verifying flake access"
+        nds_preflight_flake_buildable "$probe_dir" "$host" || exit 11
+    fi
 
     local disk_strategy disk_target repo_url install_mode target_ip
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"

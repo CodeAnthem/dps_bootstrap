@@ -72,7 +72,7 @@ _nds_git_token_url() {
 _nds_git_askpass_file() {
     local f="${NDS_RUNTIME_DIR:-/tmp}/git-askpass.sh"
     if [[ ! -f "$f" ]]; then
-        printf '#!/usr/bin/env bash\nprintf "%%s\\n" "${_NDS_GIT_TOKEN:-}"\n' > "$f"
+        printf '#!/usr/bin/env bash\ncase "$1" in\n  *Username*) printf "%%s\\n" "x-access-token" ;;\n  *) printf "%%s\\n" "${_NDS_GIT_TOKEN:-}" ;;\nesac\n' > "$f"
         chmod 700 "$f"
     fi
     printf '%s\n' "$f"
@@ -92,9 +92,29 @@ _nds_git_effective_url() {
     fi
 }
 
-# Description: Drop the in-memory token and remove the askpass helper. Safe to
-# call multiple times.
+# Description: Map GitHub SSH/HTTPS URLs to token-authenticated HTTPS for this
+# session (live ISO only). Lets Nix fetch git+ssh flake inputs when the user
+# chose HTTPS token auth for the root repo. Removed by nds_git_access_cleanup.
+_nds_git_apply_token_instead_of() {
+    [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
+    local base="https://x-access-token:${_NDS_GIT_TOKEN}@github.com/"
+    git config --global url."${base}".insteadOf "https://github.com/" 2>/dev/null || true
+    git config --global url."${base}".insteadOf "ssh://git@github.com/" 2>/dev/null || true
+    git config --global url."${base}".insteadOf "git+ssh://git@github.com/" 2>/dev/null || true
+    git config --global url."${base}".insteadOf "git@github.com:" 2>/dev/null || true
+}
+
+# Description: Drop the in-memory token, askpass helper, and session git insteadOf
+# rules. Safe to call multiple times.
 nds_git_access_cleanup() {
+    local key
+    if command -v git &>/dev/null; then
+        while IFS= read -r key; do
+            [[ -n "$key" ]] || continue
+            git config --global --unset-all "$key" 2>/dev/null || true
+        done < <(git config --global --get-regexp '^url\..*x-access-token.*\.insteadOf$' 2>/dev/null \
+            | awk '{print $1}' || true)
+    fi
     unset _NDS_GIT_TOKEN
     rm -f "${NDS_RUNTIME_DIR:-/tmp}/git-askpass.sh" 2>/dev/null || true
 }
@@ -163,28 +183,38 @@ nds_git_export_nix_env() {
     local -n _out=$1
     _out=()
     if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        _nds_git_apply_token_instead_of
         _out+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
     fi
 }
 
-# Description: When the root flake was cloned via HTTPS token, rewrite GitHub SSH
-# input URLs in flake.lock to HTTPS so transitive private inputs (e.g. thundercast)
-# use the same token instead of failing with "Permission denied (publickey)".
-# Arguments:
-# - flake_root: <String> Staged flake directory
-nds_flake_normalize_lock_urls() {
+# Description: When using HTTPS token auth, rewrite SSH-style GitHub URLs in the
+# staged flake (belt-and-suspenders alongside git insteadOf).
+nds_flake_normalize_for_https_token() {
     local flake_root="$1"
     local lock="${flake_root}/flake.lock"
+    local flake_nix="${flake_root}/flake.nix"
 
-    [[ -f "$lock" ]] || return 0
     [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
 
-    if grep -q 'ssh://git@github.com/' "$lock"; then
-        log "Rewriting GitHub SSH flake input URLs to HTTPS (token auth)"
-        sed -i 's|ssh://git@github.com/|https://github.com/|g' "$lock"
-        nds_install_log "flake.lock: GitHub SSH inputs -> HTTPS for token auth"
+    if [[ -f "$lock" ]] && grep -qE 'ssh://git@github.com/|git\+ssh://git@github.com/' "$lock"; then
+        log "Rewriting GitHub SSH flake.lock input URLs to HTTPS (token auth)"
+        sed -i \
+            -e 's|git+ssh://git@github.com/|https://github.com/|g' \
+            -e 's|ssh://git@github.com/|https://github.com/|g' \
+            "$lock"
+        nds_install_log "flake.lock: GitHub SSH inputs -> HTTPS"
+    fi
+    if [[ -f "$flake_nix" ]] && grep -q 'git+ssh://git@github.com/' "$flake_nix"; then
+        log "Rewriting GitHub SSH flake.nix input URLs to HTTPS (token auth)"
+        sed -i 's|git+ssh://git@github.com/|https://github.com/|g' "$flake_nix"
     fi
     return 0
+}
+
+# Legacy name used by preflight/orchestration.
+nds_flake_normalize_lock_urls() {
+    nds_flake_normalize_for_https_token "$1"
 }
 
 # Description: Point FLAKE_* config + env at a new (converted) remote URL.
@@ -260,6 +290,7 @@ _nds_git_setup_token() {
     fi
     export _NDS_GIT_TOKEN="$token"
     token=""
+    _nds_git_apply_token_instead_of
     nds_ui_b "  Token accepted (held in memory for this session)."
     return 0
 }
@@ -286,6 +317,7 @@ nds_git_ensure_access() {
     fi
 
     warn "Cannot access the flake repository without credentials — it looks private."
+    nds_ui_b "Private flakes also need access to every locked input (e.g. thundercast)."
 
     if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
         warn "Auto-confirm on — skipping interactive git auth (clone may fail)."
