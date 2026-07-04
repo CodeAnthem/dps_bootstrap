@@ -115,7 +115,7 @@ nds_preflight_flake_buildable() {
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
-    nds_flake_normalize_lock_urls "$flake_root"
+    nds_flake_ensure_transitive_auth "$flake_root" || return 1
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"

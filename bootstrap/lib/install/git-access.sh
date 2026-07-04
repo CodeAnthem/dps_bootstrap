@@ -107,13 +107,15 @@ _nds_git_session_config_file() {
 }
 
 # Description: Append git auth env pairs (askpass + session gitconfig) to a nameref array.
+# Arguments:
+# - arr_name: <String> Name of the target array variable in the caller's scope
 _nds_git_auth_env_append() {
-    local -n _out=$1
+    local -n __arr_ref="$1"
     [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
     local session_cfg
     session_cfg=$(_nds_git_session_config_file)
-    _out+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
-    [[ -n "$session_cfg" ]] && _out+=(GIT_CONFIG_GLOBAL="$session_cfg")
+    __arr_ref+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
+    [[ -n "$session_cfg" ]] && __arr_ref+=(GIT_CONFIG_GLOBAL="$session_cfg")
 }
 
 # Description: NIX_CONFIG string for flake eval/build (access-tokens stays in env only).
@@ -219,23 +221,32 @@ _nds_git_token_allowed() {
 # Returns:
 # - Sets _NDS_GIT_NIX_ENV array (nameref) of VAR=value pairs for env(1)
 nds_git_export_nix_env() {
-    local -n _out=$1
-    _out=()
-    _nds_git_auth_env_append _out
+    local arr_name="$1"
+    local -n __env_out="$arr_name"
+    __env_out=()
+    _nds_git_auth_env_append "$arr_name"
 }
 
-# Description: When using HTTPS token auth, rewrite SSH-style GitHub URLs in the
-# staged flake to git+https (Nix uses git + GIT_ASKPASS; bare https:// 404s on
-# private repos).
-nds_flake_normalize_for_https_token() {
+# Description: Extract git+ssh:// and ssh:// URLs from flake.lock (locked inputs).
+# Arguments:
+# - lock_file: <String> Path to flake.lock
+# Returns:
+# - <String> Newline-separated SSH URLs (stdout)
+_nds_flake_lock_ssh_urls() {
+    local lock_file="$1"
+    [[ -f "$lock_file" ]] || return 0
+    grep -oE '(git\+ssh|ssh)://[^"]+' "$lock_file" 2>/dev/null | sort -u || true
+}
+
+# Description: Rewrite GitHub SSH input URLs in a staged flake to git+https.
+# Arguments:
+# - flake_root: <String> Staged flake directory
+_nds_rewrite_ssh_to_https() {
     local flake_root="$1"
     local lock="${flake_root}/flake.lock"
     local flake_nix="${flake_root}/flake.nix"
 
-    [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
-
     if [[ -f "$lock" ]] && grep -qE 'ssh://git@github.com/|git\+ssh://git@github.com/' "$lock"; then
-        log "Rewriting GitHub SSH flake.lock input URLs to git+https (token auth)"
         sed -i \
             -e 's|git+ssh://git@github.com/|git+https://github.com/|g' \
             -e 's|ssh://git@github.com/|git+https://github.com/|g' \
@@ -243,10 +254,73 @@ nds_flake_normalize_for_https_token() {
         nds_install_log "flake.lock: GitHub SSH inputs -> git+https"
     fi
     if [[ -f "$flake_nix" ]] && grep -q 'git+ssh://git@github.com/' "$flake_nix"; then
-        log "Rewriting GitHub SSH flake.nix input URLs to git+https (token auth)"
         sed -i 's|git+ssh://git@github.com/|git+https://github.com/|g' "$flake_nix"
     fi
     return 0
+}
+
+# Description: When using HTTPS token auth, rewrite SSH-style GitHub URLs in the
+# staged flake to git+https (Nix uses git + GIT_ASKPASS; bare https:// 404s on
+# private repos).
+nds_flake_normalize_for_https_token() {
+    [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
+    log "Rewriting GitHub SSH flake input URLs to git+https (token auth)"
+    _nds_rewrite_ssh_to_https "$1"
+    return 0
+}
+
+# Description: Ensure transitive flake.lock SSH inputs are reachable. Decoupled from
+# how the root flake was cloned — scans flake.lock and prompts for a memory-only
+# token when SSH locked inputs exist and no deploy keys cover them.
+# Arguments:
+# - flake_root: <String> Staged or probe flake directory
+# Returns:
+# - <Bool> 0 when no SSH inputs, or token rewrite applied, or user declined token with SSH keys assumed
+nds_flake_ensure_transitive_auth() {
+    local flake_root="$1" lock ssh_urls url host
+
+    lock="${flake_root}/flake.lock"
+    ssh_urls="$(_nds_flake_lock_ssh_urls "$lock")"
+    [[ -n "$ssh_urls" ]] || return 0
+
+    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        log "Rewriting transitive SSH flake inputs to git+https (token auth)"
+        _nds_rewrite_ssh_to_https "$flake_root"
+        return 0
+    fi
+
+    warn "Locked flake inputs use SSH — Nix fetches each with its locked URL:"
+    while IFS= read -r url; do
+        [[ -n "$url" ]] && warn "  $url"
+    done <<< "$ssh_urls"
+
+    if ! _nds_git_token_allowed; then
+        warn "Remote install: ensure SSH keys on the operator machine for every repo above."
+        return 1
+    fi
+
+    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+        error "Transitive SSH inputs need a GitHub token or deploy keys on every repo"
+        return 1
+    fi
+
+    host="github.com"
+    url="${ssh_urls%%$'\n'*}"
+    if parsed=$(_nds_git_parse "$url" 2>/dev/null); then
+        IFS=$'\t' read -r host _ _ <<< "$parsed"
+    fi
+
+    nds_ui_b ""
+    nds_ui_b "Your root flake may use SSH, but locked inputs above still need auth."
+    nds_ui_b "A GitHub token (memory-only) rewrites those inputs to git+https for this session."
+    if _nds_git_prompt_token "$host"; then
+        log "Rewriting transitive SSH flake inputs to git+https (token auth)"
+        _nds_rewrite_ssh_to_https "$flake_root"
+        return 0
+    fi
+
+    error "Provide a token or deploy keys for every locked SSH input"
+    return 1
 }
 
 # Legacy name used by preflight/orchestration.
@@ -305,18 +379,18 @@ _nds_git_setup_ssh() {
     return 0
 }
 
-# Description: Collect an HTTPS access token (memory only), switch the clone URL
-# to HTTPS. The token is never stored in config, disk, or the backup bundle.
-_nds_git_setup_token() {
-    local host="$1" owner="$2" repo="$3" token
+# Description: Collect an HTTPS access token (memory only). Does not change the
+# root flake URL — use when transitive locked inputs need HTTPS auth.
+# Arguments:
+# - host: <String> Git host for token help URL (default github.com)
+# Returns:
+# - <Bool> 0 when a token was accepted
+_nds_git_prompt_token() {
+    local host="${1:-github.com}" token
 
     if ! _nds_git_token_allowed; then
         warn "HTTPS tokens are disabled for remote install — use SSH keys on the operator machine."
         return 1
-    fi
-
-    if [[ -n "$host" && -n "$owner" && -n "$repo" ]]; then
-        _nds_git_update_repo_url "$(_nds_git_to_https "$host" "$owner" "$repo")"
     fi
 
     nds_ui_b ""
@@ -334,6 +408,18 @@ _nds_git_setup_token() {
     token=""
     nds_ui_b "  Token accepted (held in memory for this session)."
     return 0
+}
+
+# Description: Collect an HTTPS access token (memory only), switch the clone URL
+# to HTTPS. The token is never stored in config, disk, or the backup bundle.
+_nds_git_setup_token() {
+    local host="$1" owner="$2" repo="$3"
+
+    if [[ -n "$host" && -n "$owner" && -n "$repo" ]]; then
+        _nds_git_update_repo_url "$(_nds_git_to_https "$host" "$owner" "$repo")"
+    fi
+
+    _nds_git_prompt_token "$host"
 }
 
 # Description: Gate a remote git flake behind an access check. If the repo is
