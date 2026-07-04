@@ -111,22 +111,26 @@ nds_preflight_remote_install() {
 nds_preflight_flake_buildable() {
     local flake_root="$1"
     local hostname="$2"
-    local -a git_env=() attr
+    local -a git_env=() overrides=() attr
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
     nds_flake_ensure_transitive_auth "$flake_root" || return 1
+    nds_flake_collect_github_overrides "${flake_root}/flake.lock" overrides
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
     log "Preflight: building ${attr}"
 
     if ! env NIX_CONFIG="$(nds_git_nix_config)" \
-        "${git_env[@]}" nix build --no-link --no-write-lock-file --print-build-logs "$attr" \
+        "${git_env[@]}" nix build --no-link --no-write-lock-file --print-build-logs \
+        "${overrides[@]}" "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Flake does not build — check install log for missing input access"
         if grep -q 'HTTP error 404' "${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>/dev/null; then
             warn "HTTP 404 on a private repo usually means the token was not sent — re-paste the token or widen repo access"
+        elif grep -q 'Permission denied (publickey)' "${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>/dev/null; then
+            warn "SSH locked inputs need a GitHub token on the live ISO — deploy keys must cover every input repo"
         else
             warn "Private flake inputs (e.g. thundercast) must be reachable with the same git auth you used for the root flake"
         fi

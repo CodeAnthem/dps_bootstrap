@@ -115,6 +115,7 @@ _nds_git_auth_env_append() {
     local session_cfg
     session_cfg=$(_nds_git_session_config_file)
     __arr_ref+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
+    __arr_ref+=(_NDS_GIT_TOKEN="${_NDS_GIT_TOKEN}")
     [[ -n "$session_cfg" ]] && __arr_ref+=(GIT_CONFIG_GLOBAL="$session_cfg")
 }
 
@@ -326,6 +327,86 @@ nds_flake_ensure_transitive_auth() {
 # Legacy name used by preflight/orchestration.
 nds_flake_normalize_lock_urls() {
     nds_flake_normalize_for_https_token "$1"
+}
+
+# Description: Bash fallback when jq is unavailable on the live ISO.
+_nds_flake_github_override_args_bash() {
+    local lock_file="$1" node="" in_locked=0 url="" rev="" line path owner repo
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^[[:space:]]{4}\"([^\"]+)\":[[:space:]]*\{[[:space:]]*$ ]]; then
+            node="${BASH_REMATCH[1]}"
+            in_locked=0
+            url=""
+            rev=""
+        fi
+        [[ "$node" == "root" || -z "$node" ]] && continue
+        [[ "$line" == *'"locked": {'* ]] && in_locked=1
+        if [[ $in_locked -eq 1 ]]; then
+            if [[ "$line" =~ \"url\":[[:space:]]*\"((git\+ssh|ssh)://git@github.com/[^\"]+)\" ]]; then
+                url="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$line" =~ \"rev\":[[:space:]]*\"([^\"]+)\" ]]; then
+                rev="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$line" =~ ^[[:space:]]*\},?[[:space:]]*$ && -n "$url" && -n "$rev" ]]; then
+                path="${url#*github.com/}"
+                path="${path%.git}"
+                owner="${path%%/*}"
+                repo="${path#*/}"
+                if [[ -n "$owner" && -n "$repo" ]]; then
+                    printf '%s\tgithub:%s/%s/%s\n' "$node" "$owner" "$repo" "$rev"
+                fi
+                in_locked=0
+                url=""
+                rev=""
+            fi
+        fi
+    done < "$lock_file"
+}
+
+# Description: List github: override refs for SSH-locked GitHub nodes in flake.lock.
+# Nix daemon honours access-tokens for github: fetches (unlike git+ssh / ssh://).
+# Arguments:
+# - lock_file: <String> Path to flake.lock
+# Returns:
+# - <String> Lines of "inputName<TAB>github:owner/repo/rev" (stdout)
+_nds_flake_github_override_args() {
+    local lock_file="$1"
+    [[ -f "$lock_file" ]] || return 0
+    [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
+    if command -v jq &>/dev/null; then
+        jq -r '
+          .nodes // {} | to_entries[] |
+          select(.value.locked.type? == "git") |
+          select(.value.locked.url? // "" | test("(git\\+ssh|ssh)://git@github\\.com/")) |
+          (.value.locked.url
+            | sub("^(git\\+ssh|ssh)://git@github\\.com/"; "")
+            | sub("\\.git$"; "")) as $slug |
+          ($slug | split("/")) as $p |
+          select(($p | length) >= 2) |
+          "\(.key)\tgithub:\($p[0])/\($p[1])/\(.value.locked.rev)"
+        ' "$lock_file" 2>/dev/null
+    else
+        _nds_flake_github_override_args_bash "$lock_file"
+    fi
+}
+
+# Description: Append --override-input args for private GitHub SSH lock nodes.
+# Arguments:
+# - lock_file: <String> Path to flake.lock
+# - arr_name:  <String> Name of caller array to append to
+nds_flake_collect_github_overrides() {
+    local lock_file="$1" arr_name="$2"
+    local -n __ovr="$arr_name"
+    local line name ref
+
+    while IFS=$'\t' read -r name ref; do
+        [[ -n "$name" && -n "$ref" ]] || continue
+        __ovr+=(--override-input "$name" "$ref")
+        log "flake override-input: ${name} -> ${ref}"
+        nds_install_log "override-input ${name}=${ref}"
+    done < <(_nds_flake_github_override_args "$lock_file")
 }
 
 # Description: Point FLAKE_* config + env at a new (converted) remote URL.

@@ -266,7 +266,7 @@ _nixinstall_install_nixos_flake() {
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
     local -a install_args=(--root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd)
-    local -a git_env=()
+    local -a git_env=() overrides=()
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
 
@@ -284,10 +284,12 @@ _nixinstall_install_nixos_flake() {
         fi
     fi
 
+    nds_flake_ensure_transitive_auth "$flake_root" || return 1
+    nds_flake_collect_github_overrides "${flake_root}/flake.lock" overrides
     nds_git_export_nix_env git_env
 
     if ! env NIX_CONFIG="$(nds_git_nix_config)" \
-        "${git_env[@]}" nixos-install "${install_args[@]}"; then
+        "${git_env[@]}" nixos-install "${install_args[@]}" "${overrides[@]}"; then
         error "Flake-based NixOS installation failed"
         return 1
     fi
