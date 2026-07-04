@@ -122,10 +122,14 @@ nds_preflight_flake_buildable() {
     log "Preflight: building ${attr}"
 
     if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
-        "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
+        "${git_env[@]}" nix build --no-link --no-write-lock-file --print-build-logs "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Flake does not build — check install log for missing input access"
-        warn "Private flake inputs (e.g. thundercast) must be reachable with the same git auth you used for the root flake"
+        if grep -q 'HTTP error 404' "${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>/dev/null; then
+            warn "HTTP 404 on a private repo usually means the token was not sent — re-paste the token or widen repo access"
+        else
+            warn "Private flake inputs (e.g. thundercast) must be reachable with the same git auth you used for the root flake"
+        fi
         return 1
     fi
     log "Preflight: flake build OK"
