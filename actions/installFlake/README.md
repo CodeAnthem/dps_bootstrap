@@ -54,7 +54,8 @@ deploy-key setup in-place:
 - Prints the public key and the provider's deploy-key URL
 - Switches the clone URL to SSH (`git@host:owner/repo.git`)
 - Expects the **same public key** on every private repository in the flake closure
-  (root flake plus locked inputs such as thundercast)
+  (root flake plus locked inputs such as thundercast). NDS probes each repo via
+  `git ls-remote` before partitioning, then runs a full flake build preflight.
 
 For env-driven installs you can still set `NDS_FLAKE_REPO_URL` (git URL) or
 `NDS_FLAKE_LOCAL_PATH` (path) directly; `FLAKE_SOURCE` is derived automatically.

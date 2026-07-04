@@ -27,8 +27,8 @@ action_preview() {
     nds_ui_i "flake location (git URL or path, auto-detected), host name, host directory"
     nds_ui_i "bootloader (UEFI mode + GRUB / systemd-boot / rEFInd), disk (local mode)"
     nds_ui_b ""
-    nds_ui_b "For a private repo, NDS verifies SSH access to the root flake and all"
-    nds_ui_b "locked inputs before partitioning, then helps set up a deploy key."
+    nds_ui_b "For a private repo, NDS probes SSH access to the root flake and each"
+    nds_ui_b "locked git input (from flake.lock) before partitioning."
     nds_ui_b ""
     nds_ui_b "After confirmation, NDS will:"
     nds_ui_i "local: partition via disko or NDS, generate facter.json, run nixos-install --flake"
@@ -58,6 +58,8 @@ action_setup() {
     fi
     if [[ -n "${probe_dir:-}" ]]; then
         section_header "Verifying flake access"
+        nds_git_ensure_flake_closure_access "$probe_dir" \
+            "$(nds_configurator_config_get FLAKE_REPO_URL)" || exit 11
         nds_preflight_flake_buildable "$probe_dir" "$host" || exit 11
     fi
 

@@ -138,7 +138,171 @@ nds_git_export_nix_env() {
     while IFS= read -r line; do _out+=("$line"); done < <(_nds_git_ssh_env)
 }
 
-# Description: Point FLAKE_* config + env at a new remote URL.
+# Description: Ensure ed25519 deploy key exists and is loaded in ssh-agent.
+# Returns:
+# - <Bool> 0 when a key is available
+_nds_git_ensure_ssh_key() {
+    local key="/root/.ssh/id_ed25519"
+
+    mkdir -p /root/.ssh && chmod 700 /root/.ssh
+
+    if [[ ! -f "$key" ]]; then
+        if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+            return 1
+        fi
+        if ! nds_askUserToProceed "No SSH key found. Generate one now?"; then
+            return 1
+        fi
+        if ! ssh-keygen -t ed25519 -N "" -f "$key" -C "nds-deploy" >/dev/null 2>&1; then
+            error "ssh-keygen failed"
+            return 1
+        fi
+    fi
+
+    if ! ssh-add -l &>/dev/null; then
+        eval "$(ssh-agent -s)" >/dev/null 2>&1 || true
+        ssh-add "$key" >/dev/null 2>&1 || true
+    fi
+    return 0
+}
+
+# Description: Print the session deploy public key for registering on Git hosts.
+_nds_git_show_deploy_key() {
+    local key="/root/.ssh/id_ed25519.pub"
+    [[ -f "$key" ]] || return 1
+    nds_ui_b ""
+    nds_ui_h "Add this public key as a read-only deploy key:"
+    nds_ui_b ""
+    console "$(cat "$key")"
+    nds_ui_b ""
+    nds_ui_b "Use the same key on every private repository listed below."
+    nds_ui_b ""
+    return 0
+}
+
+# Description: Extract git+ssh:// and ssh:// URLs from flake.lock.
+# Arguments:
+# - lock_file: <String> Path to flake.lock
+# Returns:
+# - <String> Newline-separated URLs (stdout)
+_nds_flake_lock_ssh_urls() {
+    local lock_file="$1"
+    [[ -f "$lock_file" ]] || return 0
+    grep -oE '(git\+ssh|ssh)://[^"]+' "$lock_file" 2>/dev/null | sort -u || true
+}
+
+# Description: Collect unique git remote URLs from a flake (lock, flake.nix, root URL).
+# Arguments:
+# - flake_root: <String> Flake directory
+# - root_url:   <String|optional> Root flake git URL
+# Returns:
+# - <String> Newline-separated SSH-normalized clone URLs (stdout)
+_nds_flake_collect_git_remote_urls() {
+    local flake_root="$1" root_url="${2:-}"
+    local lock="${flake_root}/flake.lock"
+    local flake_nix="${flake_root}/flake.nix"
+    declare -A seen=()
+    local url norm
+
+    _nds_flake_add_git_url() {
+        local u="$1"
+        [[ -n "$u" ]] || return 0
+        norm=$(_nds_git_ssh_url "$u")
+        [[ -n "$norm" ]] || return 0
+        [[ -n "${seen[$norm]:-}" ]] && return 0
+        seen[$norm]=1
+        printf '%s\n' "$norm"
+    }
+
+    [[ -n "$root_url" ]] && _nds_flake_add_git_url "$root_url"
+
+    if [[ -f "$lock" ]]; then
+        while IFS= read -r url; do
+            _nds_flake_add_git_url "$url"
+        done < <(_nds_flake_lock_ssh_urls "$lock")
+    fi
+
+    if [[ -f "$flake_nix" ]]; then
+        while IFS= read -r url; do
+            _nds_flake_add_git_url "$url"
+        done < <(grep -oE 'git\+ssh://[^"[:space:]]+|git@[^"[:space:]]+\.git' "$flake_nix" 2>/dev/null \
+            | sort -u || true)
+    fi
+}
+
+# Description: Probe SSH access to every git remote referenced by a flake closure.
+# Runs before destructive install steps. Lists missing repos with deploy-key URLs.
+# Arguments:
+# - flake_root: <String> Probe or staged flake directory
+# - root_url:   <String|optional> Root flake git URL
+# Returns:
+# - <Bool> 0 when all reachable or user chose skip
+nds_git_ensure_flake_closure_access() {
+    local flake_root="$1" root_url="${2:-}"
+    local -a urls=() failed=()
+    local url ssh_url parsed host owner repo choice
+
+    [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
+
+    mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
+    [[ ${#urls[@]} -gt 0 ]] || return 0
+
+    log "Checking SSH access to ${#urls[@]} flake git input(s)"
+
+    while true; do
+        failed=()
+        for url in "${urls[@]}"; do
+            if nds_git_probe_access "$url"; then
+                debug "Git access OK: $url"
+            else
+                failed+=("$url")
+            fi
+        done
+
+        if [[ ${#failed[@]} -eq 0 ]]; then
+            success "SSH access confirmed for all ${#urls[@]} flake git input(s)."
+            nds_install_log "git: closure access OK (${#urls[@]} repos)"
+            return 0
+        fi
+
+        warn "Missing SSH access to ${#failed[@]} of ${#urls[@]} repositories:"
+        for url in "${failed[@]}"; do
+            ssh_url=$(_nds_git_ssh_url "$url")
+            if parsed=$(_nds_git_parse "$ssh_url"); then
+                IFS=$'\t' read -r host owner repo <<< "$parsed"
+                nds_ui_i "  ${owner}/${repo}"
+                nds_ui_i "    $(_nds_git_keys_url "$host" "$owner" "$repo")"
+            else
+                nds_ui_i "  ${ssh_url}"
+            fi
+            nds_install_log "git: no access — ${ssh_url}"
+        done
+
+        if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+            error "Cannot verify SSH access to all flake git inputs"
+            return 1
+        fi
+
+        nds_ui_b ""
+        nds_cfg_ask_choice GIT_AUTH_METHOD "Next step" "ssh|retry|skip" \
+            "ssh=Show deploy key|retry=Re-check now|skip=Skip (try anyway)" "ssh"
+
+        choice="$(nds_cfg_get GIT_AUTH_METHOD)"
+        case "$choice" in
+            ssh)
+                _nds_git_ensure_ssh_key || continue
+                _nds_git_show_deploy_key || continue
+                nds_askUserToProceed "Added deploy keys on the repos above — re-check?" || continue
+                ;;
+            retry) ;;
+            skip)
+                warn "Continuing without SSH access to every flake input — install may fail."
+                return 0
+                ;;
+        esac
+    done
+}
+
 _nds_git_update_repo_url() {
     local new_url="$1"
     nds_cfg_set FLAKE_REPO_URL "$new_url"
@@ -153,35 +317,14 @@ _nds_git_update_repo_url() {
 # switch the clone URL to SSH, and wait for the user to register it.
 _nds_git_setup_ssh() {
     local host="$1" owner="$2" repo="$3"
-    local key="/root/.ssh/id_ed25519"
 
-    mkdir -p /root/.ssh && chmod 700 /root/.ssh
-
-    if [[ ! -f "$key" ]]; then
-        if nds_askUserToProceed "No SSH key found. Generate one now?"; then
-            if ! ssh-keygen -t ed25519 -N "" -f "$key" -C "nds-deploy-${repo:-host}" >/dev/null 2>&1; then
-                error "ssh-keygen failed"
-                return 1
-            fi
-        else
-            return 1
-        fi
-    fi
-
-    if ! ssh-add -l &>/dev/null; then
-        eval "$(ssh-agent -s)" >/dev/null 2>&1 || true
-        ssh-add "$key" >/dev/null 2>&1 || true
-    fi
+    _nds_git_ensure_ssh_key || return 1
 
     if [[ -n "$host" && -n "$owner" && -n "$repo" ]]; then
         _nds_git_update_repo_url "$(_nds_git_to_ssh "$host" "$owner" "$repo")"
     fi
 
-    nds_ui_b ""
-    nds_ui_h "Add this public key as a read-only deploy key:"
-    nds_ui_b ""
-    console "$(cat "${key}.pub")"
-    nds_ui_b ""
+    _nds_git_show_deploy_key || return 1
     nds_ui_b "Open: $(_nds_git_keys_url "$host" "$owner" "$repo")"
     nds_ui_b "Paste the key, keep write access OFF, and save."
     nds_ui_b ""

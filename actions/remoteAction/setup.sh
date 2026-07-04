@@ -58,6 +58,10 @@ action_setup() {
 
     nds_preflight_apply_disko_strategy "$probe_dir" "${NDS_FLAKE_HOST}" "$host_dir"
 
+    step_start "Verifying git input access"
+    nds_git_ensure_flake_closure_access "$probe_dir" "$repo_url" || exit 14
+    step_complete "Git input access OK"
+
     step_start "Verifying flake builds"
     nds_preflight_flake_buildable "$probe_dir" "${NDS_FLAKE_HOST}" || exit 14
     step_complete "Flake builds"
