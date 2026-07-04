@@ -119,9 +119,10 @@ nds_preflight_flake_buildable() {
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
-    log "Preflight: building ${attr} (dry eval)"
+    log "Preflight: building ${attr}"
 
-    if ! env "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
+    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+        "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Flake does not build — check install log for missing input access"
         warn "Private flake inputs (e.g. thundercast) must be reachable with the same git auth you used for the root flake"

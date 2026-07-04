@@ -283,7 +283,8 @@ _nixinstall_install_nixos_flake() {
 
     nds_git_export_nix_env git_env
 
-    if ! env "${git_env[@]}" nixos-install "${install_args[@]}"; then
+    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+        "${git_env[@]}" nixos-install "${install_args[@]}"; then
         error "Flake-based NixOS installation failed"
         return 1
     fi
