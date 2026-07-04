@@ -285,8 +285,6 @@ nds_flake_ensure_transitive_auth() {
     [[ -n "$ssh_urls" ]] || return 0
 
     if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
-        log "Rewriting transitive SSH flake inputs to git+https (token auth)"
-        _nds_rewrite_ssh_to_https "$flake_root"
         return 0
     fi
 
@@ -313,10 +311,8 @@ nds_flake_ensure_transitive_auth() {
 
     nds_ui_b ""
     nds_ui_b "Your root flake may use SSH, but locked inputs above still need auth."
-    nds_ui_b "A GitHub token (memory-only) rewrites those inputs to git+https for this session."
+    nds_ui_b "A GitHub token (memory-only) lets NDS fetch locked inputs via github: refs."
     if _nds_git_prompt_token "$host"; then
-        log "Rewriting transitive SSH flake inputs to git+https (token auth)"
-        _nds_rewrite_ssh_to_https "$flake_root"
         return 0
     fi
 
@@ -343,7 +339,7 @@ _nds_flake_github_override_args_bash() {
         [[ "$node" == "root" || -z "$node" ]] && continue
         [[ "$line" == *'"locked": {'* ]] && in_locked=1
         if [[ $in_locked -eq 1 ]]; then
-            if [[ "$line" =~ \"url\":[[:space:]]*\"((git\+ssh|ssh)://git@github.com/[^\"]+)\" ]]; then
+            if [[ "$line" =~ \"url\":[[:space:]]*\"((git\+https|git\+ssh|ssh)://git@github.com/[^\"]+)\" ]]; then
                 url="${BASH_REMATCH[1]}"
             fi
             if [[ "$line" =~ \"rev\":[[:space:]]*\"([^\"]+)\" ]]; then
@@ -379,9 +375,10 @@ _nds_flake_github_override_args() {
         jq -r '
           .nodes // {} | to_entries[] |
           select(.value.locked.type? == "git") |
-          select(.value.locked.url? // "" | test("(git\\+ssh|ssh)://git@github\\.com/")) |
+          select(.value.locked.url? // "" | test("github\\.com/")) |
           (.value.locked.url
-            | sub("^(git\\+ssh|ssh)://git@github\\.com/"; "")
+            | sub("^git\\+(ssh|https)://git@github\\.com/"; "")
+            | sub("^ssh://git@github\\.com/"; "")
             | sub("\\.git$"; "")) as $slug |
           ($slug | split("/")) as $p |
           select(($p | length) >= 2) |

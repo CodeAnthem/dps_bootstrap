@@ -117,6 +117,13 @@ nds_preflight_flake_buildable() {
 
     nds_flake_ensure_transitive_auth "$flake_root" || return 1
     nds_flake_collect_github_overrides "${flake_root}/flake.lock" overrides
+    if [[ -n "${_NDS_GIT_TOKEN:-}" && ${#overrides[@]} -eq 0 ]]; then
+        error "Token set but no github: override-input args from flake.lock"
+        return 1
+    fi
+    if [[ ${#overrides[@]} -gt 0 ]]; then
+        log "Using ${#overrides[@]} github: override-input flags for private flake inputs"
+    fi
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"

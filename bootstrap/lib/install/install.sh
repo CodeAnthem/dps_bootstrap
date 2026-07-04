@@ -286,6 +286,10 @@ _nixinstall_install_nixos_flake() {
 
     nds_flake_ensure_transitive_auth "$flake_root" || return 1
     nds_flake_collect_github_overrides "${flake_root}/flake.lock" overrides
+    if [[ -n "${_NDS_GIT_TOKEN:-}" && ${#overrides[@]} -eq 0 ]]; then
+        error "Token set but no github: override-input args from flake.lock"
+        return 1
+    fi
     nds_git_export_nix_env git_env
 
     if ! env NIX_CONFIG="$(nds_git_nix_config)" \
