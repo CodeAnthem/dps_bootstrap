@@ -64,11 +64,11 @@ _nds_git_token_url() {
 }
 
 # =============================================================================
-# TOKEN PLUMBING (trace-free)
+# TOKEN PLUMBING (memory-only — never written to disk)
 # =============================================================================
 
-# Description: Path to an askpass helper that echoes the in-memory token. The
-# file itself contains no secret — the token lives only in the exported env var.
+# Description: Path to an askpass helper. The script contains no secret; it reads
+# _NDS_GIT_TOKEN from the environment at runtime.
 _nds_git_askpass_file() {
     local f="${NDS_RUNTIME_DIR:-/tmp}/git-askpass.sh"
     if [[ ! -f "$f" ]]; then
@@ -92,29 +92,42 @@ _nds_git_effective_url() {
     fi
 }
 
-# Description: Ephemeral netrc for Nix/curl HTTPS fetches to private GitHub repos.
-_nds_git_netrc_file() {
-    local f="${NDS_RUNTIME_DIR:-/tmp}/nds-git-netrc"
+# Description: Session gitconfig (no credentials) mapping GitHub SSH URLs to HTTPS.
+# Passed via GIT_CONFIG_GLOBAL so the operator's ~/.gitconfig is never touched.
+_nds_git_session_config_file() {
+    local f="${NDS_RUNTIME_DIR:-/tmp}/git-session.config"
     [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
-    printf 'machine github.com\nlogin x-access-token\npassword %s\n' "$_NDS_GIT_TOKEN" > "$f"
-    chmod 600 "$f"
+    if [[ ! -f "$f" ]]; then
+        git config --file "$f" url."https://github.com/".insteadOf "ssh://git@github.com/" 2>/dev/null || true
+        git config --file "$f" url."https://github.com/".insteadOf "git+ssh://git@github.com/" 2>/dev/null || true
+        git config --file "$f" url."https://github.com/".insteadOf "git@github.com:" 2>/dev/null || true
+        chmod 600 "$f"
+    fi
     printf '%s\n' "$f"
 }
 
-# Description: Map GitHub SSH/HTTPS URLs to token-authenticated HTTPS for this
-# session (live ISO only). Lets Nix fetch git+ssh flake inputs when the user
-# chose HTTPS token auth for the root repo. Removed by nds_git_access_cleanup.
-_nds_git_apply_token_instead_of() {
+# Description: Append git auth env pairs (askpass + session gitconfig) to a nameref array.
+_nds_git_auth_env_append() {
+    local -n _out=$1
     [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
-    local base="https://x-access-token:${_NDS_GIT_TOKEN}@github.com/"
-    git config --global url."${base}".insteadOf "https://github.com/" 2>/dev/null || true
-    git config --global url."${base}".insteadOf "ssh://git@github.com/" 2>/dev/null || true
-    git config --global url."${base}".insteadOf "git+ssh://git@github.com/" 2>/dev/null || true
-    git config --global url."${base}".insteadOf "git@github.com:" 2>/dev/null || true
+    local session_cfg
+    session_cfg=$(_nds_git_session_config_file)
+    _out+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
+    [[ -n "$session_cfg" ]] && _out+=(GIT_CONFIG_GLOBAL="$session_cfg")
 }
 
-# Description: Drop the in-memory token, askpass helper, and session git insteadOf
-# rules. Safe to call multiple times.
+# Description: NIX_CONFIG string for flake eval/build (access-tokens stays in env only).
+nds_git_nix_config() {
+    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        printf 'experimental-features = nix-command flakes\naccess-tokens = github.com=%s' "$_NDS_GIT_TOKEN"
+    else
+        printf 'experimental-features = nix-command flakes'
+    fi
+}
+
+# Description: Drop the in-memory token, askpass helper, and session gitconfig.
+# Also scrubs legacy token-in-url rules from older NDS versions. Safe to call
+# multiple times.
 nds_git_access_cleanup() {
     local key
     if command -v git &>/dev/null; then
@@ -125,8 +138,15 @@ nds_git_access_cleanup() {
             | awk '{print $1}' || true)
     fi
     unset _NDS_GIT_TOKEN
+    unset GIT_CONFIG_GLOBAL
     rm -f "${NDS_RUNTIME_DIR:-/tmp}/git-askpass.sh" 2>/dev/null || true
+    rm -f "${NDS_RUNTIME_DIR:-/tmp}/git-session.config" 2>/dev/null || true
     rm -f "${NDS_RUNTIME_DIR:-/tmp}/nds-git-netrc" 2>/dev/null || true
+}
+
+# EXIT hook (main.sh) — wipe token state even when install aborts early.
+hook_exit_cleanup() {
+    nds_git_access_cleanup
 }
 
 # =============================================================================
@@ -146,7 +166,7 @@ nds_git_probe_access() {
         "GIT_TERMINAL_PROMPT=0"
         "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
     )
-    [[ -n "${_NDS_GIT_TOKEN:-}" ]] && envv+=("GIT_ASKPASS=$(_nds_git_askpass_file)")
+    _nds_git_auth_env_append envv
     env "${envv[@]}" git -c credential.helper= ls-remote "$eff" &>/dev/null
 }
 
@@ -166,7 +186,7 @@ nds_git_clone() {
         "GIT_TERMINAL_PROMPT=0"
         "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
     )
-    [[ -n "${_NDS_GIT_TOKEN:-}" ]] && envv+=("GIT_ASKPASS=$(_nds_git_askpass_file)")
+    _nds_git_auth_env_append envv
 
     if [[ "$depth" == "0" ]]; then
         env "${envv[@]}" git -c credential.helper= clone "$eff" "$dest"
@@ -185,25 +205,28 @@ nds_git_clone() {
 # ACCESS GATE
 # =============================================================================
 
+# Description: True when HTTPS token auth is offered (local live-ISO installs only).
+_nds_git_token_allowed() {
+    local mode
+    mode="$(nds_configurator_config_get INSTALL_MODE 2>/dev/null || true)"
+    mode="${mode:-$(nds_cfg_get INSTALL_MODE 2>/dev/null || true)}"
+    mode="${mode:-local}"
+    [[ "$mode" != "remote" ]]
+}
+
 # Description: Environment for nix/git fetches during flake eval and nixos-install.
 # Applies in-memory HTTPS token auth when configured.
 # Returns:
 # - Sets _NDS_GIT_NIX_ENV array (nameref) of VAR=value pairs for env(1)
 nds_git_export_nix_env() {
     local -n _out=$1
-    local netrc
     _out=()
-    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
-        _nds_git_apply_token_instead_of
-        netrc=$(_nds_git_netrc_file)
-        _out+=(GIT_ASKPASS="$(_nds_git_askpass_file)" GIT_TERMINAL_PROMPT=0)
-        [[ -n "$netrc" ]] && _out+=(NETRC="$netrc")
-    fi
+    _nds_git_auth_env_append _out
 }
 
 # Description: When using HTTPS token auth, rewrite SSH-style GitHub URLs in the
 # staged flake to git+https (Nix uses git + GIT_ASKPASS; bare https:// 404s on
-# private repos). Session git insteadOf and netrc supply the token.
+# private repos).
 nds_flake_normalize_for_https_token() {
     local flake_root="$1"
     local lock="${flake_root}/flake.lock"
@@ -287,6 +310,11 @@ _nds_git_setup_ssh() {
 _nds_git_setup_token() {
     local host="$1" owner="$2" repo="$3" token
 
+    if ! _nds_git_token_allowed; then
+        warn "HTTPS tokens are disabled for remote install — use SSH keys on the operator machine."
+        return 1
+    fi
+
     if [[ -n "$host" && -n "$owner" && -n "$repo" ]]; then
         _nds_git_update_repo_url "$(_nds_git_to_https "$host" "$owner" "$repo")"
     fi
@@ -304,8 +332,6 @@ _nds_git_setup_token() {
     fi
     export _NDS_GIT_TOKEN="$token"
     token=""
-    _nds_git_apply_token_instead_of
-    _nds_git_netrc_file >/dev/null
     nds_ui_b "  Token accepted (held in memory for this session)."
     return 0
 }
@@ -339,9 +365,20 @@ nds_git_ensure_access() {
         return 0
     fi
 
-    local parsed host="" owner="" repo=""
+    local parsed host="" owner="" repo="" auth_choices auth_labels
     if parsed=$(_nds_git_parse "$url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
+    fi
+
+    if _nds_git_token_allowed; then
+        auth_choices="ssh|token|retry|skip"
+        auth_labels="ssh=SSH deploy key|token=HTTPS access token (live ISO only)|retry=Re-check now|skip=Skip (try anyway)"
+    else
+        auth_choices="ssh|retry|skip"
+        auth_labels="ssh=SSH key on this machine|retry=Re-check now|skip=Skip (try anyway)"
+        nds_ui_b ""
+        nds_ui_b "Remote install runs on your operator machine — use SSH keys loaded here."
+        nds_ui_b "HTTPS tokens are only supported on the live ISO (memory-only, single session)."
     fi
 
     while true; do
@@ -349,8 +386,7 @@ nds_git_ensure_access() {
         nds_ui_h "Repository access"
         [[ -n "$owner" ]] && nds_ui_b "Repository: ${host}/${owner}/${repo}"
         nds_ui_b ""
-        nds_cfg_ask_choice GIT_AUTH_METHOD "Auth method" "ssh|token|retry|skip" \
-            "ssh=SSH deploy key|token=HTTPS access token|retry=Re-check now|skip=Skip (try anyway)" "ssh"
+        nds_cfg_ask_choice GIT_AUTH_METHOD "Auth method" "$auth_choices" "$auth_labels" "ssh"
 
         case "$(nds_cfg_get GIT_AUTH_METHOD)" in
             ssh)

@@ -77,8 +77,11 @@ _nixinstall_via_nixos_anywhere() {
         --generate-hardware-config nixos-facter "$facter_dest"
         --target-host "root@${target_ip}"
     )
-    local encryption
+    local -a git_env=()
+    local encryption nix_config
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
+    nds_git_export_nix_env git_env
+    nix_config=$(nds_git_nix_config)
     if [[ "$encryption" == "true" ]]; then
         local key_path="${NDS_RUNTIME_DIR}/secrets/luks_key.bin"
         if [[ ! -f "$key_path" ]]; then
@@ -87,8 +90,8 @@ _nixinstall_via_nixos_anywhere() {
         cmd+=(--disk-encryption-keys /tmp/luks.key "$key_path")
     fi
 
-    log "Running: ${cmd[*]}"
-    if ! "${cmd[@]}" 2>&1 | tee -a "$NDS_INSTALL_LOG"; then
+    log "Running: nix run github:nix-community/nixos-anywhere -- --flake ${flake_root}#${hostname} ..."
+    if ! env NIX_CONFIG="$nix_config" "${git_env[@]}" "${cmd[@]}" 2>&1 | tee -a "$NDS_INSTALL_LOG"; then
         error "nixos-anywhere installation failed"
     fi
     log "Remote install completed — commit ${facter_dest} to your flake repo"
@@ -283,7 +286,7 @@ _nixinstall_install_nixos_flake() {
 
     nds_git_export_nix_env git_env
 
-    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+    if ! env NIX_CONFIG="$(nds_git_nix_config)" \
         "${git_env[@]}" nixos-install "${install_args[@]}"; then
         error "Flake-based NixOS installation failed"
         return 1

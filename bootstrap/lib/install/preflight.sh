@@ -121,7 +121,7 @@ nds_preflight_flake_buildable() {
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
     log "Preflight: building ${attr}"
 
-    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+    if ! env NIX_CONFIG="$(nds_git_nix_config)" \
         "${git_env[@]}" nix build --no-link --no-write-lock-file --print-build-logs "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Flake does not build — check install log for missing input access"
