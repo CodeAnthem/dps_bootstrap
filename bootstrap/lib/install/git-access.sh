@@ -406,6 +406,48 @@ nds_flake_collect_github_overrides() {
     done < <(_nds_flake_github_override_args "$lock_file")
 }
 
+# Description: Convert git+ssh GitHub nodes in flake.lock to type=github (in-place).
+# Uses nix eval — no jq, no token on disk. Requires _NDS_GIT_TOKEN for caller gating.
+# Arguments:
+# - lock_file: <String> Path to flake.lock
+_nds_flake_patch_lock_to_github() {
+    local lock_file="$1" patch_nix this_dir tmp
+    [[ -f "$lock_file" ]] || return 0
+    [[ -n "${_NDS_GIT_TOKEN:-}" ]] || return 0
+
+    this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    patch_nix="${this_dir}/flake-lock-patch.nix"
+    [[ -f "$patch_nix" ]] || { error "Missing flake lock patch: $patch_nix"; return 1; }
+
+    tmp=$(mktemp) || return 1
+    if ! nix --extra-experimental-features 'nix-command flakes' eval --impure \
+        --expr "import \"${patch_nix}\" \"${lock_file}\"" --raw > "$tmp"; then
+        rm -f "$tmp"
+        error "flake.lock patch failed (nix eval)"
+        return 1
+    fi
+    mv "$tmp" "$lock_file"
+    if grep -qE 'ssh://git@github.com/|git\+ssh://git@github.com/' "$lock_file"; then
+        error "flake.lock still has GitHub SSH URLs after patch"
+        return 1
+    fi
+    log "flake.lock: private GitHub git inputs -> type=github (access-tokens)"
+    nds_install_log "flake.lock patched for github access-tokens"
+    return 0
+}
+
+# Description: Append nix --config flags for flakes + github access-tokens (daemon-safe).
+# Arguments:
+# - arr_name: <String> Caller array name
+nds_flake_nix_config_args() {
+    local arr_name="$1"
+    local -n __cfg="$arr_name"
+    __cfg+=(--config 'experimental-features = nix-command flakes')
+    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        __cfg+=(--config "access-tokens = github.com=${_NDS_GIT_TOKEN}")
+    fi
+}
+
 # Description: Point FLAKE_* config + env at a new (converted) remote URL.
 _nds_git_update_repo_url() {
     local new_url="$1"

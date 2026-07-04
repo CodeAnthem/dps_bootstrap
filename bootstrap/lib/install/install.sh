@@ -71,27 +71,26 @@ _nixinstall_via_nixos_anywhere() {
     local target_ip="$3"
     local host_dir_rel="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     local facter_dest="${flake_root}/${host_dir_rel}/${hostname}/facter.json"
-    local -a cmd=(
-        nix run github:nix-community/nixos-anywhere --
+    local -a git_env=() nix_cfg=() na_args=(
         --flake "${flake_root}#${hostname}"
         --generate-hardware-config nixos-facter "$facter_dest"
         --target-host "root@${target_ip}"
     )
-    local -a git_env=()
-    local encryption nix_config
+    local encryption
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
     nds_git_export_nix_env git_env
-    nix_config=$(nds_git_nix_config)
+    nds_flake_nix_config_args nix_cfg
     if [[ "$encryption" == "true" ]]; then
         local key_path="${NDS_RUNTIME_DIR}/secrets/luks_key.bin"
         if [[ ! -f "$key_path" ]]; then
             error "LUKS keyfile not found at $key_path — run encryption secret generation first"
         fi
-        cmd+=(--disk-encryption-keys /tmp/luks.key "$key_path")
+        na_args+=(--disk-encryption-keys /tmp/luks.key "$key_path")
     fi
 
     log "Running: nix run github:nix-community/nixos-anywhere -- --flake ${flake_root}#${hostname} ..."
-    if ! env NIX_CONFIG="$nix_config" "${git_env[@]}" "${cmd[@]}" 2>&1 | tee -a "$NDS_INSTALL_LOG"; then
+    if ! env "${git_env[@]}" nix "${nix_cfg[@]}" run github:nix-community/nixos-anywhere -- \
+        "${na_args[@]}" 2>&1 | tee -a "$NDS_INSTALL_LOG"; then
         error "nixos-anywhere installation failed"
     fi
     log "Remote install completed — commit ${facter_dest} to your flake repo"
@@ -266,7 +265,7 @@ _nixinstall_install_nixos_flake() {
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
     local -a install_args=(--root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd)
-    local -a git_env=() overrides=()
+    local -a git_env=() nix_cfg=()
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
 
@@ -285,15 +284,13 @@ _nixinstall_install_nixos_flake() {
     fi
 
     nds_flake_ensure_transitive_auth "$flake_root" || return 1
-    nds_flake_collect_github_overrides "${flake_root}/flake.lock" overrides
-    if [[ -n "${_NDS_GIT_TOKEN:-}" && ${#overrides[@]} -eq 0 ]]; then
-        error "Token set but no github: override-input args from flake.lock"
-        return 1
+    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        _nds_flake_patch_lock_to_github "${flake_root}/flake.lock" || return 1
     fi
+    nds_flake_nix_config_args nix_cfg
     nds_git_export_nix_env git_env
 
-    if ! env NIX_CONFIG="$(nds_git_nix_config)" \
-        "${git_env[@]}" nixos-install "${install_args[@]}" "${overrides[@]}"; then
+    if ! env "${git_env[@]}" nixos-install "${nix_cfg[@]}" "${install_args[@]}"; then
         error "Flake-based NixOS installation failed"
         return 1
     fi

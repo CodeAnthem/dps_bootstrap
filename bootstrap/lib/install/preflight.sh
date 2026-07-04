@@ -111,27 +111,22 @@ nds_preflight_remote_install() {
 nds_preflight_flake_buildable() {
     local flake_root="$1"
     local hostname="$2"
-    local -a git_env=() overrides=() attr
+    local -a git_env=() nix_cfg=() attr
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
     nds_flake_ensure_transitive_auth "$flake_root" || return 1
-    nds_flake_collect_github_overrides "${flake_root}/flake.lock" overrides
-    if [[ -n "${_NDS_GIT_TOKEN:-}" && ${#overrides[@]} -eq 0 ]]; then
-        error "Token set but no github: override-input args from flake.lock"
-        return 1
+    if [[ -n "${_NDS_GIT_TOKEN:-}" ]]; then
+        _nds_flake_patch_lock_to_github "${flake_root}/flake.lock" || return 1
     fi
-    if [[ ${#overrides[@]} -gt 0 ]]; then
-        log "Using ${#overrides[@]} github: override-input flags for private flake inputs"
-    fi
+    nds_flake_nix_config_args nix_cfg
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
     log "Preflight: building ${attr}"
 
-    if ! env NIX_CONFIG="$(nds_git_nix_config)" \
-        "${git_env[@]}" nix build --no-link --no-write-lock-file --print-build-logs \
-        "${overrides[@]}" "$attr" \
+    if ! env "${git_env[@]}" nix build "${nix_cfg[@]}" --no-link --no-write-lock-file \
+        --print-build-logs "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "Flake does not build — check install log for missing input access"
         if grep -q 'HTTP error 404' "${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>/dev/null; then
