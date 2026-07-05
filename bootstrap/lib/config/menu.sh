@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-03
+# Date:          Created: 2026-07-01 | Modified: 2026-07-05
 # Description:   Category menu — calls per-preset configure/summary/validate (no hook framework)
 # ==================================================================================================
 
@@ -101,6 +101,26 @@ nds_configurator_run() {
             error "Configuration validation failed"
             return 1
         fi
+    fi
+    nds_configurator_menu_or_skip "${presets[@]}"
+}
+
+# Description: Skip the category menu when NDS_SKIP_MENU or NDS_AUTO_CONFIRM is set
+# and validation passes; otherwise run the interactive menu.
+nds_configurator_menu_or_skip() {
+    local presets=("$@")
+    if [[ "${NDS_SKIP_MENU:-false}" == "true" || "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+        if ! nds_configurator_validate_all "${presets[@]}"; then
+            nds_configurator_prompt_errors "${presets[@]}"
+            nds_configurator_validate_all "${presets[@]}" || return 1
+        fi
+        log "Configuration complete (menu skipped)"
+        nds_configurator_print_config_backup
+        if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+            return 0
+        fi
+        nds_configurator_confirm_config_saved || return 1
+        return 0
     fi
     nds_configurator_menu "${presets[@]}"
 }

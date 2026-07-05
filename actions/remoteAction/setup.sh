@@ -2,19 +2,15 @@
 # ==================================================================================================
 # NDS - Remote action from target flake
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-04
+# Date:          Created: 2026-06-29 | Modified: 2026-07-05
 # Description:   Clone a flake and run its .nds/action.sh if present, else fall back to a flake install
 # ==================================================================================================
 
-action_config() {
-    nds_configurator_preset_disable quick
-    nds_configurator_preset_disable region
-    nds_configurator_preset_disable network
-    nds_configurator_preset_disable security
-    nds_configurator_preset_disable platform
-    nds_configurator_preset_disable installFlake
+action_presets() {
+    printf '%s\n' remoteAction boot disk encryption
+}
 
-    nds_configurator_preset_enable remoteAction
+action_config() {
     nds_configurator_preset_set_display remoteAction "Remote flake action"
     nds_configurator_preset_set_priority remoteAction 20
     nds_configurator_preset_set_priority boot 21
@@ -41,7 +37,7 @@ action_setup() {
         nds_configurator_validate_all || exit 11
     fi
 
-    nds_configurator_menu || exit 12
+    nds_configurator_menu_or_skip || exit 12
     nds_flake_prepare remote
 
     nds_git_ensure_access "$(nds_configurator_config_get FLAKE_REPO_URL)" || exit 14
@@ -72,7 +68,7 @@ action_setup() {
 
         if declare -f remote_action_config &>/dev/null; then
             remote_action_config
-            nds_configurator_menu || exit 12
+            nds_configurator_menu_or_skip || exit 12
             nds_flake_prepare remote
         fi
     else

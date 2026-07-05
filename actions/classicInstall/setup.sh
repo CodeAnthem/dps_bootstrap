@@ -2,14 +2,16 @@
 # ==================================================================================================
 # NDS - Classic install action (no flake)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-30
+# Date:          Created: 2026-06-29 | Modified: 2026-07-05
 # Description:   Install NixOS with a generated /etc/nixos configuration (no flake needed)
 # ==================================================================================================
 
+action_presets() {
+    printf '%s\n' quick region network boot access disk encryption platform
+}
+
 action_config() {
-    nds_configurator_preset_disable installFlake
-    nds_configurator_preset_disable security
-    nds_configurator_preset_disable remoteAction
+    :
 }
 
 action_preview() {
@@ -33,7 +35,7 @@ action_setup() {
         nds_configurator_validate_all || exit 11
     fi
 
-    nds_configurator_menu || exit 12
+    nds_configurator_menu_or_skip || exit 12
 
     local disk_strategy disk_target
     disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"

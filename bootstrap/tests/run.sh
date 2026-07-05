@@ -25,6 +25,8 @@ source "${TEST_ROOT}/suites/configurator.sh"
 source "${TEST_ROOT}/suites/inputs.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/classicConfig.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/git.sh"
 
 nds_run_self_tests() {
     TEST_PASSED=0
@@ -33,6 +35,7 @@ nds_run_self_tests() {
     section_title "NDS self-tests"
 
     run_named_suite "configurator" suite_configurator
+    run_named_suite "git" suite_git
     run_named_suite "inputs" suite_inputs
     run_named_suite "classicConfig" suite_classic_config
 

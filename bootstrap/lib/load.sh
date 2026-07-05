@@ -2,8 +2,8 @@
 # ==================================================================================================
 # NDS - Library loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-27 | Modified: 2026-07-01
-# Description:   Load feature packages (config, install, nixcfg)
+# Date:          Created: 2026-06-27 | Modified: 2026-07-05
+# Description:   Load feature packages (config, tools, install, nixcfg)
 # ==================================================================================================
 
 nds_configurator_init() {
@@ -36,6 +36,8 @@ nds_installation_init() {
         fatal "Failed to load install modules"
         return 1
     }
+
+    nds_import_file "${SCRIPT_DIR}/core/flows/flake.sh" || return 1
 
     nds_import_file "${SCRIPT_DIR}/lib/nixcfg/builder.sh" || {
         fatal "Failed to load nixcfg builder"

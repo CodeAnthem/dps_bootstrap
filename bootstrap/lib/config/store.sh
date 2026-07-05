@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-03
+# Date:          Created: 2026-07-01 | Modified: 2026-07-05
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -15,13 +15,16 @@ declare -gA PRESET_META=()
 # auto-detected (not typed by the user) and useful to pin for a repeat install.
 _NDS_EXPORT_ALWAYS="DISK_TARGET BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PLATFORM_VM_TYPE"
 
+# Shown in concise export whenever non-empty (even if equal to default).
+_NDS_EXPORT_WHEN_SET="INSTALL_MODE FLAKE_REPO_URL FLAKE_LOCAL_PATH FLAKE_HOST FLAKE_INSTALL_PATH FLAKE_HOST_DIR FLAKE_HARDWARE_PLACEMENT"
+
 # Machine/hardware-specific keys. The concise export splits these from portable
 # policy so a portable profile can be reused across machines untouched.
 _NDS_EXPORT_HARDWARE="DISK_TARGET DISK_STRATEGY DISK_FS_TYPE DISK_SWAP_SIZE_MIB DISK_DISKO_CONFIG BOOT_UEFI_MODE BOOT_LOADER PLATFORM_RUN_ON_VM PLATFORM_VM_TYPE PLATFORM_VM_GUEST_TOOLS NETWORK_HOSTNAME NETWORK_IP NETWORK_MASK NETWORK_GATEWAY REMOTE_TARGET_IP"
 
 # Derived keys never shown in the concise export — reconstructed from other keys
 # (FLAKE_LOCATION / FLAKE_SOURCE are inferred from FLAKE_REPO_URL / FLAKE_LOCAL_PATH).
-_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_METHOD"
+_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_METHOD GIT_DEPLOY_KEY_IMPORT_PATH"
 
 # =============================================================================
 # CONFIG ACCESS
@@ -90,6 +93,14 @@ _nds_export_is_always() {
     return 1
 }
 
+_nds_export_is_when_set() {
+    local key="$1" a
+    for a in $_NDS_EXPORT_WHEN_SET; do
+        [[ "$key" == "$a" ]] && return 0
+    done
+    return 1
+}
+
 _nds_export_is_hardware() {
     local key="$1" a
     for a in $_NDS_EXPORT_HARDWARE; do
@@ -111,6 +122,10 @@ _nds_export_is_skipped() {
 _nds_export_should_include() {
     local key="$1" cur="${CONFIG_DATA[$1]}"
     _nds_export_is_skipped "$key" && return 1
+    if _nds_export_is_when_set "$key"; then
+        [[ -n "$cur" ]]
+        return
+    fi
     if _nds_export_is_always "$key"; then
         [[ -n "$cur" ]]
         return
@@ -158,15 +173,52 @@ nds_configurator_config_export_grouped() {
     fi
 }
 
-nds_config_apply_env() {
-    local varname
-    for varname in "${!CONFIG_DATA[@]}"; do
-        local env_var="NDS_${varname}"
-        if [[ -n "${!env_var:-}" ]]; then
-            CONFIG_DATA["$varname"]="${!env_var}"
-            debug "Env override: $env_var=${!env_var}"
+# Description: Sync FLAKE_LOCATION / FLAKE_SOURCE from FLAKE_REPO_URL or FLAKE_LOCAL_PATH.
+nds_cfg_sync_derived_flake() {
+    local loc repo local_path src
+    loc="$(nds_cfg_get FLAKE_LOCATION)"
+    repo="$(nds_cfg_get FLAKE_REPO_URL)"
+    local_path="$(nds_cfg_get FLAKE_LOCAL_PATH)"
+
+    if [[ -n "$loc" && -z "$repo" && -z "$local_path" ]]; then
+        src=$(nds_detect_flake_source "$loc")
+        nds_cfg_set FLAKE_SOURCE "$src"
+        if [[ "$src" == remote ]]; then
+            nds_cfg_set FLAKE_REPO_URL "$loc"
+            nds_cfg_set FLAKE_LOCAL_PATH ""
+        else
+            nds_cfg_set FLAKE_LOCAL_PATH "$loc"
+            nds_cfg_set FLAKE_REPO_URL ""
         fi
-    done
+        return 0
+    fi
+
+    if [[ -n "$repo" ]]; then
+        nds_cfg_set FLAKE_LOCATION "$repo"
+        nds_cfg_set FLAKE_SOURCE "remote"
+        nds_cfg_set FLAKE_LOCAL_PATH ""
+    elif [[ -n "$local_path" ]]; then
+        nds_cfg_set FLAKE_LOCATION "$local_path"
+        nds_cfg_set FLAKE_SOURCE "local"
+        nds_cfg_set FLAKE_REPO_URL ""
+    fi
+}
+
+# Description: Apply every NDS_* environment variable to CONFIG_DATA, then sync derived keys.
+nds_cfg_apply_env_all() {
+    local env_name key
+    while IFS= read -r env_name; do
+        [[ "$env_name" == NDS_* ]] || continue
+        key="${env_name#NDS_}"
+        [[ -n "${!env_name:-}" ]] || continue
+        CONFIG_DATA["$key"]="${!env_name}"
+        debug "Env: ${env_name}=${!env_name}"
+    done < <(compgen -e | grep '^NDS_' || true)
+    nds_cfg_sync_derived_flake
+}
+
+nds_config_apply_env() {
+    nds_cfg_apply_env_all
 }
 
 # =============================================================================
@@ -232,8 +284,9 @@ nds_configurator_preset_get_all_enabled() {
 
 nds_configurator_reset_for_action() {
     local bootstrap_dir="${1:?bootstrap dir}"
-    local preset preset_file
-    for preset_file in "${bootstrap_dir}/lib/config/presets/"*.sh; do
+    local preset preset_dir preset_file
+    preset_dir="$(nds_preset_dir "$bootstrap_dir")"
+    for preset_file in "${preset_dir}/"*.sh; do
         [[ -f "$preset_file" ]] || continue
         preset=$(basename "$preset_file" .sh)
         nds_configurator_preset_enable "$preset"

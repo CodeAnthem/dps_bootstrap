@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2026-06-30
+# Date:          Created: 2025-10-12 | Modified: 2026-07-05
 # Description:   Entry point selector for DPS Bootstrap - dynamically discovers and executes actions
 # Feature:       Action discovery, library management, root validation, cleanup handling
 # ==================================================================================================
@@ -13,7 +13,7 @@ set -euo pipefail
 # SCRIPT VARIABLES
 # =============================================================================
 # Meta Data
-readonly SCRIPT_VERSION="5.4.5"
+readonly SCRIPT_VERSION="5.6.0"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 # Script Path - declare and assign separately to avoid masking return values
@@ -222,8 +222,8 @@ _nds_validate_action() {
     fi
 
     # Check for required functions (without sourcing)
-    if ! grep -q "^action_config()" "$setup_script"; then
-        debug "Action '$action_name': Missing action_config() function"
+    if ! grep -qE "^action_(config|presets)\(\)" "$setup_script"; then
+        debug "Action '$action_name': Missing action_presets() or action_config()"
         return 1
     fi
 
@@ -371,13 +371,24 @@ _nds_execute_action() {
         return 1
     fi
 
-    if declare -f action_config &>/dev/null; then
+    if declare -f action_presets &>/dev/null; then
+        info "Configuring $action_name..."
+        local _preset _bundled=()
+        while IFS= read -r _preset; do
+            [[ -n "$_preset" ]] && _bundled+=("$_preset")
+        done < <(action_presets)
+        nds_preset_enable_bundle "$SCRIPT_DIR" "${_bundled[@]}" || return 1
+        if declare -f action_config &>/dev/null; then
+            action_config
+        fi
+        nds_config_seed_defaults
+    elif declare -f action_config &>/dev/null; then
         info "Configuring $action_name..."
         nds_configurator_reset_for_action "$SCRIPT_DIR" || return 1
         action_config
         nds_config_seed_defaults
     else
-        error "action_config() not found in $setup_script"
+        error "action_presets() or action_config() not found in $setup_script"
         return 1
     fi
 
@@ -414,13 +425,19 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --auto-confirm)
             export NDS_AUTO_CONFIRM=true
+            export NDS_SKIP_MENU=true
+            shift
+            ;;
+        --skip-menu)
+            export NDS_SKIP_MENU=true
             shift
             ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --auto-confirm    Skip all user confirmation prompts"
+            echo "  --auto-confirm    Skip menu and confirmation prompts (requires valid NDS_* env)"
+            echo "  --skip-menu       Skip category menu when NDS_* config validates"
             echo "  --help, -h        Show this help message"
             exit 0
             ;;
