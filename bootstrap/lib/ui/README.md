@@ -1,15 +1,12 @@
-# ui
+# bootstrap/lib/ui
 
-All console output, terminal layout, and interactive prompts.
+Console primitives only — no action logic, no confirm screens.
 
-Loaded in order by `load.sh` → `nds_ui_load`:
+Loaded directly by `core/bootstrap.sh`:
 
-| File | Role |
-|------|------|
-| `terminal.sh` | Mode detection (`NDS_UI_MODE`), indent, boxes, two-column rows, booleans |
-| `output.sh` | `console`, `info`/`warn`/`error`, persistent `section_title` banner, `section_header` subsections |
-| `stepAnimation.sh` | `step_start`/`step_complete`, spinner, `nds_step_exec` |
-| `prompts.sh` | `nds_askUserContinue`, `nds_askUserToProceed`, legacy `prompt_*` helpers |
-| `actions.sh` | `nds_action_items` helper, install warning and confirm screens |
+- `terminal.sh` — layout, colors, TTY helpers
+- `output.sh` — log, warn, error, section headers
+- `stepAnimation.sh` — install step UI
+- `prompts.sh` — low-level read helpers
 
-Override terminal behaviour with `NDS_UI_MODE=plain|color|unicode`.
+Confirm screens live in `core/menus/`.

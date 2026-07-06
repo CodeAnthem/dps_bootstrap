@@ -28,13 +28,26 @@ source "${TEST_ROOT}/suites/classicConfig.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/git.sh"
 
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/presets.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/validators.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/settingsManager.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/nixWriter.sh"
+
 nds_run_self_tests() {
     TEST_PASSED=0
     TEST_FAILED=0
 
     section_title "NDS self-tests"
 
+    run_named_suite "settingsManager" suite_settings_manager
     run_named_suite "configurator" suite_configurator
+    run_named_suite "presets" suite_presets
+    run_named_suite "validators" suite_validators
+    run_named_suite "nixWriter" suite_nixwriter
     run_named_suite "git" suite_git
     run_named_suite "inputs" suite_inputs
     run_named_suite "classicConfig" suite_classic_config

@@ -1,20 +1,15 @@
 # bootstrap/lib
 
-Feature-based layout — each folder owns one concern.
+Runtime backbone and install pipeline. Feature code lives in `core/`, `settingsManager/`, `tools/`.
 
 ```
 lib/
-├── core/           Module import + session runtime (backbone)
-├── ui/             Console output, terminal layout, prompts
-├── security/       LUKS / SSH / Age key generation
-├── configurator/   Wizard, presets, validators (by domain)
-├── classicConfig/  /etc/nixos configuration.nix builder (classicInstall only)
-├── installer/      nixos-install pipeline
-├── partition/      Disko + manual partitioning
-├── setup/          Legacy helpers
-└── load.sh         nds_configurator_init + nds_installation_init
+├── core/       import.sh, runtime, platform
+├── ui/         terminal, output, prompts, stepAnimation (primitives only)
+├── install/    nixos-install steps (partition, encryption, bundle, …)
+└── load.sh     settings init + installation stack load
 ```
 
-Entry: `bootstrap/main.sh` → `core/import.sh` → `nds_bootstrap_load_libs`.
+See [ARCHITECTURE.md](../ARCHITECTURE.md) for the full map.
 
-Load order inside `nds_bootstrap_load_libs`: **core** → **ui** → **security** → configurator + installer stacks.
+Load order: `core/bootstrap.sh` loads validators → settingsManager → ui → core/menus → actions → `lib/load.sh`.

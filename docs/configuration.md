@@ -120,6 +120,28 @@ See preset defaults in `bootstrap/presets/`. Keys follow the same `NDS_<KEY>` pa
 
 ---
 
+## Remote flake preset injection
+
+After cloning a flake, NDS loads optional preset hooks from:
+
+| Path | Purpose |
+|------|---------|
+| `.nds/preset.sh` | Single extra preset (preset id = filename without `.sh`) |
+| `.nds/presets/*.sh` | Multiple presets |
+
+Each file uses the same hook contract as builtins: `{id}_defaults`, `{id}_configure`, `{id}_validate`, `{id}_summary`, plus `NDS_PRESET_PRIORITY` and `NDS_PRESET_DISPLAY`.
+
+Extra paths before the action runs (no flake clone needed):
+
+| Env | Purpose |
+|-----|---------|
+| `NDS_PRESET_EXTRA_DIR` | Directory of `.sh` preset files |
+| `NDS_PRESET_EXTRA_PATHS` | Colon-separated preset files or directories |
+
+Actions may also implement `action_presets_paths()` to print extra paths (one per line).
+
+See `bootstrap/tests/fixtures/nds-remote-preset.sh` for a minimal example.
+
 ## Headless installFlake example
 
 ```bash

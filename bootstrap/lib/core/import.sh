@@ -116,15 +116,6 @@ nds_import_dir() {
 # Usage: nds_bootstrap_load_libs
 nds_bootstrap_load_libs() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
-    local lib_dir="${script_dir}/lib"
-
-    nds_import_dir "${lib_dir}/core" false || return 1
-
-    nds_import_file "${lib_dir}/ui/load.sh" || return 1
-    nds_ui_load "$lib_dir" || return 1
-
-    nds_import_file "${lib_dir}/load.sh" || return 1
-    nds_configurator_init || return 1
-    nds_installation_init || return 1
-    return 0
+    nds_import_file "${script_dir}/core/bootstrap.sh" || return 1
+    nds_core_load_all "$script_dir"
 }

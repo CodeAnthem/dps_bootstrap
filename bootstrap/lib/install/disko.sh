@@ -32,9 +32,9 @@ EOF
 # TEMPLATE SELECTION
 # ----------------------------------------------------------------------------------
 _nds_partition_disko_pick_template() {
-    # Single universal template for now
-    local this_dir; this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    echo "$this_dir/templates/default.nix"
+    local install_dir
+    install_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    echo "${install_dir}/templates/disko/default.nix"
 }
 
 # ----------------------------------------------------------------------------------

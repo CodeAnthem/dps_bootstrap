@@ -1,17 +1,29 @@
-# Actions
+# NDS actions
 
-NDS discovers subdirectories here that provide `action_config()` and `action_setup()` in `setup.sh`.
+Each subdirectory is one operator-facing flow (`setup.sh`).
 
-## Production
+## Required functions
 
-| Action | Description |
-|--------|-------------|
-| [classicInstall](classicInstall/README.md) | No flake — generates `/etc/nixos/configuration.nix` + `nixos-install` |
-| [installFlake](installFlake/README.md) | `nixos-install --flake` from remote Git or local path |
-| [remoteAction](remoteAction/) | Clone flake and run `.nds/action.sh` if present, else installFlake |
+| Function | Purpose |
+|----------|---------|
+| `action_presets` | Print preset ids (one per line) for this action |
+| `action_preview` | Describe what will happen (no mutations) |
+| `action_setup` | Run install / remote flow |
 
-## Development only
+## Optional hooks
 
-| Action | Description |
-|--------|-------------|
-| [test](test/README.md) | Self-tests (configurator, inputs, classicConfig) — `NDS_TEST=true` |
+| Function | Purpose |
+|----------|---------|
+| `action_config` | Tweak preset priority/display after bundle enable |
+| `action_presets_paths` | Extra preset dirs/files (one path per line) |
+| `action_presets_extend` | Custom load/inject after builtins |
+| `action_on_accept` | After preview confirm, before `action_setup` |
+
+## Lifecycle
+
+`nds_actions_main` → discover → select → `action_presets` bundle → seed → menu/configure → preview → confirm → `action_setup`.
+
+## Flake naming
+
+- `nds_flake_prepare`, `nds_flake_detect_disko`, … — `tools/flake/helpers.sh`
+- `nds_flake_install_prepare_and_verify`, `nds_flake_install_confirm` — `core/install/flake-pipeline.sh`

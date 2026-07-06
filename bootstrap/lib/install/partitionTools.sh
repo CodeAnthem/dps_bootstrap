@@ -58,7 +58,7 @@ nds_partition_run_disko_from_config() {
 
     nds_partition_is_disk_ready_to_format "$disk" || return 1
 
-    run_step "Disko partitioning" \
+    nds_step_exec "Disko partitioning" \
         _nds_partition_disko_apply "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"
 }
 

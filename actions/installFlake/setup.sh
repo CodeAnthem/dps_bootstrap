@@ -42,8 +42,8 @@ action_setup() {
     fi
 
     nds_configurator_menu_or_skip || exit 12
-    nds_flow_flake_prepare_and_verify || exit 11
-    nds_flow_flake_confirm_install || exit 13
+    nds_flake_install_prepare_and_verify || exit 11
+    nds_flake_install_confirm || exit 13
 
     local install_mode
     install_mode="$(nds_configurator_config_get INSTALL_MODE)"

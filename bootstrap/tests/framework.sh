@@ -88,3 +88,23 @@ print_test_summary() {
     error "$TEST_FAILED test(s) failed"
     return 1
 }
+
+# Description: Reset CONFIG_DATA from a saved copy (suite isolation).
+nds_test_reset_config() {
+    local key
+    CONFIG_DATA=()
+    if [[ ${#NDS_TEST_CONFIG_SNAPSHOT[@]} -gt 0 ]]; then
+        for key in "${!NDS_TEST_CONFIG_SNAPSHOT[@]}"; do
+            CONFIG_DATA["$key"]="${NDS_TEST_CONFIG_SNAPSHOT[$key]}"
+        done
+    fi
+}
+
+# Description: Snapshot CONFIG_DATA for nds_test_reset_config.
+nds_test_snapshot_config() {
+    local key
+    declare -gA NDS_TEST_CONFIG_SNAPSHOT=()
+    for key in "${!CONFIG_DATA[@]}"; do
+        NDS_TEST_CONFIG_SNAPSHOT["$key"]="${CONFIG_DATA[$key]}"
+    done
+}

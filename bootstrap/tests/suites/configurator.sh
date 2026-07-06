@@ -69,6 +69,7 @@ suite_configurator() {
 
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
+    nds_preset_load_file "${SCRIPT_DIR}/presets/installFlake.sh" || return 0
     nds_configurator_preset_enable installFlake
     installFlake_defaults
     nds_config_snapshot_defaults
@@ -87,6 +88,7 @@ suite_configurator() {
 
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
+    nds_preset_load_file "${SCRIPT_DIR}/presets/installFlake.sh" || return 0
     nds_configurator_preset_enable installFlake
     installFlake_defaults
     nds_config_snapshot_defaults
