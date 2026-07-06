@@ -84,10 +84,51 @@ nds_git_auth_wizard_import() {
     return 0
 }
 
+# Description: Prefetch qrencode when QR mode is configured (multi-repo sessions).
+_nds_git_auth_maybe_preinstall_qr() {
+    case "${NDS_GIT_DEPLOY_KEY_DISPLAY:-}" in
+        qr|QR) nds_git_qr_preinstall || true ;;
+    esac
+    if nds_env_is_true "${NDS_GIT_QR_PREINSTALL:-false}"; then
+        nds_git_qr_preinstall || true
+    fi
+}
+
+# Description: Resolve copy vs QR display (env NDS_GIT_DEPLOY_KEY_DISPLAY or prompt).
+# Returns:
+# - <String> "copy" or "qr" on stdout
+nds_git_auth_resolve_key_display() {
+    local from_env="${NDS_GIT_DEPLOY_KEY_DISPLAY:-}"
+    case "${from_env,,}" in
+        qr|copy) printf '%s\n' "${from_env,,}"; return 0 ;;
+    esac
+    local stored
+    stored="$(nds_cfg_get GIT_DEPLOY_KEY_DISPLAY)"
+    case "$stored" in
+        qr|copy) printf '%s\n' "$stored"; return 0 ;;
+    esac
+    nds_ui_h "How do you want to transfer the public key?"
+    nds_cfg_ask_choice GIT_DEPLOY_KEY_DISPLAY "Key display" "qr|copy" \
+        "qr=QR code — scan with phone, paste in browser deploy-keys page|copy=Printed text — copy from terminal" \
+        "copy"
+    printf '%s\n' "$(nds_cfg_get GIT_DEPLOY_KEY_DISPLAY)"
+}
+
+# Description: Show existing deploy key and confirm GitHub registration.
+nds_git_auth_wizard_show_key() {
+    local display="$1"
+    [[ "$display" == "qr" ]] && nds_git_qr_preinstall || true
+    nds_git_key_show_deploy_pubkey "$display" || return 1
+    nds_git_auth_confirm_manual_register || return 1
+    return 0
+}
+
 nds_git_auth_wizard_generate() {
+    local display
+    display="$(nds_git_auth_resolve_key_display)" || return 1
+    [[ "$display" == "qr" ]] && nds_git_qr_preinstall || true
     nds_git_key_generate "$(nds_git_session_key_path)" || return 1
-    nds_git_key_show_pubkey || return 1
-    nds_git_key_show_qr || true
+    nds_git_key_show_deploy_pubkey "$display" || return 1
     nds_git_auth_confirm_manual_register || return 1
     return 0
 }
@@ -132,6 +173,7 @@ _nds_git_auth_screen_intro() {
     nds_ui_b "One deploy key is used for this session — the same public key must be"
     nds_ui_b "registered on each private repo below (read-only is enough)."
     nds_ui_b ""
+    _nds_git_auth_maybe_preinstall_qr
 }
 
 # Description: Print one repo line with optional missing marker.
@@ -188,7 +230,7 @@ nds_git_auth_prompt_method() {
     local scope_label="$1"
     shift
     local -a gh_repos=("$@")
-    local choice gh_label gh_scope
+    local choice gh_label gh_scope display=""
 
     if [[ ${#gh_repos[@]} -gt 1 ]]; then
         gh_scope="all ${#gh_repos[@]} listed GitHub repos"
@@ -202,7 +244,7 @@ nds_git_auth_prompt_method() {
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
         "import|generate|gh|show|retry|skip" \
-        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key + QR, paste in browser|gh=${gh_label}|show=Show public key + QR again (browser deploy-keys page)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
+        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key (choose QR or printed copy)|gh=${gh_label}|show=Show public key again (choose QR or printed copy)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"
 
     choice="$(nds_cfg_get GIT_AUTH_METHOD)"
@@ -213,9 +255,8 @@ nds_git_auth_prompt_method() {
             [[ ${#gh_repos[@]} -gt 0 ]] || {
                 warn "No github.com repos — use Show public key and paste manually"
                 if [[ -f "$(nds_git_session_pubkey_path)" ]]; then
-                    nds_git_key_show_pubkey || return 1
-                    nds_git_key_show_qr || true
-                    nds_git_auth_confirm_manual_register || return 1
+                    display="$(nds_git_auth_resolve_key_display)" || return 1
+                    nds_git_auth_wizard_show_key "$display" || return 1
                 else
                     nds_git_auth_wizard_generate || return 1
                 fi
@@ -224,9 +265,12 @@ nds_git_auth_prompt_method() {
             nds_git_auth_wizard_gh "${gh_repos[@]}" || return 1
             ;;
         show)
-            nds_git_key_show_pubkey || nds_git_auth_wizard_generate || return 1
-            nds_git_key_show_qr || true
-            nds_git_auth_confirm_manual_register || return 1
+            if [[ -f "$(nds_git_session_pubkey_path)" ]]; then
+                display="$(nds_git_auth_resolve_key_display)" || return 1
+                nds_git_auth_wizard_show_key "$display" || return 1
+            else
+                nds_git_auth_wizard_generate || return 1
+            fi
             ;;
         retry) return 0 ;;
         skip) return 2 ;;

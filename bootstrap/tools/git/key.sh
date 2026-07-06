@@ -75,6 +75,46 @@ nds_git_key_generate() {
     nds_git_key_load "$dest"
 }
 
+declare -g NDS_GIT_QR_PREINSTALLED=false
+
+# Description: Resolve qrencode command prefix (host binary or nix shell).
+# Sets nameref array to command prefix.
+nds_git_qr_cmd() {
+    local -n _out=$1
+    if command -v qrencode &>/dev/null; then
+        _out=(qrencode)
+        return 0
+    fi
+    if command -v nix &>/dev/null; then
+        _out=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#qrencode -c qrencode)
+        return 0
+    fi
+    _out=()
+    return 1
+}
+
+# Description: Download qrencode once per session so later QR renders are instant.
+# Returns:
+# - 0 when qrencode is available or already prefetched
+nds_git_qr_preinstall() {
+    local -a qr_cmd=()
+
+    [[ "${NDS_GIT_QR_PREINSTALLED}" == "true" ]] && return 0
+    if command -v qrencode &>/dev/null; then
+        NDS_GIT_QR_PREINSTALLED=true
+        return 0
+    fi
+    nds_git_qr_cmd qr_cmd || return 1
+    info "Prefetching qrencode for QR display (one-time download)..."
+    if "${qr_cmd[@]}" --version >/dev/null 2>&1; then
+        NDS_GIT_QR_PREINSTALLED=true
+        success "qrencode ready"
+        return 0
+    fi
+    warn "Could not prefetch qrencode — QR may be slow or unavailable"
+    return 1
+}
+
 # Description: Print the public deploy key to the console.
 # Arguments:
 # - pub_path: <String|optional> Public key path
@@ -106,17 +146,14 @@ _nds_git_qr_try_format() {
 # - <Bool> 0 when QR was displayed or key missing (non-fatal skip)
 nds_git_key_show_qr() {
     local pub_path="${1:-$(nds_git_session_pubkey_path)}"
-    local pub fmt qr_cmd=() nix_flags=(--extra-experimental-features "nix-command flakes")
+    local pub fmt
+    local -a qr_cmd=()
 
     [[ -f "$pub_path" ]] || return 1
     pub="$(tr -d '\n' < "$pub_path")"
 
-    if command -v qrencode &>/dev/null; then
-        qr_cmd=(qrencode)
-    elif command -v nix &>/dev/null; then
-        qr_cmd=(nix "${nix_flags[@]}" shell nixpkgs#qrencode -c qrencode)
-    else
-        nds_ui_i "qrencode not available — scan the printed public key instead"
+    if ! nds_git_qr_cmd qr_cmd; then
+        nds_ui_i "qrencode not available — copy the printed public key instead"
         return 0
     fi
 
@@ -136,6 +173,21 @@ nds_git_key_show_qr() {
     nds_ui_i "QR render failed — use the printed public key above"
     nds_ui_i "(VM console may not support QR — copy the key text or use gh to register)"
     nds_ui_b ""
+    return 0
+}
+
+# Description: Show deploy public key as printed text and optionally QR.
+# Arguments:
+# - display:  <String> "copy" or "qr"
+# - pub_path: <String|optional> Public key path
+nds_git_key_show_deploy_pubkey() {
+    local display="${1:-copy}"
+    local pub_path="${2:-$(nds_git_session_pubkey_path)}"
+
+    nds_git_key_show_pubkey "$pub_path" || return 1
+    if [[ "$display" == "qr" ]]; then
+        nds_git_key_show_qr "$pub_path" || true
+    fi
     return 0
 }
 

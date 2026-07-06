@@ -68,6 +68,18 @@ suite_git() {
         console "  ✗ git auth wizard: prompt/screen functions missing"
     fi
 
+    if declare -f nds_git_auth_resolve_key_display &>/dev/null; then
+        export NDS_GIT_DEPLOY_KEY_DISPLAY=qr
+        if [[ "$(nds_git_auth_resolve_key_display)" == "qr" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ resolve_key_display: NDS_GIT_DEPLOY_KEY_DISPLAY=qr"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ resolve_key_display: expected qr from env"
+        fi
+        unset NDS_GIT_DEPLOY_KEY_DISPLAY
+    fi
+
     tmpdir=$(mktemp -d)
     key_src="${tmpdir}/source_key"
     dest="${tmpdir}/session/id_ed25519"

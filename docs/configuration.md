@@ -25,6 +25,8 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `NDS_PROMPTS_SKIP` | Skip generic Y/n prompts (`nds_askUser*`) (`true`) |
 | `NDS_TEST` | Enable the test action in the action menu (`true`) |
 | `NDS_DEPLOY_KEY_PATH` | Path to a private deploy key to import before git auth (USB/scp) |
+| `NDS_GIT_DEPLOY_KEY_DISPLAY` | After generate/show: `qr` or `copy` (skip the prompt) |
+| `NDS_GIT_QR_PREINSTALL` | Prefetch `qrencode` when the private-repo screen opens (`true`) |
 | `NDS_GIT_SESSION_KEY_PATH` | Session private key path (default `/root/.ssh/id_ed25519`) |
 
 ## CLI flags
