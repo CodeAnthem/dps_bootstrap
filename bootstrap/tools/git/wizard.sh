@@ -99,24 +99,29 @@ nds_git_auth_wizard_import() {
     return 0
 }
 
-# Description: Resolve copy vs QR display (env NDS_GIT_DEPLOY_KEY_DISPLAY or prompt).
+# Description: Resolve QR vs printed copy (env or yes/no prompt).
 # Returns:
-# - <String> "copy" or "qr" on stdout
+# - <String> "qr" or "copy" on stdout
 nds_git_auth_resolve_key_display() {
     local from_env="${NDS_GIT_DEPLOY_KEY_DISPLAY:-}"
     case "${from_env,,}" in
-        qr|copy) printf '%s\n' "${from_env,,}"; return 0 ;;
+        qr) printf 'qr\n'; return 0 ;;
+        copy) printf 'copy\n'; return 0 ;;
     esac
-    local stored
-    stored="$(nds_cfg_get GIT_DEPLOY_KEY_DISPLAY)"
-    case "$stored" in
-        qr|copy) printf '%s\n' "$stored"; return 0 ;;
-    esac
-    nds_ui_h "How do you want to transfer the public key?"
-    nds_cfg_ask_choice GIT_DEPLOY_KEY_DISPLAY "Key display" "qr|copy" \
-        "qr=QR codes — page URL + public key (phone scan)|copy=Printed text — copy from terminal" \
-        "copy"
-    printf '%s\n' "$(nds_cfg_get GIT_DEPLOY_KEY_DISPLAY)"
+    if nds_env_is_true "${NDS_GIT_DEPLOY_KEY_USE_QR:-false}"; then
+        printf 'qr\n'
+        return 0
+    fi
+    if [[ "${NDS_GIT_DEPLOY_KEY_USE_QR:-}" == "false" ]]; then
+        printf 'copy\n'
+        return 0
+    fi
+    nds_cfg_ask_toggle GIT_DEPLOY_KEY_USE_QR "Use QR codes" false
+    if nds_cfg_true GIT_DEPLOY_KEY_USE_QR; then
+        printf 'qr\n'
+    else
+        printf 'copy\n'
+    fi
 }
 
 # Description: After user chose QR, install qrencode before generate/show.
@@ -266,7 +271,7 @@ nds_git_auth_prompt_method() {
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
         "import|generate|gh|show|retry|skip" \
-        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key named $(nds_git_deploy_key_title)|gh=${gh_label}|show=Show public key again (QR or printed copy)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
+        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key ($(nds_git_deploy_key_title))|gh=${gh_label}|show=Show public key again|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"
 
     choice="$(nds_cfg_get GIT_AUTH_METHOD)"

@@ -25,7 +25,8 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `NDS_PROMPTS_SKIP` | Skip generic Y/n prompts (`nds_askUser*`) (`true`) |
 | `NDS_TEST` | Enable the test action in the action menu (`true`) |
 | `NDS_DEPLOY_KEY_PATH` | Path to a private deploy key to import before git auth (USB/scp) |
-| `NDS_GIT_DEPLOY_KEY_DISPLAY` | After generate/show: `qr` or `copy` (skip the prompt) |
+| `NDS_GIT_DEPLOY_KEY_USE_QR` | Skip QR prompt — `true` or `false` |
+| `NDS_GIT_DEPLOY_KEY_DISPLAY` | Alias: `qr` or `copy` (same as USE_QR) |
 | `NDS_GIT_SESSION_KEY_PATH` | Session private key path (default `/root/.ssh/id_ed25519`) |
 
 ## CLI flags
@@ -168,7 +169,7 @@ export NDS_DEPLOY_KEY_PATH="/tmp/nds-deploy-key"
 # Flip individual SKIP flags to true, or use --auto-confirm for all:
 export NDS_SKIP_MENU="false"
 export NDS_INSTALL_CONFIRM_SKIP="false"
-export NDS_GIT_DEPLOY_KEY_DISPLAY=qr
+export NDS_GIT_DEPLOY_KEY_USE_QR=true
 sudo -E bash bootstrap/main.sh --auto-confirm
 ```
 

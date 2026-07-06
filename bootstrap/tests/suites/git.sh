@@ -78,15 +78,15 @@ suite_git() {
     fi
 
     if declare -f nds_git_auth_resolve_key_display &>/dev/null; then
-        export NDS_GIT_DEPLOY_KEY_DISPLAY=qr
+        export NDS_GIT_DEPLOY_KEY_USE_QR=true
         if [[ "$(nds_git_auth_resolve_key_display)" == "qr" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ resolve_key_display: NDS_GIT_DEPLOY_KEY_DISPLAY=qr"
+            console "  ✓ resolve_key_display: NDS_GIT_DEPLOY_KEY_USE_QR=true"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ resolve_key_display: expected qr from env"
         fi
-        unset NDS_GIT_DEPLOY_KEY_DISPLAY
+        unset NDS_GIT_DEPLOY_KEY_USE_QR
     fi
 
     tmpdir=$(mktemp -d)
