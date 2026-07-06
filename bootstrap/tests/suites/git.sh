@@ -59,6 +59,15 @@ suite_git() {
         console "  ✗ gh repo list: expected single github repo"
     fi
 
+    if declare -f nds_git_auth_prompt_method &>/dev/null \
+        && declare -f nds_git_auth_screen_single &>/dev/null; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ git auth wizard: prompt and screen functions loaded"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ git auth wizard: prompt/screen functions missing"
+    fi
+
     tmpdir=$(mktemp -d)
     key_src="${tmpdir}/source_key"
     dest="${tmpdir}/session/id_ed25519"

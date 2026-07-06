@@ -169,7 +169,7 @@ _nds_git_auth_screen_list_repos() {
 # Arguments:
 # - scope_label: <String> e.g. "one repo" or "all missing repos"
 # - gh_repos:    <String...> owner/repo for gh auto-register (may be empty)
-_nds_git_auth_prompt_method() {
+nds_git_auth_prompt_method() {
     local scope_label="$1"
     shift
     local -a gh_repos=("$@")
