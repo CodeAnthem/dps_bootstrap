@@ -85,6 +85,29 @@ _nds_git_gh_expand_github_repos() {
     printf '%s\n' "${out[@]}" | awk 'NF' | sort -u
 }
 
+# Description: Ensure gh is logged in with repo + admin:public_key (required for ssh-key add).
+_nds_git_gh_ensure_auth() {
+    local -a gh_cmd=()
+
+    _nds_git_gh_cmd gh_cmd || return 1
+
+    if ! "${gh_cmd[@]}" auth status &>/dev/null; then
+        info "GitHub device login (temporary — used only to register SSH access)"
+        nds_ui_b "Complete login in the browser, then return here."
+        nds_ui_b "If the org uses SSO, authorize the token for CodeAnthem after login."
+        nds_ui_b "gh may warn that credentials are stored in plain text — expected on the live ISO."
+        "${gh_cmd[@]}" auth login --web --git-protocol ssh --scopes repo,admin:public_key || return 1
+        return 0
+    fi
+
+    if ! "${gh_cmd[@]}" auth status --show-token-scopes 2>/dev/null | grep -qF 'admin:public_key'; then
+        info "Extending GitHub token scope (admin:public_key) to register SSH keys"
+        nds_ui_b "Confirm in the browser if prompted."
+        "${gh_cmd[@]}" auth refresh -h github.com -s repo,admin:public_key || return 1
+    fi
+    return 0
+}
+
 # Description: End temporary gh auth on the live ISO (SSH keys on GitHub are kept for the target).
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
@@ -211,7 +234,7 @@ _nds_git_gh_user_ssh_key_ensure() {
 
     warn "Could not add SSH key to GitHub account"
     nds_ui_i "  ${err}"
-    nds_ui_i "  Check: org SSO authorized for gh, or remove an old key with the same title on github.com/settings/keys."
+    nds_ui_i "  Check: org SSO authorized for gh, token has admin:public_key scope, or remove an old key with the same title on github.com/settings/keys."
     return 1
 }
 
@@ -268,13 +291,7 @@ nds_git_gh_register_deploy_keys() {
     key_title="$(nds_git_deploy_key_title)"
     nds_git_key_load "$(nds_git_session_key_path)" || true
 
-    if ! "${gh_cmd[@]}" auth status &>/dev/null; then
-        info "GitHub device login (temporary — used only to register SSH access)"
-        nds_ui_b "Complete login in the browser, then return here."
-        nds_ui_b "If the org uses SSO, authorize the token for CodeAnthem after login."
-        nds_ui_b "gh may warn that credentials are stored in plain text — expected on the live ISO."
-        "${gh_cmd[@]}" auth login --web --git-protocol ssh --scopes repo || return 1
-    fi
+    _nds_git_gh_ensure_auth || return 1
 
     mapfile -t repos < <(_nds_git_gh_expand_github_repos "${repos[@]}")
     info "GitHub: adding one account SSH key for ${#repos[@]} private repo(s) (deploy keys cannot share a pubkey)"
@@ -555,7 +572,15 @@ nds_git_auth_screen_closure() {
         _nds_git_auth_screen_list_repos all_urls failed
     else
         nds_ui_h "Repositories missing access"
+        declare -A _missing_printed=()
+        local ssh_url parsed host owner repo mkey
         for url in "${failed[@]}"; do
+            ssh_url=$(_nds_git_ssh_url "$url")
+            parsed=$(_nds_git_parse "$ssh_url") || continue
+            IFS=$'\t' read -r host owner repo <<< "$parsed"
+            mkey="${owner}/${repo}"
+            [[ -n "${_missing_printed[$mkey]:-}" ]] && continue
+            _missing_printed[$mkey]=1
             _nds_git_auth_print_repo "$url" "missing"
         done
         nds_ui_b ""
