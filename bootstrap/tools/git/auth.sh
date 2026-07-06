@@ -7,7 +7,8 @@
 # ==================================================================================================
 
 nds_git_access_cleanup() {
-  unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
+    nds_git_gh_session_cleanup 2>/dev/null || true
+    unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 }
 
 hook_exit_cleanup() {

@@ -33,6 +33,69 @@ _nds_git_urls_to_github_repos() {
     done | sort -u
 }
 
+# Description: Fetch flake.lock from GitHub via gh API (requires active gh auth).
+# Arguments:
+# - gh_repo: <String> owner/repo
+# Returns:
+# - <String> git remote URLs from the lock (stdout), empty when unavailable
+_nds_git_gh_lock_git_urls() {
+    local gh_repo="$1"
+    local owner repo content tmp
+    local -a gh_cmd=()
+
+    owner="${gh_repo%%/*}"
+    repo="${gh_repo##*/}"
+    [[ -n "$owner" && -n "$repo" ]] || return 0
+
+    _nds_git_gh_cmd gh_cmd || return 0
+    content=$("${gh_cmd[@]}" api "repos/${owner}/${repo}/contents/flake.lock" \
+        --jq -r '.content // empty' 2>/dev/null) || return 0
+    [[ -n "$content" ]] || return 0
+
+    tmp="$(mktemp)"
+    if ! printf '%s' "$content" | tr -d '\n' | base64 -d > "$tmp" 2>/dev/null; then
+        rm -f "$tmp"
+        return 0
+    fi
+    _nds_flake_lock_ssh_urls "$tmp"
+    rm -f "$tmp"
+}
+
+# Description: Merge root repo(s) with GitHub repos referenced in their flake.lock.
+# Arguments:
+# - repos: <String...> owner/repo seeds (typically the root flake)
+# Returns:
+# - <String> Deduped owner/repo lines (stdout)
+_nds_git_gh_expand_github_repos() {
+    local -a seeds=("$@")
+    local -a out=()
+    local gh_repo url
+
+    out=("${seeds[@]}")
+    for gh_repo in "${seeds[@]}"; do
+        [[ -n "$gh_repo" ]] || continue
+        mapfile -t out < <(printf '%s\n' "${out[@]}" \
+            $(_nds_git_urls_to_github_repos "git@github.com:${gh_repo}.git"))
+        while IFS= read -r url; do
+            [[ -n "$url" ]] || continue
+            mapfile -t out < <(printf '%s\n' "${out[@]}" \
+                $(_nds_git_urls_to_github_repos "$url"))
+        done < <(_nds_git_gh_lock_git_urls "$gh_repo")
+    done
+    printf '%s\n' "${out[@]}" | awk 'NF' | sort -u
+}
+
+# Description: End temporary gh auth started for deploy-key registration.
+nds_git_gh_session_cleanup() {
+    local -a gh_cmd=()
+
+    _nds_git_gh_cmd gh_cmd || return 0
+    if "${gh_cmd[@]}" auth status &>/dev/null; then
+        "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
+        nds_install_log "git: gh session cleared"
+    fi
+}
+
 # Description: Collect HTTPS deploy-keys page URLs for QR display.
 nds_git_auth_collect_register_urls() {
     local url parsed host owner repo keys_url
@@ -113,16 +176,19 @@ nds_git_gh_register_deploy_keys() {
         info "GitHub device login (temporary — used only to add deploy keys)"
         nds_ui_b "Complete login in the browser, then return here."
         nds_ui_b "If the org uses SSO, authorize the token for CodeAnthem after login."
+        nds_ui_b "gh may warn that credentials are stored in plain text — expected on the live ISO."
         "${gh_cmd[@]}" auth login --web --git-protocol ssh --scopes repo || return 1
+    fi
+
+    mapfile -t repos < <(_nds_git_gh_expand_github_repos "${repos[@]}")
+    if [[ ${#repos[@]} -gt 1 ]]; then
+        info "flake.lock: registering deploy key on ${#repos[@]} GitHub repo(s) in one gh session"
     fi
 
     for repo in "${repos[@]}"; do
         [[ -n "$repo" ]] || continue
         _nds_git_gh_deploy_key_add "$pub_file" "$repo" "$key_title" || failed=1
     done
-
-    "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
-    nds_ui_i "GitHub session cleared."
 
     [[ "$failed" -eq 0 ]]
 }
@@ -276,20 +342,29 @@ _nds_git_auth_print_repo() {
 _nds_git_auth_screen_list_repos() {
     local -n _urls=$1
     local -n _failed=$2
-    local url f missing=0
+    local url ssh_url parsed host owner repo key
+    declare -A repo_status=() repo_sample=()
 
     nds_ui_h "Repositories"
     for url in "${_urls[@]}"; do
-        missing=0
-        for f in "${_failed[@]}"; do
-            [[ "$f" == "$url" ]] && { missing=1; break; }
-        done
-        if [[ "$missing" -eq 1 ]]; then
-            _nds_git_auth_print_repo "$url" "missing"
-        else
-            _nds_git_auth_print_repo "$url" "ok"
-        fi
+        ssh_url=$(_nds_git_ssh_url "$url")
+        parsed=$(_nds_git_parse "$ssh_url") || continue
+        IFS=$'\t' read -r host owner repo <<< "$parsed"
+        key="${owner}/${repo}"
+        repo_sample[$key]="$url"
+        [[ -z "${repo_status[$key]:-}" ]] && repo_status[$key]="ok"
     done
+    for url in "${_failed[@]}"; do
+        ssh_url=$(_nds_git_ssh_url "$url")
+        parsed=$(_nds_git_parse "$ssh_url") || continue
+        IFS=$'\t' read -r host owner repo <<< "$parsed"
+        repo_status["${owner}/${repo}"]="missing"
+        [[ -z "${repo_sample[${owner}/${repo}]:-}" ]] && repo_sample["${owner}/${repo}"]="$url"
+    done
+    while IFS= read -r key; do
+        [[ -n "$key" ]] || continue
+        _nds_git_auth_print_repo "${repo_sample[$key]}" "${repo_status[$key]}"
+    done < <(printf '%s\n' "${!repo_status[@]}" | sort)
     nds_ui_b ""
 }
 
@@ -306,7 +381,7 @@ nds_git_auth_prompt_method() {
     if [[ ${#gh_repos[@]} -gt 1 ]]; then
         gh_scope="all ${#gh_repos[@]} listed GitHub repos automatically"
     elif [[ ${#gh_repos[@]} -eq 1 ]]; then
-        gh_scope="${gh_repos[0]} automatically"
+        gh_scope="${gh_repos[0]} + flake.lock inputs automatically"
     else
         gh_scope="listed GitHub repos (none here — use generate/show)"
     fi
