@@ -257,8 +257,8 @@ nds_git_install_deploy_key_to_target() {
     dest_dir="$(dirname "$dest")"
     mkdir -p "$dest_dir"
     install -m 600 -o root -g root "$key_path" "$dest"
-    log "Git deploy key installed on target: /${dest_rel}"
-    nds_install_log "git: deploy key -> /${dest_rel} (excluded from backup zip)"
+    log "Git deploy key installed on target: /${dest_rel} (mode 600, excluded from backup zip)"
+    nds_install_log "git: deploy key -> /${dest_rel} (persists for flake/git fetches after reboot)"
     return 0
 }
 

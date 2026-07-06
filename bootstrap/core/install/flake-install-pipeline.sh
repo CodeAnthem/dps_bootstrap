@@ -100,10 +100,8 @@ nds_nixos_install_flake() {
     nds_step_exec "Installing NixOS from flake" \
         _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$NDS_CTX_HW_PLACEMENT" || return 1
 
-    if [[ -n "$NDS_CTX_FLAKE_REPO_URL" || "$NDS_CTX_FLAKE_SOURCE" == "remote" ]]; then
-        nds_step_exec "Installing git deploy key on target" \
-            nds_git_install_deploy_key_to_target || true
-    fi
+    nds_step_exec "Installing git deploy key on target" \
+        nds_git_install_deploy_key_to_target || true
 
     nds_step_exec "Enrolling sops age key" \
         _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || true

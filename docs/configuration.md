@@ -54,8 +54,9 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `FLAKE_HOST_DIR` | `NDS_FLAKE_HOST_DIR` | when set | Host directory under flake (default `hosts/x86_64-linux`) |
 | `FLAKE_HARDWARE_PLACEMENT` | `NDS_FLAKE_HARDWARE_PLACEMENT` | when set | `host-dir`, `flake-root`, or `skip` |
 
-After a **local** remote-flake install, the session deploy key is copied to  
-`/etc/nixos/secrets/git-deploy-key` on the target (not included in the backup zip).
+After install, the session private key is copied to `/etc/nixos/secrets/git-deploy-key` on the  
+target (mode 600, not included in the backup zip). Import, generate, and gh paths all use the  
+same session key file.
 
 ---
 
@@ -195,7 +196,7 @@ When SSH access fails, NDS offers:
 |--------|--------|
 | **import** | Load key from USB/path (`NDS_DEPLOY_KEY_PATH` or prompt) |
 | **generate** | Create ed25519 key + show QR/public key |
-| **gh** | Temporary GitHub device login → register deploy keys → logout |
+| **gh** | GitHub device login → account SSH key on GitHub (kept) → gh token cleared from live ISO |
 | **show** | Display existing public key |
 | **retry** | Re-check `git ls-remote` |
 | **skip** | Continue (install may fail) |

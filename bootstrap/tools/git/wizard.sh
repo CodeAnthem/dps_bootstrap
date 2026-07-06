@@ -85,20 +85,14 @@ _nds_git_gh_expand_github_repos() {
     printf '%s\n' "${out[@]}" | awk 'NF' | sort -u
 }
 
-# Description: End temporary gh auth started for deploy-key registration.
+# Description: End temporary gh auth on the live ISO (SSH keys on GitHub are kept for the target).
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
-    local title
 
     _nds_git_gh_cmd gh_cmd || return 0
-    if nds_env_is_true "${NDS_GIT_GH_MANAGED_USER_KEY:-false}"; then
-        title="$(nds_git_deploy_key_title 2>/dev/null || echo nds-live)"
-        _nds_git_gh_remove_user_ssh_keys_by_title "$title"
-        unset NDS_GIT_GH_MANAGED_USER_KEY 2>/dev/null || true
-    fi
     if "${gh_cmd[@]}" auth status &>/dev/null; then
         "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
-        nds_install_log "git: gh session cleared"
+        nds_install_log "git: gh token cleared from live ISO (SSH key left on GitHub)"
     fi
 }
 
@@ -195,6 +189,7 @@ _nds_git_gh_user_ssh_key_ensure() {
     if _nds_git_gh_pubkey_on_user "$pub_file"; then
         success "SSH key already on GitHub account (${title})"
         nds_install_log "git: account SSH key already present"
+        nds_ui_i "Private key will be copied to /etc/nixos/secrets/git-deploy-key on the target."
         return 0
     fi
 
@@ -203,13 +198,14 @@ _nds_git_gh_user_ssh_key_ensure() {
     err=$("${gh_cmd[@]}" ssh-key add "$pub_file" -t "$title" 2>&1) || rc=$?
     if [[ "${rc:-0}" -eq 0 ]]; then
         success "SSH key added to GitHub account (${title})"
-        nds_install_log "git: account SSH key added"
-        export NDS_GIT_GH_MANAGED_USER_KEY=1
+        nds_install_log "git: account SSH key added (kept for installed host)"
+        nds_ui_i "Private key will be copied to /etc/nixos/secrets/git-deploy-key on the target."
         return 0
     fi
 
     if _nds_git_gh_pubkey_on_user "$pub_file"; then
         success "SSH key already on GitHub account (${title})"
+        nds_ui_i "Private key will be copied to /etc/nixos/secrets/git-deploy-key on the target."
         return 0
     fi
 
