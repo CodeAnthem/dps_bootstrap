@@ -13,7 +13,7 @@ _nds_git_gh_cmd() {
     if command -v gh &>/dev/null; then
         _out=(gh)
     elif command -v nix &>/dev/null; then
-        _out=(nix shell nixpkgs#gh -c gh)
+        _out=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh)
     else
         _out=()
         return 1
@@ -33,8 +33,21 @@ _nds_git_urls_to_github_repos() {
     done | sort -u
 }
 
+# Description: Collect HTTPS deploy-keys page URLs for QR display.
+nds_git_auth_collect_register_urls() {
+    local url parsed host owner repo keys_url
+    NDS_GIT_AUTH_REGISTER_URLS=()
+    for url in "$@"; do
+        url=$(_nds_git_ssh_url "$url")
+        parsed=$(_nds_git_parse "$url") || continue
+        IFS=$'\t' read -r host owner repo <<< "$parsed"
+        keys_url=$(_nds_git_keys_url "$host" "$owner" "$repo")
+        [[ "$keys_url" == http* ]] && NDS_GIT_AUTH_REGISTER_URLS+=("$keys_url")
+    done
+}
+
 nds_git_gh_register_deploy_keys() {
-    local pub_file="$1"
+    local pub_file="$1" key_title
     shift
     local -a repos=("$@") repo
     local -a gh_cmd=()
@@ -46,6 +59,8 @@ nds_git_gh_register_deploy_keys() {
         return 1
     }
 
+    key_title="$(nds_git_deploy_key_title)"
+
     if ! "${gh_cmd[@]}" auth status &>/dev/null; then
         info "GitHub device login (temporary — used only to add deploy keys)"
         nds_ui_b "Complete login in the browser, then return here."
@@ -55,8 +70,8 @@ nds_git_gh_register_deploy_keys() {
     for repo in "${repos[@]}"; do
         [[ -n "$repo" ]] || continue
         if "${gh_cmd[@]}" repo deploy-key add "$pub_file" -R "$repo" \
-            -t "nds-$(hostname -s 2>/dev/null || echo live)" --read-only 2>/dev/null; then
-            success "Deploy key registered on ${repo}"
+            -t "$key_title" --read-only 2>/dev/null; then
+            success "Deploy key registered on ${repo} (${key_title})"
             nds_install_log "git: gh deploy key -> ${repo}"
         else
             warn "Could not add deploy key on ${repo} (may already exist)"
@@ -84,16 +99,6 @@ nds_git_auth_wizard_import() {
     return 0
 }
 
-# Description: Prefetch qrencode when QR mode is configured (multi-repo sessions).
-_nds_git_auth_maybe_preinstall_qr() {
-    case "${NDS_GIT_DEPLOY_KEY_DISPLAY:-}" in
-        qr|QR) nds_git_qr_preinstall || true ;;
-    esac
-    if nds_env_is_true "${NDS_GIT_QR_PREINSTALL:-false}"; then
-        nds_git_qr_preinstall || true
-    fi
-}
-
 # Description: Resolve copy vs QR display (env NDS_GIT_DEPLOY_KEY_DISPLAY or prompt).
 # Returns:
 # - <String> "copy" or "qr" on stdout
@@ -109,40 +114,58 @@ nds_git_auth_resolve_key_display() {
     esac
     nds_ui_h "How do you want to transfer the public key?"
     nds_cfg_ask_choice GIT_DEPLOY_KEY_DISPLAY "Key display" "qr|copy" \
-        "qr=QR code — scan with phone, paste in browser deploy-keys page|copy=Printed text — copy from terminal" \
+        "qr=QR codes — page URL + public key (phone scan)|copy=Printed text — copy from terminal" \
         "copy"
     printf '%s\n' "$(nds_cfg_get GIT_DEPLOY_KEY_DISPLAY)"
+}
+
+# Description: After user chose QR, install qrencode before generate/show.
+nds_git_auth_prepare_qr_display() {
+    local display="$1"
+    [[ "$display" == "qr" ]] || return 0
+    nds_git_qr_preinstall || {
+        warn "QR unavailable — falling back to printed copy"
+        return 1
+    }
+    return 0
 }
 
 # Description: Show existing deploy key and confirm GitHub registration.
 nds_git_auth_wizard_show_key() {
     local display="$1"
-    [[ "$display" == "qr" ]] && nds_git_qr_preinstall || true
+    nds_git_auth_prepare_qr_display "$display" || display="copy"
     nds_git_key_show_deploy_pubkey "$display" || return 1
-    nds_git_auth_confirm_manual_register || return 1
+    nds_git_auth_confirm_manual_register "$display" || return 1
     return 0
 }
 
 nds_git_auth_wizard_generate() {
     local display
     display="$(nds_git_auth_resolve_key_display)" || return 1
-    [[ "$display" == "qr" ]] && nds_git_qr_preinstall || true
+    nds_git_auth_prepare_qr_display "$display" || display="copy"
     nds_git_key_generate "$(nds_git_session_key_path)" || return 1
     nds_git_key_show_deploy_pubkey "$display" || return 1
-    nds_git_auth_confirm_manual_register || return 1
+    nds_git_auth_confirm_manual_register "$display" || return 1
     return 0
 }
 
 # Description: Wait until user confirms deploy key was added on GitHub (manual paste path).
-# Explains QR is for copying the public key — browser deploy-keys page, not GitHub app login.
+# Arguments:
+# - display: <String> "qr" or "copy"
 # Returns:
 # - 0 when user confirms, 1 when they decline
 nds_git_auth_confirm_manual_register() {
+    local display="${1:-copy}"
+
     nds_ui_b "Register the public key on each repo above — read-only is enough."
     nds_ui_b ""
-    nds_ui_i "QR / printed key: scan or copy the public key text."
-    nds_ui_i "Open the deploy-keys link in a browser, paste the key, save."
-    nds_ui_i "Any phone QR app or the printed line works — not GitHub app login."
+    if [[ "$display" == "qr" ]]; then
+        nds_ui_i "QR 1: deploy-keys page URL — open in phone browser."
+        nds_ui_i "QR 2: public key — paste on that page (title: $(nds_git_deploy_key_title))."
+    else
+        nds_ui_i "Copy the public key and open each deploy-keys link in a browser."
+    fi
+    nds_ui_i "Repeat for every repo in the list — same key on each."
     nds_ui_b ""
     nds_askUserToProceed "Added this deploy key on every repo listed above?" || return 1
     return 0
@@ -158,7 +181,7 @@ nds_git_auth_wizard_gh() {
     }
 
     if [[ ! -f "$(nds_git_session_pubkey_path)" ]]; then
-        nds_git_auth_wizard_generate || return 1
+        nds_git_key_generate "$(nds_git_session_key_path)" || return 1
     fi
     pub="$(nds_git_session_pubkey_path)"
     nds_git_gh_register_deploy_keys "$pub" "${repos[@]}"
@@ -173,7 +196,6 @@ _nds_git_auth_screen_intro() {
     nds_ui_b "One deploy key is used for this session — the same public key must be"
     nds_ui_b "registered on each private repo below (read-only is enough)."
     nds_ui_b ""
-    _nds_git_auth_maybe_preinstall_qr
 }
 
 # Description: Print one repo line with optional missing marker.
@@ -233,18 +255,18 @@ nds_git_auth_prompt_method() {
     local choice gh_label gh_scope display=""
 
     if [[ ${#gh_repos[@]} -gt 1 ]]; then
-        gh_scope="all ${#gh_repos[@]} listed GitHub repos"
+        gh_scope="all ${#gh_repos[@]} listed GitHub repos automatically"
     elif [[ ${#gh_repos[@]} -eq 1 ]]; then
-        gh_scope="${gh_repos[0]}"
+        gh_scope="${gh_repos[0]} automatically"
     else
-        gh_scope="listed GitHub repos"
+        gh_scope="listed GitHub repos (none here — use generate/show)"
     fi
-    gh_label="GitHub CLI (gh) — browser login, add read-only deploy key on ${gh_scope}, logout"
+    gh_label="GitHub CLI (gh) — browser login once, adds read-only key to ${gh_scope}"
 
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
         "import|generate|gh|show|retry|skip" \
-        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key (choose QR or printed copy)|gh=${gh_label}|show=Show public key again (choose QR or printed copy)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
+        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key named $(nds_git_deploy_key_title)|gh=${gh_label}|show=Show public key again (QR or printed copy)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"
 
     choice="$(nds_cfg_get GIT_AUTH_METHOD)"
@@ -282,14 +304,14 @@ nds_git_auth_prompt_method() {
 # Description: Full screen for a single root flake repo.
 nds_git_auth_screen_single() {
     local host="$1" owner="$2" repo="$3"
-    local -a gh_repos=("${owner}/${repo}")
 
     _nds_git_auth_screen_intro
+    nds_git_auth_collect_register_urls "$(_nds_git_to_ssh "$host" "$owner" "$repo")"
     nds_ui_h "Repository"
     _nds_git_auth_print_repo "$(_nds_git_to_ssh "$host" "$owner" "$repo")" "missing"
     nds_ui_b ""
 
-    nds_git_auth_prompt_method "this repository" "${gh_repos[@]}"
+    nds_git_auth_prompt_method "this repository" "${owner}/${repo}"
 }
 
 # Description: Full screen when flake.lock inputs lack access.
@@ -302,6 +324,7 @@ nds_git_auth_screen_closure() {
     mapfile -t gh_repos < <(_nds_git_urls_to_github_repos "${failed[@]}")
 
     _nds_git_auth_screen_intro
+    nds_git_auth_collect_register_urls "${failed[@]}"
 
     if [[ -n "${NDS_GIT_CLOSURE_URLS:-}" ]]; then
         readarray -t all_urls <<< "$NDS_GIT_CLOSURE_URLS"
@@ -320,7 +343,7 @@ nds_git_auth_screen_closure() {
     fi
 
     if [[ ${#gh_repos[@]} -gt 0 ]]; then
-        nds_ui_i "GitHub auto-register can add the deploy key to all ${#gh_repos[@]} repo(s) in one step."
+        nds_ui_i "gh: browser login once — adds the deploy key to all ${#gh_repos[@]} GitHub repo(s) above."
         nds_ui_b ""
     fi
 

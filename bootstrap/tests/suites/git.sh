@@ -68,6 +68,15 @@ suite_git() {
         console "  ✗ git auth wizard: prompt/screen functions missing"
     fi
 
+    CONFIG_DATA[FLAKE_HOST]="control-toolkit"
+    if [[ "$(nds_git_deploy_key_title)" == "nds-control-toolkit" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ deploy_key_title: uses FLAKE_HOST"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ deploy_key_title: expected nds-control-toolkit"
+    fi
+
     if declare -f nds_git_auth_resolve_key_display &>/dev/null; then
         export NDS_GIT_DEPLOY_KEY_DISPLAY=qr
         if [[ "$(nds_git_auth_resolve_key_display)" == "qr" ]]; then

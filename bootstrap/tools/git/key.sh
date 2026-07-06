@@ -6,6 +6,9 @@
 # Description:   Session deploy key paths, import, generate, load, target install (no config store)
 # ==================================================================================================
 
+declare -ga NDS_GIT_AUTH_REGISTER_URLS=()
+declare -g NDS_GIT_QR_PREINSTALLED=false
+
 # Description: Active private deploy key path for this NDS session.
 # Returns:
 # - <String> Key file path (stdout)
@@ -20,6 +23,21 @@ nds_git_session_pubkey_path() {
     local key
     key="$(nds_git_session_key_path)"
     printf '%s\n' "${key}.pub"
+}
+
+# Description: Deploy key title / ssh-keygen comment (flake host preferred).
+# Returns:
+# - <String> e.g. nds-control-toolkit
+nds_git_deploy_key_title() {
+    local name=""
+
+    if declare -f nds_configurator_config_get &>/dev/null; then
+        name="$(nds_configurator_config_get FLAKE_HOST 2>/dev/null || true)"
+    fi
+    [[ -z "$name" ]] && name="$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)"
+    [[ -z "$name" ]] && name="$(nds_cfg_get NETWORK_HOSTNAME 2>/dev/null || true)"
+    [[ -z "$name" ]] && name="$(hostname -s 2>/dev/null || echo live)"
+    printf 'nds-%s' "$name"
 }
 
 # Description: Copy a private key into place with safe permissions and load into ssh-agent.
@@ -57,12 +75,12 @@ nds_git_key_load() {
 # Description: Generate a new ed25519 deploy key pair.
 # Arguments:
 # - dest:    <String|optional> Private key path
-# - comment: <String|optional> Key comment
+# - comment: <String|optional> Key comment (default nds-<flake host>)
 # Returns:
 # - <Bool> 0 on success
 nds_git_key_generate() {
     local dest="${1:-$(nds_git_session_key_path)}"
-    local comment="${2:-nds-deploy-$(hostname -s 2>/dev/null || echo live)}"
+    local comment="${2:-$(nds_git_deploy_key_title)}"
 
     mkdir -p "$(dirname "$dest")"
     chmod 700 "$(dirname "$dest")"
@@ -73,9 +91,8 @@ nds_git_key_generate() {
     }
     chmod 600 "$dest"
     nds_git_key_load "$dest"
+    log "Deploy key generated (${comment})"
 }
-
-declare -g NDS_GIT_QR_PREINSTALLED=false
 
 # Description: Resolve qrencode command prefix (host binary or nix shell).
 # Sets nameref array to command prefix.
@@ -93,7 +110,7 @@ nds_git_qr_cmd() {
     return 1
 }
 
-# Description: Download qrencode once per session so later QR renders are instant.
+# Description: Download qrencode once per session (after user chose QR display).
 # Returns:
 # - 0 when qrencode is available or already prefetched
 nds_git_qr_preinstall() {
@@ -105,13 +122,13 @@ nds_git_qr_preinstall() {
         return 0
     fi
     nds_git_qr_cmd qr_cmd || return 1
-    info "Prefetching qrencode for QR display (one-time download)..."
+    info "Installing qrencode for QR display (one-time download)..."
     if "${qr_cmd[@]}" --version >/dev/null 2>&1; then
         NDS_GIT_QR_PREINSTALLED=true
         success "qrencode ready"
         return 0
     fi
-    warn "Could not prefetch qrencode — QR may be slow or unavailable"
+    warn "Could not install qrencode — use printed copy instead"
     return 1
 }
 
@@ -124,7 +141,7 @@ nds_git_key_show_pubkey() {
     local pub_path="${1:-$(nds_git_session_pubkey_path)}"
     [[ -f "$pub_path" ]] || return 1
     nds_ui_b ""
-    nds_ui_h "Deploy public key:"
+    nds_ui_h "Deploy public key ($(nds_git_deploy_key_title)):"
     nds_ui_b ""
     console "$(cat "$pub_path")"
     nds_ui_b ""
@@ -133,50 +150,72 @@ nds_git_key_show_pubkey() {
 
 # Description: Run qrencode with a terminal output format (internal).
 _nds_git_qr_try_format() {
-    local fmt="$1" pub="$2"
+    local fmt="$1" payload="$2"
     shift 2
     local -a qr_cmd=("$@")
-    "${qr_cmd[@]}" -t "$fmt" <<< "$pub" 2>/dev/null
+    "${qr_cmd[@]}" -t "$fmt" <<< "$payload" 2>/dev/null
 }
 
-# Description: Show public key as a terminal QR code when qrencode is available.
+# Description: Render one QR code for arbitrary text.
 # Arguments:
-# - pub_path: <String|optional> Public key path
+# - label:   <String> Heading above the QR
+# - payload: <String> Text to encode
 # Returns:
-# - <Bool> 0 when QR was displayed or key missing (non-fatal skip)
-nds_git_key_show_qr() {
-    local pub_path="${1:-$(nds_git_session_pubkey_path)}"
-    local pub fmt
+# - 0 when rendered or qrencode missing (non-fatal)
+nds_git_key_show_qr_payload() {
+    local label="$1" payload="$2"
+    local fmt
     local -a qr_cmd=()
 
-    [[ -f "$pub_path" ]] || return 1
-    pub="$(tr -d '\n' < "$pub_path")"
-
+    [[ -n "$payload" ]] || return 0
     if ! nds_git_qr_cmd qr_cmd; then
-        nds_ui_i "qrencode not available — copy the printed public key instead"
+        nds_ui_i "qrencode not available — copy the printed text instead"
         return 0
     fi
 
     nds_ui_b ""
-    nds_ui_h "Scan to copy the deploy public key:"
-    nds_ui_i "(Phone camera or any QR app — paste into GitHub deploy-keys page in a browser)"
+    nds_ui_h "$label"
     nds_ui_b ""
 
     for fmt in ANSIUTF8 ANSI UTF8; do
-        if _nds_git_qr_try_format "$fmt" "$pub" "${qr_cmd[@]}"; then
+        if _nds_git_qr_try_format "$fmt" "$payload" "${qr_cmd[@]}"; then
             nds_ui_b ""
             return 0
         fi
     done
 
     debug "qrencode failed for all terminal formats (TERM=${TERM:-unset})"
-    nds_ui_i "QR render failed — use the printed public key above"
-    nds_ui_i "(VM console may not support QR — copy the key text or use gh to register)"
+    nds_ui_i "QR render failed for: ${label}"
     nds_ui_b ""
     return 0
 }
 
-# Description: Show deploy public key as printed text and optionally QR.
+# Description: Show deploy-key page URL QR(s) and public-key QR.
+# Arguments:
+# - pub_path: <String|optional> Public key path
+nds_git_key_show_qr_bundle() {
+    local pub_path="${1:-$(nds_git_session_pubkey_path)}"
+    local pub url
+
+    [[ -f "$pub_path" ]] || return 1
+    pub="$(tr -d '\n' < "$pub_path")"
+
+    nds_ui_b ""
+    nds_ui_i "Scan with your phone — open the page URL in a browser, paste the public key."
+    nds_ui_b ""
+
+    for url in "${NDS_GIT_AUTH_REGISTER_URLS[@]}"; do
+        [[ "$url" == http* ]] || continue
+        nds_git_key_show_qr_payload "Deploy-keys page" "$url"
+        nds_ui_i "$url"
+        nds_ui_b ""
+    done
+
+    nds_git_key_show_qr_payload "Public key (paste on deploy-keys page)" "$pub"
+    return 0
+}
+
+# Description: Show deploy public key as printed text and optionally QR bundle.
 # Arguments:
 # - display:  <String> "copy" or "qr"
 # - pub_path: <String|optional> Public key path
@@ -186,7 +225,7 @@ nds_git_key_show_deploy_pubkey() {
 
     nds_git_key_show_pubkey "$pub_path" || return 1
     if [[ "$display" == "qr" ]]; then
-        nds_git_key_show_qr "$pub_path" || true
+        nds_git_key_show_qr_bundle "$pub_path" || true
     fi
     return 0
 }
