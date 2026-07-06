@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git URL utilities
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-05
+# Date:          Created: 2026-07-05 | Modified: 2026-07-06
 # Description:   Parse and normalize git remote URLs (no config store access)
 # ==================================================================================================
 
@@ -36,6 +36,34 @@ _nds_git_parse() {
 }
 
 _nds_git_to_ssh() { printf 'git@%s:%s/%s.git\n' "$1" "$2" "$3"; }
+
+# Description: Lowercase filesystem slug from git remote owner (org or user).
+# Reads FLAKE_REPO_URL from configurator when no URL argument is passed.
+# Arguments:
+# - url: <String|optional> Git remote URL
+# Returns:
+# - <String> slug on stdout (e.g. codeanthem), or "unknown"
+nds_git_owner_slug() {
+    local url="${1:-}"
+    local parsed host owner repo slug
+
+    if [[ -z "$url" ]]; then
+        if declare -f nds_configurator_config_get &>/dev/null; then
+            url="$(nds_configurator_config_get FLAKE_REPO_URL 2>/dev/null || true)"
+        fi
+        [[ -z "$url" ]] && url="$(nds_cfg_get FLAKE_REPO_URL 2>/dev/null || true)"
+    fi
+    [[ -n "$url" ]] || { printf 'unknown\n'; return 0; }
+
+    url=$(_nds_git_ssh_url "$url")
+    parsed=$(_nds_git_parse "$url") || { printf 'unknown\n'; return 0; }
+    IFS=$'\t' read -r host owner repo <<< "$parsed"
+    [[ -n "$owner" ]] || { printf 'unknown\n'; return 0; }
+
+    slug=$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')
+    slug=$(printf '%s' "$slug" | sed -e 's/[^a-z0-9]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')
+    [[ -n "$slug" ]] && printf '%s\n' "$slug" || printf 'unknown\n'
+}
 
 # Description: Provider-specific URL where a read-only deploy key is added.
 _nds_git_keys_url() {

@@ -54,9 +54,10 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `FLAKE_HOST_DIR` | `NDS_FLAKE_HOST_DIR` | when set | Host directory under flake (default `hosts/x86_64-linux`) |
 | `FLAKE_HARDWARE_PLACEMENT` | `NDS_FLAKE_HARDWARE_PLACEMENT` | when set | `host-dir`, `flake-root`, or `skip` |
 
-After install, the session private key is copied to `/etc/nixos/secrets/git-deploy-key` on the  
-target (mode 600, not included in the backup zip). Import, generate, and gh paths all use the  
-same session key file.
+After install, the session private key is copied to `/etc/nixos/secrets/git-<owner>-key` on the  
+target (e.g. `git-codeanthem-key` for `CodeAnthem/dps_swarm`, mode 600, not in backup zip).  
+`NDS_GIT_TARGET_KEY_ABS` is set during install. Import, generate, and gh paths share the same  
+session key file under `/root/.ssh/git-<owner>-key` on the live ISO (reused across NDS restarts).
 
 ---
 

@@ -69,12 +69,27 @@ suite_git() {
     fi
 
     CONFIG_DATA[FLAKE_HOST]="control-toolkit"
-    if [[ "$(nds_git_deploy_key_title)" == "nds-control-toolkit" ]]; then
+    CONFIG_DATA[FLAKE_REPO_URL]="git@github.com:CodeAnthem/dps_swarm.git"
+    if [[ "$(nds_git_owner_slug)" == "codeanthem" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ deploy_key_title: uses FLAKE_HOST"
+        console "  ✓ owner_slug: from FLAKE_REPO_URL"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ deploy_key_title: expected nds-control-toolkit"
+        console "  ✗ owner_slug: expected codeanthem"
+    fi
+    if [[ "$(nds_git_secrets_basename)" == "git-codeanthem-key" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ secrets_basename: git-<owner>-key"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ secrets_basename: expected git-codeanthem-key"
+    fi
+    if [[ "$(nds_git_deploy_key_title)" == "nds-codeanthem-control-toolkit" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ deploy_key_title: owner + FLAKE_HOST"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ deploy_key_title: expected nds-codeanthem-control-toolkit"
     fi
 
     if declare -f nds_git_auth_resolve_key_display &>/dev/null; then
@@ -113,11 +128,20 @@ suite_git() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ nds_git_key_generate"
     fi
+    if nds_git_key_generate "$NDS_GIT_SESSION_KEY_PATH" "test-gen-reuse" \
+        && [[ -f "${NDS_GIT_SESSION_KEY_PATH}.pub" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ nds_git_key_generate: reuses existing key"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ nds_git_key_generate: reuse failed"
+    fi
 
     mkdir -p "${tmpdir}/mnt/etc/nixos/secrets"
+    target_rel="$(nds_git_target_key_rel)"
     if nds_git_install_deploy_key_to_target "$NDS_GIT_SESSION_KEY_PATH" "${tmpdir}/mnt" \
-        && [[ -f "${tmpdir}/mnt/etc/nixos/secrets/git-deploy-key" ]]; then
-        perms=$(stat -c '%a' "${tmpdir}/mnt/etc/nixos/secrets/git-deploy-key" 2>/dev/null || echo "")
+        && [[ -f "${tmpdir}/mnt/${target_rel}" ]]; then
+        perms=$(stat -c '%a' "${tmpdir}/mnt/${target_rel}" 2>/dev/null || echo "")
         if [[ "$perms" == "600" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ deploy key installed on target (mode 600)"

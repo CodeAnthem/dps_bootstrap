@@ -62,7 +62,7 @@ NDS install kit for ${HOST}
      export NDS_SKIP_MENU=true
      sudo -E bash bootstrap/main.sh --auto-confirm
 
-After install the deploy key is also copied to /etc/nixos/secrets/git-deploy-key on the target.
+After install the SSH key is also copied to `/etc/nixos/secrets/git-<owner>-key` on the target.
 
 Public key (for reference):
 $(cat "${KEY_BASE}.pub")

@@ -33,6 +33,7 @@ nds_git_ensure_flake_closure_access() {
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
     nds_git_auth_try_deploy_key_path || true
+    nds_git_auth_try_session_key || true
 
     mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
     [[ ${#urls[@]} -gt 0 ]] || return 0
@@ -93,6 +94,7 @@ nds_git_ensure_access() {
     fi
 
     nds_git_auth_try_deploy_key_path || true
+    nds_git_auth_try_session_key || true
 
     if nds_git_probe_access "$url"; then
         debug "Git access OK: $url"

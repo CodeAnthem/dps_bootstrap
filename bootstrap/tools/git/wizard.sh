@@ -189,7 +189,7 @@ _nds_git_gh_user_ssh_key_ensure() {
     if _nds_git_gh_pubkey_on_user "$pub_file"; then
         success "SSH key already on GitHub account (${title})"
         nds_install_log "git: account SSH key already present"
-        nds_ui_i "Private key will be copied to /etc/nixos/secrets/git-deploy-key on the target."
+        nds_ui_i "Private key will be copied to $(nds_git_target_key_abs) on the target."
         return 0
     fi
 
@@ -199,13 +199,13 @@ _nds_git_gh_user_ssh_key_ensure() {
     if [[ "${rc:-0}" -eq 0 ]]; then
         success "SSH key added to GitHub account (${title})"
         nds_install_log "git: account SSH key added (kept for installed host)"
-        nds_ui_i "Private key will be copied to /etc/nixos/secrets/git-deploy-key on the target."
+        nds_ui_i "Private key will be copied to $(nds_git_target_key_abs) on the target."
         return 0
     fi
 
     if _nds_git_gh_pubkey_on_user "$pub_file"; then
         success "SSH key already on GitHub account (${title})"
-        nds_ui_i "Private key will be copied to /etc/nixos/secrets/git-deploy-key on the target."
+        nds_ui_i "Private key will be copied to $(nds_git_target_key_abs) on the target."
         return 0
     fi
 
