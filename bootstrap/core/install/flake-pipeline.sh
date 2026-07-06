@@ -6,7 +6,7 @@
 # Description:   installFlake action steps — uses tools/flake helpers + tools/git
 # ==================================================================================================
 
-# Description: Prepare flake env, verify git access and flake builds.
+# Description: Prepare flake env and verify git access to all flake inputs.
 # Arguments:
 # - source: <String|optional> "remote" | "local" override for nds_flake_prepare
 nds_flake_install_prepare_and_verify() {
@@ -29,7 +29,6 @@ nds_flake_install_prepare_and_verify() {
     if [[ -n "${probe_dir:-}" ]]; then
         section_header "Verifying flake access"
         nds_git_ensure_flake_closure_access "$probe_dir" "$repo_url" || return 1
-        nds_preflight_flake_buildable "$probe_dir" "$host" || return 1
     fi
     return 0
 }

@@ -69,10 +69,6 @@ action_setup() {
     nds_git_ensure_flake_closure_access "$probe_dir" "$repo_url" || exit 14
     step_complete "Git input access OK"
 
-    step_start "Verifying flake builds"
-    nds_preflight_flake_buildable "$probe_dir" "${NDS_FLAKE_HOST}" || exit 14
-    step_complete "Flake builds"
-
     if remote_script=$(nds_flake_find_action_script "$probe_dir"); then
         info "Found remote action: $remote_script"
         nds_import_file "$remote_script" || exit 14

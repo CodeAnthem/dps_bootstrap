@@ -7,7 +7,7 @@
 # shellcheck disable=SC2162
 set -euo pipefail
 
-readonly SCRIPT_VERSION="5.10.5"
+readonly SCRIPT_VERSION="5.10.6"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
@@ -154,7 +154,6 @@ Environment (menu skip flags — each also honored when --auto-confirm is set):
   NDS_SCAFFOLD_OVERWRITE_SKIP Skip scaffold host-dir overwrite prompt
   NDS_HARDWARE_OVERWRITE_SKIP Skip hardware file overwrite prompt
   NDS_PREFLIGHT_WARN_SKIP     Auto-continue past preflight warnings
-  NDS_PREFLIGHT_BUILD_SKIP    Skip full system build on live ISO (small /nix/store)
   NDS_PROMPTS_SKIP            Skip generic Y/n prompts (nds_askUser*)
   NDS_AUTO_CONFIRM            Umbrella — same effect as all skip flags above
 EOF

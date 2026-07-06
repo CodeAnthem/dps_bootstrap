@@ -52,24 +52,3 @@ _nds_nix_combined_nix_config() {
         printf '%s' "$store_cfg"
     fi
 }
-
-# Description: Explain common nix build preflight failures from the detail log.
-_nds_preflight_diagnose_build_failure() {
-    local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
-    local tail free_mb
-
-    tail=$(tail -40 "$log" 2>/dev/null || true)
-    free_mb=$(_nds_nix_store_free_mb)
-
-    if grep -qF 'No space left on device' <<<"$tail"; then
-        error "Nix ran out of space on the live ISO store (~${free_mb}MB free) — not your install disk."
-        warn "The live ISO keeps its own small /nix/store (often ~1–2GB). Your 100GB target disk is used after partitioning."
-        warn "NDS skips the heavy preflight build when the ISO store is tight; the install step uses /mnt/var/nds-build-store."
-        return 0
-    fi
-    if grep -qiE 'Could not read from remote repository|authentication failed|Permission denied \(publickey\)' <<<"$tail"; then
-        warn "Build failed — private flake input access (check git SSH key on GitHub)."
-        return 0
-    fi
-    warn "See full log: ${log}"
-}

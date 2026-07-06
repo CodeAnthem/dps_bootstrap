@@ -103,49 +103,6 @@ nds_preflight_remote_install() {
     return 0
 }
 
-# Description: Verify the flake evaluates and the system closure is buildable
-# before running nixos-install. Catches missing access to transitive inputs.
-# Arguments:
-# - flake_root: <String> Flake directory on disk
-# - hostname:   <String> nixosConfigurations name
-nds_preflight_flake_buildable() {
-    local flake_root="$1"
-    local hostname="$2"
-    local -a git_env=() attr
-    local free_mb nix_config
-
-    [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
-
-    free_mb=$(_nds_nix_store_free_mb)
-    if [[ "${free_mb:-0}" -lt 3072 ]]; then
-        warn "Live ISO Nix store has ~${free_mb}MB free — skipping full system build preflight."
-        warn "SSH git access is already verified; heavy build runs on the install disk during nixos-install."
-        nds_install_log "preflight: skip full build (live store ${free_mb}MB)"
-        if nds_skip_menu NDS_PREFLIGHT_BUILD_SKIP; then
-            return 0
-        fi
-        nds_askUserToProceed "Continue without building the full system on the ISO?" || return 1
-        return 0
-    fi
-
-    nds_git_export_nix_env git_env
-
-    attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
-    log "Preflight: building ${attr}"
-
-    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
-
-    if ! env NIX_CONFIG="$nix_config" \
-        "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
-        >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
-        error "Flake does not build — see install log"
-        _nds_preflight_diagnose_build_failure
-        return 1
-    fi
-    log "Preflight: flake build OK"
-    return 0
-}
-
 # Remind operator to load SSH keys before git@ clones.
 # Usage: nds_preflight_ssh_for_git "git@github.com:org/repo.git"
 nds_preflight_ssh_for_git() {
