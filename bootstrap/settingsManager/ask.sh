@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration prompts
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-03
+# Date:          Created: 2026-07-01 | Modified: 2026-07-06
 # Description:   Interactive field prompts — all types in one place
 # ==================================================================================================
 
@@ -28,6 +28,26 @@ nds_cfg_display_choice() {
         [[ "$value" == "$option" ]] && { echo "$label"; return 0; }
     done
     echo "$value"
+}
+
+# Description: Print choice options with descriptions (uses nds_ui_choice_row).
+# Arguments:
+# - options: <String> Pipe-separated option keys
+# - labels:  <String> key=description pairs separated by |
+nds_cfg_print_choice_options() {
+    local options="$1" labels="$2"
+    local option pair desc
+    local -a pairs
+    [[ -n "$labels" ]] || return 0
+    IFS='|' read -ra pairs <<< "$labels"
+    for option in ${options//|/ }; do
+        desc=""
+        for pair in "${pairs[@]}"; do
+            [[ "${pair%%=*}" == "$option" ]] && { desc="${pair#*=}"; break; }
+        done
+        nds_ui_choice_row "$option" "$option" "$desc"
+    done
+    nds_ui_b ""
 }
 
 nds_cfg_summary_row() {
@@ -150,6 +170,7 @@ nds_cfg_ask_choice() {
     local hint="(${options//|/, })" value current display
     current=$(nds_cfg_get "$var")
     while true; do
+        [[ -n "$labels" ]] && nds_cfg_print_choice_options "$options" "$labels"
         display=$(nds_cfg_display_choice "$current" "$labels")
         value=$(_nds_cfg_prompt_value "$var" "$label" "$hint" false) || continue
         [[ -z "$value" ]] && return 0

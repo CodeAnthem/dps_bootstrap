@@ -50,10 +50,10 @@ suite_configurator() {
     CONFIG_DATA[REGION_TIMEZONE]="Europe/Test"
     local grouped
     grouped="$(nds_configurator_config_export_grouped)"
-    if [[ "$(grep -c '^export ' <<<"$grouped")" -le 2 ]] \
+    if [[ "$(grep -c '^export ' <<<"$grouped")" -ge 3 ]] \
        && grep -q 'NDS_REGION_TIMEZONE="Europe/Test"' <<<"$grouped"; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ grouped export: <=2 single-line commands, portable value present"
+        console "  ✓ grouped export: one export per line, portable value present"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ grouped export malformed"
@@ -65,6 +65,15 @@ suite_configurator() {
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ grouped export: hardware split missing DISK_TARGET"
+    fi
+    if grep -qE '^# Menu control' <<<"$grouped" \
+       && grep -q 'NDS_SKIP_MENU="false"' <<<"$grouped" \
+       && grep -q 'NDS_AUTO_CONFIRM="false"' <<<"$grouped"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ grouped export: menu skip flags default false"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ grouped export: menu skip flags missing"
     fi
 
     CONFIG_DATA=()

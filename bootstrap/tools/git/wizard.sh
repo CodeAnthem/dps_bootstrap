@@ -173,21 +173,21 @@ nds_git_auth_prompt_method() {
     local scope_label="$1"
     shift
     local -a gh_repos=("$@")
-    local choice gh_hint
+    local choice gh_label gh_scope
 
-    gh_hint="Register on GitHub (browser login)"
     if [[ ${#gh_repos[@]} -gt 1 ]]; then
-        gh_hint="${gh_hint}, all ${#gh_repos[@]} repos at once"
+        gh_scope="all ${#gh_repos[@]} listed GitHub repos"
     elif [[ ${#gh_repos[@]} -eq 1 ]]; then
-        gh_hint="${gh_hint}, ${gh_repos[0]}"
+        gh_scope="${gh_repos[0]}"
     else
-        gh_hint="${gh_hint} — no github.com repos in list; use Show instead"
+        gh_scope="listed GitHub repos"
     fi
+    gh_label="GitHub CLI (gh) — browser login, add read-only deploy key on ${gh_scope}, logout"
 
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
         "import|generate|gh|show|retry|skip" \
-        "import=Import key from USB or path (use an existing deploy key)|generate=Generate new key + show QR (register on each repo next)|gh=${gh_hint}|show=Show public key + QR again (manual paste on GitHub)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
+        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key + QR (paste on each repo)|gh=${gh_label}|show=Show public key + QR (manual GitHub deploy-keys page)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"
 
     choice="$(nds_cfg_get GIT_AUTH_METHOD)"

@@ -164,8 +164,15 @@ export NDS_FLAKE_REPO_URL="git@github.com:ORG/dps_swarm.git"
 export NDS_FLAKE_HOST="worker-01"
 export NDS_DISK_TARGET="/dev/nvme0n1"
 export NDS_DEPLOY_KEY_PATH="/tmp/nds-deploy-key"
+# Flip individual SKIP flags to true, or use --auto-confirm for all:
+export NDS_SKIP_MENU="false"
+export NDS_INSTALL_CONFIRM_SKIP="false"
 sudo -E bash bootstrap/main.sh --auto-confirm
 ```
+
+After interactive configuration, the **Configuration export** screen lists every
+setting on its own `export` line plus menu SKIP flags defaulting to `false`.
+Set `NDS_ACTION` and any `NDS_*_SKIP=true` you need before re-running.
 
 ## Operator prepare kit
 

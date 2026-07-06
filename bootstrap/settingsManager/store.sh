@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-05
+# Date:          Created: 2026-07-01 | Modified: 2026-07-06
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -24,7 +24,25 @@ _NDS_EXPORT_HARDWARE="DISK_TARGET DISK_STRATEGY DISK_FS_TYPE DISK_SWAP_SIZE_MIB 
 
 # Derived keys never shown in the concise export — reconstructed from other keys
 # (FLAKE_LOCATION / FLAKE_SOURCE are inferred from FLAKE_REPO_URL / FLAKE_LOCAL_PATH).
-_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_METHOD GIT_DEPLOY_KEY_IMPORT_PATH"
+_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_METHOD GIT_DEPLOY_KEY_IMPORT_PATH CURRENT_ACTION RUNTIME_DIR ACTION ACTION_PREVIEW_SKIP SKIP_MENU CONFIG_CONFIRM_SKIP INSTALL_CONFIRM_SKIP REMOTE_CONFIRM_SKIP GIT_AUTH_SKIP DISK_FORMAT_CONFIRM_SKIP BACKUP_CONFIRM_SKIP REBOOT_SKIP SCAFFOLD_OVERWRITE_SKIP HARDWARE_OVERWRITE_SKIP PREFLIGHT_WARN_SKIP PROMPTS_SKIP AUTO_CONFIRM"
+
+# Menu skip flags — exported false by default so users can enable selective automation.
+_NDS_MENU_SKIP_FLAGS=(
+    ACTION_PREVIEW_SKIP
+    SKIP_MENU
+    CONFIG_CONFIRM_SKIP
+    INSTALL_CONFIRM_SKIP
+    REMOTE_CONFIRM_SKIP
+    GIT_AUTH_SKIP
+    DISK_FORMAT_CONFIRM_SKIP
+    BACKUP_CONFIRM_SKIP
+    REBOOT_SKIP
+    SCAFFOLD_OVERWRITE_SKIP
+    HARDWARE_OVERWRITE_SKIP
+    PREFLIGHT_WARN_SKIP
+    PROMPTS_SKIP
+    AUTO_CONFIRM
+)
 
 # =============================================================================
 # CONFIG ACCESS
@@ -147,30 +165,38 @@ nds_configurator_config_export_modified() {
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 }
 
-# Concise export as at most two single-line `export` commands: portable settings
-# and machine-specific ones. Pasting adds at most two shell-history entries
-# instead of one per variable.
+# Concise export as grouped sections — one `export` per line. Portable settings,
+# machine-specific keys, then menu skip flags (default false).
 nds_configurator_config_export_grouped() {
-    local varname portable=() hardware=()
+    local varname portable=0 hardware=0
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
         _nds_export_should_include "$varname" || continue
         if _nds_export_is_hardware "$varname"; then
-            hardware+=("NDS_${varname}=\"${CONFIG_DATA[$varname]}\"")
+            if [[ "$hardware" -eq 0 ]]; then
+                [[ "$portable" -gt 0 ]] && echo ""
+                echo "# This machine only — disk / boot / VM / static addressing:"
+                hardware=1
+            fi
+            echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
         else
-            portable+=("NDS_${varname}=\"${CONFIG_DATA[$varname]}\"")
+            if [[ "$portable" -eq 0 ]]; then
+                echo "# Configuration — portable (reuse on any machine):"
+                portable=1
+            fi
+            echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
         fi
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 
-    if [[ ${#portable[@]} -gt 0 ]]; then
-        echo "# Portable - safe to reuse on any machine:"
-        echo "export ${portable[*]}"
+    echo ""
+    echo "# Menu control — set any SKIP flag to true to skip that step (false = interactive):"
+    if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
+        echo "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
     fi
-    if [[ ${#hardware[@]} -gt 0 ]]; then
-        [[ ${#portable[@]} -gt 0 ]] && echo ""
-        echo "# This machine only - disk / boot / VM / static addressing:"
-        echo "export ${hardware[*]}"
-    fi
+    local flag
+    for flag in "${_NDS_MENU_SKIP_FLAGS[@]}"; do
+        echo "export NDS_${flag}=\"false\""
+    done
 }
 
 # Description: Sync FLAKE_LOCATION / FLAKE_SOURCE from FLAKE_REPO_URL or FLAKE_LOCAL_PATH.
@@ -313,9 +339,9 @@ nds_configurator_reset_for_action() {
 nds_configurator_print_config_backup() {
     local line
     section_header "Configuration export"
-    nds_ui_b "The full configuration is saved in the install backup zip when installation completes."
-    nds_ui_b "Below are only the values you changed (plus auto-detected disk/boot essentials),"
-    nds_ui_b "as two single-line commands - paste a whole line to set it in one shot:"
+    nds_ui_b "Paste the lines below before re-running NDS to replay this configuration."
+    nds_ui_b "Each setting is on its own line. Menu SKIP flags default to false"
+    nds_ui_b "(interactive). Set individual flags to true, or use --auto-confirm for full auto."
     nds_ui_b ""
     while IFS= read -r line; do
         nds_ui_i "$line"
