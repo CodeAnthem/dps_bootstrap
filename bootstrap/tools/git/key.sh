@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git deploy key management
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-05
+# Date:          Created: 2026-07-05 | Modified: 2026-07-06
 # Description:   Session deploy key paths, import, generate, load, target install (no config store)
 # ==================================================================================================
 
@@ -91,6 +91,14 @@ nds_git_key_show_pubkey() {
     return 0
 }
 
+# Description: Run qrencode with a terminal output format (internal).
+_nds_git_qr_try_format() {
+    local fmt="$1" pub="$2"
+    shift 2
+    local -a qr_cmd=("$@")
+    "${qr_cmd[@]}" -t "$fmt" <<< "$pub" 2>/dev/null
+}
+
 # Description: Show public key as a terminal QR code when qrencode is available.
 # Arguments:
 # - pub_path: <String|optional> Public key path
@@ -98,15 +106,15 @@ nds_git_key_show_pubkey() {
 # - <Bool> 0 when QR was displayed or key missing (non-fatal skip)
 nds_git_key_show_qr() {
     local pub_path="${1:-$(nds_git_session_pubkey_path)}"
-    local pub qr_cmd=()
+    local pub fmt qr_cmd=() nix_flags=(--extra-experimental-features "nix-command flakes")
 
     [[ -f "$pub_path" ]] || return 1
     pub="$(tr -d '\n' < "$pub_path")"
 
     if command -v qrencode &>/dev/null; then
-        qr_cmd=(qrencode -t ANSIUTF8)
+        qr_cmd=(qrencode)
     elif command -v nix &>/dev/null; then
-        qr_cmd=(nix shell nixpkgs#qrencode -c qrencode -t ANSIUTF8)
+        qr_cmd=(nix "${nix_flags[@]}" shell nixpkgs#qrencode -c qrencode)
     else
         nds_ui_i "qrencode not available — scan the printed public key instead"
         return 0
@@ -115,7 +123,17 @@ nds_git_key_show_qr() {
     nds_ui_b ""
     nds_ui_h "Scan to copy the deploy public key:"
     nds_ui_b ""
-    "${qr_cmd[@]}" <<< "$pub" 2>/dev/null || nds_ui_i "QR render failed — use the printed key"
+
+    for fmt in ANSIUTF8 ANSI UTF8; do
+        if _nds_git_qr_try_format "$fmt" "$pub" "${qr_cmd[@]}"; then
+            nds_ui_b ""
+            return 0
+        fi
+    done
+
+    debug "qrencode failed for all terminal formats (TERM=${TERM:-unset})"
+    nds_ui_i "QR render failed — use the printed public key above"
+    nds_ui_i "(VM console may not support QR — copy the key text or use gh to register)"
     nds_ui_b ""
     return 0
 }

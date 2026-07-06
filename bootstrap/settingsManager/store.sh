@@ -168,28 +168,39 @@ nds_configurator_config_export_modified() {
 # Concise export as grouped sections — one `export` per line. Portable settings,
 # machine-specific keys, then menu skip flags (default false).
 nds_configurator_config_export_grouped() {
-    local varname portable=0 hardware=0
+    local varname
+    local -a portable=() hardware=()
+
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
         _nds_export_should_include "$varname" || continue
         if _nds_export_is_hardware "$varname"; then
-            if [[ "$hardware" -eq 0 ]]; then
-                [[ "$portable" -gt 0 ]] && echo ""
-                echo "# This machine only — disk / boot / VM / static addressing:"
-                hardware=1
-            fi
-            echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
+            hardware+=("$varname")
         else
-            if [[ "$portable" -eq 0 ]]; then
-                echo "# Configuration — portable (reuse on any machine):"
-                portable=1
-            fi
-            echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
+            portable+=("$varname")
         fi
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 
-    echo ""
+    if [[ ${#portable[@]} -gt 0 ]]; then
+        echo "# Configuration — portable (reuse on any machine):"
+        echo ""
+        for varname in "${portable[@]}"; do
+            echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
+        done
+    fi
+
+    if [[ ${#hardware[@]} -gt 0 ]]; then
+        [[ ${#portable[@]} -gt 0 ]] && echo ""
+        echo "# This machine only — disk / boot / VM / static addressing:"
+        echo ""
+        for varname in "${hardware[@]}"; do
+            echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
+        done
+    fi
+
+    [[ ${#portable[@]} -gt 0 || ${#hardware[@]} -gt 0 ]] && echo ""
     echo "# Menu control — set any SKIP flag to true to skip that step (false = interactive):"
+    echo ""
     if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
         echo "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
     fi

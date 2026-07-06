@@ -76,6 +76,20 @@ suite_configurator() {
         console "  ✗ grouped export: menu skip flags missing"
     fi
 
+    CONFIG_DATA[FLAKE_HOST]="control-toolkit"
+    CONFIG_DATA[PLATFORM_RUN_ON_VM]="true"
+    CONFIG_DATA[PLATFORM_VM_TYPE]="vmware"
+    grouped="$(nds_configurator_config_export_grouped)"
+    if awk '/^# This machine only/,/^# Menu control/' <<<"$grouped" | grep -q 'NDS_PLATFORM_RUN_ON_VM' \
+       && awk '/^# This machine only/,/^# Menu control/' <<<"$grouped" | grep -q 'NDS_PLATFORM_VM_TYPE' \
+       && ! awk '/^# Configuration — portable/,/^# This machine only/' <<<"$grouped" | grep -q 'NDS_PLATFORM_'; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ grouped export: platform vars in machine-only section"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ grouped export: platform vars not in machine-only section"
+    fi
+
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
     nds_preset_load_file "${SCRIPT_DIR}/presets/installFlake.sh" || return 0
