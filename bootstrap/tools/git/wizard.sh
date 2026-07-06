@@ -46,11 +46,57 @@ nds_git_auth_collect_register_urls() {
     done
 }
 
+# Description: True when the public key is already a deploy key on the repo.
+_nds_git_gh_pubkey_on_repo() {
+    local repo="$1" pub_file="$2"
+    local key_line
+    local -a gh_cmd=()
+
+    _nds_git_gh_cmd gh_cmd || return 1
+    key_line="$(awk '{print $1" "$2}' "$pub_file")"
+    "${gh_cmd[@]}" api "repos/${repo}/keys" --jq '.[].key' 2>/dev/null \
+        | grep -qF "$key_line"
+}
+
+# Description: Add one deploy key via gh; surface errors and detect already-registered keys.
+_nds_git_gh_deploy_key_add() {
+    local pub_file="$1" repo="$2" title="$3"
+    local -a gh_cmd=()
+    local err rc
+
+    _nds_git_gh_cmd gh_cmd || return 1
+
+    if _nds_git_gh_pubkey_on_repo "$repo" "$pub_file"; then
+        success "Deploy key already on ${repo} (${title})"
+        nds_install_log "git: deploy key already on ${repo}"
+        return 0
+    fi
+
+    err=$("${gh_cmd[@]}" repo deploy-key add "$pub_file" -R "$repo" \
+        -t "$title" --read-only 2>&1) || rc=$?
+    if [[ "${rc:-0}" -eq 0 ]]; then
+        success "Deploy key registered on ${repo} (${title})"
+        nds_install_log "git: gh deploy key -> ${repo}"
+        return 0
+    fi
+
+    if _nds_git_gh_pubkey_on_repo "$repo" "$pub_file"; then
+        success "Deploy key already on ${repo} (${title})"
+        return 0
+    fi
+
+    warn "Could not add deploy key on ${repo}"
+    nds_ui_i "  ${err}"
+    nds_ui_i "  Check: admin access on the repo, org SSO authorized for gh, or remove an old deploy key with the same title."
+    return 1
+}
+
 nds_git_gh_register_deploy_keys() {
     local pub_file="$1" key_title
     shift
     local -a repos=("$@") repo
     local -a gh_cmd=()
+    local failed=0
 
     [[ -f "$pub_file" ]] || { error "Public key missing: $pub_file"; return 1; }
     [[ ${#repos[@]} -gt 0 ]] || { warn "No GitHub repos to register"; return 1; }
@@ -60,27 +106,24 @@ nds_git_gh_register_deploy_keys() {
     }
 
     key_title="$(nds_git_deploy_key_title)"
+    nds_git_key_load "$(nds_git_session_key_path)" || true
 
     if ! "${gh_cmd[@]}" auth status &>/dev/null; then
         info "GitHub device login (temporary — used only to add deploy keys)"
         nds_ui_b "Complete login in the browser, then return here."
-        "${gh_cmd[@]}" auth login --web --git-protocol ssh --scopes "" || return 1
+        nds_ui_b "If the org uses SSO, authorize the token for CodeAnthem after login."
+        "${gh_cmd[@]}" auth login --web --git-protocol ssh --scopes repo || return 1
     fi
 
     for repo in "${repos[@]}"; do
         [[ -n "$repo" ]] || continue
-        if "${gh_cmd[@]}" repo deploy-key add "$pub_file" -R "$repo" \
-            -t "$key_title" --read-only 2>/dev/null; then
-            success "Deploy key registered on ${repo} (${key_title})"
-            nds_install_log "git: gh deploy key -> ${repo}"
-        else
-            warn "Could not add deploy key on ${repo} (may already exist)"
-        fi
+        _nds_git_gh_deploy_key_add "$pub_file" "$repo" "$key_title" || failed=1
     done
 
     "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
     nds_ui_i "GitHub session cleared."
-    return 0
+
+    [[ "$failed" -eq 0 ]]
 }
 
 nds_git_auth_wizard_import() {

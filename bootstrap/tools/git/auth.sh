@@ -119,5 +119,7 @@ nds_git_ensure_access() {
             return 0
         fi
         warn "Still no access — register the deploy key on the repo or import a key that already has access."
+        nds_ui_i "Session key: $(nds_git_session_pubkey_path 2>/dev/null || echo unknown)"
+        nds_ui_i "Try: show the public key, or remove old deploy keys titled $(nds_git_deploy_key_title 2>/dev/null || echo nds-*) on GitHub."
     done
 }
