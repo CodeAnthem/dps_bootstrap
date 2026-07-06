@@ -26,7 +26,11 @@ nds_install_bundle_finish() {
         _nds_install_bundle_usbkey_instructions
         _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
 
-        nds_askUserToProceed "I have copied the package (or do not need it)" || return 1
+        if nds_skip_menu NDS_BACKUP_CONFIRM_SKIP; then
+            log "Backup copy confirmation skipped"
+        else
+            nds_askUserToProceed "I have copied the package (or do not need it)" || return 1
+        fi
 
         nds_ui_b ""
         nds_ui_h "Next steps"
@@ -36,7 +40,11 @@ nds_install_bundle_finish() {
         nds_ui_i "https://github.com/CodeAnthem/dps_bootstrap/blob/main/actions/classicInstall/README.md"
         nds_ui_b ""
         nds_ui_b "Reboot when ready: sudo reboot"
-        nds_askUserToProceed "Reboot now?" && reboot
+        if nds_skip_menu NDS_REBOOT_SKIP; then
+            log "Reboot prompt skipped"
+        else
+            nds_askUserToProceed "Reboot now?" && reboot
+        fi
         return 0
     fi
 
@@ -45,7 +53,11 @@ nds_install_bundle_finish() {
     fi
     nds_ui_b ""
     nds_ui_b "Reboot when ready: sudo reboot"
-    nds_askUserToProceed "Reboot now?" && reboot
+    if nds_skip_menu NDS_REBOOT_SKIP; then
+        log "Reboot prompt skipped"
+    else
+        nds_askUserToProceed "Reboot now?" && reboot
+    fi
     return 0
 }
 

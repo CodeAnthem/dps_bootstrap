@@ -2,15 +2,37 @@
 # ==================================================================================================
 # NDS - UI - User prompts and confirmations
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2026-06-29
+# Date:          Created: 2025-10-21 | Modified: 2026-07-06
 # Description:   Interactive yes/no/back prompts and legacy password helpers
 # ==================================================================================================
+
+# Description: True when a value is boolean true (true/1, case-insensitive).
+# Arguments:
+# - value: <String> Value to test
+# Returns:
+# - 0 when true, 1 otherwise
+nds_env_is_true() {
+    local value="${1:-}"
+    [[ "${value,,}" == "true" || "$value" == "1" ]]
+}
+
+# Description: Skip an interactive menu when its NDS_*_SKIP flag or NDS_AUTO_CONFIRM is set.
+# Arguments:
+# - skip_var: <String> Name of the skip env var (e.g. NDS_INSTALL_CONFIRM_SKIP)
+# Returns:
+# - 0 when the step should be skipped, 1 when the menu should run
+nds_skip_menu() {
+    local skip_var="${1:-}"
+    nds_env_is_true "${NDS_AUTO_CONFIRM:-false}" && return 0
+    [[ -n "$skip_var" ]] && nds_env_is_true "${!skip_var:-false}" && return 0
+    return 1
+}
 
 nds_askUserContinue() {
     local prompt="${1:-Do you want to proceed?}"
 
-    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
-        nds_ui_b "$prompt [y/n/b]: y (auto-confirmed)"
+    if nds_skip_menu NDS_PROMPTS_SKIP; then
+        nds_ui_b "$prompt [y/n/b]: y (skipped)"
         return 0
     fi
 
@@ -40,8 +62,8 @@ nds_askUserContinue() {
 nds_askUserToProceed() {
     local prompt="${1:-Do you want to proceed?}"
 
-    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
-        nds_ui_b "$prompt (y/n): y (auto-confirmed)"
+    if nds_skip_menu NDS_PROMPTS_SKIP; then
+        nds_ui_b "$prompt (y/n): y (skipped)"
         return 0
     fi
 

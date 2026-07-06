@@ -8,8 +8,21 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 
 | Variable | Description |
 |----------|-------------|
-| `NDS_AUTO_CONFIRM` | Skip Y/n prompts and category menu when validation passes (`true`) |
-| `NDS_SKIP_MENU` | Skip the category menu when validation passes (`true`) |
+| `NDS_AUTO_CONFIRM` | Umbrella — skip interactive menus and Y/n prompts (`true`) |
+| `NDS_ACTION` | Action name — skip action picker (e.g. `installFlake`) |
+| `NDS_ACTION_PREVIEW_SKIP` | Skip install preview screen (`true`) |
+| `NDS_SKIP_MENU` | Skip configuration category menu when validation passes (`true`) |
+| `NDS_CONFIG_CONFIRM_SKIP` | Skip “continue to installation review” (`true`) |
+| `NDS_INSTALL_CONFIRM_SKIP` | Skip local install confirmation (`true`) |
+| `NDS_REMOTE_CONFIRM_SKIP` | Skip remote install confirmation (`true`) |
+| `NDS_GIT_AUTH_SKIP` | Skip interactive git SSH auth wizard (`true`) |
+| `NDS_DISK_FORMAT_CONFIRM_SKIP` | Skip destructive disk format confirmation (`true`) |
+| `NDS_BACKUP_CONFIRM_SKIP` | Skip backup zip copy confirmation (`true`) |
+| `NDS_REBOOT_SKIP` | Skip reboot prompt after install (`true`) |
+| `NDS_SCAFFOLD_OVERWRITE_SKIP` | Skip scaffold host-dir overwrite prompt (`true`) |
+| `NDS_HARDWARE_OVERWRITE_SKIP` | Skip hardware file overwrite prompt (`true`) |
+| `NDS_PREFLIGHT_WARN_SKIP` | Auto-continue past preflight warnings (`true`) |
+| `NDS_PROMPTS_SKIP` | Skip generic Y/n prompts (`nds_askUser*`) (`true`) |
 | `NDS_TEST` | Enable the test action in the action menu (`true`) |
 | `NDS_DEPLOY_KEY_PATH` | Path to a private deploy key to import before git auth (USB/scp) |
 | `NDS_GIT_SESSION_KEY_PATH` | Session private key path (default `/root/.ssh/id_ed25519`) |
@@ -18,8 +31,9 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 
 | Flag | Effect |
 |------|--------|
-| `--auto-confirm` | Sets `NDS_AUTO_CONFIRM` and `NDS_SKIP_MENU` |
+| `--auto-confirm` | Sets `NDS_AUTO_CONFIRM` and all `NDS_*_SKIP` flags above |
 | `--skip-menu` | Sets `NDS_SKIP_MENU` |
+| `--action NAME` | Sets `NDS_ACTION` (e.g. `--action installFlake`) |
 
 ---
 
@@ -145,6 +159,7 @@ See `bootstrap/tests/fixtures/nds-remote-preset.sh` for a minimal example.
 ## Headless installFlake example
 
 ```bash
+export NDS_ACTION=installFlake
 export NDS_FLAKE_REPO_URL="git@github.com:ORG/dps_swarm.git"
 export NDS_FLAKE_HOST="worker-01"
 export NDS_DISK_TARGET="/dev/nvme0n1"

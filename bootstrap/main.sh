@@ -7,7 +7,7 @@
 # shellcheck disable=SC2162
 set -euo pipefail
 
-readonly SCRIPT_VERSION="5.8.0"
+readonly SCRIPT_VERSION="5.9.0"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
@@ -103,13 +103,60 @@ _main_stopHandler() {
     _nds_callHook "exit_cleanup" "$exit_code" || true
 }
 
+_nds_apply_auto_confirm_flags() {
+    export NDS_AUTO_CONFIRM=true
+    export NDS_SKIP_MENU=true
+    export NDS_ACTION_PREVIEW_SKIP=true
+    export NDS_CONFIG_CONFIRM_SKIP=true
+    export NDS_INSTALL_CONFIRM_SKIP=true
+    export NDS_REMOTE_CONFIRM_SKIP=true
+    export NDS_GIT_AUTH_SKIP=true
+    export NDS_DISK_FORMAT_CONFIRM_SKIP=true
+    export NDS_BACKUP_CONFIRM_SKIP=true
+    export NDS_REBOOT_SKIP=true
+    export NDS_SCAFFOLD_OVERWRITE_SKIP=true
+    export NDS_HARDWARE_OVERWRITE_SKIP=true
+    export NDS_PREFLIGHT_WARN_SKIP=true
+    export NDS_PROMPTS_SKIP=true
+}
+
 declare -a ORIGINAL_ARGS=("$@")
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --auto-confirm) export NDS_AUTO_CONFIRM=true NDS_SKIP_MENU=true; shift ;;
+        --auto-confirm) _nds_apply_auto_confirm_flags; shift ;;
         --skip-menu) export NDS_SKIP_MENU=true; shift ;;
+        --action)
+            [[ -n "${2:-}" ]] || { echo "Missing value for --action"; exit 1; }
+            export NDS_ACTION="$2"
+            shift 2
+            ;;
         --help|-h)
-            echo "Usage: $0 [--auto-confirm] [--skip-menu] [--help]"
+            cat <<'EOF'
+Usage: bootstrap/main.sh [options]
+
+Options:
+  --auto-confirm   Skip interactive menus and Y/n prompts (headless install)
+  --skip-menu      Skip the configuration category menu when validation passes
+  --action NAME    Enter action NAME directly (e.g. installFlake)
+  --help           Show this help
+
+Environment (menu skip flags — each also honored when --auto-confirm is set):
+  NDS_ACTION                  Action name — skip action picker
+  NDS_ACTION_PREVIEW_SKIP     Skip install preview screen
+  NDS_SKIP_MENU               Skip configuration category menu
+  NDS_CONFIG_CONFIRM_SKIP     Skip "continue to installation review"
+  NDS_INSTALL_CONFIRM_SKIP    Skip local install confirmation
+  NDS_REMOTE_CONFIRM_SKIP     Skip remote install confirmation
+  NDS_GIT_AUTH_SKIP           Skip interactive git SSH auth wizard
+  NDS_DISK_FORMAT_CONFIRM_SKIP  Skip destructive disk format confirmation
+  NDS_BACKUP_CONFIRM_SKIP     Skip backup zip copy confirmation
+  NDS_REBOOT_SKIP             Skip reboot prompt after install
+  NDS_SCAFFOLD_OVERWRITE_SKIP Skip scaffold host-dir overwrite prompt
+  NDS_HARDWARE_OVERWRITE_SKIP Skip hardware file overwrite prompt
+  NDS_PREFLIGHT_WARN_SKIP     Auto-continue past preflight warnings
+  NDS_PROMPTS_SKIP            Skip generic Y/n prompts (nds_askUser*)
+  NDS_AUTO_CONFIRM            Umbrella — same effect as all skip flags above
+EOF
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac

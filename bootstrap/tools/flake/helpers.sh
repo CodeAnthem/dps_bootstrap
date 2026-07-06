@@ -145,7 +145,7 @@ _nds_scaffold_host_folder() {
 
     if [[ -d "$host_dir" ]]; then
         warn "Host folder already exists: $host_dir"
-        if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+        if ! nds_skip_menu NDS_SCAFFOLD_OVERWRITE_SKIP; then
             nds_askUserToProceed "Overwrite files in $host_dir?" || return 1
         fi
     fi

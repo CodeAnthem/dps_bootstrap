@@ -164,7 +164,7 @@ _nixinstall_place_hardware_artifact() {
             if [[ -f "$dest" ]]; then
                 NDS_UI_QUIET=false
                 warn "${hw_artifact} already exists: $dest"
-                if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+                if ! nds_skip_menu NDS_HARDWARE_OVERWRITE_SKIP; then
                     if ! nds_askUserToProceed "Overwrite existing ${hw_artifact}?"; then
                         log "Keeping existing ${hw_artifact}"
                         NDS_UI_QUIET=true

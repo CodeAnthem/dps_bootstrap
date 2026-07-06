@@ -54,7 +54,33 @@ nds_actions_discover() {
     return 0
 }
 
+# Description: Select action from NDS_ACTION when set to a discovered action name.
+# Returns:
+# - 0 when NDS_ACTION matched, 1 when unset or invalid
+nds_actions_select_from_env() {
+    local wanted="${NDS_ACTION:-}"
+    local name
+
+    [[ -n "$wanted" ]] || return 1
+
+    for name in "${ACTION_NAMES[@]}"; do
+        if [[ "$name" == "$wanted" ]]; then
+            current_action="$name"
+            log "Action selected via NDS_ACTION=${wanted}"
+            return 0
+        fi
+    done
+
+    error "NDS_ACTION=${wanted} is not valid (available: ${ACTION_NAMES[*]})"
+    return 1
+}
+
 nds_actions_select() {
+    if nds_actions_select_from_env; then
+        return 0
+    fi
+    [[ -z "${NDS_ACTION:-}" ]] || return 1
+
     section_header "Choose an action"
     nds_ui_b ""
     nds_ui_choice_row "0" "Abort" "Exit the script"
@@ -121,6 +147,12 @@ _nds_action_configure_presets() {
 
 _nds_run_action_preview() {
     declare -f action_preview &>/dev/null || { error "action_preview() not found"; return 1; }
+
+    if nds_skip_menu NDS_ACTION_PREVIEW_SKIP; then
+        log "Action preview skipped (NDS_ACTION_PREVIEW_SKIP)"
+        return 0
+    fi
+
     section_header "Install preview"
     action_preview
     nds_ui_b "Press Y to continue, B to go back to the action menu."
@@ -173,10 +205,18 @@ nds_actions_execute() {
 nds_actions_main() {
     local rc=0
     while true; do
-        nds_actions_select
+        current_action=""
+        nds_actions_select || return 1
         rc=0
         nds_actions_execute "$current_action" || rc=$?
-        [[ "$rc" -eq "$NDS_ACTION_BACK" ]] && { NDS_CURRENT_ACTION=""; continue; }
+        [[ "$rc" -eq "$NDS_ACTION_BACK" ]] && {
+            [[ -n "${NDS_ACTION:-}" ]] && {
+                error "Cannot go back — NDS_ACTION is set to ${NDS_ACTION}"
+                return 1
+            }
+            NDS_CURRENT_ACTION=""
+            continue
+        }
         [[ "$rc" -ne 0 ]] && return "$rc"
         break
     done

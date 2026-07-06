@@ -109,14 +109,14 @@ nds_configurator_run() {
 # and validation passes; otherwise run the interactive menu.
 nds_configurator_menu_or_skip() {
     local presets=("$@")
-    if [[ "${NDS_SKIP_MENU:-false}" == "true" || "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+    if nds_skip_menu NDS_SKIP_MENU; then
         if ! nds_configurator_validate_all "${presets[@]}"; then
             nds_configurator_prompt_errors "${presets[@]}"
             nds_configurator_validate_all "${presets[@]}" || return 1
         fi
         log "Configuration complete (menu skipped)"
         nds_configurator_print_config_backup
-        if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+        if nds_skip_menu NDS_CONFIG_CONFIRM_SKIP; then
             return 0
         fi
         nds_configurator_confirm_config_saved || return 1

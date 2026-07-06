@@ -46,7 +46,7 @@ nds_preflight_install() {
     if [[ "$uefi" == "true" && ! -d /sys/firmware/efi/efivars ]]; then
         warn "UEFI mode is on but the live ISO is BIOS-booted."
         warn "Reboot the ISO in UEFI mode, or disable UEFI mode and use GRUB."
-        if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+        if ! nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
             nds_askUserToProceed "Continue anyway?" || return 1
         fi
     fi
@@ -95,7 +95,7 @@ nds_preflight_remote_install() {
         debug "SSH reachable: root@${target_ip}"
     else
         warn "Cannot reach root@${target_ip} via SSH (passwordless root login required)"
-        if [[ "${NDS_AUTO_CONFIRM:-false}" != "true" ]]; then
+        if ! nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
             nds_askUserToProceed "Continue without verified SSH access?" || return 1
         fi
     fi
@@ -152,7 +152,7 @@ nds_preflight_ssh_for_git() {
         console "  Copy your deploy key to the live system before cloning a private flake."
     fi
 
-    if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+    if nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
         return 0
     fi
 

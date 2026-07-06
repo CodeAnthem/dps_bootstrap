@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git SSH auth wizard
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-05
+# Date:          Created: 2026-07-05 | Modified: 2026-07-06
 # Description:   Multi-mode deploy-key wizard: import, generate+QR, gh register, show, retry, skip
 # ==================================================================================================
 
@@ -22,10 +22,6 @@ _nds_git_gh_cmd() {
 }
 
 # Description: Parse failed git URLs into owner/repo pairs for gh deploy-key add.
-# Arguments:
-# - urls: <String...> SSH git URLs
-# Returns:
-# - <String> Newline-separated owner/repo (stdout)
 _nds_git_urls_to_github_repos() {
     local url parsed host owner repo
     for url in "$@"; do
@@ -37,12 +33,6 @@ _nds_git_urls_to_github_repos() {
     done | sort -u
 }
 
-# Description: Temporary gh login, register read-only deploy keys, then logout.
-# Arguments:
-# - pub_file: <String> Public key path
-# - repos:    <String...> GitHub owner/repo names
-# Returns:
-# - <Bool> 0 on success
 nds_git_gh_register_deploy_keys() {
     local pub_file="$1"
     shift
@@ -78,9 +68,6 @@ nds_git_gh_register_deploy_keys() {
     return 0
 }
 
-# Description: Import deploy key from path (env or prompt).
-# Returns:
-# - <Bool> 0 on success
 nds_git_auth_wizard_import() {
     local src dest
     dest="$(nds_git_session_key_path)"
@@ -97,28 +84,20 @@ nds_git_auth_wizard_import() {
     return 0
 }
 
-# Description: Generate deploy key, show pubkey and QR.
-# Returns:
-# - <Bool> 0 on success
 nds_git_auth_wizard_generate() {
     nds_git_key_generate "$(nds_git_session_key_path)" || return 1
     nds_git_key_show_pubkey || return 1
     nds_git_key_show_qr || true
-    nds_ui_b "Register this key as read-only on every private repo your flake needs."
+    nds_ui_b "Add this public key as read-only on every repo listed above."
     return 0
 }
 
-# Description: Register deploy key on GitHub repos via gh (device login).
-# Arguments:
-# - repos: <String...> owner/repo names
-# Returns:
-# - <Bool> 0 on success
 nds_git_auth_wizard_gh() {
     local -a repos=("$@")
     local pub
 
     [[ ${#repos[@]} -gt 0 ]] || {
-        warn "No GitHub repositories in scope — add keys manually"
+        warn "No GitHub repositories in scope — add keys manually (Show public key)"
         return 1
     }
 
@@ -129,59 +108,86 @@ nds_git_auth_wizard_gh() {
     nds_git_gh_register_deploy_keys "$pub" "${repos[@]}"
 }
 
-# Description: Run one wizard step for a single repository access failure.
-# Arguments:
-# - host:  <String> Git host
-# - owner: <String> Repo owner
-# - repo:  <String> Repo name
-# Returns:
-# - <String> Action taken: ok|skip|retry (stdout via return: 0=retry/ok path, special cases)
-nds_git_auth_wizard_step_repo() {
-    local host="$1" owner="$2" repo="$3"
-    local choice gh_repo
-
+# Description: Short intro — one key, all repos.
+_nds_git_auth_screen_intro() {
+    section_header "Private repository access"
+    nds_ui_b "Private flakes need SSH deploy keys. NDS checks every git input"
+    nds_ui_b "(your flake URL plus locked inputs in flake.lock)."
     nds_ui_b ""
-    nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key setup" \
-        "import|generate|gh|show|retry|skip" \
-        "import=Import key (USB/path)|generate=Generate + QR|gh=Register on GitHub (device login)|show=Show public key|retry=Re-check access|skip=Skip (try anyway)" \
-        "import"
-
-    choice="$(nds_cfg_get GIT_AUTH_METHOD)"
-    case "$choice" in
-        import) nds_git_auth_wizard_import || return 1 ;;
-        generate) nds_git_auth_wizard_generate || return 1 ;;
-        gh)
-            gh_repo="${owner}/${repo}"
-            nds_git_auth_wizard_gh "$gh_repo" || return 1
-            ;;
-        show)
-            nds_git_key_show_pubkey || nds_git_auth_wizard_generate || return 1
-            nds_git_key_show_qr || true
-            nds_askUserToProceed "Registered the key — re-check access?" || return 1
-            ;;
-        retry) return 0 ;;
-        skip) return 2 ;;
-        *) return 1 ;;
-    esac
-    return 0
+    nds_ui_b "One deploy key is used for this session — the same public key must be"
+    nds_ui_b "registered on each private repo below (read-only is enough)."
+    nds_ui_b ""
 }
 
-# Description: Wizard step when multiple flake git inputs lack access.
+# Description: Print one repo line with optional missing marker.
+_nds_git_auth_print_repo() {
+    local url="$1"
+    local status="${2:-}"
+    local ssh_url parsed host owner repo
+
+    ssh_url=$(_nds_git_ssh_url "$url")
+    if parsed=$(_nds_git_parse "$ssh_url"); then
+        IFS=$'\t' read -r host owner repo <<< "$parsed"
+        if [[ "$status" == "ok" ]]; then
+            nds_ui_i "  [ok]  ${owner}/${repo}"
+        elif [[ "$status" == "missing" ]]; then
+            nds_ui_i "  [!!]  ${owner}/${repo}"
+        else
+            nds_ui_i "  ${owner}/${repo}"
+        fi
+        nds_ui_i "        $(_nds_git_keys_url "$host" "$owner" "$repo")"
+    else
+        nds_ui_i "  ${ssh_url}"
+    fi
+}
+
+# Description: List repositories with access status (closure check).
 # Arguments:
-# - failed_urls: <String...> URLs that failed probe
-# Returns:
-# - <Int> 0 continue probe loop, 2 user chose skip
-nds_git_auth_wizard_step_closure() {
-    local -a failed=("$@")
-    local -a gh_repos=()
-    local choice url repo_line
+# - urls_var:   <Nameref> All URLs checked
+# - failed_var: <Nameref> URLs that failed probe
+_nds_git_auth_screen_list_repos() {
+    local -n _urls=$1
+    local -n _failed=$2
+    local url f missing=0
 
-    mapfile -t gh_repos < <(_nds_git_urls_to_github_repos "${failed[@]}")
-
+    nds_ui_h "Repositories"
+    for url in "${_urls[@]}"; do
+        missing=0
+        for f in "${_failed[@]}"; do
+            [[ "$f" == "$url" ]] && { missing=1; break; }
+        done
+        if [[ "$missing" -eq 1 ]]; then
+            _nds_git_auth_print_repo "$url" "missing"
+        else
+            _nds_git_auth_print_repo "$url" "ok"
+        fi
+    done
     nds_ui_b ""
-    nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key setup (all missing repos)" \
+}
+
+# Description: Prompt deploy-key method (shared by single-repo and closure flows).
+# Arguments:
+# - scope_label: <String> e.g. "one repo" or "all missing repos"
+# - gh_repos:    <String...> owner/repo for gh auto-register (may be empty)
+_nds_git_auth_prompt_method() {
+    local scope_label="$1"
+    shift
+    local -a gh_repos=("$@")
+    local choice gh_hint
+
+    gh_hint="Register on GitHub (browser login)"
+    if [[ ${#gh_repos[@]} -gt 1 ]]; then
+        gh_hint="${gh_hint}, all ${#gh_repos[@]} repos at once"
+    elif [[ ${#gh_repos[@]} -eq 1 ]]; then
+        gh_hint="${gh_hint}, ${gh_repos[0]}"
+    else
+        gh_hint="${gh_hint} — no github.com repos in list; use Show instead"
+    fi
+
+    nds_ui_h "What do you want to do?"
+    nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
         "import|generate|gh|show|retry|skip" \
-        "import=Import shared key|generate=Generate + QR|gh=Register on GitHub (all listed)|show=Show public key|retry=Re-check|skip=Skip (try anyway)" \
+        "import=Import key from USB or path (use an existing deploy key)|generate=Generate new key + show QR (register on each repo next)|gh=${gh_hint}|show=Show public key + QR again (manual paste on GitHub)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"
 
     choice="$(nds_cfg_get GIT_AUTH_METHOD)"
@@ -190,8 +196,9 @@ nds_git_auth_wizard_step_closure() {
         generate) nds_git_auth_wizard_generate || return 1 ;;
         gh)
             [[ ${#gh_repos[@]} -gt 0 ]] || {
-                warn "No github.com repos in the failure list — register keys manually"
-                nds_git_key_show_pubkey || return 1
+                warn "No github.com repos — use Show public key and paste manually"
+                nds_git_key_show_pubkey || nds_git_auth_wizard_generate || return 1
+                nds_git_key_show_qr || true
                 return 0
             }
             nds_git_auth_wizard_gh "${gh_repos[@]}" || return 1
@@ -199,11 +206,67 @@ nds_git_auth_wizard_step_closure() {
         show)
             nds_git_key_show_pubkey || nds_git_auth_wizard_generate || return 1
             nds_git_key_show_qr || true
-            nds_askUserToProceed "Added deploy keys on every repo above — re-check?" || return 1
+            nds_askUserToProceed "Registered the key on every repo above — re-check access?" || return 1
             ;;
         retry) return 0 ;;
         skip) return 2 ;;
         *) return 1 ;;
     esac
     return 0
+}
+
+# Description: Full screen for a single root flake repo.
+nds_git_auth_screen_single() {
+    local host="$1" owner="$2" repo="$3"
+    local -a gh_repos=("${owner}/${repo}")
+
+    _nds_git_auth_screen_intro
+    nds_ui_h "Repository"
+    _nds_git_auth_print_repo "$(_nds_git_to_ssh "$host" "$owner" "$repo")" "missing"
+    nds_ui_b ""
+
+    nds_git_auth_prompt_method "this repository" "${gh_repos[@]}"
+}
+
+# Description: Full screen when flake.lock inputs lack access.
+nds_git_auth_screen_closure() {
+    local -a failed=("$@")
+    local -a gh_repos=()
+    local -a all_urls=()
+    local url
+
+    mapfile -t gh_repos < <(_nds_git_urls_to_github_repos "${failed[@]}")
+
+    _nds_git_auth_screen_intro
+
+    if [[ -n "${NDS_GIT_CLOSURE_URLS:-}" ]]; then
+        readarray -t all_urls <<< "$NDS_GIT_CLOSURE_URLS"
+    else
+        all_urls=("${failed[@]}")
+    fi
+
+    if [[ ${#all_urls[@]} -gt 0 && ${#failed[@]} -lt ${#all_urls[@]} ]]; then
+        _nds_git_auth_screen_list_repos all_urls failed
+    else
+        nds_ui_h "Repositories missing access"
+        for url in "${failed[@]}"; do
+            _nds_git_auth_print_repo "$url" "missing"
+        done
+        nds_ui_b ""
+    fi
+
+    if [[ ${#gh_repos[@]} -gt 0 ]]; then
+        nds_ui_i "GitHub auto-register can add the deploy key to all ${#gh_repos[@]} repo(s) in one step."
+        nds_ui_b ""
+    fi
+
+    nds_git_auth_prompt_method "all missing repos" "${gh_repos[@]}"
+}
+
+nds_git_auth_wizard_step_repo() {
+    nds_git_auth_screen_single "$@"
+}
+
+nds_git_auth_wizard_step_closure() {
+    nds_git_auth_screen_closure "$@"
 }

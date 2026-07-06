@@ -37,6 +37,9 @@ source "${TEST_ROOT}/suites/settingsManager.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/nixWriter.sh"
 
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/skip.sh"
+
 nds_run_self_tests() {
     TEST_PASSED=0
     TEST_FAILED=0
@@ -44,6 +47,7 @@ nds_run_self_tests() {
     section_title "NDS self-tests"
 
     run_named_suite "settingsManager" suite_settings_manager
+    run_named_suite "skip" suite_skip
     run_named_suite "configurator" suite_configurator
     run_named_suite "presets" suite_presets
     run_named_suite "validators" suite_validators

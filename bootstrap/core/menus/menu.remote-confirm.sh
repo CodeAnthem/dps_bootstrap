@@ -25,6 +25,10 @@ nds_action_confirm_remote_install() {
 
     [[ -n "$extra" ]] && nds_ui_b "$extra" && nds_ui_b ""
 
+    if nds_skip_menu NDS_REMOTE_CONFIRM_SKIP; then
+        log "Remote install confirmation skipped"
+        return 0
+    fi
     nds_askUserToProceed "Start remote installation now" || return 1
     return 0
 }

@@ -25,13 +25,16 @@ nds_partition_is_disk_ready_to_format() {
         wiped|empty_parts) return 0 ;;
         has_fs|in_use)
             warn "Detected existing filesystems or mounted partitions on $disk"
-            if [[ "${NDS_AUTO_CONFIRM:-false}" == "true" ]]; then
+            if nds_skip_menu NDS_DISK_FORMAT_CONFIRM_SKIP; then
                 return 0
             fi
             nds_askUserToProceed "Formatting will DESTROY ALL DATA on $disk. Continue?" && return 0
             return 1
             ;;
         *)
+            if nds_skip_menu NDS_DISK_FORMAT_CONFIRM_SKIP; then
+                return 0
+            fi
             nds_askUserToProceed "Proceed with formatting $disk?" && return 0
             return 1
             ;;

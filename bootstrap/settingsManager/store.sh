@@ -324,6 +324,10 @@ nds_configurator_print_config_backup() {
 }
 
 nds_configurator_confirm_config_saved() {
+    if nds_skip_menu NDS_CONFIG_CONFIRM_SKIP; then
+        log "Configuration review confirmation skipped"
+        return 0
+    fi
     nds_askUserToProceed "Continue to installation review" || return 1
     return 0
 }
