@@ -417,11 +417,11 @@ nds_git_auth_wizard_gh() {
 # Description: Short intro — one key, all repos.
 _nds_git_auth_screen_intro() {
     section_header "Private repository access"
-    nds_ui_b "Private flakes need SSH deploy keys. NDS checks every git input"
+    nds_ui_b "Private flakes need SSH git access. NDS checks every git input"
     nds_ui_b "(your flake URL plus locked inputs in flake.lock)."
     nds_ui_b ""
-    nds_ui_b "One deploy key is used for this session — register it on each private"
-    nds_ui_b "repo (generate/show), or use gh on GitHub (one account SSH key for all)."
+    nds_ui_b "One SSH key for this session — use gh (GitHub account key, all repos),"
+    nds_ui_b "or import / generate and register on GitHub manually."
     nds_ui_b ""
 }
 

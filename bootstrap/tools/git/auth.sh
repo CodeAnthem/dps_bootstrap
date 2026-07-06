@@ -121,8 +121,8 @@ nds_git_ensure_access() {
             success "Git access confirmed."
             return 0
         fi
-        warn "Still no access — register the deploy key on the repo or import a key that already has access."
+        warn "Still no access — register the git SSH key on GitHub or import a key that already has access."
         nds_ui_i "Session key: $(nds_git_session_pubkey_path 2>/dev/null || echo unknown)"
-        nds_ui_i "Try: show the public key, or remove old deploy keys titled $(nds_git_deploy_key_title 2>/dev/null || echo nds-*) on GitHub."
+        nds_ui_i "Try: gh (account SSH key), show the public key, or remove old keys titled $(nds_git_deploy_key_title 2>/dev/null || echo nds-*) on GitHub."
     done
 }

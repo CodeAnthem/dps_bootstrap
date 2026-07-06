@@ -18,6 +18,7 @@ nds_install_load() {
     nds_import_file "${install_dir}/secrets.sh" || return 1
     nds_import_file "${install_dir}/boot.sh" || return 1
     nds_import_file "${install_dir}/machineFacts.sh" || return 1
+    nds_import_file "${SCRIPT_DIR}/tools/nix/store.sh" || return 1
     nds_import_file "${install_dir}/preflight.sh" || return 1
     nds_import_file "${install_dir}/install.sh" || return 1
     nds_import_file "${install_dir}/bundle/load.sh" || return 1

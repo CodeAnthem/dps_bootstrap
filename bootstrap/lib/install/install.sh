@@ -265,6 +265,7 @@ _nixinstall_install_nixos_flake() {
     local hw_placement="${3:-host-dir}"
     local -a install_args=(--root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd)
     local -a git_env=()
+    local nix_config
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
 
@@ -284,7 +285,9 @@ _nixinstall_install_nixos_flake() {
 
     nds_git_export_nix_env git_env
 
-    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+
+    if ! env NIX_CONFIG="$nix_config" \
         "${git_env[@]}" nixos-install "${install_args[@]}"; then
         error "Flake-based NixOS installation failed"
         return 1

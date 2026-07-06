@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install pre-flight checks
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-04
+# Date:          Created: 2026-06-29 | Modified: 2026-07-07
 # Description:   Disk, nix, network, and SSH checks before destructive install steps
 # ==================================================================================================
 
@@ -112,19 +112,34 @@ nds_preflight_flake_buildable() {
     local flake_root="$1"
     local hostname="$2"
     local -a git_env=() attr
+    local free_mb nix_config
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
+
+    free_mb=$(_nds_nix_store_free_mb)
+    if [[ "${free_mb:-0}" -lt 3072 ]]; then
+        warn "Live ISO Nix store has ~${free_mb}MB free — skipping full system build preflight."
+        warn "SSH git access is already verified; heavy build runs on the install disk during nixos-install."
+        nds_install_log "preflight: skip full build (live store ${free_mb}MB)"
+        if nds_skip_menu NDS_PREFLIGHT_BUILD_SKIP; then
+            return 0
+        fi
+        nds_askUserToProceed "Continue without building the full system on the ISO?" || return 1
+        return 0
+    fi
 
     nds_git_export_nix_env git_env
 
     attr="${flake_root}#nixosConfigurations.${hostname}.config.system.build.toplevel"
     log "Preflight: building ${attr}"
 
-    if ! env NIX_CONFIG="experimental-features = nix-command flakes" \
+    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+
+    if ! env NIX_CONFIG="$nix_config" \
         "${git_env[@]}" nix build --no-link --print-build-logs "$attr" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
-        error "Flake does not build — check install log for missing input access"
-        warn "Add the same SSH deploy key to every private locked input (e.g. thundercast, thundercore)"
+        error "Flake does not build — see install log"
+        _nds_preflight_diagnose_build_failure
         return 1
     fi
     log "Preflight: flake build OK"
@@ -146,10 +161,10 @@ nds_preflight_ssh_for_git() {
     if [[ -f /root/.ssh/id_ed25519 || -f /root/.ssh/id_rsa ]]; then
         warn "Git uses SSH but no keys are loaded in ssh-agent."
         console "  Try: eval \"\$(ssh-agent -s)\" && ssh-add ~/.ssh/id_ed25519"
-        console "  Or ensure /root/.ssh/config points at your deploy key."
+        console "  Or ensure /root/.ssh/config points at your git SSH key."
     else
-        warn "Git uses SSH ($repo_url) but no default keys found under /root/.ssh/"
-        console "  Copy your deploy key to the live system before cloning a private flake."
+        warn "Git uses SSH ($repo_url) but no git SSH key found under /root/.ssh/"
+        console "  Copy or generate a key before cloning a private flake (import / generate / gh in NDS)."
     fi
 
     if nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
