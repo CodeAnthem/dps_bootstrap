@@ -122,6 +122,7 @@ nds_git_key_show_qr() {
 
     nds_ui_b ""
     nds_ui_h "Scan to copy the deploy public key:"
+    nds_ui_i "(Phone camera or any QR app — paste into GitHub deploy-keys page in a browser)"
     nds_ui_b ""
 
     for fmt in ANSIUTF8 ANSI UTF8; do

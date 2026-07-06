@@ -88,7 +88,22 @@ nds_git_auth_wizard_generate() {
     nds_git_key_generate "$(nds_git_session_key_path)" || return 1
     nds_git_key_show_pubkey || return 1
     nds_git_key_show_qr || true
-    nds_ui_b "Add this public key as read-only on every repo listed above."
+    nds_git_auth_confirm_manual_register || return 1
+    return 0
+}
+
+# Description: Wait until user confirms deploy key was added on GitHub (manual paste path).
+# Explains QR is for copying the public key — browser deploy-keys page, not GitHub app login.
+# Returns:
+# - 0 when user confirms, 1 when they decline
+nds_git_auth_confirm_manual_register() {
+    nds_ui_b "Register the public key on each repo above — read-only is enough."
+    nds_ui_b ""
+    nds_ui_i "QR / printed key: scan or copy the public key text."
+    nds_ui_i "Open the deploy-keys link in a browser, paste the key, save."
+    nds_ui_i "Any phone QR app or the printed line works — not GitHub app login."
+    nds_ui_b ""
+    nds_askUserToProceed "Added this deploy key on every repo listed above?" || return 1
     return 0
 }
 
@@ -187,7 +202,7 @@ nds_git_auth_prompt_method() {
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
         "import|generate|gh|show|retry|skip" \
-        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key + QR (paste on each repo)|gh=${gh_label}|show=Show public key + QR (manual GitHub deploy-keys page)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
+        "import=Import key from USB or path (existing deploy key)|generate=Generate new ed25519 key + QR, paste in browser|gh=${gh_label}|show=Show public key + QR again (browser deploy-keys page)|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"
 
     choice="$(nds_cfg_get GIT_AUTH_METHOD)"
@@ -197,8 +212,13 @@ nds_git_auth_prompt_method() {
         gh)
             [[ ${#gh_repos[@]} -gt 0 ]] || {
                 warn "No github.com repos — use Show public key and paste manually"
-                nds_git_key_show_pubkey || nds_git_auth_wizard_generate || return 1
-                nds_git_key_show_qr || true
+                if [[ -f "$(nds_git_session_pubkey_path)" ]]; then
+                    nds_git_key_show_pubkey || return 1
+                    nds_git_key_show_qr || true
+                    nds_git_auth_confirm_manual_register || return 1
+                else
+                    nds_git_auth_wizard_generate || return 1
+                fi
                 return 0
             }
             nds_git_auth_wizard_gh "${gh_repos[@]}" || return 1
@@ -206,7 +226,7 @@ nds_git_auth_prompt_method() {
         show)
             nds_git_key_show_pubkey || nds_git_auth_wizard_generate || return 1
             nds_git_key_show_qr || true
-            nds_askUserToProceed "Registered the key on every repo above — re-check access?" || return 1
+            nds_git_auth_confirm_manual_register || return 1
             ;;
         retry) return 0 ;;
         skip) return 2 ;;
