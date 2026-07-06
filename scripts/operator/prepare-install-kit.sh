@@ -38,7 +38,7 @@ rm -f "${KEY_BASE}" "${KEY_BASE}.pub"
 ssh-keygen -t ed25519 -f "$KEY_BASE" -N "" -C "nds-${HOST}"
 
 for repo in "${REPOS[@]}"; do
-    gh repo deploy-key add "${KEY_BASE}.pub" -R "$repo" -t "nds-${HOST}" --read-only
+    gh repo deploy-key add "${KEY_BASE}.pub" -R "$repo" -t "nds-${HOST}"
     echo "Registered deploy key on ${repo}"
 done
 

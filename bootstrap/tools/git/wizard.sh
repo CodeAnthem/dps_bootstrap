@@ -72,8 +72,9 @@ _nds_git_gh_deploy_key_add() {
         return 0
     fi
 
+    # gh default is read-only; only -w/--allow-write grants write access
     err=$("${gh_cmd[@]}" repo deploy-key add "$pub_file" -R "$repo" \
-        -t "$title" --read-only 2>&1) || rc=$?
+        -t "$title" 2>&1) || rc=$?
     if [[ "${rc:-0}" -eq 0 ]]; then
         success "Deploy key registered on ${repo} (${title})"
         nds_install_log "git: gh deploy key -> ${repo}"

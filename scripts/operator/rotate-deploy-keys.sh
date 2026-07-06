@@ -32,7 +32,7 @@ fi
 
 rm -f "${KEY_BASE}" "${KEY_BASE}.pub"
 ssh-keygen -t ed25519 -f "$KEY_BASE" -N "" -C "deploy-${HOST}"
-gh repo deploy-key add "${KEY_BASE}.pub" -R "$REPO" -t "deploy-${HOST}" --read-only
+gh repo deploy-key add "${KEY_BASE}.pub" -R "$REPO" -t "deploy-${HOST}"
 
 echo ""
 echo "New deploy key created for ${HOST} on ${REPO}"
