@@ -88,8 +88,14 @@ _nds_git_gh_expand_github_repos() {
 # Description: End temporary gh auth started for deploy-key registration.
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
+    local title
 
     _nds_git_gh_cmd gh_cmd || return 0
+    if nds_env_is_true "${NDS_GIT_GH_MANAGED_USER_KEY:-false}"; then
+        title="$(nds_git_deploy_key_title 2>/dev/null || echo nds-live)"
+        _nds_git_gh_remove_user_ssh_keys_by_title "$title"
+        unset NDS_GIT_GH_MANAGED_USER_KEY 2>/dev/null || true
+    fi
     if "${gh_cmd[@]}" auth status &>/dev/null; then
         "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
         nds_install_log "git: gh session cleared"
@@ -109,6 +115,18 @@ nds_git_auth_collect_register_urls() {
     done
 }
 
+# Description: True when the public key is on the logged-in GitHub user account.
+_nds_git_gh_pubkey_on_user() {
+    local pub_file="$1"
+    local key_line
+    local -a gh_cmd=()
+
+    _nds_git_gh_cmd gh_cmd || return 1
+    key_line="$(awk '{print $1" "$2}' "$pub_file")"
+    "${gh_cmd[@]}" ssh-key list --json key --jq '.[].key' 2>/dev/null \
+        | grep -qF "$key_line"
+}
+
 # Description: True when the public key is already a deploy key on the repo.
 _nds_git_gh_pubkey_on_repo() {
     local repo="$1" pub_file="$2"
@@ -119,6 +137,86 @@ _nds_git_gh_pubkey_on_repo() {
     key_line="$(awk '{print $1" "$2}' "$pub_file")"
     "${gh_cmd[@]}" api "repos/${repo}/keys" --jq '.[].key' 2>/dev/null \
         | grep -qF "$key_line"
+}
+
+# Description: Delete deploy keys on a repo that use the NDS title (stale installs).
+# Arguments:
+# - repo:  <String> owner/repo
+# - title: <String> Deploy key title to remove
+_nds_git_gh_remove_deploy_keys_by_title() {
+    local repo="$1" title="$2"
+    local id
+    local -a gh_cmd=()
+
+    _nds_git_gh_cmd gh_cmd || return 1
+    while IFS= read -r id; do
+        [[ -n "$id" ]] || continue
+        if "${gh_cmd[@]}" repo deploy-key delete "$id" -R "$repo" 2>/dev/null; then
+            info "Removed stale deploy key on ${repo} (${title})"
+            nds_install_log "git: removed deploy key ${title} on ${repo}"
+        fi
+    done < <("${gh_cmd[@]}" repo deploy-key list -R "$repo" --json id,title \
+        --jq ".[] | select(.title==\"${title}\") | .id" 2>/dev/null)
+}
+
+# Description: Delete account SSH keys that use the NDS title (stale installs).
+# Arguments:
+# - title: <String> SSH key title to remove
+_nds_git_gh_remove_user_ssh_keys_by_title() {
+    local title="$1"
+    local id
+    local -a gh_cmd=()
+
+    _nds_git_gh_cmd gh_cmd || return 1
+    while IFS= read -r id; do
+        [[ -n "$id" ]] || continue
+        if "${gh_cmd[@]}" ssh-key delete "$id" 2>/dev/null; then
+            info "Removed stale account SSH key (${title})"
+            nds_install_log "git: removed account SSH key ${title}"
+        fi
+    done < <("${gh_cmd[@]}" ssh-key list --json id,title \
+        --jq ".[] | select(.title==\"${title}\") | .id" 2>/dev/null)
+}
+
+# Description: Register session pubkey on the GitHub account (one key, all private repos).
+# GitHub deploy keys cannot reuse the same pubkey across repos; account SSH keys can.
+# Arguments:
+# - pub_file: <String> Public key path
+# - title:    <String> Key title (nds-<host>)
+# Returns:
+# - <Bool> 0 on success
+_nds_git_gh_user_ssh_key_ensure() {
+    local pub_file="$1" title="$2"
+    local -a gh_cmd=()
+    local err rc
+
+    _nds_git_gh_cmd gh_cmd || return 1
+
+    if _nds_git_gh_pubkey_on_user "$pub_file"; then
+        success "SSH key already on GitHub account (${title})"
+        nds_install_log "git: account SSH key already present"
+        return 0
+    fi
+
+    _nds_git_gh_remove_user_ssh_keys_by_title "$title"
+
+    err=$("${gh_cmd[@]}" ssh-key add "$pub_file" -t "$title" 2>&1) || rc=$?
+    if [[ "${rc:-0}" -eq 0 ]]; then
+        success "SSH key added to GitHub account (${title})"
+        nds_install_log "git: account SSH key added"
+        export NDS_GIT_GH_MANAGED_USER_KEY=1
+        return 0
+    fi
+
+    if _nds_git_gh_pubkey_on_user "$pub_file"; then
+        success "SSH key already on GitHub account (${title})"
+        return 0
+    fi
+
+    warn "Could not add SSH key to GitHub account"
+    nds_ui_i "  ${err}"
+    nds_ui_i "  Check: org SSO authorized for gh, or remove an old key with the same title on github.com/settings/keys."
+    return 1
 }
 
 # Description: Add one deploy key via gh; surface errors and detect already-registered keys.
@@ -134,6 +232,8 @@ _nds_git_gh_deploy_key_add() {
         nds_install_log "git: deploy key already on ${repo}"
         return 0
     fi
+
+    _nds_git_gh_remove_deploy_keys_by_title "$repo" "$title"
 
     # gh default is read-only; only -w/--allow-write grants write access
     err=$("${gh_cmd[@]}" repo deploy-key add "$pub_file" -R "$repo" \
@@ -173,7 +273,7 @@ nds_git_gh_register_deploy_keys() {
     nds_git_key_load "$(nds_git_session_key_path)" || true
 
     if ! "${gh_cmd[@]}" auth status &>/dev/null; then
-        info "GitHub device login (temporary — used only to add deploy keys)"
+        info "GitHub device login (temporary — used only to register SSH access)"
         nds_ui_b "Complete login in the browser, then return here."
         nds_ui_b "If the org uses SSO, authorize the token for CodeAnthem after login."
         nds_ui_b "gh may warn that credentials are stored in plain text — expected on the live ISO."
@@ -181,14 +281,13 @@ nds_git_gh_register_deploy_keys() {
     fi
 
     mapfile -t repos < <(_nds_git_gh_expand_github_repos "${repos[@]}")
-    if [[ ${#repos[@]} -gt 1 ]]; then
-        info "flake.lock: registering deploy key on ${#repos[@]} GitHub repo(s) in one gh session"
-    fi
-
+    info "GitHub: adding one account SSH key for ${#repos[@]} private repo(s) (deploy keys cannot share a pubkey)"
     for repo in "${repos[@]}"; do
         [[ -n "$repo" ]] || continue
-        _nds_git_gh_deploy_key_add "$pub_file" "$repo" "$key_title" || failed=1
+        _nds_git_gh_remove_deploy_keys_by_title "$repo" "$key_title"
     done
+
+    _nds_git_gh_user_ssh_key_ensure "$pub_file" "$key_title" || failed=1
 
     [[ "$failed" -eq 0 ]]
 }
@@ -308,8 +407,8 @@ _nds_git_auth_screen_intro() {
     nds_ui_b "Private flakes need SSH deploy keys. NDS checks every git input"
     nds_ui_b "(your flake URL plus locked inputs in flake.lock)."
     nds_ui_b ""
-    nds_ui_b "One deploy key is used for this session — the same public key must be"
-    nds_ui_b "registered on each private repo below (read-only is enough)."
+    nds_ui_b "One deploy key is used for this session — register it on each private"
+    nds_ui_b "repo (generate/show), or use gh on GitHub (one account SSH key for all)."
     nds_ui_b ""
 }
 
@@ -379,13 +478,13 @@ nds_git_auth_prompt_method() {
     local choice gh_label gh_scope display=""
 
     if [[ ${#gh_repos[@]} -gt 1 ]]; then
-        gh_scope="all ${#gh_repos[@]} listed GitHub repos automatically"
+        gh_scope="your GitHub account (one SSH key for all ${#gh_repos[@]} listed repos)"
     elif [[ ${#gh_repos[@]} -eq 1 ]]; then
-        gh_scope="${gh_repos[0]} + flake.lock inputs automatically"
+        gh_scope="your GitHub account (${gh_repos[0]} + flake.lock inputs)"
     else
-        gh_scope="listed GitHub repos (none here — use generate/show)"
+        gh_scope="your GitHub account (use generate/show if no github.com repos)"
     fi
-    gh_label="GitHub CLI (gh) — browser login once, adds read-only key to ${gh_scope}"
+    gh_label="GitHub CLI (gh) — browser login once, adds read-only SSH key to ${gh_scope}"
 
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
@@ -467,7 +566,7 @@ nds_git_auth_screen_closure() {
     fi
 
     if [[ ${#gh_repos[@]} -gt 0 ]]; then
-        nds_ui_i "gh: browser login once — adds the deploy key to all ${#gh_repos[@]} GitHub repo(s) above."
+        nds_ui_i "gh: browser login once — adds one SSH key to your account for all ${#gh_repos[@]} listed repo(s)."
         nds_ui_b ""
     fi
 
