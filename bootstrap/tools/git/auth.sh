@@ -2,17 +2,37 @@
 # ==================================================================================================
 # NDS - Git SSH auth gate
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-06
-# Description:   Access gates wiring git tools + auth wizard (flow entry points)
+# Date:          Created: 2026-07-05 | Modified: 2026-07-07
+# Description:   Access gates wiring git tools + auth wizard
 # ==================================================================================================
 
-nds_git_access_cleanup() {
+# Description: Clear gh session after successful install.
+nds_git_access_cleanup_success() {
     nds_git_gh_session_cleanup 2>/dev/null || true
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 }
 
+# Description: Legacy alias — prefer nds_git_access_cleanup_success on install success.
+nds_git_access_cleanup() {
+    nds_git_access_cleanup_success
+}
+
+# Description: Exit hook — prompt to clear gh session on abort; never auto-clear on failure.
 hook_exit_cleanup() {
-    nds_git_access_cleanup
+  local exit_code=$?
+
+    if [[ "${NDS_GIT_INSTALL_SUCCEEDED:-}" == "true" ]]; then
+        unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
+        return 0
+    fi
+
+    if nds_git_gh_session_active 2>/dev/null; then
+        if [[ "$exit_code" -ne 0 ]]; then
+            nds_askUserToProceed "Clear gh session on this ISO?" \
+                && nds_git_gh_session_cleanup || true
+        fi
+    fi
+    unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 }
 
 _nds_git_update_repo_url() {
@@ -32,13 +52,13 @@ nds_git_ensure_flake_closure_access() {
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
-    nds_git_auth_try_deploy_key_path || true
+    nds_git_auth_try_import_path || true
     nds_git_auth_try_session_key || true
 
     mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
     [[ ${#urls[@]} -gt 0 ]] || return 0
 
-  NDS_GIT_CLOSURE_URLS="$(printf '%s\n' "${urls[@]}")"
+    NDS_GIT_CLOSURE_URLS="$(printf '%s\n' "${urls[@]}")"
     log "Checking SSH access to ${#urls[@]} flake git input(s)"
 
     while true; do
@@ -93,7 +113,7 @@ nds_git_ensure_access() {
         fi
     fi
 
-    nds_git_auth_try_deploy_key_path || true
+    nds_git_auth_try_import_path || true
     nds_git_auth_try_session_key || true
 
     if nds_git_probe_access "$url"; then
@@ -121,8 +141,8 @@ nds_git_ensure_access() {
             success "Git access confirmed."
             return 0
         fi
-        warn "Still no access — register the git SSH key on GitHub or import a key that already has access."
+        warn "Still no access — register the SSH key on your git host or import a key that already has access."
         nds_ui_i "Session key: $(nds_git_session_pubkey_path 2>/dev/null || echo unknown)"
-        nds_ui_i "Try: gh (account SSH key), show the public key, or remove old keys titled $(nds_git_deploy_key_title 2>/dev/null || echo nds-*) on GitHub."
+        nds_ui_i "Try: gh (GitHub account key), manual registration, or remove old keys titled $(nds_git_ssh_key_title 2>/dev/null || echo nds-*) on GitHub."
     done
 }

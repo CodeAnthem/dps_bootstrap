@@ -65,16 +65,6 @@ nds_git_owner_slug() {
     [[ -n "$slug" ]] && printf '%s\n' "$slug" || printf 'unknown\n'
 }
 
-# Description: Provider-specific URL where a read-only deploy key is added.
-_nds_git_keys_url() {
-    local host="$1" owner="$2" repo="$3"
-    case "$host" in
-        github.com|*.github.com) printf 'https://%s/%s/%s/settings/keys/new\n' "$host" "$owner" "$repo" ;;
-        *gitlab*) printf 'https://%s/%s/%s/-/settings/repository  (Deploy keys)\n' "$host" "$owner" "$repo" ;;
-        *) printf 'add a read-only deploy key for %s/%s on %s\n' "$owner" "$repo" "$host" ;;
-    esac
-}
-
 # Description: Normalize a remote URL to SSH for git operations.
 # Arguments:
 # - url: <String> Git URL

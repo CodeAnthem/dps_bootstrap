@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Git SSH key management
+# NDS - Git SSH key management (logic)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-06
-# Description:   Session SSH key paths, import, generate, load, target install (no config store)
+# Date:          Created: 2026-07-05 | Modified: 2026-07-07
+# Description:   Session SSH key paths, import, generate, load, target install
 # ==================================================================================================
-
-declare -ga NDS_GIT_AUTH_REGISTER_URLS=()
-declare -g NDS_GIT_QR_PREINSTALLED=false
 
 # Description: Active private git SSH key path for this NDS session (persists under /root/.ssh).
 # Returns:
@@ -61,7 +58,7 @@ nds_git_session_pubkey_path() {
 # Description: SSH key title / ssh-keygen comment (owner + flake host when known).
 # Returns:
 # - <String> e.g. nds-codeanthem-control-toolkit
-nds_git_deploy_key_title() {
+nds_git_ssh_key_title() {
     local name="" slug=""
 
     if declare -f nds_configurator_config_get &>/dev/null; then
@@ -87,7 +84,7 @@ nds_git_deploy_key_title() {
 nds_git_key_import() {
     local src="$1" dest="${2:-$(nds_git_session_key_path)}"
 
-    [[ -f "$src" ]] || { error "Deploy key not found: $src"; return 1; }
+    [[ -f "$src" ]] || { error "SSH key not found: $src"; return 1; }
     mkdir -p "$(dirname "$dest")"
     chmod 700 "$(dirname "$dest")"
     cp "$src" "$dest"
@@ -118,7 +115,7 @@ nds_git_key_load() {
 # - <Bool> 0 on success
 nds_git_key_generate() {
     local dest="${1:-$(nds_git_session_key_path)}"
-    local comment="${2:-$(nds_git_deploy_key_title)}"
+    local comment="${2:-$(nds_git_ssh_key_title)}"
 
     mkdir -p "$(dirname "$dest")"
     chmod 700 "$(dirname "$dest")"
@@ -137,151 +134,14 @@ nds_git_key_generate() {
     log "Git SSH key generated (${comment})"
 }
 
-# Description: Resolve qrencode command prefix (host binary or nix shell).
-# Sets nameref array to command prefix.
-nds_git_qr_cmd() {
-    local -n _out=$1
-    if command -v qrencode &>/dev/null; then
-        _out=(qrencode)
-        return 0
-    fi
-    if command -v nix &>/dev/null; then
-        _out=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#qrencode -c qrencode)
-        return 0
-    fi
-    _out=()
-    return 1
-}
-
-# Description: Download qrencode once per session (after user chose QR display).
-# Returns:
-# - 0 when qrencode is available or already prefetched
-nds_git_qr_preinstall() {
-    local -a qr_cmd=()
-
-    [[ "${NDS_GIT_QR_PREINSTALLED}" == "true" ]] && return 0
-    if command -v qrencode &>/dev/null; then
-        NDS_GIT_QR_PREINSTALLED=true
-        return 0
-    fi
-    nds_git_qr_cmd qr_cmd || return 1
-    info "Installing qrencode for QR display (one-time download)..."
-    if "${qr_cmd[@]}" --version >/dev/null 2>&1; then
-        NDS_GIT_QR_PREINSTALLED=true
-        success "qrencode ready"
-        return 0
-    fi
-    warn "Could not install qrencode — use printed copy instead"
-    return 1
-}
-
-# Description: Print the public deploy key to the console.
-# Arguments:
-# - pub_path: <String|optional> Public key path
-# Returns:
-# - <Bool> 0 when key exists
-nds_git_key_show_pubkey() {
-    local pub_path="${1:-$(nds_git_session_pubkey_path)}"
-    [[ -f "$pub_path" ]] || return 1
-    nds_ui_b ""
-    nds_ui_h "Deploy public key ($(nds_git_deploy_key_title)):"
-    nds_ui_b ""
-    console "$(cat "$pub_path")"
-    nds_ui_b ""
-    return 0
-}
-
-# Description: Run qrencode with a terminal output format (internal).
-_nds_git_qr_try_format() {
-    local fmt="$1" payload="$2"
-    shift 2
-    local -a qr_cmd=("$@")
-    "${qr_cmd[@]}" -t "$fmt" <<< "$payload" 2>/dev/null
-}
-
-# Description: Render one QR code for arbitrary text.
-# Arguments:
-# - label:   <String> Heading above the QR
-# - payload: <String> Text to encode
-# Returns:
-# - 0 when rendered or qrencode missing (non-fatal)
-nds_git_key_show_qr_payload() {
-    local label="$1" payload="$2"
-    local fmt
-    local -a qr_cmd=()
-
-    [[ -n "$payload" ]] || return 0
-    if ! nds_git_qr_cmd qr_cmd; then
-        nds_ui_i "qrencode not available — copy the printed text instead"
-        return 0
-    fi
-
-    nds_ui_b ""
-    nds_ui_h "$label"
-    nds_ui_b ""
-
-    for fmt in ANSIUTF8 ANSI UTF8; do
-        if _nds_git_qr_try_format "$fmt" "$payload" "${qr_cmd[@]}"; then
-            nds_ui_b ""
-            return 0
-        fi
-    done
-
-    debug "qrencode failed for all terminal formats (TERM=${TERM:-unset})"
-    nds_ui_i "QR render failed for: ${label}"
-    nds_ui_b ""
-    return 0
-}
-
-# Description: Show deploy-key page URL QR(s) and public-key QR.
-# Arguments:
-# - pub_path: <String|optional> Public key path
-nds_git_key_show_qr_bundle() {
-    local pub_path="${1:-$(nds_git_session_pubkey_path)}"
-    local pub url
-
-    [[ -f "$pub_path" ]] || return 1
-    pub="$(tr -d '\n' < "$pub_path")"
-
-    nds_ui_b ""
-    nds_ui_i "Scan with your phone — open the page URL in a browser, paste the public key."
-    nds_ui_b ""
-
-    for url in "${NDS_GIT_AUTH_REGISTER_URLS[@]}"; do
-        [[ "$url" == http* ]] || continue
-        nds_git_key_show_qr_payload "Deploy-keys page" "$url"
-        nds_ui_i "$url"
-        nds_ui_b ""
-    done
-
-    nds_git_key_show_qr_payload "Public key (paste on deploy-keys page)" "$pub"
-    return 0
-}
-
-# Description: Show deploy public key as printed text and optionally QR bundle.
-# Arguments:
-# - display:  <String> "copy" or "qr"
-# - pub_path: <String|optional> Public key path
-nds_git_key_show_deploy_pubkey() {
-    local display="${1:-copy}"
-    local pub_path="${2:-$(nds_git_session_pubkey_path)}"
-
-    nds_git_key_show_pubkey "$pub_path" || return 1
-    if [[ "$display" == "qr" ]]; then
-        nds_git_key_show_qr_bundle "$pub_path" || true
-    fi
-    return 0
-}
-
 # Description: Install session git SSH private key onto the target root under /mnt.
-# Not included in the install backup zip.
 # Arguments:
 # - key_path:   <String|optional> Source private key
 # - mount_root: <String|optional> Target mount (default /mnt)
-# - dest_rel:   <String|optional> Path relative to mount (default etc/nixos/secrets/git-<owner>-key)
+# - dest_rel:   <String|optional> Path relative to mount
 # Returns:
-# - <Bool> 0 on success or when skipped (no key / no mount)
-nds_git_install_deploy_key_to_target() {
+# - <Bool> 0 on success or when skipped
+nds_git_install_key_to_target() {
     local key_path="${1:-$(nds_git_session_key_path)}"
     local mount_root="${2:-/mnt}"
     local dest_rel="${3:-$(nds_git_target_key_rel)}"
@@ -320,11 +180,11 @@ nds_git_auth_try_session_key() {
     return 0
 }
 
-# Description: Try loading a pre-set NDS_DEPLOY_KEY_PATH before interactive auth.
+# Description: Try loading NDS_GIT_IMPORT_KEY_PATH before interactive auth.
 # Returns:
 # - <Bool> 0 when key was imported and loaded
-nds_git_auth_try_deploy_key_path() {
-    local path="${NDS_DEPLOY_KEY_PATH:-}"
+nds_git_auth_try_import_path() {
+    local path="${NDS_GIT_IMPORT_KEY_PATH:-${NDS_DEPLOY_KEY_PATH:-}}"
     local dest
     [[ -n "$path" && -f "$path" ]] || return 1
     dest="$(nds_git_session_key_path)"
@@ -333,6 +193,11 @@ nds_git_auth_try_deploy_key_path() {
     else
         nds_git_key_import "$path" "$dest" || return 1
     fi
-    debug "Loaded deploy key from NDS_DEPLOY_KEY_PATH"
+    debug "Loaded SSH key from import path"
     return 0
 }
+
+# Compatibility aliases (deprecated names).
+nds_git_deploy_key_title() { nds_git_ssh_key_title; }
+nds_git_install_deploy_key_to_target() { nds_git_install_key_to_target "$@"; }
+nds_git_auth_try_deploy_key_path() { nds_git_auth_try_import_path; }

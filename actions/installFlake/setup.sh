@@ -53,8 +53,9 @@ action_setup() {
 
     section_header "NixOS installation"
     nds_install_log "installFlake: action starting (mode=${install_mode})"
-    nds_nixos_install_flake || { nds_git_access_cleanup; exit 15; }
-    nds_git_access_cleanup
+    nds_nixos_install_flake || exit 15
+    export NDS_GIT_INSTALL_SUCCEEDED=true
+    nds_git_access_cleanup_success
 
     if [[ "$install_mode" == "remote" ]]; then
         nds_install_remote_finish || exit 16

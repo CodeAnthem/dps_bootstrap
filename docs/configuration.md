@@ -24,10 +24,11 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `NDS_PREFLIGHT_WARN_SKIP` | Auto-continue past preflight warnings (`true`) |
 | `NDS_PROMPTS_SKIP` | Skip generic Y/n prompts (`nds_askUser*`) (`true`) |
 | `NDS_TEST` | Enable the test action in the action menu (`true`) |
-| `NDS_DEPLOY_KEY_PATH` | Path to a private deploy key to import before git auth (USB/scp) |
-| `NDS_GIT_DEPLOY_KEY_USE_QR` | Skip QR prompt — `true` or `false` |
-| `NDS_GIT_DEPLOY_KEY_DISPLAY` | Alias: `qr` or `copy` (same as USE_QR) |
-| `NDS_GIT_SESSION_KEY_PATH` | Session private key path (default `/root/.ssh/id_ed25519`) |
+| `NDS_GIT_IMPORT_KEY_PATH` | Path to a private SSH key to import before git auth (USB/scp) |
+| `NDS_DEPLOY_KEY_PATH` | Deprecated alias for `NDS_GIT_IMPORT_KEY_PATH` |
+| `NDS_GIT_SSH_KEY_USE_QR` | Skip QR prompt on manual path — `true` or `false` |
+| `NDS_GIT_SSH_KEY_DISPLAY` | Manual display mode: `qr` or `copy` |
+| `NDS_GIT_SESSION_KEY_PATH` | Session private key path (default `/root/.ssh/git-<owner>-key`) |
 
 ## CLI flags
 
@@ -167,11 +168,11 @@ export NDS_ACTION=installFlake
 export NDS_FLAKE_REPO_URL="git@github.com:ORG/dps_swarm.git"
 export NDS_FLAKE_HOST="worker-01"
 export NDS_DISK_TARGET="/dev/nvme0n1"
-export NDS_DEPLOY_KEY_PATH="/tmp/nds-deploy-key"
+export NDS_GIT_IMPORT_KEY_PATH="/tmp/nds-ssh-key"
 # Flip individual SKIP flags to true, or use --auto-confirm for all:
 export NDS_SKIP_MENU="false"
 export NDS_INSTALL_CONFIRM_SKIP="false"
-export NDS_GIT_DEPLOY_KEY_USE_QR=true
+export NDS_GIT_SSH_KEY_USE_QR=true
 sudo -E bash bootstrap/main.sh --auto-confirm
 ```
 
@@ -184,10 +185,10 @@ Set `NDS_ACTION` and any `NDS_*_SKIP=true` you need before re-running.
 On your laptop (with `gh` authenticated):
 
 ```bash
-./scripts/operator/prepare-install-kit.sh worker-01 ORG/dps_swarm ORG/thundercast ORG/thundercore
+./scripts/operator/prepare-install-kit.sh worker-01
 ```
 
-Copy `deploy_key` to the live ISO and set `NDS_DEPLOY_KEY_PATH` as above.
+Copy `ssh_key` to the live ISO and set `NDS_GIT_IMPORT_KEY_PATH` as above.
 
 ## Git auth wizard (interactive)
 
@@ -195,11 +196,9 @@ When SSH access fails, NDS offers:
 
 | Option | Action |
 |--------|--------|
-| **import** | Load key from USB/path (`NDS_DEPLOY_KEY_PATH` or prompt) |
-| **generate** | Create ed25519 key + show QR/public key |
-| **gh** | GitHub device login → account SSH key on GitHub (kept) → gh token cleared from live ISO |
-| **show** | Display existing public key |
+| **import** | Scan cwd and `/root/.ssh`, or load key from path |
+| **new** | Generate key — gh auto-add (GitHub only) or manual account registration |
 | **retry** | Re-check `git ls-remote` |
 | **skip** | Continue (install may fail) |
 
-Same key must be registered on the root flake repo **and** every private locked input in `flake.lock`.
+Non-GitHub hosts skip gh and go straight to manual registration. QR codes are offered only on the manual path. The gh session is cleared after a successful install; on abort you may choose to clear it.

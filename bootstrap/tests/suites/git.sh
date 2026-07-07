@@ -2,11 +2,11 @@
 # ==================================================================================================
 # NDS - Git tools tests (read-only / temp dirs)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-05
+# Date:          Created: 2026-07-05 | Modified: 2026-07-07
 # ==================================================================================================
 
 suite_git() {
-    local parsed host owner repo urls tmpdir key_src dest out perms repos
+    local parsed host owner repo urls tmpdir key_src dest out perms repos register_url
 
     parsed=$(_nds_git_parse "https://github.com/CodeAnthem/dps_swarm.git")
     IFS=$'\t' read -r host owner repo <<< "$parsed"
@@ -49,7 +49,7 @@ suite_git() {
     fi
     rm -rf "$tmpdir"
 
-    repos=$(_nds_git_urls_to_github_repos \
+    repos=$(nds_git_urls_to_github_repos \
         "git@github.com:org/a.git" "git@gitlab.com:other/b.git")
     if [[ "$(wc -l <<<"$repos")" -eq 1 ]] && grep -q 'org/a' <<<"$repos"; then
         TEST_PASSED=$((TEST_PASSED + 1))
@@ -59,13 +59,38 @@ suite_git() {
         console "  ✗ gh repo list: expected single github repo"
     fi
 
-    if declare -f nds_git_auth_prompt_method &>/dev/null \
-        && declare -f nds_git_auth_screen_single &>/dev/null; then
+    if nds_git_urls_all_github "git@github.com:org/a.git" "git@github.com:org/b.git"; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ git auth wizard: prompt and screen functions loaded"
+        console "  ✓ urls_all_github: true for github hosts"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ git auth wizard: prompt/screen functions missing"
+        console "  ✗ urls_all_github: expected true for github hosts"
+    fi
+
+    if ! nds_git_urls_all_github "git@github.com:org/a.git" "git@gitlab.com:other/b.git"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ urls_all_github: false when mixed hosts"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ urls_all_github: expected false for mixed hosts"
+    fi
+
+    register_url="$(nds_git_account_ssh_register_url "github.com")"
+    if [[ "$register_url" == "https://github.com/settings/ssh/new" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ account_ssh_register_url: GitHub account keys page"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ account_ssh_register_url: expected github.com/settings/ssh/new"
+    fi
+
+    if declare -f nds_git_wizard_route_menu &>/dev/null \
+        && declare -f nds_git_wizard_screen_single &>/dev/null; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ git wizard: flow and screen functions loaded"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ git wizard: flow/screen functions missing"
     fi
 
     CONFIG_DATA[FLAKE_HOST]="control-toolkit"
@@ -84,40 +109,40 @@ suite_git() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ secrets_basename: expected git-codeanthem-key"
     fi
-    if [[ "$(nds_git_deploy_key_title)" == "nds-codeanthem-control-toolkit" ]]; then
+    if [[ "$(nds_git_ssh_key_title)" == "nds-codeanthem-control-toolkit" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ deploy_key_title: owner + FLAKE_HOST"
+        console "  ✓ ssh_key_title: owner + FLAKE_HOST"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ deploy_key_title: expected nds-codeanthem-control-toolkit"
+        console "  ✗ ssh_key_title: expected nds-codeanthem-control-toolkit"
     fi
 
-    if declare -f nds_git_auth_resolve_key_display &>/dev/null; then
-        export NDS_GIT_DEPLOY_KEY_USE_QR=true
-        if [[ "$(nds_git_auth_resolve_key_display)" == "qr" ]]; then
+    if declare -f nds_git_wizard_resolve_key_display &>/dev/null; then
+        export NDS_GIT_SSH_KEY_USE_QR=true
+        if [[ "$(nds_git_wizard_resolve_key_display)" == "qr" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ resolve_key_display: NDS_GIT_DEPLOY_KEY_USE_QR=true"
+            console "  ✓ resolve_key_display: NDS_GIT_SSH_KEY_USE_QR=true"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ resolve_key_display: expected qr from env"
         fi
-        unset NDS_GIT_DEPLOY_KEY_USE_QR
+        unset NDS_GIT_SSH_KEY_USE_QR
     fi
 
     tmpdir=$(mktemp -d)
     key_src="${tmpdir}/source_key"
     dest="${tmpdir}/session/id_ed25519"
     ssh-keygen -t ed25519 -N "" -f "$key_src" -C test >/dev/null 2>&1
-    export NDS_DEPLOY_KEY_PATH="$key_src"
+    export NDS_GIT_IMPORT_KEY_PATH="$key_src"
     export NDS_GIT_SESSION_KEY_PATH="$dest"
-    if nds_git_auth_try_deploy_key_path && [[ -f "$dest" ]]; then
+    if nds_git_auth_try_import_path && [[ -f "$dest" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ deploy key import via NDS_DEPLOY_KEY_PATH"
+        console "  ✓ SSH key import via NDS_GIT_IMPORT_KEY_PATH"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ deploy key import via NDS_DEPLOY_KEY_PATH"
+        console "  ✗ SSH key import via NDS_GIT_IMPORT_KEY_PATH"
     fi
-    unset NDS_DEPLOY_KEY_PATH NDS_GIT_SESSION_KEY_PATH
+    unset NDS_GIT_IMPORT_KEY_PATH NDS_GIT_SESSION_KEY_PATH
 
     export NDS_GIT_SESSION_KEY_PATH="${tmpdir}/gen_key"
     if nds_git_key_generate "$NDS_GIT_SESSION_KEY_PATH" "test-gen" \
@@ -139,20 +164,38 @@ suite_git() {
 
     mkdir -p "${tmpdir}/mnt/etc/nixos/secrets"
     target_rel="$(nds_git_target_key_rel)"
-    if nds_git_install_deploy_key_to_target "$NDS_GIT_SESSION_KEY_PATH" "${tmpdir}/mnt" \
+    if nds_git_install_key_to_target "$NDS_GIT_SESSION_KEY_PATH" "${tmpdir}/mnt" \
         && [[ -f "${tmpdir}/mnt/${target_rel}" ]]; then
         perms=$(stat -c '%a' "${tmpdir}/mnt/${target_rel}" 2>/dev/null || echo "")
         if [[ "$perms" == "600" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ deploy key installed on target (mode 600)"
+            console "  ✓ SSH key installed on target (mode 600)"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
-            console "  ✗ deploy key target permissions (got ${perms})"
+            console "  ✗ SSH key target permissions (got ${perms})"
         fi
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ deploy key install on target"
+        console "  ✗ SSH key install on target"
     fi
+
+    if declare -f nds_git_discover_key_candidates &>/dev/null; then
+        cp "$key_src" "${tmpdir}/id_ed25519_test"
+        (
+            cd "$tmpdir" || exit 1
+            if nds_git_discover_key_candidates | grep -q 'id_ed25519_test'; then
+                exit 0
+            fi
+            exit 1
+        ) && {
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ discover_key_candidates: scans cwd"
+        } || {
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ discover_key_candidates: cwd scan"
+        }
+    fi
+
     unset NDS_GIT_SESSION_KEY_PATH
     rm -rf "$tmpdir"
 }

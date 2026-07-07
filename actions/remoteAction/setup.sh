@@ -109,9 +109,10 @@ action_setup() {
         fi
     else
         nds_install_log "remoteAction: fallback to flake install"
-        nds_nixos_install_flake || { nds_git_access_cleanup; exit 15; }
+        nds_nixos_install_flake || exit 15
     fi
 
-    nds_git_access_cleanup
+    export NDS_GIT_INSTALL_SUCCEEDED=true
+    nds_git_access_cleanup_success
     nds_install_finish || exit 16
 }
