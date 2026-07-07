@@ -18,9 +18,7 @@ nds_git_wizard_ask_register_method() {
     fi
 
     if ! nds_git_gh_available 2>/dev/null; then
-        if ! command -v gh &>/dev/null; then
-            nds_git_gh_prefetch 2>/dev/null || true
-        fi
+        nds_git_gh_ensure_prefetch 2>/dev/null || true
     fi
     if ! nds_git_gh_available 2>/dev/null; then
         printf 'manual\n'

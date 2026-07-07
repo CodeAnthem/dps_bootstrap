@@ -43,6 +43,7 @@ _nds_git_wizard_gh_auth_login() {
         nds_ui_i "You can also choose manual registration from the menu."
         return 1
     fi
+    nds_git_gh_session_mark_active
     return 0
 }
 
@@ -78,12 +79,10 @@ nds_git_wizard_gh_ensure_auth() {
 # Returns:
 # - <Bool> 0 on success
 nds_git_wizard_gh_prepare() {
-    if ! command -v gh &>/dev/null; then
-        nds_git_gh_prefetch || {
-            error "Could not install gh CLI"
-            return 1
-        }
-    fi
+    nds_git_gh_ensure_prefetch || {
+        error "Could not install gh CLI"
+        return 1
+    }
     if ! nds_git_gh_session_active 2>/dev/null; then
         section_header "GitHub CLI login"
     fi

@@ -35,9 +35,15 @@ nds_git_gh_cmd() {
 
 # Description: True when gh is logged in to github.com.
 nds_git_gh_session_active() {
+    [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]] && return 0
     local -a gh_cmd=()
     nds_git_gh_cmd gh_cmd || return 1
-    "${gh_cmd[@]}" auth status &>/dev/null
+    if "${gh_cmd[@]}" auth status &>/dev/null; then
+        NDS_GIT_GH_SESSION_ACTIVE=true
+        export NDS_GIT_GH_SESSION_ACTIVE
+        return 0
+    fi
+    return 1
 }
 
 # Description: True when token has admin:public_key scope.
@@ -51,6 +57,7 @@ nds_git_gh_has_key_scope() {
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
 
+    unset NDS_GIT_GH_SESSION_ACTIVE 2>/dev/null || true
     nds_git_gh_cmd gh_cmd || return 0
     if "${gh_cmd[@]}" auth status &>/dev/null; then
         "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
@@ -64,41 +71,85 @@ nds_git_gh_available() {
     nds_git_gh_cmd gh_cmd
 }
 
+# Description: Cache gh binary path from nix after build or shell probe.
+# Arguments:
+# - out_path: <String> nix store path for nixpkgs#gh (optional)
+# Returns:
+# - <Bool> 0 when NDS_GIT_GH_BIN is set
+_nds_git_gh_cache_bin_from_nix() {
+    local out_path="${1:-}"
+    local gh_path
+
+    if [[ -n "$out_path" && -x "${out_path}/bin/gh" ]]; then
+        NDS_GIT_GH_BIN="${out_path}/bin/gh"
+        export NDS_GIT_GH_BIN
+        return 0
+    fi
+    gh_path=$(_nds_git_gh_nix shell nixpkgs#gh -c command -v gh 2>/dev/null) || gh_path=""
+    if [[ -n "$gh_path" && -x "$gh_path" ]]; then
+        NDS_GIT_GH_BIN="$gh_path"
+        export NDS_GIT_GH_BIN
+        return 0
+    fi
+    return 1
+}
+
 # Description: Build gh via nix once and cache the binary path (avoids nix shell per call).
 # Returns:
 # - <Bool> 0 when gh can be invoked after prefetch
 nds_git_gh_prefetch() {
     if command -v gh &>/dev/null; then
+        NDS_GIT_GH_PREFETCH_DONE=true
+        export NDS_GIT_GH_PREFETCH_DONE
         return 0
     fi
     if ! command -v nix &>/dev/null; then
         return 1
     fi
-    if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+    if [[ "${NDS_GIT_GH_PREFETCH_DONE:-}" == "true" ]]; then
         return 0
     fi
-    local out_path err
+    if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+        NDS_GIT_GH_PREFETCH_DONE=true
+        export NDS_GIT_GH_PREFETCH_DONE
+        return 0
+    fi
+    local out_path build_out logfile="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
     if declare -f step_start &>/dev/null; then
         step_start "Downloading GitHub CLI (gh)"
     else
         info "Downloading GitHub CLI (gh) — one-time download..."
     fi
-    err=$(_nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || true
-    out_path=$(printf '%s\n' "$err" | tail -1)
-    if [[ -n "$out_path" && -x "${out_path}/bin/gh" ]]; then
+    build_out=$(_nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || true
+    {
+        printf '\n=== Downloading GitHub CLI (gh) ===\n'
+        printf '%s\n' "$build_out"
+    } >>"$logfile"
+    out_path=$(printf '%s\n' "$build_out" | tail -1)
+    if _nds_git_gh_cache_bin_from_nix "$out_path"; then
         declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
-        NDS_GIT_GH_BIN="${out_path}/bin/gh"
-        export NDS_GIT_GH_BIN
-        return 0
-    fi
-    if _nds_git_gh_nix shell nixpkgs#gh -c gh --version &>/dev/null; then
-        declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
-        debug "gh via nix shell (build cache unavailable): ${err}"
+        NDS_GIT_GH_PREFETCH_DONE=true
+        export NDS_GIT_GH_PREFETCH_DONE
+        nds_install_log "git: gh CLI ready (${NDS_GIT_GH_BIN})"
         return 0
     fi
     declare -f step_fail &>/dev/null && step_fail "Downloading GitHub CLI (gh)"
-    debug "gh prefetch failed: ${err}"
+    debug "gh prefetch failed"
     return 1
+}
+
+# Description: Ensure gh is on PATH or cached (idempotent).
+# Returns:
+# - <Bool> 0 when gh can be invoked
+nds_git_gh_ensure_prefetch() {
+    nds_git_gh_available 2>/dev/null && return 0
+    nds_git_gh_prefetch
+}
+
+# Description: Mark gh session active after successful device login.
+nds_git_gh_session_mark_active() {
+    NDS_GIT_GH_SESSION_ACTIVE=true
+    export NDS_GIT_GH_SESSION_ACTIVE
 }
 
 # Description: Clear env tokens that block interactive gh login.

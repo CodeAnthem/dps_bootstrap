@@ -23,7 +23,7 @@ hook_exit_cleanup() {
         return 0
     fi
 
-    if nds_git_gh_session_active 2>/dev/null; then
+    if [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
         if [[ "$exit_code" -ne 0 ]]; then
             nds_askUserToProceed "Clear gh session on this ISO?" \
                 && nds_git_gh_session_cleanup || true

@@ -2,14 +2,14 @@
 # ==================================================================================================
 # NDS - Runtime directory and install logging
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-30
+# Date:          Created: 2026-06-29 | Modified: 2026-07-07
 # Description:   Central runtime dir and persistent install log
 # ==================================================================================================
 
 readonly NDS_INSTALL_LOG="/tmp/nds_session.log"
-# Verbose nix install output (nixos-install, partitioning, step exec). Kept
-# alongside the session log so all log paths live in one place.
-readonly NDS_INSTALL_DETAIL_LOG="/tmp/nds_install.log"
+# Verbose nix install output (nixos-install, partitioning, step exec). Per-session
+# path is set in nds_runtime_init; this default is only used before init.
+NDS_INSTALL_DETAIL_LOG="/tmp/nds_install.log"
 
 # Setup runtime directory for config/secrets scratch space.
 # Usage: nds_runtime_init
@@ -24,6 +24,8 @@ nds_runtime_init() {
 
     export RUNTIME_DIR
     export NDS_RUNTIME_DIR="$RUNTIME_DIR"
+    export NDS_INSTALL_DETAIL_LOG="${RUNTIME_DIR}/install.log"
+    : >"$NDS_INSTALL_DETAIL_LOG"
     return 0
 }
 
