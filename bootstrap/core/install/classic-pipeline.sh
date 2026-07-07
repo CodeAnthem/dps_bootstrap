@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Classic install pipeline
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-07-07
 # ==================================================================================================
 
 # Description: Full classic NixOS install (disk prep + nixos-install).
@@ -25,7 +25,8 @@ nds_nixos_install() {
 
     nds_step_exec "Installing configuration files" _nixinstall_install_configs || return 1
     nds_step_exec "Installing NixOS" _nixinstall_install_nixos || return 1
-    nds_step_exec "Registering EFI boot entry" _nixinstall_register_efi_entry "$NDS_CTX_DISK" || true
+    nds_step_exec "Registering EFI boot entry" _nixinstall_register_efi_entry "$NDS_CTX_DISK" || return 1
+    nds_step_exec "Verifying installation" nds_install_verify_local || return 1
 
     nds_install_log "classicInstall: completed"
     return 0

@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# ==================================================================================================
+# NDS - Post-install verification
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Description:   Verify partition mounts, hardware artifacts, bootloader, and system profile
+# ==================================================================================================
+
+declare -ga _NDS_INSTALL_VERIFY_FAILS=()
+
+# Description: Record a failed verification check.
+# Arguments:
+# - message: <String> Human-readable failure description
+_nds_install_verify_fail() {
+    _NDS_INSTALL_VERIFY_FAILS+=("$1")
+}
+
+# Description: Verify GRUB is installed for BIOS/GPT layouts.
+# Arguments:
+# - disk: <String> Target block device
+# Returns:
+# - <Bool> 0 when GRUB boot code is present
+_nds_install_verify_grub_bios() {
+    local disk="$1"
+
+    [[ -f /mnt/boot/grub/grub.cfg ]] || return 1
+    dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB
+}
+
+# Description: Verify UEFI bootloader files exist on the ESP.
+# Arguments:
+# - loader: <String> grub | systemd-boot | refind
+# Returns:
+# - <Bool> 0 when the expected EFI binary is present
+_nds_install_verify_efi_files() {
+    local loader="$1"
+
+    case "$loader" in
+        grub)
+            local f
+            for f in /mnt/boot/EFI/*/grub*.efi \
+                /mnt/boot/EFI/nixos/grubx64.efi \
+                /mnt/boot/EFI/BOOT/BOOTX64.EFI; do
+                [[ -f "$f" ]] && return 0
+            done
+            return 1
+            ;;
+        refind)
+            [[ -f /mnt/boot/EFI/refind/refind_x64.efi ]]
+            ;;
+        systemd-boot|*)
+            [[ -f /mnt/boot/EFI/systemd/systemd-bootx64.efi ]]
+            ;;
+    esac
+}
+
+# Description: Verify bootloader artifacts match the configured preset.
+# Arguments:
+# - loader: <String> Bootloader id
+# - uefi:   <String> true | false
+# - disk:   <String> Target block device
+_nds_install_verify_bootloader() {
+    local loader="$1"
+    local uefi="$2"
+    local disk="$3"
+
+    case "$loader" in
+        systemd-boot)
+            if [[ "$uefi" != "true" ]]; then
+                _nds_install_verify_fail "systemd-boot requires UEFI mode"
+                return 0
+            fi
+            _nds_install_verify_efi_files systemd-boot \
+                || _nds_install_verify_fail "systemd-boot EFI binary missing on /mnt/boot"
+            ;;
+        refind)
+            if [[ "$uefi" != "true" ]]; then
+                _nds_install_verify_fail "rEFInd requires UEFI mode"
+                return 0
+            fi
+            _nds_install_verify_efi_files refind \
+                || _nds_install_verify_fail "rEFInd EFI binary missing on /mnt/boot"
+            ;;
+        grub|*)
+            if [[ "$uefi" == "true" ]]; then
+                _nds_install_verify_efi_files grub \
+                    || _nds_install_verify_fail "GRUB EFI binary missing on /mnt/boot"
+            else
+                _nds_install_verify_grub_bios "$disk" \
+                    || _nds_install_verify_fail "GRUB BIOS install missing (grub.cfg or ${disk} boot code)"
+            fi
+            ;;
+    esac
+}
+
+# Description: Verify hardware artifact for flake installs.
+# Arguments:
+# - hostname: <String> Flake host name
+_nds_install_verify_flake_hardware() {
+    local hostname="$1"
+    local hw_artifact host_dir_rel host_dir dest flake_root
+
+    _nixinstall_gather_flake_context
+    [[ "$NDS_CTX_HW_PLACEMENT" != "skip" ]] || return 0
+
+    hw_artifact=$(_nixinstall_hardware_artifact_name)
+    host_dir_rel="$NDS_CTX_FLAKE_HOST_DIR"
+    [[ -z "$host_dir_rel" ]] && host_dir_rel="hosts/x86_64-linux"
+    flake_root="${NDS_FLAKE_ROOT:-$NDS_CTX_FLAKE_INSTALL_PATH}"
+
+    case "$NDS_CTX_HW_PLACEMENT" in
+        etc-nixos)
+            dest="/mnt/etc/nixos/${hw_artifact}"
+            ;;
+        host-dir|*)
+            dest="${flake_root}/${host_dir_rel}/${hostname}/${hw_artifact}"
+            ;;
+    esac
+
+    if [[ ! -s "$dest" ]]; then
+        _nds_install_verify_fail "Hardware artifact missing: ${dest}"
+    fi
+
+    host_dir="${flake_root}/${host_dir_rel}/${hostname}"
+    if [[ ! -f "${host_dir}/nds-boot.nix" ]]; then
+        _nds_install_verify_fail "Boot module missing: ${host_dir}/nds-boot.nix"
+    fi
+}
+
+# Description: Verify classic-install hardware artifact on the target.
+_nds_install_verify_classic_hardware() {
+    local hw_artifact dest
+
+    hw_artifact=$(_nixinstall_hardware_artifact_name)
+    dest="/mnt/etc/nixos/${hw_artifact}"
+    [[ -s "$dest" ]] || _nds_install_verify_fail "Hardware artifact missing: ${dest}"
+}
+
+# Description: Verify optional git SSH key was installed when a session key exists.
+_nds_install_verify_git_key() {
+    local key_path dest_rel dest
+
+    key_path=$(nds_git_session_key_path 2>/dev/null || true)
+    [[ -f "$key_path" ]] || return 0
+
+    dest_rel=$(nds_git_target_key_rel 2>/dev/null || true)
+    [[ -n "$dest_rel" ]] || return 0
+
+    dest="/mnt/${dest_rel}"
+    [[ -f "$dest" ]] || _nds_install_verify_fail "Git SSH key missing on target: ${dest}"
+}
+
+# Description: Verify sops age key on target when the flake uses sops.
+# Arguments:
+# - flake_root: <String> Flake checkout path on the target
+_nds_install_verify_sops() {
+    local flake_root="$1"
+
+    [[ -n "$flake_root" && -f "${flake_root}/.sops.yaml" ]] || return 0
+    [[ -s /mnt/etc/sops/age/keys.txt ]] \
+        || _nds_install_verify_fail "sops age key missing on target (.sops.yaml in flake)"
+}
+
+# Description: Verify a local install is bootable before bundle/reboot.
+# Checks mounts, system profile, hardware artifacts, bootloader, and optional secrets.
+# Returns:
+# - <Bool> 0 when all checks pass
+nds_install_verify_local() {
+    local disk loader uefi encryption hostname action flake_root
+
+    _NDS_INSTALL_VERIFY_FAILS=()
+    _nixinstall_gather_context
+
+    disk="$NDS_CTX_DISK"
+    loader=$(nds_config_get "boot" "BOOT_LOADER")
+    loader="${loader:-grub}"
+    uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE")
+    encryption="$NDS_CTX_ENCRYPTION"
+    action="${NDS_CURRENT_ACTION:-}"
+    hostname="$NDS_CTX_HOSTNAME"
+    flake_root="${NDS_FLAKE_ROOT:-}"
+
+    log "Verifying installation (${loader}, $([[ "$uefi" == "true" ]] && echo UEFI || echo BIOS))"
+
+    mountpoint -q /mnt \
+        || _nds_install_verify_fail "Target root is not mounted at /mnt"
+
+    [[ -e /mnt/nix/var/nix/profiles/system ]] \
+        || _nds_install_verify_fail "NixOS system profile missing — nixos-install did not complete"
+
+    if [[ "$encryption" == "true" ]]; then
+        [[ -e /dev/mapper/cryptroot ]] \
+            || _nds_install_verify_fail "Encrypted root device /dev/mapper/cryptroot is not available"
+    else
+        [[ -d /mnt/nix/store ]] \
+            || _nds_install_verify_fail "Nix store missing on installed system (/mnt/nix/store)"
+    fi
+
+    mountpoint -q /mnt/boot \
+        || _nds_install_verify_fail "Boot partition is not mounted at /mnt/boot"
+
+    case "$action" in
+        installFlake)
+            _nixinstall_gather_flake_context
+            flake_root="${flake_root:-$NDS_CTX_FLAKE_INSTALL_PATH}"
+            _nds_install_verify_flake_hardware "$hostname"
+            _nds_install_verify_sops "$flake_root"
+            ;;
+        *)
+            _nds_install_verify_classic_hardware
+            ;;
+    esac
+
+    _nds_install_verify_bootloader "$loader" "$uefi" "$disk"
+    _nds_install_verify_git_key
+
+    if [[ ${#_NDS_INSTALL_VERIFY_FAILS[@]} -gt 0 ]]; then
+        error "Installation verification failed (${#_NDS_INSTALL_VERIFY_FAILS[@]} issue(s)):"
+        local issue
+        for issue in "${_NDS_INSTALL_VERIFY_FAILS[@]}"; do
+            error "  - ${issue}"
+        done
+        nds_install_log "verify: FAILED (${#_NDS_INSTALL_VERIFY_FAILS[@]} checks)"
+        return 1
+    fi
+
+    success "Installation verification passed"
+    nds_install_log "verify: all checks passed"
+    return 0
+}

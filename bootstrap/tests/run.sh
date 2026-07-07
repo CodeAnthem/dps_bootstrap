@@ -39,6 +39,8 @@ source "${TEST_ROOT}/suites/nixWriter.sh"
 
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/skip.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/install.sh"
 
 nds_run_self_tests() {
     TEST_PASSED=0
@@ -55,6 +57,7 @@ nds_run_self_tests() {
     run_named_suite "git" suite_git
     run_named_suite "inputs" suite_inputs
     run_named_suite "classicConfig" suite_classic_config
+    run_named_suite "install" suite_install
 
     print_test_summary
 }

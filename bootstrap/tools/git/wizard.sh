@@ -69,17 +69,18 @@ _nds_git_gh_lock_git_urls() {
 _nds_git_gh_expand_github_repos() {
     local -a seeds=("$@")
     local -a out=()
+    local -a gh_repos=()
     local gh_repo url
 
     out=("${seeds[@]}")
     for gh_repo in "${seeds[@]}"; do
         [[ -n "$gh_repo" ]] || continue
-        mapfile -t out < <(printf '%s\n' "${out[@]}" \
-            $(_nds_git_urls_to_github_repos "git@github.com:${gh_repo}.git"))
+        mapfile -t gh_repos < <(_nds_git_urls_to_github_repos "git@github.com:${gh_repo}.git")
+        mapfile -t out < <(printf '%s\n' "${out[@]}" "${gh_repos[@]}")
         while IFS= read -r url; do
             [[ -n "$url" ]] || continue
-            mapfile -t out < <(printf '%s\n' "${out[@]}" \
-                $(_nds_git_urls_to_github_repos "$url"))
+            mapfile -t gh_repos < <(_nds_git_urls_to_github_repos "$url")
+            mapfile -t out < <(printf '%s\n' "${out[@]}" "${gh_repos[@]}")
         done < <(_nds_git_gh_lock_git_urls "$gh_repo")
     done
     printf '%s\n' "${out[@]}" | awk 'NF' | sort -u

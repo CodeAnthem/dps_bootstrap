@@ -243,7 +243,8 @@ nds_flake_scaffold_interactive() {
         first_host="${existing%%|*}"
         nds_cfg_ask_choice FLAKE_HOST "Existing host" "$existing" "" "$first_host"
         nds_configurator_config_set "NETWORK_HOSTNAME" "$(nds_cfg_get FLAKE_HOST)"
-        export NDS_FLAKE_HOST="$(nds_cfg_get FLAKE_HOST)"
+        NDS_FLAKE_HOST="$(nds_cfg_get FLAKE_HOST)"
+        export NDS_FLAKE_HOST
         return 0
     fi
 

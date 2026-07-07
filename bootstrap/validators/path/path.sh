@@ -18,7 +18,7 @@ classify_path() {
     local path="$1"
     if [[ "$path" == /* ]]; then
         echo "absolute"
-    elif [[ "$path" == "~" || "$path" == "~/"* ]]; then
+    elif [[ "$path" == "~" ]] || [[ "$path" =~ ^~/ ]]; then
         echo "home"
     elif [[ "$path" == ./* || "$path" == ../* || "$path" == "." ]]; then
         echo "relative"

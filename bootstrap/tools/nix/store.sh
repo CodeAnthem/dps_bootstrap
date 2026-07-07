@@ -47,8 +47,8 @@ _nds_nix_combined_nix_config() {
     fi
     store_cfg="store = ${store}"
     if [[ -n "$base_config" ]]; then
-        printf '%s %s' "$base_config" "$store_cfg"
+        printf '%s\n%s\n' "$base_config" "$store_cfg"
     else
-        printf '%s' "$store_cfg"
+        printf '%s\n' "$store_cfg"
     fi
 }

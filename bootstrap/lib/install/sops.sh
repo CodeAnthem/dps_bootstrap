@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - sops age key enrollment
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-03 | Modified: 2026-07-03
+# Date:          Created: 2026-07-03 | Modified: 2026-07-07
 # Description:   Generate a machine age key, install it on the target, and guide sops enrollment
 # ==================================================================================================
 
@@ -12,8 +12,9 @@ _nds_run_age_keygen() {
     if command -v age-keygen &>/dev/null; then
         age-keygen "$@"
     elif command -v nix &>/dev/null; then
-        NIX_CONFIG="experimental-features = nix-command flakes" \
-            nix shell nixpkgs#age -c age-keygen "$@"
+        local nix_config
+        nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+        env NIX_CONFIG="$nix_config" nix shell nixpkgs#age -c age-keygen "$@"
     else
         return 127
     fi
@@ -63,7 +64,7 @@ EOF
 # - hostname:   <String> Host name
 # - target_root: <String|optional> Installed system root (default: /mnt)
 # Returns:
-# - <Int> 0 always (non-fatal; install must not fail on enrollment issues)
+# - <Bool> 0 on success or when sops is not used; 1 when enrollment fails for a sops flake
 _nds_enroll_sops_key() {
     local flake_root="$1"
     local hostname="$2"
@@ -84,20 +85,25 @@ _nds_enroll_sops_key() {
         return 0
     fi
 
-    mkdir -p "$age_dir" || { warn "Cannot create $age_dir — skipping sops enrollment"; return 0; }
+    mkdir -p "$age_dir" || {
+        error "Cannot create $age_dir — sops enrollment failed"
+        return 1
+    }
 
     if [[ ! -f "$key_file" ]]; then
-        if ! _nds_run_age_keygen -o "$key_file" \
+        local nix_config
+        nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+        if ! env NIX_CONFIG="$nix_config" _nds_run_age_keygen -o "$key_file" \
             2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
-            warn "age-keygen unavailable — cannot generate machine age key"
-            return 0
+            error "age-keygen failed — cannot generate machine age key"
+            return 1
         fi
         chmod 600 "$key_file"
     fi
 
     if ! pubkey=$(_nds_run_age_keygen -y "$key_file" 2>/dev/null); then
-        warn "Could not derive age public key from $key_file"
-        return 0
+        error "Could not derive age public key from $key_file"
+        return 1
     fi
 
     # Persist pubkey + a bundle-visible copy of the private key (DR).
@@ -115,7 +121,8 @@ _nds_enroll_sops_key() {
         chmod 600 "${target_root}/etc/sops/age/keys.txt"
         log "Installed machine age key to ${target_root}/etc/sops/age/keys.txt"
     else
-        warn "${target_root}/etc not found — machine age key not installed to target"
+        error "${target_root}/etc not found — machine age key not installed to target"
+        return 1
     fi
 
     warn "Enroll ${hostname} in .sops.yaml, then run: sops updatekeys secrets/secrets.yaml"

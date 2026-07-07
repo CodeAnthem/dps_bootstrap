@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install bundle finish screens
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-06
+# Date:          Created: 2026-06-30 | Modified: 2026-07-07
 # ==================================================================================================
 
 nds_install_bundle_finish() {
@@ -49,7 +49,7 @@ nds_install_bundle_finish() {
     fi
 
     if [[ "$bundle_ok" -ne 0 ]]; then
-        warn "Install backup package could not be created, but installation succeeded."
+        warn "Install backup package could not be created — fix verification issues before rebooting."
     fi
     nds_ui_b ""
     nds_ui_b "Reboot when ready: sudo reboot"

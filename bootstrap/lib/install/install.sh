@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-04
+# Date:          Created: 2025-10-28 | Modified: 2026-07-07
 # Description:   NixOS installation commands
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
@@ -103,7 +103,9 @@ _nixinstall_generate_facter_report() {
     local dest="$1"
     mkdir -p "$(dirname "$dest")"
     log "Generating hardware report via nixos-facter -> ${dest}"
-    if ! NIX_CONFIG="experimental-features = nix-command flakes" \
+    local nix_config
+    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    if ! env NIX_CONFIG="$nix_config" \
         nix run nixpkgs#nixos-facter -- -o "$dest" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "nixos-facter failed — see install log for details"
@@ -178,15 +180,15 @@ _nixinstall_place_hardware_artifact() {
     esac
 
     if [[ "$hw_artifact" == "facter.json" ]]; then
-        _nixinstall_generate_facter_report "$dest"
+        _nixinstall_generate_facter_report "$dest" || return 1
     else
-        _nixinstall_generate_legacy_hardware "$dest"
+        _nixinstall_generate_legacy_hardware "$dest" || return 1
     fi
-    chmod 600 "$dest"
+    chmod 600 "$dest" || return 1
 
     if [[ "$runtime_copy" == true ]]; then
         mkdir -p "${NDS_RUNTIME_DIR}/config"
-        cp "$dest" "${NDS_RUNTIME_DIR}/config/"
+        cp "$dest" "${NDS_RUNTIME_DIR}/config/" || return 1
     fi
     return 0
 }
@@ -198,9 +200,9 @@ _nixinstall_generate_hardware_config() {
     hw_artifact=$(_nixinstall_hardware_artifact_name)
     mkdir -p /mnt/etc/nixos
     if [[ "$hw_artifact" == "facter.json" ]]; then
-        _nixinstall_generate_facter_report "/mnt/etc/nixos/${hw_artifact}"
+        _nixinstall_generate_facter_report "/mnt/etc/nixos/${hw_artifact}" || return 1
     else
-        _nixinstall_generate_legacy_hardware "/mnt/etc/nixos/${hw_artifact}"
+        _nixinstall_generate_legacy_hardware "/mnt/etc/nixos/${hw_artifact}" || return 1
     fi
     return 0
 }

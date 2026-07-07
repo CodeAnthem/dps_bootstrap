@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Flake install pipeline (local + remote nixos-anywhere)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-07-07
 # ==================================================================================================
 
 # Description: Full flake-based NixOS install.
@@ -98,13 +98,16 @@ nds_nixos_install_flake() {
         _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$NDS_CTX_HW_PLACEMENT" || return 1
 
     nds_step_exec "Installing git SSH key on target" \
-        nds_git_install_deploy_key_to_target || true
+        nds_git_install_deploy_key_to_target || return 1
 
     nds_step_exec "Enrolling sops age key" \
-        _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || true
+        _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || return 1
 
     nds_step_exec "Registering EFI boot entry" \
-        _nixinstall_register_efi_entry "$NDS_CTX_DISK" || true
+        _nixinstall_register_efi_entry "$NDS_CTX_DISK" || return 1
+
+    nds_step_exec "Verifying installation" \
+        nds_install_verify_local || return 1
 
     nds_install_log "installFlake: completed ${flake_root}#${hostname}"
     return 0
