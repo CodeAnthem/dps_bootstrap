@@ -14,6 +14,7 @@ nds_git_tools_load() {
     nds_import_file "${tools_dir}/probe.sh" || return 1
     nds_import_file "${tools_dir}/closure.sh" || return 1
     nds_import_file "${tools_dir}/key.sh" || return 1
+    nds_import_file "${tools_dir}/keys.sh" || return 1
     nds_import_file "${tools_dir}/qr.sh" || return 1
     nds_import_file "${tools_dir}/discover.sh" || return 1
     nds_import_file "${tools_dir}/github/load.sh" || return 1

@@ -11,5 +11,6 @@ nds_git_github_load() {
     nds_import_file "${github_dir}/repos.sh" || return 1
     nds_import_file "${github_dir}/gh.sh" || return 1
     nds_import_file "${github_dir}/register.sh" || return 1
+    nds_import_file "${github_dir}/deploy.sh" || return 1
     return 0
 }

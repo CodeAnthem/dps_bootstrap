@@ -6,20 +6,15 @@
 # Description:   Access gates wiring git tools + auth wizard
 # ==================================================================================================
 
-# Description: Clear gh session after successful install.
 nds_git_access_cleanup_success() {
     nds_git_gh_session_cleanup 2>/dev/null || true
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 }
 
-# Description: Legacy alias — prefer nds_git_access_cleanup_success on install success.
 nds_git_access_cleanup() {
     nds_git_access_cleanup_success
 }
 
-# Description: Exit hook — prompt to clear gh session on abort; never auto-clear on failure.
-# Arguments:
-# - exit_code: <Int|optional> Process exit code (defaults to $?)
 hook_exit_cleanup() {
     local exit_code="${1:-$?}"
 
@@ -47,26 +42,80 @@ _nds_git_update_repo_url() {
     export NDS_FLAKE_SOURCE="remote"
 }
 
+# Description: Print owner/repo lines for closure URLs.
+_nds_git_log_closure_repo_list() {
+    local url ssh_url parsed host owner repo
+    nds_ui_h "Git repositories"
+    for url in "$@"; do
+        ssh_url=$(_nds_git_ssh_url "$url")
+        if parsed=$(_nds_git_parse "$ssh_url"); then
+            IFS=$'\t' read -r host owner repo <<< "$parsed"
+            nds_ui_i "  ${owner}/${repo}"
+        else
+            nds_ui_i "  ${ssh_url}"
+        fi
+    done
+    nds_ui_b ""
+}
+
+# Description: Try import path, session keys, and discovered ~/.ssh keys.
+# Arguments:
+# - url: <String> Git URL to probe
+# Returns:
+# - <Bool> 0 when access works with an existing key
+_nds_git_auth_try_existing_access() {
+    local url="$1"
+    local found
+
+    nds_git_auth_try_import_path && nds_git_keys_register "$(nds_git_session_key_path)" 2>/dev/null || true
+    if nds_git_probe_access "$url"; then
+        nds_git_auth_set_mode imported
+        return 0
+    fi
+
+    nds_git_auth_try_session_key && nds_git_keys_register "$(nds_git_session_key_path)" 2>/dev/null || true
+    nds_git_keys_load_all || true
+    if nds_git_probe_access "$url"; then
+        return 0
+    fi
+
+    if found="$(nds_git_discover_try_candidates "$url")"; then
+        nds_git_auth_set_mode imported
+        debug "Git access via discovered key: ${found}"
+        return 0
+    fi
+    return 1
+}
+
 nds_git_ensure_flake_closure_access() {
-    local flake_root="$1" root_url="${2:-}"
+    local flake_root="${1:-}" root_url="${2:-}"
     local -a urls=() failed=()
     local url ssh_url rc
 
-    [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
+    nds_git_keys_load_all || true
 
-    nds_git_auth_try_import_path || true
-    nds_git_auth_try_session_key || true
+    if [[ -n "$flake_root" && -d "$flake_root" ]]; then
+        mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
+    elif [[ -n "$root_url" ]]; then
+        info "Fetching flake.lock (no full repo clone)..."
+        mapfile -t urls < <(_nds_flake_collect_git_remote_urls_from_root "$root_url")
+    else
+        error "Flake root or repo URL required for closure check"
+        return 1
+    fi
 
-    mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
     [[ ${#urls[@]} -gt 0 ]] || return 0
 
     NDS_GIT_CLOSURE_URLS="$(printf '%s\n' "${urls[@]}")"
-    log "Checking SSH access to ${#urls[@]} flake git input(s)"
+    _nds_git_log_closure_repo_list "${urls[@]}"
+    log "Checking SSH access to ${#urls[@]} git repository(ies)"
 
     while true; do
         failed=()
         for url in "${urls[@]}"; do
-            if nds_git_probe_access "$url"; then
+            if nds_git_probe_public "$url" 2>/dev/null; then
+                debug "Public git input: $url"
+            elif nds_git_probe_access "$url"; then
                 debug "Git access OK: $url"
             else
                 failed+=("$url")
@@ -74,7 +123,7 @@ nds_git_ensure_flake_closure_access() {
         done
 
         if [[ ${#failed[@]} -eq 0 ]]; then
-            success "SSH access confirmed for all ${#urls[@]} flake git input(s)."
+            success "SSH access confirmed for all ${#urls[@]} repository(ies)."
             nds_install_log "git: closure access OK (${#urls[@]} repos)"
             return 0
         fi
@@ -95,6 +144,7 @@ nds_git_ensure_flake_closure_access() {
             warn "Continuing without SSH access to every flake input — install may fail."
             return 0
         }
+        nds_git_keys_load_all || true
     done
 }
 
@@ -115,11 +165,14 @@ nds_git_ensure_access() {
         fi
     fi
 
-    nds_git_auth_try_import_path || true
-    nds_git_auth_try_session_key || true
+    if nds_git_probe_public "$url" 2>/dev/null; then
+        success "Public repository ${owner}/${repo} — no SSH key required."
+        nds_install_log "git: public repo ${owner}/${repo}"
+        return 0
+    fi
 
-    if nds_git_probe_access "$url"; then
-        debug "Git access OK: $url"
+    if _nds_git_auth_try_existing_access "$url"; then
+        success "Git access confirmed for ${owner}/${repo} (existing key)."
         return 0
     fi
 
@@ -138,13 +191,13 @@ nds_git_ensure_access() {
 
         url="$(nds_cfg_get FLAKE_REPO_URL)"
         [[ -z "$url" ]] && url="$(_nds_git_to_ssh "$host" "$owner" "$repo")"
+        nds_git_keys_load_all || true
 
         if nds_git_probe_access "$url"; then
-            success "Git access confirmed."
+            success "Git access confirmed for ${owner}/${repo}."
             return 0
         fi
-        warn "Still no access — register the SSH key on your git host or import a key that already has access."
-        nds_ui_i "Session key: $(nds_git_session_pubkey_path 2>/dev/null || echo unknown)"
-        nds_ui_i "Try: gh (GitHub account key), manual registration, or remove old keys titled $(nds_git_ssh_key_title 2>/dev/null || echo nds-*) on GitHub."
+        warn "Still no access — register a deploy key on ${owner}/${repo} or import a working key."
+        nds_ui_i "Deploy keys: github.com/${owner}/${repo}/settings/keys"
     done
 }

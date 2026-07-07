@@ -52,6 +52,28 @@ nds_git_account_ssh_register_url() {
     esac
 }
 
+# Description: Deploy key registration URL for a repository.
+# Arguments:
+# - host:  <String> Parsed git host
+# - owner: <String> Repository owner
+# - repo:  <String> Repository name
+# Returns:
+# - <String> HTTPS URL (stdout)
+nds_git_deploy_key_register_url() {
+    local host="$1" owner="$2" repo="$3"
+    case "$host" in
+        github.com|*.github.com)
+            printf 'https://github.com/%s/%s/settings/keys\n' "$owner" "$repo"
+            ;;
+        *gitlab*)
+            printf 'https://%s/%s/%s/-/deploy_keys\n' "$host" "$owner" "$repo"
+            ;;
+        *)
+            printf 'https://%s/%s/%s (deploy keys in repository settings)\n' "$host" "$owner" "$repo"
+            ;;
+    esac
+}
+
 # Description: Primary git host from the first parseable URL.
 # Arguments:
 # - urls: <String...> Git remote URLs

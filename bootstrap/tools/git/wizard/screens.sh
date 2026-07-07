@@ -7,14 +7,14 @@
 
 declare -ga NDS_GIT_AUTH_REGISTER_URLS=()
 
-# Description: Short intro — one SSH key, account registration.
+# Description: Short intro — deploy keys and machine-user account keys.
 nds_git_wizard_screen_intro() {
     section_header "Private repository access"
-    nds_ui_b "Private flakes need SSH git access. NDS checks every git input"
-    nds_ui_b "(your flake URL plus locked inputs in flake.lock)."
+    nds_ui_b "Private flakes need SSH git access. NDS checks your flake URL"
+    nds_ui_b "and every locked git input in flake.lock."
     nds_ui_b ""
-    nds_ui_b "One SSH key for this session — import an existing key, let gh add a"
-    nds_ui_b "read-only account key (GitHub only), or register manually."
+    nds_ui_b "Deploy key (recommended): read-only, one key per repository."
+    nds_ui_b "Account key: one key on a machine GitHub user with read access to all repos."
     nds_ui_b ""
 }
 
@@ -37,14 +37,14 @@ nds_git_wizard_print_repo() {
         else
             nds_ui_i "  ${owner}/${repo}"
         fi
-        register_url="$(nds_git_account_ssh_register_url "$host")"
-        nds_ui_i "        ${register_url}"
+        register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
+        nds_ui_i "        deploy: ${register_url}"
     else
         nds_ui_i "  ${ssh_url}"
     fi
 }
 
-# Description: Collect account SSH registration URLs for manual path.
+# Description: Collect deploy key registration URLs for manual path.
 # Arguments:
 # - urls: <String...> Git remote URLs
 nds_git_wizard_collect_register_urls() {
@@ -54,7 +54,7 @@ nds_git_wizard_collect_register_urls() {
         url=$(_nds_git_ssh_url "$url")
         parsed=$(_nds_git_parse "$url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
-        register_url="$(nds_git_account_ssh_register_url "$host")"
+        register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
         [[ "$register_url" == http* ]] && NDS_GIT_AUTH_REGISTER_URLS+=("$register_url")
     done
 }

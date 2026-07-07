@@ -136,18 +136,28 @@ _nds_install_verify_classic_hardware() {
     [[ -s "$dest" ]] || _nds_install_verify_fail "Hardware artifact missing: ${dest}"
 }
 
-# Description: Verify optional git SSH key was installed when a session key exists.
+# Description: Verify git SSH keys and SSH config were installed when session keys exist.
 _nds_install_verify_git_key() {
-    local key_path dest_rel dest
+    local -a keys=()
+    local key_path base dest cfg
 
-    key_path=$(nds_git_session_key_path 2>/dev/null || true)
-    [[ -f "$key_path" ]] || return 0
+    mapfile -t keys < <(nds_git_keys_list 2>/dev/null || true)
+    if [[ ${#keys[@]} -eq 0 ]]; then
+        key_path=$(nds_git_session_key_path 2>/dev/null || true)
+        [[ -f "$key_path" ]] || return 0
+        keys=("$key_path")
+    fi
+    [[ ${#keys[@]} -gt 0 ]] || return 0
 
-    dest_rel=$(nds_git_target_key_rel 2>/dev/null || true)
-    [[ -n "$dest_rel" ]] || return 0
+    for key_path in "${keys[@]}"; do
+        [[ -f "$key_path" ]] || continue
+        base="$(basename "$key_path")"
+        dest="/mnt/etc/nixos/secrets/${base}"
+        [[ -f "$dest" ]] || _nds_install_verify_fail "Git SSH key missing on target: ${dest}"
+    done
 
-    dest="/mnt/${dest_rel}"
-    [[ -f "$dest" ]] || _nds_install_verify_fail "Git SSH key missing on target: ${dest}"
+    cfg="/mnt/$(nds_git_target_ssh_config_rel 2>/dev/null || echo etc/ssh/ssh_config.d/nds-git.conf)"
+    [[ -f "$cfg" ]] || _nds_install_verify_fail "Git SSH config missing on target: ${cfg}"
 }
 
 # Description: Verify sops age key on target when the flake uses sops.

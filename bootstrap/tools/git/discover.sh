@@ -15,7 +15,7 @@ _nds_git_discover_in_dir() {
     local f base
 
     [[ -d "$dir" ]] || return 0
-    for f in "$dir"/id_* "$dir"/git-*-key "$dir"/*_ed25519 "$dir"/*_rsa; do
+    for f in "$dir"/id_* "$dir"/git-*-key "$dir"/deploy-* "$dir"/*_ed25519 "$dir"/*_rsa; do
         [[ -f "$f" ]] || continue
         [[ "$f" == *.pub ]] && continue
         printf '%s\n' "$f"
@@ -40,7 +40,7 @@ nds_git_discover_key_candidates() {
     } | awk 'NF' | sort -u
 }
 
-# Description: Probe URLs with a candidate private key.
+# Description: Probe URLs with a candidate private key (loads into session registry).
 # Arguments:
 # - key_path: <String> Private key path
 # - urls:     <String...> Git URLs to probe
@@ -50,15 +50,10 @@ nds_git_discover_probe_urls() {
     local key_path="$1"
     shift
     local -a urls=("$@")
-    local url dest
+    local url
 
     [[ -f "$key_path" ]] || return 1
-    dest="$(nds_git_session_key_path)"
-    if [[ "$key_path" == "$dest" ]]; then
-        nds_git_key_load "$dest" || return 1
-    else
-        nds_git_key_import "$key_path" "$dest" || return 1
-    fi
+    nds_git_keys_register "$key_path" || return 1
 
     for url in "${urls[@]}"; do
         [[ -n "$url" ]] || continue

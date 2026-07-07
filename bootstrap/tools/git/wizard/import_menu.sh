@@ -5,17 +5,18 @@
 # Date:          Created: 2026-07-07 | Modified: 2026-07-07
 # ==================================================================================================
 
-# Description: Import flow — discover keys, prompt path, load session key.
+# Description: Import flow — discover keys, prompt path, load into session registry.
 # Arguments:
 # - urls: <String...> URLs to probe after import
 # Returns:
 # - <Bool> 0 on success
 nds_git_wizard_menu_import() {
     local -a urls=("$@")
-    local found src dest
+    local found src
 
     info "Looking for existing SSH private keys in this directory and /root/.ssh ..."
     if found="$(nds_git_discover_try_candidates "${urls[@]}")"; then
+        nds_git_auth_set_mode imported
         success "SSH key works: ${found}"
         return 0
     fi
@@ -30,8 +31,8 @@ nds_git_wizard_menu_import() {
         src="$(nds_cfg_get GIT_IMPORT_KEY_PATH)"
     fi
 
-    dest="$(nds_git_session_key_path)"
-    nds_git_key_import "$src" "$dest" || return 1
+    nds_git_keys_register "$src" || return 1
+    nds_git_auth_set_mode imported
     success "SSH key loaded from ${src}"
     return 0
 }

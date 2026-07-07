@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Flake install pipeline (action-level workflow)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-07-07
 # Description:   installFlake action steps — uses tools/flake helpers + tools/git
 # ==================================================================================================
 
@@ -11,25 +11,22 @@
 # - source: <String|optional> "remote" | "local" override for nds_flake_prepare
 nds_flake_install_prepare_and_verify() {
     local source="${1:-}"
-    local host probe_dir local_path repo_url
+    local host local_path repo_url
 
     nds_flake_prepare "$source"
     repo_url="$(nds_configurator_config_get FLAKE_REPO_URL)"
-    nds_git_ensure_access "$repo_url" || return 1
-    nds_flake_detect_disko
-
-    host="$(nds_configurator_config_get FLAKE_HOST)"
     local_path="$(nds_configurator_config_get FLAKE_LOCAL_PATH)"
+
+    nds_git_ensure_access "$repo_url" || return 1
+
+    section_header "Verifying flake access"
     if [[ -n "$local_path" && -d "$local_path" ]]; then
-        probe_dir="$local_path"
-    elif [[ -d "${NDS_RUNTIME_DIR}/flake_probe" ]]; then
-        probe_dir="${NDS_RUNTIME_DIR}/flake_probe"
+        nds_git_ensure_flake_closure_access "$local_path" "$repo_url" || return 1
+    elif [[ -n "$repo_url" ]]; then
+        nds_git_ensure_flake_closure_access "" "$repo_url" || return 1
     fi
 
-    if [[ -n "${probe_dir:-}" ]]; then
-        section_header "Verifying flake access"
-        nds_git_ensure_flake_closure_access "$probe_dir" "$repo_url" || return 1
-    fi
+    nds_flake_detect_disko
     return 0
 }
 

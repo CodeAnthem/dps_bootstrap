@@ -97,8 +97,8 @@ nds_nixos_install_flake() {
     nds_step_exec "Installing NixOS from flake" \
         _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$NDS_CTX_HW_PLACEMENT" || return 1
 
-    nds_step_exec "Installing git SSH key on target" \
-        nds_git_install_key_to_target || return 1
+    nds_step_exec "Installing git SSH keys on target" \
+        nds_git_install_keys_to_target || return 1
 
     nds_step_exec "Enrolling sops age key" \
         _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || return 1

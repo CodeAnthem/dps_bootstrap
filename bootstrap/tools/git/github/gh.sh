@@ -5,7 +5,7 @@
 # Date:          Created: 2026-07-07 | Modified: 2026-07-07
 # ==================================================================================================
 
-# Description: Resolve gh command (host binary or nix shell).
+# Description: Resolve gh command (host binary or nix build cache).
 # Arguments:
 # - out: <Nameref> Command prefix array
 # Returns:
@@ -14,18 +14,21 @@ nds_git_gh_cmd() {
     local -n _out=$1
     if command -v gh &>/dev/null; then
         _out=(gh)
-    elif command -v nix &>/dev/null; then
-        _out=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh)
-    else
-        _out=()
-        return 1
+        return 0
     fi
-    return 0
+    if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+        _out=("${NDS_GIT_GH_BIN}")
+        return 0
+    fi
+    if command -v nix &>/dev/null; then
+        _out=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh)
+        return 0
+    fi
+    _out=()
+    return 1
 }
 
 # Description: True when gh is logged in to github.com.
-# Returns:
-# - <Bool> 0 when session is active
 nds_git_gh_session_active() {
     local -a gh_cmd=()
     nds_git_gh_cmd gh_cmd || return 1
@@ -33,8 +36,6 @@ nds_git_gh_session_active() {
 }
 
 # Description: True when token has admin:public_key scope.
-# Returns:
-# - <Bool> 0 when scope is present
 nds_git_gh_has_key_scope() {
     local -a gh_cmd=()
     nds_git_gh_cmd gh_cmd || return 1
@@ -53,14 +54,12 @@ nds_git_gh_session_cleanup() {
 }
 
 # Description: True when gh CLI is available on the live ISO.
-# Returns:
-# - <Bool> 0 when gh can be invoked
 nds_git_gh_available() {
     local -a gh_cmd=()
     nds_git_gh_cmd gh_cmd
 }
 
-# Description: Download gh via nix when not on PATH (shows spinner when available).
+# Description: Build gh via nix once and cache the binary path (avoids nix shell per call).
 # Returns:
 # - <Bool> 0 when gh can be invoked after prefetch
 nds_git_gh_prefetch() {
@@ -70,13 +69,23 @@ nds_git_gh_prefetch() {
     if ! command -v nix &>/dev/null; then
         return 1
     fi
-    if declare -f nds_step_exec &>/dev/null; then
-        nds_step_exec "Downloading GitHub CLI (gh)" \
-            nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh --version
+    if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+        return 0
+    fi
+    local out_path
+    if declare -f step_start &>/dev/null; then
+        step_start "Downloading GitHub CLI (gh)"
     else
         info "Downloading GitHub CLI (gh) — one-time download..."
-        nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh --version
     fi
+    if ! out_path=$(nix build --no-link --print-out-paths nixpkgs#gh 2>/dev/null); then
+        declare -f step_fail &>/dev/null && step_fail "Downloading GitHub CLI (gh)"
+        return 1
+    fi
+    declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
+    NDS_GIT_GH_BIN="${out_path}/bin/gh"
+    export NDS_GIT_GH_BIN
+    [[ -x "$NDS_GIT_GH_BIN" ]]
 }
 
 # Description: Clear env tokens that block interactive gh login.
@@ -88,5 +97,23 @@ nds_git_gh_unset_blocking_tokens() {
     if [[ -n "${GH_TOKEN:-}" ]]; then
         warn "GH_TOKEN is set — clearing for gh device login"
         unset GH_TOKEN
+    fi
+}
+
+# Description: Run a gh subcommand with optional install-step spinner.
+# Arguments:
+# - label: <String> Step label when nds_step_exec is available
+# - gh:    <String...> gh arguments (after gh binary)
+nds_git_gh_run_step() {
+    local label="$1"
+    shift
+    local -a gh_cmd=()
+
+    nds_git_gh_cmd gh_cmd || return 1
+    if declare -f nds_step_exec &>/dev/null; then
+        nds_step_exec "$label" "${gh_cmd[@]}" "$@"
+    else
+        info "$label..."
+        "${gh_cmd[@]}" "$@"
     fi
 }

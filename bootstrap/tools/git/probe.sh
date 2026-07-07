@@ -6,7 +6,31 @@
 # Description:   Non-interactive git access probe and clone wrapper
 # ==================================================================================================
 
-# Description: Non-interactively test whether a repo is reachable with loaded SSH keys.
+# Description: GIT_SSH_COMMAND without any identity (anonymous probe).
+_nds_git_ssh_env_bare() {
+    printf '%s\n' \
+        "GIT_TERMINAL_PROMPT=0" \
+        "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o IdentitiesOnly=yes"
+}
+
+# Description: True when a repo is reachable without SSH keys (public).
+# Arguments:
+# - url: <String> Git URL
+# Returns:
+# - <Bool> 0 when ls-remote succeeds without credentials
+nds_git_probe_public() {
+    local url="$1" ssh_url
+    local -a envv=()
+
+    ssh_url=$(_nds_git_ssh_url "$url")
+    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env_bare)
+    if command -v timeout &>/dev/null; then
+        timeout 8 env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
+    else
+        env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
+    fi
+}
+
 # Arguments:
 # - url: <String> Git URL
 # Returns:
@@ -16,7 +40,11 @@ nds_git_probe_access() {
     ssh_url=$(_nds_git_ssh_url "$url")
     local -a envv=()
     while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env)
-    env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
+    if command -v timeout &>/dev/null; then
+        timeout 8 env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
+    else
+        env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
+    fi
 }
 
 # Description: Clone a flake using SSH deploy-key auth.

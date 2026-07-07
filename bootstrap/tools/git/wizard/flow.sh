@@ -54,6 +54,73 @@ nds_git_wizard_route_menu() {
     return 0
 }
 
+# Description: Closure route menu when account key does not cover all inputs.
+# Arguments:
+# - failed: <String...> URLs still missing access
+# Returns:
+# - 0 action done, 1 retry menu, 2 skip
+nds_git_wizard_route_menu_closure_account() {
+    local -a failed=("$@")
+    local -a gh_repos=()
+    local choice
+
+    mapfile -t gh_repos < <(nds_git_urls_to_github_repos "${failed[@]}")
+    nds_cfg_section_title "Account key — repositories still blocked"
+    nds_ui_b "Grant your machine GitHub user read access to each repo below,"
+    nds_ui_b "or add a read-only deploy key per repository."
+    nds_ui_b ""
+    nds_cfg_ask_numbered_choice GIT_CLOSURE_ROUTE \
+        "retry|deploy|import|skip" \
+        "retry=Re-check SSH access (after updating GitHub permissions)|deploy=Add read-only deploy keys for missing repos|import=Import a different SSH key|skip=Skip — continue anyway (install may fail)" \
+        "retry"
+
+    choice="$(nds_cfg_get GIT_CLOSURE_ROUTE)"
+    case "$choice" in
+        deploy)
+            nds_git_wizard_register_deploy_for_urls "${failed[@]}" || return 1
+            ;;
+        import)
+            nds_git_wizard_menu_import "${failed[@]}" || return 1
+            ;;
+        retry) return 0 ;;
+        skip) return 2 ;;
+        *) return 1 ;;
+    esac
+    return 0
+}
+
+# Description: Closure route menu — deploy keys for missing flake inputs.
+# Arguments:
+# - failed: <String...> URLs still missing access
+# Returns:
+# - 0 action done, 1 retry menu, 2 skip
+nds_git_wizard_route_menu_closure() {
+    local -a failed=("$@")
+    local -a gh_repos=()
+    local choice
+
+    mapfile -t gh_repos < <(nds_git_urls_to_github_repos "${failed[@]}")
+    nds_cfg_section_title "Missing flake git inputs"
+    nds_cfg_ask_numbered_choice GIT_CLOSURE_ROUTE \
+        "deploy|import|retry|skip" \
+        "deploy=Add read-only deploy keys for missing repos|import=Import an existing SSH key|retry=Re-check SSH access|skip=Skip — continue anyway (install may fail)" \
+        "deploy"
+
+    choice="$(nds_cfg_get GIT_CLOSURE_ROUTE)"
+    case "$choice" in
+        deploy)
+            nds_git_wizard_register_deploy_for_urls "${failed[@]}" || return 1
+            ;;
+        import)
+            nds_git_wizard_menu_import "${failed[@]}" || return 1
+            ;;
+        retry) return 0 ;;
+        skip) return 2 ;;
+        *) return 1 ;;
+    esac
+    return 0
+}
+
 # Description: Wizard step for a single root flake repo.
 # Arguments:
 # - host:  <String> Git host
@@ -77,11 +144,17 @@ nds_git_auth_wizard_step_repo() {
 # - 0 action done, 1 retry menu, 2 skip
 nds_git_auth_wizard_step_closure() {
     local -a failed=("$@")
-    local -a gh_repos=()
+    local mode
 
-    mapfile -t gh_repos < <(nds_git_urls_to_github_repos "${failed[@]}")
+    mode="$(nds_git_auth_mode)"
     nds_git_wizard_screen_closure "${failed[@]}"
-    nds_git_wizard_route_menu "all missing repos" "${failed[@]}" --repos "${gh_repos[@]}"
+
+    if [[ "$mode" == "account" ]]; then
+        nds_git_wizard_route_menu_closure_account "${failed[@]}"
+        return $?
+    fi
+    nds_git_wizard_route_menu_closure "${failed[@]}"
+    return $?
 }
 
 # Compatibility aliases for tests and older callers.

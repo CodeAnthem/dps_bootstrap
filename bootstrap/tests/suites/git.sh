@@ -129,8 +129,54 @@ suite_git() {
         unset NDS_GIT_SSH_KEY_USE_QR
     fi
 
+    if declare -f nds_git_deploy_key_basename &>/dev/null; then
+        if [[ "$(nds_git_deploy_key_basename CodeAnthem dps_swarm)" == "deploy-codeanthem-dps-swarm" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ deploy_key_basename: owner-repo slug"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ deploy_key_basename: expected deploy-codeanthem-dps-swarm"
+        fi
+    fi
+
+    if declare -f nds_git_auth_set_mode &>/dev/null; then
+        nds_git_auth_set_mode deploy
+        if [[ "$(nds_git_auth_mode)" == "deploy" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ git auth mode: deploy"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ git auth mode: expected deploy"
+        fi
+    fi
+
+    if declare -f nds_git_deploy_key_register_url &>/dev/null; then
+        register_url="$(nds_git_deploy_key_register_url github.com CodeAnthem dps_swarm)"
+        if [[ "$register_url" == "https://github.com/CodeAnthem/dps_swarm/settings/keys" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ deploy_key_register_url: GitHub repo settings"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ deploy_key_register_url: unexpected ${register_url}"
+        fi
+    fi
+
     tmpdir=$(mktemp -d)
     key_src="${tmpdir}/source_key"
+
+    export NDS_RUNTIME_DIR="${tmpdir}/nds-runtime"
+    mkdir -p "$NDS_RUNTIME_DIR"
+    touch "${tmpdir}/test-key"
+    if nds_git_keys_register "${tmpdir}/test-key" \
+        && grep -qxF "${tmpdir}/test-key" <(nds_git_keys_list); then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ keys_register: session registry"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ keys_register: session registry"
+    fi
+    unset NDS_RUNTIME_DIR
+
     dest="${tmpdir}/session/id_ed25519"
     ssh-keygen -t ed25519 -N "" -f "$key_src" -C test >/dev/null 2>&1
     export NDS_GIT_IMPORT_KEY_PATH="$key_src"
@@ -163,20 +209,21 @@ suite_git() {
     fi
 
     mkdir -p "${tmpdir}/mnt/etc/nixos/secrets"
-    target_rel="$(nds_git_target_key_rel)"
-    if nds_git_install_key_to_target "$NDS_GIT_SESSION_KEY_PATH" "${tmpdir}/mnt" \
-        && [[ -f "${tmpdir}/mnt/${target_rel}" ]]; then
-        perms=$(stat -c '%a' "${tmpdir}/mnt/${target_rel}" 2>/dev/null || echo "")
+    nds_git_keys_register "$NDS_GIT_SESSION_KEY_PATH" || true
+    if nds_git_install_keys_to_target "${tmpdir}/mnt" \
+        && [[ -f "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" ]] \
+        && [[ -f "${tmpdir}/mnt/etc/ssh/ssh_config.d/nds-git.conf" ]]; then
+        perms=$(stat -c '%a' "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" 2>/dev/null || echo "")
         if [[ "$perms" == "600" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ SSH key installed on target (mode 600)"
+            console "  ✓ SSH keys installed on target with ssh config"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ SSH key target permissions (got ${perms})"
         fi
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ SSH key install on target"
+        console "  ✗ SSH keys install on target"
     fi
 
     if declare -f nds_git_discover_key_candidates &>/dev/null; then
