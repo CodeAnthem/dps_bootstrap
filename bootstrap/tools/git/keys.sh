@@ -42,6 +42,7 @@ nds_git_keys_register() {
     fi
     printf '%s\n' "$key_path" >> "$reg"
     nds_git_key_load "$key_path" || true
+    nds_git_ssh_config_refresh || true
     return 0
 }
 
@@ -118,8 +119,8 @@ nds_git_deploy_key_basename() {
 # Returns:
 # - <String> path under /root/.ssh (stdout)
 nds_git_deploy_key_path() {
-    local owner="$1" repo="$2"
-    printf '/root/.ssh/%s\n' "$(nds_git_deploy_key_basename "$owner" "$repo")"
+    local owner="$1" repo="$2" base="${NDS_GIT_DEPLOY_KEYS_DIR:-/root/.ssh}"
+    printf '%s/%s\n' "$base" "$(nds_git_deploy_key_basename "$owner" "$repo")"
 }
 
 # Description: Deploy key title on GitHub (nds_<flake-host> — one name per machine).

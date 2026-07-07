@@ -118,26 +118,12 @@ nds_git_wizard_screen_closure() {
     nds_git_wizard_collect_register_urls "${failed[@]}"
 
     if [[ -n "${NDS_GIT_CLOSURE_URLS:-}" ]]; then
-        readarray -t all_urls <<< "$NDS_GIT_CLOSURE_URLS"
+        while IFS= read -r url; do
+            [[ -n "$url" ]] && all_urls+=("$url")
+        done <<< "${NDS_GIT_CLOSURE_URLS}"
     else
         all_urls=("${failed[@]}")
     fi
 
-    if [[ ${#all_urls[@]} -gt 0 && ${#failed[@]} -lt ${#all_urls[@]} ]]; then
-        nds_git_wizard_screen_list_repos all_urls failed
-    else
-        nds_ui_h "Repositories missing access"
-        declare -A _missing_printed=()
-        local ssh_url parsed host owner repo mkey
-        for url in "${failed[@]}"; do
-            ssh_url=$(_nds_git_ssh_url "$url")
-            parsed=$(_nds_git_parse "$ssh_url") || continue
-            IFS=$'\t' read -r host owner repo <<< "$parsed"
-            mkey="${owner}/${repo}"
-            [[ -n "${_missing_printed[$mkey]:-}" ]] && continue
-            _missing_printed[$mkey]=1
-            nds_git_wizard_print_repo "$url" "missing"
-        done
-        nds_ui_b ""
-    fi
+    nds_git_wizard_screen_list_repos all_urls failed
 }

@@ -175,6 +175,27 @@ suite_git() {
         fi
     fi
 
+    if declare -f _nds_git_identity_for_url &>/dev/null; then
+        local id_tmp id_key
+        id_tmp=$(mktemp -d)
+        export NDS_RUNTIME_DIR="${id_tmp}/nds-runtime"
+        export NDS_GIT_DEPLOY_KEYS_DIR="${id_tmp}/ssh"
+        mkdir -p "$NDS_RUNTIME_DIR" "$NDS_GIT_DEPLOY_KEYS_DIR"
+        id_key="$(nds_git_deploy_key_path CodeAnthem thundercast)"
+        ssh-keygen -t ed25519 -N "" -f "$id_key" -C test >/dev/null 2>&1 || true
+        nds_git_keys_register "$id_key" || true
+        key=$(_nds_git_identity_for_url "git@github.com:CodeAnthem/thundercast.git" 2>/dev/null || true)
+        if [[ "$key" == "$id_key" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ identity_for_url: deploy key per repository"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ identity_for_url: expected ${id_key}, got ${key:-empty}"
+        fi
+        unset NDS_RUNTIME_DIR NDS_GIT_DEPLOY_KEYS_DIR
+        rm -rf "$id_tmp"
+    fi
+
     if declare -f nds_git_auth_set_mode &>/dev/null; then
         nds_git_auth_set_mode deploy
         if [[ "$(nds_git_auth_mode)" == "deploy" ]]; then

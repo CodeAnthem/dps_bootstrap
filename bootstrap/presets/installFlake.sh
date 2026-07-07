@@ -55,8 +55,10 @@ _installFlake_ask_location() {
 
 installFlake_configure() {
     nds_cfg_section_title "Install mode"
-    nds_cfg_ask_choice INSTALL_MODE "Install mode" "local|remote" \
-        "local=On target (live ISO)|remote=From operator (nixos-anywhere)" "local"
+    nds_cfg_ask_numbered_choice INSTALL_MODE \
+        "local|remote" \
+        "local=On target (live ISO)|remote=From operator (nixos-anywhere)" \
+        "local"
     if nds_cfg_is INSTALL_MODE remote; then
         nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
     fi
@@ -84,8 +86,10 @@ installFlake_summary() {
 
 installFlake_prompt_errors() {
     nds_cfg_section_title "Install mode"
-    nds_cfg_ask_choice INSTALL_MODE "Install mode" "local|remote" \
-        "local=On target (live ISO)|remote=From operator (nixos-anywhere)" "local"
+    nds_cfg_ask_numbered_choice INSTALL_MODE \
+        "local|remote" \
+        "local=On target (live ISO)|remote=From operator (nixos-anywhere)" \
+        "local"
     if nds_cfg_is INSTALL_MODE remote; then
         nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
     fi

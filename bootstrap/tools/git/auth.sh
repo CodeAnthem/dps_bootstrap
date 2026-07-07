@@ -153,6 +153,7 @@ nds_git_ensure_flake_closure_access() {
             return 0
         }
         nds_git_keys_load_all || true
+        nds_git_ssh_config_refresh || true
     done
 }
 

@@ -36,15 +36,22 @@ nds_git_probe_public() {
 # Returns:
 # - <Bool> 0 when accessible
 nds_git_probe_access() {
-    local url="$1" ssh_url
+    local url="$1" ssh_url key_path=""
     ssh_url=$(_nds_git_ssh_url "$url")
     local -a envv=()
-    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env)
+    key_path=$(_nds_git_identity_for_url "$url" 2>/dev/null || true)
+    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env_for_url "$url")
     if command -v timeout &>/dev/null; then
-        timeout 8 env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
+        timeout 15 env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
     else
         env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
     fi
+    local rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        debug "git probe failed: ${ssh_url} key=${key_path:-none}"
+        nds_install_log "git: probe failed ${ssh_url} (key=${key_path:-none})"
+    fi
+    return "$rc"
 }
 
 # Description: Clone a flake using SSH deploy-key auth.
@@ -58,7 +65,7 @@ nds_git_clone() {
     local url="$1" dest="$2" depth="${3:-1}" ssh_url
     ssh_url=$(_nds_git_ssh_url "$url")
     local -a envv=()
-    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env)
+    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env_for_url "$url")
 
     if [[ "$depth" == "0" ]]; then
         env "${envv[@]}" git -c credential.helper= clone "$ssh_url" "$dest"

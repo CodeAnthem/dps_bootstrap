@@ -18,6 +18,12 @@ nds_git_wizard_ask_register_method() {
         return 0
     fi
 
+    if nds_git_gh_session_ready 2>/dev/null; then
+        _choice=gh
+        nds_cfg_set GIT_SSH_KEY_REGISTER_METHOD gh
+        return 0
+    fi
+
     if ! nds_git_gh_available 2>/dev/null; then
         nds_git_gh_ensure_prefetch 2>/dev/null || true
     fi

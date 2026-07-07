@@ -146,18 +146,38 @@ nds_git_gh_prefetch() {
         export NDS_GIT_GH_PREFETCH_DONE
         return 0
     fi
-    local out_path build_out logfile="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    local out_path build_out rc=0 logfile="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    local prefetch_log="${NDS_RUNTIME_DIR:-/tmp/nds}/gh_prefetch.out"
     if declare -f step_start &>/dev/null; then
         step_start "Downloading GitHub CLI (gh)"
+        mkdir -p "$(dirname "$prefetch_log")"
+        (
+            _nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh
+        ) >"$prefetch_log" 2>&1 &
+        local pid=$!
+        if declare -f show_spinner &>/dev/null; then
+            show_spinner "$pid" "Downloading GitHub CLI (gh)"
+        fi
+        wait "$pid" || rc=$?
+        build_out=$(<"$prefetch_log")
+        {
+            printf '\n=== Downloading GitHub CLI (gh) ===\n'
+            printf '%s\n' "$build_out"
+        } >>"$logfile"
     else
         info "Downloading GitHub CLI (gh) — one-time download..."
+        build_out=$(_nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || rc=$?
+        {
+            printf '\n=== Downloading GitHub CLI (gh) ===\n'
+            printf '%s\n' "$build_out"
+        } >>"$logfile"
     fi
-    build_out=$(_nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || true
-    {
-        printf '\n=== Downloading GitHub CLI (gh) ===\n'
-        printf '%s\n' "$build_out"
-    } >>"$logfile"
     out_path=$(printf '%s\n' "$build_out" | tail -1)
+    if [[ "$rc" -ne 0 ]]; then
+        declare -f step_fail &>/dev/null && step_fail "Downloading GitHub CLI (gh)"
+        debug "gh prefetch failed"
+        return 1
+    fi
     if _nds_git_gh_cache_bin_from_nix "$out_path"; then
         declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
         NDS_GIT_GH_PREFETCH_DONE=true
