@@ -6,6 +6,11 @@
 # Description:   Scan flake.lock / flake.nix and verify SSH access to every git input
 # ==================================================================================================
 
+# Description: Directory reused for closure shallow clone (also used by disko probe).
+_nds_flake_lock_probe_repo_dir() {
+    printf '%s/flake_lock_probe/repo\n' "${NDS_RUNTIME_DIR:-/tmp/nds}"
+}
+
 # Description: Extract git SSH remote URLs from flake.lock (git+ssh, ssh, and type git nodes).
 # Arguments:
 # - lock_file: <String> Path to flake.lock
@@ -55,36 +60,39 @@ _nds_flake_collect_git_remote_urls() {
     fi
 }
 
-# Description: Fetch flake.lock via sparse git clone (uses session deploy keys).
+# Description: Shallow-clone root flake and copy flake.lock (same git path as disko probe).
 # Arguments:
-# - ssh_url:   <String> Normalized SSH URL
-# - lock_dest: <String> Destination file
+# - root_url:  <String> Root flake git URL
+# - lock_dest: <String> Destination lock file path
 # Returns:
 # - <Bool> 0 on success
-_nds_git_fetch_flake_lock_git_sparse() {
-    local ssh_url="$1" lock_dest="$2"
-    local -a envv=() tmp
+_nds_git_fetch_flake_lock_shallow() {
+    local root_url="$1" lock_dest="$2"
+    local clone_dir err rc=0
 
-    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env)
-    tmp="$(mktemp -d)"
-    if env "${envv[@]}" git clone --depth 1 --filter=blob:none --sparse "$ssh_url" "$tmp/repo" 2>/dev/null; then
-        if (cd "$tmp/repo" && git sparse-checkout set flake.lock 2>/dev/null \
-            && [[ -f flake.lock ]]); then
-            cp "$tmp/repo/flake.lock" "$lock_dest"
-            rm -rf "$tmp"
-            [[ -s "$lock_dest" ]] && return 0
-        fi
+    clone_dir="$(_nds_flake_lock_probe_repo_dir)"
+    mkdir -p "$(dirname "$lock_dest")"
+    rm -rf "$clone_dir"
+
+    err=$(nds_git_clone "$root_url" "$clone_dir" 1 2>&1) || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        debug "flake.lock shallow clone failed: ${err}"
+        rm -rf "$clone_dir"
+        return 1
     fi
-    rm -rf "$tmp"
-    return 1
+    if [[ ! -f "$clone_dir/flake.lock" ]]; then
+        debug "flake.lock missing after shallow clone of ${root_url}"
+        rm -rf "$clone_dir"
+        return 1
+    fi
+
+    cp "$clone_dir/flake.lock" "$lock_dest"
+    export NDS_FLAKE_LOCK_PROBE_REPO="$clone_dir"
+    nds_install_log "git: flake.lock from shallow clone (repo kept for disko probe)"
+    return 0
 }
 
 # Description: Decode base64 from GitHub API content field into a file.
-# Arguments:
-# - b64:  <String> Base64 payload
-# - dest: <String> Output file
-# Returns:
-# - <Bool> 0 on success
 _nds_git_b64_decode_to_file() {
     local b64="$1" dest="$2"
     if printf '%s' "$b64" | tr -d '\n' | base64 -d > "$dest" 2>/dev/null \
@@ -99,7 +107,7 @@ _nds_git_b64_decode_to_file() {
     return 1
 }
 
-# Description: Fetch flake.lock for a remote root URL without cloning the full repo.
+# Description: Fetch flake.lock for a remote root URL.
 # Arguments:
 # - root_url:  <String> Root flake git URL
 # - lock_dest: <String> Destination file path
@@ -107,17 +115,14 @@ _nds_git_b64_decode_to_file() {
 # - <Bool> 0 on success
 nds_git_fetch_flake_lock() {
     local root_url="$1" lock_dest="$2"
-    local ssh_url parsed host owner repo content tmp
-    local -a gh_cmd=() envv=()
+    local ssh_url parsed host owner repo content
+    local -a gh_cmd=()
 
-    ssh_url=$(_nds_git_ssh_url "$root_url")
-    mkdir -p "$(dirname "$lock_dest")"
-
-    if _nds_git_fetch_flake_lock_git_sparse "$ssh_url" "$lock_dest"; then
-        nds_install_log "git: flake.lock via sparse clone (${ssh_url})"
+    if _nds_git_fetch_flake_lock_shallow "$root_url" "$lock_dest"; then
         return 0
     fi
 
+    ssh_url=$(_nds_git_ssh_url "$root_url")
     if parsed=$(_nds_git_parse "$ssh_url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         if nds_git_host_is_github "$host" && nds_git_gh_session_active 2>/dev/null; then
@@ -133,23 +138,11 @@ nds_git_fetch_flake_lock() {
         fi
     fi
 
-    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env)
-    if env "${envv[@]}" git archive --remote="$ssh_url" HEAD flake.lock 2>/dev/null \
-        | tar -xO > "$lock_dest" 2>/dev/null \
-        && [[ -s "$lock_dest" ]]; then
-        nds_install_log "git: flake.lock via git archive (${ssh_url})"
-        return 0
-    fi
-
-    debug "flake.lock fetch failed for ${ssh_url}"
+    debug "flake.lock fetch failed for ${root_url}"
     return 1
 }
 
 # Description: Collect git input URLs from a remote root flake (flake.lock only, no full clone).
-# Arguments:
-# - root_url: <String> Root flake git URL
-# Returns:
-# - <String> Newline-separated SSH-normalized URLs (stdout)
 _nds_flake_collect_git_remote_urls_from_root() {
     local root_url="$1"
     local lock_file="${NDS_RUNTIME_DIR:-/tmp}/flake_lock_probe/flake.lock"
@@ -168,15 +161,18 @@ _nds_flake_collect_git_remote_urls_from_root() {
 
     [[ -n "$root_url" ]] && _nds_flake_add_git_url "$root_url"
 
-    if nds_git_fetch_flake_lock "$root_url" "$lock_file"; then
-        export NDS_GIT_FLAKE_LOCK_FILE="$lock_file"
-        while IFS= read -r url; do
-            _nds_flake_add_git_url "$url"
-        done < <(_nds_flake_lock_ssh_urls "$lock_file")
-    else
-        warn "Could not fetch flake.lock — only checking the root repository."
-        nds_install_log "git: flake.lock fetch failed for closure scan"
+    if [[ ! -f "$lock_file" ]]; then
+        if ! nds_git_fetch_flake_lock "$root_url" "$lock_file"; then
+            warn "Could not fetch flake.lock — only checking the root repository."
+            nds_install_log "git: flake.lock fetch failed for closure scan"
+            return 0
+        fi
     fi
+
+    export NDS_GIT_FLAKE_LOCK_FILE="$lock_file"
+    while IFS= read -r url; do
+        _nds_flake_add_git_url "$url"
+    done < <(_nds_flake_lock_ssh_urls "$lock_file")
 }
 
 # Description: Probe SSH access to every git remote referenced by a flake closure.

@@ -97,7 +97,16 @@ nds_git_ensure_flake_closure_access() {
     if [[ -n "$flake_root" && -d "$flake_root" ]]; then
         mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
     elif [[ -n "$root_url" ]]; then
-        info "Fetching flake.lock (no full repo clone)..."
+        local lock_file="${NDS_RUNTIME_DIR:-/tmp}/flake_lock_probe/flake.lock"
+        if [[ ! -f "$lock_file" ]]; then
+            if declare -f nds_step_exec &>/dev/null; then
+                nds_step_exec "Fetching flake.lock" \
+                    nds_git_fetch_flake_lock "$root_url" "$lock_file" || true
+            else
+                info "Fetching flake.lock (shallow clone)..."
+                nds_git_fetch_flake_lock "$root_url" "$lock_file" || true
+            fi
+        fi
         mapfile -t urls < <(_nds_flake_collect_git_remote_urls_from_root "$root_url")
     else
         error "Flake root or repo URL required for closure check"

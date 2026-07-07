@@ -133,10 +133,20 @@ nds_preflight_ssh_for_git() {
 }
 
 # Shallow-clone a flake for probing (disko detection, remote actions).
+# Reuses the closure-phase clone when available.
 # Usage: nds_preflight_probe_flake "git_url"
 nds_preflight_probe_flake() {
     local repo_url="$1"
     local probe_dir="${NDS_RUNTIME_DIR}/flake_probe"
+    local cached="${NDS_FLAKE_LOCK_PROBE_REPO:-${NDS_RUNTIME_DIR}/flake_lock_probe/repo}"
+
+    if [[ -f "${cached}/flake.nix" ]]; then
+        rm -rf "$probe_dir"
+        ln -sfn "$cached" "$probe_dir"
+        debug "Reusing closure shallow clone for disko probe: ${cached}"
+        echo "$probe_dir"
+        return 0
+    fi
 
     rm -rf "$probe_dir"
 
