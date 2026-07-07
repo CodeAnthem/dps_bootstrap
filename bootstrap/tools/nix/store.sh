@@ -3,7 +3,7 @@
 # NDS - Nix store helpers (live ISO vs install disk)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-07-08
-# Description:   Chroot store on mounted /mnt during install; repair profile and bootloader after nixos-install
+# Description:   Chroot store on mounted /mnt during install; activate profile and bootloader
 # ==================================================================================================
 
 # Description: Mounted target root (default /mnt).
@@ -146,10 +146,20 @@ _nds_nix_canonical_store_path() {
 # Returns:
 # - <Bool> 0 when profile is valid
 _nds_nix_system_profile_ok() {
-    local root="$1"
+    local root="$1" link target phys
 
     env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
-        nix --store "$root" path-info -M /nix/var/nix/profiles/system &>/dev/null
+        nix --store "$root" path-info -M /nix/var/nix/profiles/system &>/dev/null && return 0
+
+    link="${root}/nix/var/nix/profiles/system"
+    [[ -L "$link" ]] || return 1
+    target=$(readlink "$link")
+    if [[ "$target" != /nix/store/* ]]; then
+        target=$(readlink "${root}/nix/var/nix/profiles/${target}" 2>/dev/null || true)
+    fi
+    [[ "$target" == /nix/store/* ]] || return 1
+    phys="${root}${target}"
+    [[ -d "$phys" ]]
 }
 
 # Description: Create system profile symlinks without nix-env (last resort).
@@ -170,6 +180,83 @@ _nds_nix_link_system_profile() {
     ln -sfn "$system_rel" "${profiles}/system-${gen}-link"
     ln -sfn "system-${gen}-link" "${profiles}/system"
     _nds_nix_system_profile_ok "$root"
+}
+
+# Description: Install bootloader via nixos-enter (nixos-install bootloader step).
+# Arguments:
+# - root: <String> Target root mount
+# Returns:
+# - <Bool> 0 on success
+_nds_nix_install_bootloader() {
+    local root="$1" log
+
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    _nds_nix_system_profile_ok "$root" || return 1
+
+    mkdir -p "${root}/etc" "${root}/run"
+    touch "${root}/etc/NIXOS"
+    ln -sfn /proc/mounts "${root}/etc/mtab"
+    ln -snf /nix/var/nix/profiles/system "${root}/run/current-system"
+
+    export mountPoint="$root"
+    if ! NIXOS_INSTALL_BOOTLOADER=1 nixos-enter --root "$root" -c "$(cat <<'EOF'
+set -e
+hash -r
+mount --rbind --mkdir / "$mountPoint"
+mount --make-rslave "$mountPoint"
+/run/current-system/bin/switch-to-configuration boot
+umount -R "$mountPoint" && (rmdir "$mountPoint" 2>/dev/null || true)
+EOF
+)" >>"$log" 2>&1; then
+        if declare -f _nds_install_diag_write &>/dev/null; then
+            _nds_install_diag_write "bootloader: switch-to-configuration boot failed (see verbose log)"
+        fi
+        return 1
+    fi
+
+    nds_install_log "nix: bootloader installed"
+    _nds_nix_remount_target_if_needed || true
+    return 0
+}
+
+# Description: Set system profile and install bootloader for a built closure.
+# Replaces nixos-install --system on chroot stores (/mnt) where nix-env breaks.
+# Arguments:
+# - root:       <String> Target root mount (store URI)
+# - system_rel: <String> /nix/store/… nixos-system path
+# Returns:
+# - <Bool> 0 on success
+nds_nix_activate_system() {
+    local root="$1" system_rel="$2" profile_dst log err
+
+    profile_dst="${root}/nix/var/nix/profiles/system"
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    system_rel="${system_rel%/}"
+    [[ "$system_rel" == /nix/store/* ]] || return 1
+
+    mkdir -p "${root}/etc"
+    touch "${root}/etc/NIXOS"
+
+    if ! _nds_nix_system_profile_ok "$root"; then
+        mkdir -p "$(dirname "$profile_dst")"
+        if env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+            nix-env --store "$root" --extra-substituters "auto?trusted=1" \
+            -p "$profile_dst" --set "$system_rel" >>"$log" 2>&1; then
+            nds_install_log "nix: system profile (nix-env) -> ${profile_dst}"
+        elif _nds_nix_link_system_profile "$root" "$system_rel"; then
+            nds_install_log "nix: system profile (manual) -> ${profile_dst}"
+        else
+            err=$(tail -5 "$log" 2>/dev/null || true)
+            if declare -f _nds_install_diag_write &>/dev/null; then
+                _nds_install_diag_write "activate: profile failed for ${system_rel}"
+                [[ -n "$err" ]] && _nds_install_diag_write "activate stderr: ${err}"
+            fi
+            return 1
+        fi
+    fi
+
+    _nds_nix_ensure_current_system_link "$root" || true
+    _nds_nix_install_bootloader "$root"
 }
 
 # Description: Resolve a built NixOS system closure on the target or scratch store.
@@ -283,19 +370,17 @@ _nds_nix_ensure_current_system_link() {
     return 0
 }
 
-# Description: Reinstall bootloader when GRUB/EFI files are missing after nixos-install.
+# Description: Reinstall bootloader when GRUB/EFI files are missing after activation.
 # Arguments:
 # - root: <String> Target root mount
 # Returns:
 # - <Bool> 0 on success
 _nds_nix_reinstall_bootloader() {
-    local root="$1" loader uefi disk log
+    local root="$1" loader uefi
 
     loader=$(nds_config_get "boot" "BOOT_LOADER" 2>/dev/null || true)
     loader="${loader:-grub}"
     uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE" 2>/dev/null || true)
-    disk=$(nds_config_get "disk" "DISK_TARGET" 2>/dev/null || true)
-    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
     if [[ "$uefi" == "true" ]]; then
         _nds_install_verify_efi_files "$loader" && return 0
@@ -303,26 +388,8 @@ _nds_nix_reinstall_bootloader() {
         return 0
     fi
 
-    _nds_nix_system_profile_ok "$root" || return 1
-
-    info "Reinstalling bootloader on target"
-    mkdir -p "${root}/etc"
-    touch "${root}/etc/NIXOS"
-    ln -sfn /proc/mounts "${root}/etc/mtab"
-    ln -snf /nix/var/nix/profiles/system "${root}/run/current-system" 2>/dev/null || true
-
-    export mountPoint="$root"
-    if ! NIXOS_INSTALL_BOOTLOADER=1 nixos-enter --root "$root" -c "$(cat <<'EOF'
-set -e
-hash -r
-/run/current-system/bin/switch-to-configuration boot
-EOF
-)" >>"$log" 2>&1; then
-        return 1
-    fi
-
-    nds_install_log "nix: bootloader reinstalled"
-    return 0
+    warn "Bootloader missing — retrying switch-to-configuration boot"
+    _nds_nix_install_bootloader "$root"
 }
 
 # Description: Remount target /boot when nixos-install tore down mounts.
@@ -335,7 +402,7 @@ _nds_nix_remount_target_if_needed() {
     _nixinstall_mount_filesystems "$enc"
 }
 
-# Description: Repair system profile and bootloader after nixos-install.
+# Description: Repair system profile and bootloader after install.
 # Returns:
 # - <Bool> 0 on success
 nds_nix_ensure_install_artifacts() {
@@ -348,7 +415,7 @@ nds_nix_ensure_install_artifacts() {
     _nds_nix_ensure_current_system_link "$root" || true
 
     if declare -f nds_install_diag_snapshot &>/dev/null; then
-        nds_install_diag_snapshot "after nixos-install"
+        nds_install_diag_snapshot "after install"
     fi
 
     _nds_nix_reinstall_bootloader "$root" || {

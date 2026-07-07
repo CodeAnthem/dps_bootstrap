@@ -291,30 +291,51 @@ _nds_nix_flake_system_ref() {
     printf 'nixosConfigurations."%s".config.system.build.toplevel' "$host_name"
 }
 
-# Description: Build the NixOS system closure on the target store (/mnt).
-# Matches nixos-install / nixos-anywhere: build first, then nixos-install --system.
+# Description: Build flake system on target store; install into system profile.
 # Arguments:
 # - flake_root:  <String> Flake directory
 # - host_name:   <String> nixosConfigurations key
 # - build_flags: <String...> Extra nix build flags (e.g. --override-input)
 # Returns:
-# - <String> nixos-system store path (stdout)
+# - <String> /nix/store/… nixos-system path (stdout)
 _nixinstall_build_flake_system() {
     local flake_root="$1"
     local host_name="$2"
     shift 2
     local -a build_flags=("$@")
-    local root store log tmpdir out_link system_path flake_ref
+    local root store log profile_dst flake_ref system_rel tmpdir out_link
 
     [[ -d "$flake_root" ]] || return 1
     root=$(_nds_nix_target_root)
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
     store="$root"
-    mkdir -p "${root}/nix/store"
+    profile_dst="${root}/nix/var/nix/profiles/system"
+    flake_ref=$(_nds_nix_flake_system_ref "$host_name")
+
+    mkdir -p "${root}/nix/store" "$(dirname "$profile_dst")"
     _nds_nix_ensure_store_ready "$store" || true
+
+    if env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+        nix build \
+        --extra-experimental-features 'nix-command flakes' \
+        --store "$store" \
+        --extra-substituters "auto?trusted=1" \
+        --profile "$profile_dst" \
+        "${build_flags[@]}" \
+        "${flake_root}#${flake_ref}" >>"$log" 2>&1 \
+        && _nds_nix_system_profile_ok "$root"; then
+        system_rel=$(env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+            nix --store "$store" path-info -M /nix/var/nix/profiles/system 2>/dev/null || true)
+        [[ -n "$system_rel" ]] || system_rel=$(_nds_nix_find_system_closure "$root")
+        [[ -n "$system_rel" ]] || return 1
+        system_rel=$(_nds_nix_canonical_store_path "$store" "$system_rel") || return 1
+        printf '%s\n' "$system_rel"
+        return 0
+    fi
+
+    warn "Profile build failed — building out-link and activating manually"
     tmpdir=$(mktemp -d -p "$root")
     out_link="${tmpdir}/system"
-    flake_ref=$(_nds_nix_flake_system_ref "$host_name")
 
     if ! env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
         nix build \
@@ -328,12 +349,12 @@ _nixinstall_build_flake_system() {
         return 1
     fi
 
-    system_path=$(_nds_nix_canonical_store_path "$store" "$out_link") || {
+    system_rel=$(_nds_nix_canonical_store_path "$store" "$out_link") || {
         rm -rf "$tmpdir"
         return 1
     }
     rm -rf "$tmpdir"
-    printf '%s\n' "$system_path"
+    printf '%s\n' "$system_rel"
     return 0
 }
 
@@ -343,9 +364,10 @@ _nixinstall_install_nixos_flake() {
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
     local -a build_flags=()
-    local system_path nix_config log
+    local root system_rel log
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
+    root=$(_nds_nix_target_root)
 
     if [[ ! -d "$flake_root" ]]; then
         error "Flake root not found: $flake_root"
@@ -361,21 +383,18 @@ _nixinstall_install_nixos_flake() {
         fi
     fi
 
-    nix_config=$(_nds_nix_nixos_install_config)
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
-    log "Building NixOS system closure on target store"
-    if ! system_path=$(_nixinstall_build_flake_system "$flake_root" "$host_name" "${build_flags[@]}"); then
+    log "Building NixOS system on target store"
+    if ! system_rel=$(_nixinstall_build_flake_system "$flake_root" "$host_name" "${build_flags[@]}"); then
         error "Flake-based NixOS build failed"
         return 1
     fi
-    nds_install_log "nix: built system ${system_path}"
+    nds_install_log "nix: built system ${system_rel}"
 
-    log "Installing NixOS from pre-built system (nixos-install --system)"
-    if ! env NIX_CONFIG="$nix_config" \
-        nixos-install --root /mnt --no-root-passwd --no-channel-copy --system "$system_path" \
-        >>"$log" 2>&1; then
-        error "Flake-based NixOS installation failed"
+    log "Activating system (profile + bootloader)"
+    if ! nds_nix_activate_system "$root" "$system_rel" >>"$log" 2>&1; then
+        error "Flake-based NixOS activation failed — see ${log}"
         return 1
     fi
 
