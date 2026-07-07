@@ -140,6 +140,30 @@ nds_ui_choice_row() {
     nds_ui_kv_row "${number}) ${name}" "$detail" "$width"
 }
 
+# Description: Read one menu digit without Enter (same UX as action select).
+# Arguments:
+# - prompt: <String> Prompt text
+# - min:    <Int>    Minimum valid digit
+# - max:    <Int>    Maximum valid digit
+# Returns:
+# - <String> Selected digit on stdout; 1 when user presses Enter only
+nds_ui_read_menu_digit() {
+    local prompt="$1" min="$2" max="$3"
+    local choice
+
+    nds_ui_init
+    while true; do
+        read -rsn1 -p "$prompt" choice < /dev/tty
+        echo >&2
+        [[ -n "$choice" ]] || return 1
+        if [[ "$choice" =~ ^[0-9]$ ]] && (( choice >= min && choice <= max )); then
+            printf '%s' "$choice"
+            return 0
+        fi
+        nds_ui_b "Invalid selection. Choose ${min}-${max}."
+    done
+}
+
 # Description: Render the persistent NDS banner as a single box containing the
 # fixed script title line (name + version) and an optional section subtitle.
 # The box width expands to fit the longest line, with a sane minimum. All lines

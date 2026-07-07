@@ -71,26 +71,34 @@ nds_cfg_print_numbered_choice_options() {
     nds_ui_b ""
 }
 
-# Description: Map numeric input or option key to a choice value.
+# Description: Choice prompt with numbered rows; single-key select (like action menu).
 # Arguments:
-# - value:   <String> User input
+# - var:     <String> Config variable name
+# - label:   <String> Prompt label
 # - options: <String> Pipe-separated option keys
-# Returns:
-# - <String> Resolved option key (stdout)
-_nds_cfg_resolve_choice_input() {
-    local value="$1" options="$2"
-    local -a opts
-    local idx
+# - labels:  <String> key=description pairs separated by |
+# - default: <String|optional> Default option key
+nds_cfg_ask_numbered_choice() {
+    local var="$1" label="$2" options="$3" labels="${4:-}" default="${5:-}"
+    local -a opts=()
+    local count=0 digit current display resolved prompt
 
+    [[ -n "$(nds_cfg_get "$var")" ]] || nds_cfg_set "$var" "$default"
     IFS='|' read -ra opts <<< "$options"
-    if [[ "$value" =~ ^[0-9]+$ ]]; then
-        idx=$((value - 1))
-        if (( idx >= 0 && idx < ${#opts[@]} )); then
-            printf '%s' "${opts[$idx]}"
-            return 0
-        fi
+    count=${#opts[@]}
+    current=$(nds_cfg_get "$var")
+
+    [[ -n "$labels" ]] && nds_cfg_print_numbered_choice_options "$options" "$labels"
+    display=$(nds_cfg_display_choice "$current" "$labels")
+    prompt="${NDS_UI_INDENT_I}${label} [${display}] (1-${count}): "
+
+    if digit=$(nds_ui_read_menu_digit "$prompt" 1 "$count"); then
+        resolved="${opts[$((digit - 1))]}"
+        nds_cfg_set "$var" "$resolved"
+        [[ "$current" != "$resolved" ]] \
+            && nds_ui_b "  -> Selected: $(nds_cfg_display_choice "$resolved" "$labels")"
     fi
-    printf '%s' "$value"
+    return 0
 }
 
 nds_cfg_summary_row() {
@@ -223,38 +231,6 @@ nds_cfg_ask_choice() {
             return 0
         fi
         nds_ui_b "  Error: Invalid choice. Options: ${options//|/, }"
-    done
-}
-
-# Description: Choice prompt with numbered rows; accepts option key or number.
-# Arguments:
-# - var:     <String> Config variable name
-# - label:   <String> Prompt label
-# - options: <String> Pipe-separated option keys
-# - labels:  <String> key=description pairs separated by |
-# - default: <String|optional> Default option key
-nds_cfg_ask_numbered_choice() {
-    local var="$1" label="$2" options="$3" labels="${4:-}" default="${5:-}"
-    [[ -n "$(nds_cfg_get "$var")" ]] || nds_cfg_set "$var" "$default"
-    local hint count=0 opt
-    for opt in ${options//|/ }; do
-        count=$((count + 1))
-    done
-    hint="(1-${count}), ${options//|/, }"
-    local value current display resolved
-    current=$(nds_cfg_get "$var")
-    while true; do
-        [[ -n "$labels" ]] && nds_cfg_print_numbered_choice_options "$options" "$labels"
-        display=$(nds_cfg_display_choice "$current" "$labels")
-        value=$(_nds_cfg_prompt_value "$var" "$label" "$hint" false) || continue
-        [[ -z "$value" ]] && return 0
-        resolved="$(_nds_cfg_resolve_choice_input "$value" "$options")"
-        if validate_choice "$resolved" "$options"; then
-            nds_cfg_set "$var" "$resolved"
-            [[ "$current" != "$resolved" ]] && nds_ui_b "  -> Updated: $display -> $(nds_cfg_display_choice "$resolved" "$labels")"
-            return 0
-        fi
-        nds_ui_b "  Error: Invalid choice. Enter a number or: ${options//|/, }"
     done
 }
 

@@ -94,15 +94,14 @@ nds_actions_select() {
     nds_ui_b ""
 
     local choice max_choice="${#ACTION_NAMES[@]}"
+    local prompt="${NDS_UI_INDENT_B}Select action to preview [0-${max_choice}]: "
     while true; do
-        read -rsn1 -p "${NDS_UI_INDENT_B}Select action to preview [0-$max_choice]: " choice < /dev/tty
-        echo >&2
-        [[ "$choice" == "0" ]] && { nds_ui_b "Operation aborted"; exit 130; }
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ "$choice" -ge 1 ]] && [[ "$choice" -le "$max_choice" ]]; then
-            current_action="${ACTION_NAMES[$((choice-1))]}"
+        if choice=$(nds_ui_read_menu_digit "$prompt" 0 "$max_choice"); then
+            [[ "$choice" == "0" ]] && { nds_ui_b "Operation aborted"; exit 130; }
+            current_action="${ACTION_NAMES[$((choice - 1))]}"
             return 0
         fi
-        nds_ui_b "Invalid selection. Choose 0-$max_choice"
+        nds_ui_b "Invalid selection. Choose 0-${max_choice}"
     done
 }
 
