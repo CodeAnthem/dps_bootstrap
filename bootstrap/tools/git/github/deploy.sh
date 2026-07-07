@@ -5,6 +5,45 @@
 # Date:          Created: 2026-07-07 | Modified: 2026-07-07
 # ==================================================================================================
 
+# Description: List deploy key ids on a repo that match a title.
+# Arguments:
+# - owner: <String> Repository owner
+# - repo:  <String> Repository name
+# - title: <String> Deploy key title
+# Returns:
+# - <String> key ids (stdout, one per line)
+_nds_git_gh_deploy_key_ids_by_title() {
+    local owner="$1" repo="$2" title="$3"
+    local -a gh_cmd=()
+
+    nds_git_gh_cmd gh_cmd || return 1
+    "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" \
+        --jq ".[] | select(.title==\"${title}\") | .id" 2>/dev/null
+}
+
+# Description: True when the public key is already a deploy key on the repository.
+nds_git_gh_deploy_pubkey_on_repo() {
+    local owner="$1" repo="$2" pub_file="$3"
+    local key_body
+    local -a gh_cmd=()
+
+    [[ -f "$pub_file" ]] || return 1
+    nds_git_gh_cmd gh_cmd || return 1
+    key_body="$(awk '{print $2}' "$pub_file")"
+    [[ -n "$key_body" ]] || return 1
+    "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" --jq '.[].key' 2>/dev/null \
+        | grep -qF "$key_body"
+}
+
+# Description: Delete one deploy key from a repository.
+_nds_git_gh_deploy_key_delete() {
+    local owner="$1" repo="$2" id="$3"
+    local -a gh_cmd=()
+
+    nds_git_gh_cmd gh_cmd || return 1
+    "${gh_cmd[@]}" api --method DELETE "repos/${owner}/${repo}/keys/${id}" 2>/dev/null
+}
+
 # Description: Add read-only deploy key to a repository via gh API.
 # Arguments:
 # - pub_file: <String> Public key path
@@ -15,12 +54,33 @@
 # - <Bool> 0 on success
 nds_git_gh_register_deploy_key() {
     local pub_file="$1" owner="$2" repo="$3" title="$4"
-    local key_body payload err rc
+    local key_body payload err rc id
     local -a gh_cmd=()
 
     [[ -f "$pub_file" ]] || return 1
     [[ -n "$owner" && -n "$repo" && -n "$title" ]] || return 1
     nds_git_gh_cmd gh_cmd || return 1
+
+    if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
+        nds_install_log "git: deploy key already on ${owner}/${repo} (${title})"
+        nds_git_gh_session_mark_scopes_ok
+        return 0
+    fi
+
+    if [[ -n "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
+        _nds_git_gh_resolve_title_collision title \
+            "Deploy key title \"${title}\" already exists on ${owner}/${repo} with a different public key" \
+            || return 1
+        if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
+            return 0
+        fi
+        if [[ "$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null)" == "overwrite" ]]; then
+            while IFS= read -r id; do
+                [[ -n "$id" ]] || continue
+                _nds_git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
+            done < <(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")
+        fi
+    fi
 
     key_body="$(tr -d '\n' < "$pub_file")"
     payload=$(printf '{"title":"%s","key":"%s","read_only":true}' "$title" "$key_body")
@@ -33,11 +93,13 @@ nds_git_gh_register_deploy_key() {
         debug "gh api POST repos/${owner}/${repo}/keys failed: ${err}"
         if grep -qi 'already exists\|key is already in use' <<< "$err"; then
             nds_install_log "git: deploy key may already exist on ${owner}/${repo}"
+            nds_git_gh_session_mark_scopes_ok
             return 0
         fi
         return 1
     fi
     nds_install_log "git: deploy key added read-only on ${owner}/${repo} (${title})"
+    nds_git_gh_session_mark_scopes_ok
     return 0
 }
 

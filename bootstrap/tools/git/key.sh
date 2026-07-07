@@ -198,6 +198,5 @@ nds_git_auth_try_import_path() {
 }
 
 # Compatibility aliases (deprecated names).
-nds_git_deploy_key_title() { nds_git_ssh_key_title; }
 nds_git_install_deploy_key_to_target() { nds_git_install_key_to_target "$@"; }
 nds_git_auth_try_deploy_key_path() { nds_git_auth_try_import_path; }

@@ -41,6 +41,7 @@ nds_git_gh_session_active() {
     if "${gh_cmd[@]}" auth status &>/dev/null; then
         NDS_GIT_GH_SESSION_ACTIVE=true
         export NDS_GIT_GH_SESSION_ACTIVE
+        nds_git_gh_probe_registration_scopes && nds_git_gh_session_mark_scopes_ok || true
         return 0
     fi
     return 1
@@ -59,12 +60,24 @@ nds_git_gh_session_mark_scopes_ok() {
     nds_git_gh_session_mark_active
 }
 
-# Description: True when token has admin:public_key scope.
+# Description: True when gh token has scopes needed for key registration.
+nds_git_gh_probe_registration_scopes() {
+    local -a gh_cmd=()
+    local out
+
+    nds_git_gh_cmd gh_cmd || return 1
+    out=$("${gh_cmd[@]}" auth status --show-token-scopes 2>&1) || true
+    if grep -qiE 'admin:public_key|\brepo\b' <<< "$out"; then
+        return 0
+    fi
+    out=$("${gh_cmd[@]}" auth status 2>&1) || return 1
+    grep -qiE 'admin:public_key|\brepo\b|Token scopes:.*repo' <<< "$out"
+}
+
+# Description: True when token has admin:public_key or repo scope.
 nds_git_gh_has_key_scope() {
     [[ "${NDS_GIT_GH_HAS_KEY_SCOPE:-}" == "true" ]] && return 0
-    local -a gh_cmd=()
-    nds_git_gh_cmd gh_cmd || return 1
-    if "${gh_cmd[@]}" auth status --show-token-scopes 2>/dev/null | grep -qF 'admin:public_key'; then
+    if nds_git_gh_probe_registration_scopes; then
         nds_git_gh_session_mark_scopes_ok
         return 0
     fi

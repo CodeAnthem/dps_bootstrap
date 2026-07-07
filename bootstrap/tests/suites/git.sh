@@ -159,12 +159,19 @@ suite_git() {
     fi
 
     if declare -f nds_git_deploy_key_basename &>/dev/null; then
-        if [[ "$(nds_git_deploy_key_basename CodeAnthem dps_swarm)" == "deploy-codeanthem-dps-swarm" ]]; then
+        if [[ "$(nds_git_deploy_key_basename CodeAnthem dps_swarm)" == "nds_deploy_codeanthem_dps_swarm" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ deploy_key_basename: owner-repo slug"
+            console "  ✓ deploy_key_basename: nds_deploy_owner_repo"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
-            console "  ✗ deploy_key_basename: expected deploy-codeanthem-dps-swarm"
+            console "  ✗ deploy_key_basename: expected nds_deploy_codeanthem_dps_swarm"
+        fi
+        if [[ "$(nds_git_deploy_key_title CodeAnthem dps_swarm)" == "nds_control-toolkit" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ deploy_key_title: nds_<hostname> on GitHub"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ deploy_key_title: expected nds_control-toolkit"
         fi
     fi
 

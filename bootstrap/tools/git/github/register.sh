@@ -67,12 +67,16 @@ _nds_git_gh_user_key_delete() {
 }
 
 # Description: Resolve title collision — overwrite, alternate suffix, or abort.
+# Arguments:
+# - title:   <Nameref> Title to register (may be suffixed when alternate)
+# - prompt:  <String|optional> User-facing collision message
 _nds_git_gh_resolve_title_collision() {
     local -n _title=$1
+    local prompt="${2:-SSH key title \"${_title}\" already exists on GitHub with a different public key}"
     local choice suffix n=2
 
     nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
-        "SSH key title \"${_title}\" already exists on GitHub with a different public key" \
+        "$prompt" \
         "overwrite|alternate|cancel" \
         "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
         "cancel"

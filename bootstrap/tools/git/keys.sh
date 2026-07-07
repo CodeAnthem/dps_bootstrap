@@ -93,15 +93,22 @@ nds_git_auth_mode() {
     printf '%s\n' "$mode"
 }
 
-# Description: Basename for a per-repo deploy key file.
+# Description: Slug for deploy key filenames (lowercase, underscores).
+_nds_git_deploy_slug_part() {
+    local s="$1"
+    s=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')
+    printf '%s' "$s" | sed -e 's/[^a-z0-9]/_/g' -e 's/__*/_/g' -e 's/^_//' -e 's/_$//'
+}
+
+# Description: Basename for a per-repo deploy key file (local / target secrets).
 # Arguments:
 # - owner: <String> Git owner
 # - repo:  <String> Repository name
 # Returns:
-# - <String> e.g. deploy-codeanthem-dps-swarm (stdout)
+# - <String> e.g. nds_deploy_codeanthem_thundercast (stdout)
 nds_git_deploy_key_basename() {
     local owner="$1" repo="$2"
-    printf 'deploy-%s\n' "$(_nds_git_repo_slug "$owner" "$repo")"
+    printf 'nds_deploy_%s_%s' "$(_nds_git_deploy_slug_part "$owner")" "$(_nds_git_deploy_slug_part "$repo")"
 }
 
 # Description: Session path for a per-repo deploy private key.
@@ -115,15 +122,23 @@ nds_git_deploy_key_path() {
     printf '/root/.ssh/%s\n' "$(nds_git_deploy_key_basename "$owner" "$repo")"
 }
 
-# Description: Deploy key title for GitHub registration.
+# Description: Deploy key title on GitHub (nds_<flake-host> — one name per machine).
 # Arguments:
-# - owner: <String> Git owner
-# - repo:  <String> Repository name
+# - owner: <String> Ignored (kept for call-site compatibility)
+# - repo:  <String> Ignored
 # Returns:
-# - <String> title (stdout)
+# - <String> title e.g. nds_control-toolkit (stdout)
 nds_git_deploy_key_title() {
-    local owner="$1" repo="$2"
-    printf 'nds-%s\n' "$(nds_git_deploy_key_basename "$owner" "$repo")"
+    local name=""
+
+    if declare -f nds_configurator_config_get &>/dev/null; then
+        name="$(nds_configurator_config_get FLAKE_HOST 2>/dev/null || true)"
+    fi
+    [[ -z "$name" ]] && name="$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)"
+    [[ -z "$name" ]] && name="$(nds_cfg_get NETWORK_HOSTNAME 2>/dev/null || true)"
+    [[ -z "$name" ]] && name="$(hostname -s 2>/dev/null || echo live)"
+    name=$(printf '%s' "$name" | sed -e 's/[^a-zA-Z0-9_-]/-/g' -e 's/--*/-/g')
+    printf 'nds_%s' "$name"
 }
 
 # Description: Target install path relative to mount root for a deploy key.
@@ -131,7 +146,7 @@ nds_git_deploy_key_title() {
 # - owner: <String> Git owner
 # - repo:  <String> Repository name
 # Returns:
-# - <String> e.g. etc/nixos/secrets/deploy-codeanthem-dps-swarm (stdout)
+# - <String> e.g. etc/nixos/secrets/nds_deploy_codeanthem_thundercast (stdout)
 nds_git_deploy_key_target_rel() {
     local owner="$1" repo="$2"
     printf 'etc/nixos/secrets/%s\n' "$(nds_git_deploy_key_basename "$owner" "$repo")"
