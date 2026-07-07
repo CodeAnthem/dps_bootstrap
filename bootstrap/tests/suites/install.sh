@@ -93,6 +93,16 @@ suite_install() {
         fi
     fi
 
+    if declare -f _nds_install_disk_has_bios_grub &>/dev/null; then
+        if _nds_install_disk_has_bios_grub /dev/null; then
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ bios_grub detect: /dev/null should not match"
+        else
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ bios_grub detect: rejects invalid disk"
+        fi
+    fi
+
     if declare -f _nds_nix_canonical_store_path &>/dev/null; then
         out=$(_nds_nix_canonical_store_path /mnt /mnt/nix/store/abc-nixos-system-host)
         if [[ "$out" == '/nix/store/abc-nixos-system-host' ]]; then

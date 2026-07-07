@@ -88,7 +88,10 @@ nds_install_diag_snapshot() {
 
     if [[ -n "$disk" && -b "$disk" ]]; then
         if dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB; then
-            mbr_txt=yes
+            mbr_txt=mbr
+        elif _nds_install_disk_has_bios_grub "$disk" \
+            && _nds_install_bios_grub_populated "${disk}1"; then
+            mbr_txt=bios_grub
         else
             mbr_txt=no
         fi

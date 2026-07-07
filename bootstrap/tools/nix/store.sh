@@ -216,6 +216,17 @@ EOF
 
     nds_install_log "nix: bootloader installed"
     _nds_nix_remount_target_if_needed || true
+
+    uefi=$(nds_config_get "boot" "BOOT_UEFI_MODE" 2>/dev/null || true)
+    loader=$(nds_config_get "boot" "BOOT_LOADER" 2>/dev/null || true)
+    loader="${loader:-grub}"
+    disk=$(nds_config_get "disk" "DISK_TARGET" 2>/dev/null || true)
+    if [[ "$loader" == "grub" && "$uefi" != "true" && -n "$disk" ]] \
+        && declare -f _nds_install_grub_install_bios &>/dev/null; then
+        _nds_install_grub_install_bios "$disk" || {
+            warn "GRUB BIOS boot code install failed — see verbose log"
+        }
+    fi
     return 0
 }
 

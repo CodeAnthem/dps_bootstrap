@@ -7,7 +7,7 @@
 # shellcheck disable=SC2162
 set -euo pipefail
 
-readonly SCRIPT_VERSION="5.14.9"
+readonly SCRIPT_VERSION="5.14.10"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"

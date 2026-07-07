@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Post-install verification
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # Description:   Verify partition mounts, hardware artifacts, bootloader, and system profile
 # ==================================================================================================
 
@@ -24,7 +24,7 @@ _nds_install_verify_grub_bios() {
     local disk="$1"
 
     [[ -e /mnt/boot/grub/grub.cfg ]] || return 1
-    dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB
+    _nds_install_grub_bios_boot_ok "$disk"
 }
 
 # Description: Verify UEFI bootloader files exist on the ESP.

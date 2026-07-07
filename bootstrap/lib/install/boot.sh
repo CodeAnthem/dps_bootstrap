@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-07
+# Date:          Created: 2026-06-30 | Modified: 2026-07-08
 # Description:   Bootloader registration (EFI NVRAM entry)
 # Feature:       No keyfile is placed on the target — LUKS key (if used) lives on a USB stick
 # ==================================================================================================
@@ -31,6 +31,73 @@ _nixinstall_efi_loader_path() {
         refind) printf '%s' '\\EFI\\refind\\refind_x64.efi' ;;
         systemd-boot|*) printf '%s' '\\EFI\\systemd\\systemd-bootx64.efi' ;;
     esac
+}
+
+# Description: Whether partition 1 on disk is a GPT BIOS boot (bios_grub) partition.
+# Arguments:
+# - disk: <String> Block device
+# Returns:
+# - <Bool> 0 when bios_grub is present
+_nds_install_disk_has_bios_grub() {
+    local disk="$1"
+
+    [[ -n "$disk" && -b "$disk" ]] || return 1
+    parted "$disk" print 2>/dev/null | grep -qiE 'bios_grub|BIOS boot'
+}
+
+# Description: True when a bios_grub partition contains boot code (GRUB core.img).
+# Arguments:
+# - part: <String> Partition block device (e.g. /dev/sda1)
+# Returns:
+# - <Bool> 0 when non-empty / GRUB present
+_nds_install_bios_grub_populated() {
+    local part="$1" sample
+
+    [[ -b "$part" ]] || return 1
+    dd if="$part" bs=512 count=2 status=none 2>/dev/null | grep -aq GRUB && return 0
+    sample=$(dd if="$part" bs=512 count=1 status=none 2>/dev/null | LC_ALL=C tr -d '\0')
+    [[ -n "$sample" ]]
+}
+
+# Description: True when GRUB BIOS boot code is present (MBR or GPT bios_grub).
+# Arguments:
+# - disk: <String> Target block device
+# Returns:
+# - <Bool> 0 when boot code is present
+_nds_install_grub_bios_boot_ok() {
+    local disk="$1"
+
+    [[ -n "$disk" && -b "$disk" ]] || return 1
+    dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB && return 0
+    if _nds_install_disk_has_bios_grub "$disk" && _nds_install_bios_grub_populated "${disk}1"; then
+        return 0
+    fi
+    return 1
+}
+
+# Description: Run grub-install on the target for BIOS/GPT when boot code is missing.
+# Arguments:
+# - disk: <String> Target block device
+# Returns:
+# - <Bool> 0 on success
+_nds_install_grub_install_bios() {
+    local disk="$1" root log
+
+    root="${NDS_NIX_TARGET_ROOT:-/mnt}"
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+
+    _nds_install_grub_bios_boot_ok "$disk" && return 0
+    [[ -e "${root}/boot/grub/grub.cfg" ]] || return 1
+    _nds_nix_system_profile_ok "$root" || return 1
+
+    info "Installing GRUB boot code on ${disk}"
+    if ! nixos-enter --root "$root" -- \
+        /nix/var/nix/profiles/system/bin/grub-install --target=i386-pc --recheck "$disk" \
+        >>"$log" 2>&1; then
+        return 1
+    fi
+    nds_install_log "grub: installed BIOS boot code on ${disk}"
+    _nds_install_grub_bios_boot_ok "$disk"
 }
 
 # Description: Register the NixOS EFI boot entry in firmware NVRAM.
