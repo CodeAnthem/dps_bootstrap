@@ -91,7 +91,73 @@ WRAPPER
     return 0
 }
 
-# Description: True when the git-ssh wrapper should drive nix/git SSH auth.
+# Description: Install git-ssh wrapper and repo map onto the target under /mnt.
+# Arguments:
+# - mount_root: <String|optional> Target mount (default /mnt)
+nds_git_install_ssh_wrapper_to_target() {
+    local mount_root="${1:-/mnt}"
+    local map_src map_dest wrapper_dest profile_dir profile_file
+    local -a keys=()
+    local key_path base dest_rel o r k
+
+    [[ -d "$mount_root" ]] || return 0
+    map_src="$(nds_git_repo_key_map_file)"
+    [[ -f "$map_src" ]] || return 0
+
+    map_dest="${mount_root}/etc/nixos/secrets/nds_repo_key_map"
+    wrapper_dest="${mount_root}/usr/local/bin/nds-git-ssh"
+    mkdir -p "$(dirname "$map_dest")" "$(dirname "$wrapper_dest")"
+    : >"${map_dest}.new"
+    while IFS=$'\t' read -r o r k; do
+        [[ -n "$o" && -n "$r" && -f "$k" ]] || continue
+        base="$(basename "$k")"
+        dest_rel="etc/nixos/secrets/${base}"
+        printf '%s\t%s\t%s\n' "$o" "$r" "/${dest_rel}" >>"${map_dest}.new"
+    done <"$map_src"
+    mv "${map_dest}.new" "$map_dest"
+    chmod 600 "$map_dest"
+
+    cat >"$wrapper_dest" <<WRAPPER
+#!/usr/bin/env bash
+set -euo pipefail
+_map_file='/etc/nixos/secrets/nds_repo_key_map'
+declare -A _repo_keys=()
+if [[ -f "\$_map_file" ]]; then
+    while IFS=\$'\t' read -r _o _r _k; do
+        [[ -n "\$_o" && -n "\$_r" && -f "\$_k" ]] || continue
+        _repo_keys["\${_o}/\${_r}"]="\$_k"
+    done <"\$_map_file"
+fi
+_repo_slug=""
+for _arg in "\$@"; do
+    _s="\$_arg"
+    _s="\${_s#\'}"
+    _s="\${_s%\'}"
+    _s="\${_s#git-upload-pack }"
+    _s="\${_s%.git}"
+    if [[ "\$_s" == */* && "\$_s" != *' '* && "\$_s" != *@* ]]; then
+        _repo_slug="\$_s"
+        break
+    fi
+done
+_identity=()
+if [[ -n "\$_repo_slug" && -n "\${_repo_keys[\$_repo_slug]:-}" ]]; then
+    _identity=(-i "\${_repo_keys[\$_repo_slug]}" -o IdentitiesOnly=yes)
+fi
+exec ssh "\${_identity[@]}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 "\$@"
+WRAPPER
+    chmod 755 "$wrapper_dest"
+
+    profile_dir="${mount_root}/etc/profile.d"
+    profile_file="${profile_dir}/nds-git-ssh.sh"
+    mkdir -p "$profile_dir"
+    printf '%s\n' 'export GIT_SSH_COMMAND=/usr/local/bin/nds-git-ssh' >"$profile_file"
+    chmod 644 "$profile_file"
+
+    nds_install_log "git: target git-ssh wrapper -> /usr/local/bin/nds-git-ssh"
+    return 0
+}
+
 nds_git_ssh_wrapper_active() {
     local wrapper map
 

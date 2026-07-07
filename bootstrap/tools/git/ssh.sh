@@ -6,27 +6,8 @@
 # Description:   Non-interactive SSH env for git and nix fetches
 # ==================================================================================================
 
-# Description: Path to generated OpenSSH config for this NDS session.
-nds_git_ssh_config_path() {
-    printf '%s/ssh/config\n' "${NDS_RUNTIME_DIR:-/tmp/nds}"
-}
-
-# Description: Rewrite session SSH config with every registered private key.
+# Description: Refresh session git-ssh wrapper after keys change.
 nds_git_ssh_config_refresh() {
-    local cfg key_path
-
-    cfg="$(nds_git_ssh_config_path)"
-    mkdir -p "$(dirname "$cfg")"
-    {
-        printf 'Host github.com *.github.com\n'
-        printf '  HostName github.com\n'
-        printf '  StrictHostKeyChecking accept-new\n'
-        while IFS= read -r key_path; do
-            [[ -f "$key_path" ]] && printf '  IdentityFile %s\n' "$key_path"
-        done < <(nds_git_keys_list 2>/dev/null || true)
-        printf '  IdentitiesOnly yes\n'
-    } >"$cfg"
-    chmod 600 "$cfg"
     nds_git_ssh_wrapper_refresh || true
 }
 
@@ -80,7 +61,7 @@ _nds_git_ssh_env_for_url() {
 
 # Description: GIT_SSH_COMMAND and related env for non-interactive git/nix fetches.
 _nds_git_ssh_env() {
-    local key_path identity_args=() cfg wrapper
+    local key_path wrapper
     local -a keys=()
 
     if nds_git_ssh_wrapper_active 2>/dev/null; then
@@ -91,29 +72,25 @@ _nds_git_ssh_env() {
         return 0
     fi
 
-    cfg="$(nds_git_ssh_config_path)"
-    if [[ -f "$cfg" ]] && grep -q IdentityFile "$cfg" 2>/dev/null; then
+    mapfile -t keys < <(nds_git_keys_list 2>/dev/null || true)
+    if [[ ${#keys[@]} -eq 1 && -f "${keys[0]}" ]]; then
         printf '%s\n' \
             "GIT_TERMINAL_PROMPT=0" \
-            "GIT_SSH_COMMAND=ssh -F ${cfg} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
+            "GIT_SSH_COMMAND=ssh -i \"${keys[0]}\" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
         return 0
     fi
 
-    mapfile -t keys < <(nds_git_keys_list 2>/dev/null || true)
-    if [[ ${#keys[@]} -eq 0 ]]; then
-        key_path="$(nds_git_session_key_path 2>/dev/null || true)"
-        [[ -n "$key_path" && -f "$key_path" ]] && keys=("$key_path")
+    key_path="$(nds_git_session_key_path 2>/dev/null || true)"
+    if [[ -n "$key_path" && -f "$key_path" ]]; then
+        printf '%s\n' \
+            "GIT_TERMINAL_PROMPT=0" \
+            "GIT_SSH_COMMAND=ssh -i \"${key_path}\" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
+        return 0
     fi
-    for key_path in "${keys[@]}"; do
-        [[ -f "$key_path" ]] || continue
-        identity_args+=(-i "$key_path")
-    done
-    if [[ ${#identity_args[@]} -gt 0 ]]; then
-        identity_args+=(-o IdentitiesOnly=yes)
-    fi
+
     printf '%s\n' \
         "GIT_TERMINAL_PROMPT=0" \
-        "GIT_SSH_COMMAND=ssh ${identity_args[*]} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
+        "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
 }
 
 # Description: Environment for nix/git fetches during flake eval and nixos-install.
@@ -123,4 +100,15 @@ nds_git_export_nix_env() {
     local -n _out=$1
     _out=()
     while IFS= read -r line; do _out+=("$line"); done < <(_nds_git_ssh_env)
+}
+
+# Description: Mark git access as verified for this session (closure complete).
+nds_git_access_mark_verified() {
+    NDS_GIT_ACCESS_VERIFIED=true
+    export NDS_GIT_ACCESS_VERIFIED
+}
+
+# Description: True when git auth/closure checks already passed in this session.
+nds_git_access_verified() {
+    [[ "${NDS_GIT_ACCESS_VERIFIED:-}" == "true" ]]
 }

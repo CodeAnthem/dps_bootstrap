@@ -156,8 +156,8 @@ _nds_install_verify_git_key() {
         [[ -f "$dest" ]] || _nds_install_verify_fail "Git SSH key missing on target: ${dest}"
     done
 
-    cfg="/mnt/$(nds_git_target_ssh_config_rel 2>/dev/null || echo etc/ssh/ssh_config.d/nds-git.conf)"
-    [[ -f "$cfg" ]] || _nds_install_verify_fail "Git SSH config missing on target: ${cfg}"
+    cfg="/mnt/usr/local/bin/nds-git-ssh"
+    [[ -x "$cfg" ]] || _nds_install_verify_fail "Git SSH wrapper missing on target: ${cfg}"
 }
 
 # Description: Verify sops age key on target when the flake uses sops.

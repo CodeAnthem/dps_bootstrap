@@ -21,7 +21,7 @@ nds_git_session_key_path() {
         base="$(nds_git_secrets_basename)"
         printf '/root/.ssh/%s\n' "$base"
     else
-        printf '/root/.ssh/id_ed25519\n'
+        printf '/root/.ssh/git-unknown-key\n'
     fi
 }
 

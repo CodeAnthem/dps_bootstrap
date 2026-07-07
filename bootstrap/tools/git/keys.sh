@@ -182,14 +182,7 @@ nds_git_deploy_key_generate() {
     return 0
 }
 
-# Description: Relative path for target SSH config fragment.
-# Returns:
-# - <String> etc/ssh/ssh_config.d/nds-git.conf (stdout)
-nds_git_target_ssh_config_rel() {
-    printf 'etc/ssh/ssh_config.d/nds-git.conf\n'
-}
-
-# Description: Install all session keys and SSH config onto the target under /mnt.
+# Description: Install all session keys and git-ssh wrapper onto the target under /mnt.
 # Arguments:
 # - mount_root: <String|optional> Target mount (default /mnt)
 # Returns:
@@ -197,8 +190,7 @@ nds_git_target_ssh_config_rel() {
 nds_git_install_keys_to_target() {
     local mount_root="${1:-/mnt}"
     local -a keys=()
-    local key_path base dest_rel dest_dir dest abs target_cfg
-    local -a identity_lines=()
+    local key_path base dest_rel dest
 
     [[ -d "$mount_root" ]] || {
         debug "Target mount missing — skip git SSH key install"
@@ -206,38 +198,25 @@ nds_git_install_keys_to_target() {
     }
 
     mapfile -t keys < <(nds_git_keys_list)
-    [[ ${#keys[@]} -gt 0 ]] || {
+    if [[ ${#keys[@]} -eq 0 ]]; then
         nds_git_install_key_to_target "" "$mount_root" || return 0
         return 0
-    }
+    fi
 
     for key_path in "${keys[@]}"; do
         [[ -f "$key_path" ]] || continue
         base="$(basename "$key_path")"
         dest_rel="etc/nixos/secrets/${base}"
         dest="${mount_root}/${dest_rel}"
-        dest_dir="$(dirname "$dest")"
-        mkdir -p "$dest_dir"
+        mkdir -p "$(dirname "$dest")"
         install -m 600 -o root -g root "$key_path" "$dest"
-        abs="/${dest_rel}"
-        identity_lines+=("  IdentityFile ${abs}")
-        nds_install_log "git: SSH key -> ${abs}"
+        nds_install_log "git: SSH key -> /${dest_rel}"
     done
 
-    [[ ${#identity_lines[@]} -gt 0 ]] || return 0
+    if declare -f nds_git_install_ssh_wrapper_to_target &>/dev/null; then
+        nds_git_install_ssh_wrapper_to_target "$mount_root" || true
+        log "Git SSH wrapper installed on target: /usr/local/bin/nds-git-ssh"
+    fi
 
-    target_cfg="${mount_root}/$(nds_git_target_ssh_config_rel)"
-    mkdir -p "$(dirname "$target_cfg")"
-    {
-        printf '%s\n' "Host github.com *.github.com"
-        printf '%s\n' "${identity_lines[@]}"
-        printf '%s\n' "  IdentitiesOnly yes"
-    } > "$target_cfg"
-    chmod 644 "$target_cfg"
-
-    NDS_GIT_TARGET_SSH_CONFIG_ABS="/$(nds_git_target_ssh_config_rel)"
-    export NDS_GIT_TARGET_SSH_CONFIG_ABS
-    log "Git SSH config installed on target: ${NDS_GIT_TARGET_SSH_CONFIG_ABS}"
-    nds_install_log "git: SSH config -> ${NDS_GIT_TARGET_SSH_CONFIG_ABS} (${#keys[@]} key(s))"
     return 0
 }

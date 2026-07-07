@@ -42,10 +42,10 @@ nds_flake_install_confirm() {
     target_ip="$(nds_configurator_config_get REMOTE_TARGET_IP)"
 
     if [[ "$install_mode" == "remote" ]]; then
-        nds_preflight_remote_install "$target_ip" "$repo_url" || return 1
+        nds_preflight_remote_install "$target_ip" || return 1
         nds_action_confirm_remote_install "$target_ip" || return 1
     else
-        nds_preflight_install "$disk_target" "$repo_url" || return 1
+        nds_preflight_install "$disk_target" || return 1
         nds_action_confirm_install "$disk_target" "$disk_strategy" || return 1
     fi
     return 0

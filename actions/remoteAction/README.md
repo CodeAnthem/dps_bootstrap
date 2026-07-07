@@ -50,8 +50,7 @@ remote_action_run() {
 | `nds_nixos_install_flake` | Full flake install pipeline |
 | `nds_nixos_install` | Classic `/etc/nixos` install |
 | `nds_nixinstall_auto` | Disk prep only |
-| `nds_preflight_install` | Disk / nix / network checks |
-| `nds_preflight_ssh_for_git` | SSH key reminder |
+| `nds_preflight_install` | Disk / nix / boot checks |
 | `nds_secrets_offer_backup` | LUKS key copy prompt |
 | `nds_install_log` | Append to `/tmp/nds_session.log` |
 

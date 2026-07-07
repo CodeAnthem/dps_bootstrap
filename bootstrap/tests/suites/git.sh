@@ -286,12 +286,11 @@ suite_git() {
     mkdir -p "${tmpdir}/mnt/etc/nixos/secrets"
     nds_git_keys_register "$NDS_GIT_SESSION_KEY_PATH" || true
     if nds_git_install_keys_to_target "${tmpdir}/mnt" \
-        && [[ -f "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" ]] \
-        && [[ -f "${tmpdir}/mnt/etc/ssh/ssh_config.d/nds-git.conf" ]]; then
+        && [[ -f "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" ]]; then
         perms=$(stat -c '%a' "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" 2>/dev/null || echo "")
         if [[ "$perms" == "600" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ SSH keys installed on target with ssh config"
+            console "  ✓ SSH keys installed on target"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ SSH key target permissions (got ${perms})"

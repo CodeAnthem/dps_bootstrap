@@ -41,7 +41,6 @@ nds_nixos_install_flake() {
     fi
 
     nds_install_log "installFlake: host=${hostname} strategy=${NDS_CTX_DISK_STRATEGY} hw=${NDS_CTX_HW_PLACEMENT}"
-    nds_preflight_install "$NDS_CTX_DISK" "$NDS_CTX_FLAKE_REPO_URL" || return 1
 
     NDS_UI_QUIET=true
 

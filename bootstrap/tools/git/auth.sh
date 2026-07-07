@@ -133,6 +133,7 @@ nds_git_ensure_flake_closure_access() {
         if [[ ${#failed[@]} -eq 0 ]]; then
             success "SSH access confirmed for all ${#urls[@]} repository(ies)."
             nds_install_log "git: closure access OK (${#urls[@]} repos)"
+            nds_git_access_mark_verified
             return 0
         fi
 
@@ -177,11 +178,13 @@ nds_git_ensure_access() {
     if nds_git_probe_public "$url" 2>/dev/null; then
         success "Public repository ${owner}/${repo} — no SSH key required."
         nds_install_log "git: public repo ${owner}/${repo}"
+        nds_git_access_mark_verified
         return 0
     fi
 
     if _nds_git_auth_try_existing_access "$url"; then
         success "Git access confirmed for ${owner}/${repo} (existing key)."
+        nds_git_access_mark_verified
         return 0
     fi
 
@@ -204,6 +207,7 @@ nds_git_ensure_access() {
 
         if nds_git_probe_access "$url"; then
             success "Git access confirmed for ${owner}/${repo}."
+            nds_git_access_mark_verified
             return 0
         fi
         warn "Still no access — register a deploy key on ${owner}/${repo} or import a working key."

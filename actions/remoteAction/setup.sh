@@ -93,7 +93,7 @@ action_setup() {
     disk_strategy="${disk_strategy:-nds}"
     disk_target="$(nds_config_get "disk" "DISK_TARGET")"
 
-    nds_preflight_install "$disk_target" "$repo_url" || exit 11
+    nds_preflight_install "$disk_target" || exit 11
     nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
 
     if [[ -n "${remote_script:-}" ]]; then
