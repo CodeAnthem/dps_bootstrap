@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install pipeline tests (read-only / mocked)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # ==================================================================================================
 
 suite_install() {
@@ -90,6 +90,17 @@ suite_install() {
         else
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ sops: age-keygen invoked as shell function"
+        fi
+    fi
+
+    if declare -f _nds_nix_flake_system_ref &>/dev/null; then
+        out=$(_nds_nix_flake_system_ref "control-toolkit")
+        if [[ "$out" == 'nixosConfigurations."control-toolkit".config.system.build.toplevel' ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ flake system ref: nixosConfigurations host attr"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ flake system ref: expected toplevel attr, got $out"
         fi
     fi
 

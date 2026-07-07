@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-07
+# Date:          Created: 2025-10-28 | Modified: 2026-07-08
 # Description:   NixOS installation commands
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
@@ -280,13 +280,67 @@ _nixinstall_ensure_flake_checkout() {
     error "Failed to stage $repo_url to $install_path"
 }
 
+# Description: Flake attr for nixosConfigurations.<host>.config.system.build.toplevel.
+# Arguments:
+# - host_name: <String> nixosConfigurations key
+# Returns:
+# - <String> flake fragment (stdout)
+_nds_nix_flake_system_ref() {
+    local host_name="$1"
+
+    printf 'nixosConfigurations."%s".config.system.build.toplevel' "$host_name"
+}
+
+# Description: Build the NixOS system closure on the target store (/mnt).
+# Matches nixos-install / nixos-anywhere: build first, then nixos-install --system.
+# Arguments:
+# - flake_root:  <String> Flake directory
+# - host_name:   <String> nixosConfigurations key
+# - build_flags: <String...> Extra nix build flags (e.g. --override-input)
+# Returns:
+# - <String> nixos-system store path (stdout)
+_nixinstall_build_flake_system() {
+    local flake_root="$1"
+    local host_name="$2"
+    shift 2
+    local -a build_flags=("$@")
+    local root store log tmpdir out_link system_path flake_ref
+
+    [[ -d "$flake_root" ]] || return 1
+    root=$(_nds_nix_target_root)
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    store="$root"
+    mkdir -p "${root}/nix/store"
+    _nds_nix_ensure_store_ready "$store" || true
+    tmpdir=$(mktemp -d -p "$root")
+    out_link="${tmpdir}/system"
+    flake_ref=$(_nds_nix_flake_system_ref "$host_name")
+
+    if ! env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+        nix build \
+        --extra-experimental-features 'nix-command flakes' \
+        --store "$store" \
+        --extra-substituters "auto?trusted=1" \
+        --out-link "$out_link" \
+        "${build_flags[@]}" \
+        "${flake_root}#${flake_ref}" >>"$log" 2>&1; then
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    system_path=$(readlink -f "$out_link")
+    rm -rf "$tmpdir"
+    printf '%s\n' "$system_path"
+    return 0
+}
+
 # Usage: _nixinstall_install_nixos_flake "flake_root" "host_name" ["hardware_placement"]
 _nixinstall_install_nixos_flake() {
     local flake_root="$1"
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
-    local -a install_args=(--root /mnt --flake "${flake_root}#${host_name}" --no-root-passwd)
-    local nix_config
+    local -a build_flags=()
+    local system_path nix_config log
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
 
@@ -299,15 +353,25 @@ _nixinstall_install_nixos_flake() {
         local hw_artifact
         hw_artifact=$(_nixinstall_hardware_artifact_name)
         if [[ "$hw_artifact" == "hardware-configuration.nix" && -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
-            install_args+=(--override-input hardware "path:/etc/nixos/hardware-configuration.nix")
+            build_flags+=(--override-input hardware "path:/etc/nixos/hardware-configuration.nix")
             log "Using --override-input hardware path:/etc/nixos/hardware-configuration.nix"
         fi
     fi
 
     nix_config=$(_nds_nix_nixos_install_config)
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
+    log "Building NixOS system closure on target store"
+    if ! system_path=$(_nixinstall_build_flake_system "$flake_root" "$host_name" "${build_flags[@]}"); then
+        error "Flake-based NixOS build failed"
+        return 1
+    fi
+    nds_install_log "nix: built system ${system_path}"
+
+    log "Installing NixOS from pre-built system (nixos-install --system)"
     if ! env NIX_CONFIG="$nix_config" \
-        nixos-install "${install_args[@]}"; then
+        nixos-install --root /mnt --no-root-passwd --no-channel-copy --system "$system_path" \
+        >>"$log" 2>&1; then
         error "Flake-based NixOS installation failed"
         return 1
     fi

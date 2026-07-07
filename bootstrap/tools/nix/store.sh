@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Nix store helpers (live ISO vs install disk)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # Description:   Chroot store on mounted /mnt during install; repair profile and bootloader after nixos-install
 # ==================================================================================================
 
@@ -181,7 +181,8 @@ _nds_nix_ensure_system_profile() {
 
     mkdir -p "$(dirname "$profile_dst")"
     if ! env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
-        nix-env --store "$root" -p "$profile_dst" --set "$system_out" >>"$log" 2>&1; then
+        nix-env --store "$root" --extra-substituters "auto?trusted=1" \
+        -p "$profile_dst" --set "$system_out" >>"$log" 2>&1; then
         if declare -f _nds_install_diag_write &>/dev/null; then
             _nds_install_diag_write "nix-env failed: store=${root} profile=${profile_dst} system=${system_out}"
         fi
