@@ -291,6 +291,40 @@ _nds_nix_flake_system_ref() {
     printf 'nixosConfigurations."%s".config.system.build.toplevel' "$host_name"
 }
 
+# Description: Stage install-time host files into the flake Git tree for nix eval.
+# Gitignored or untracked files (nds-boot.nix, facter.json) are invisible to
+# builtins.pathExists during nix build — the flake falls back to eval-boot (nodev).
+# Arguments:
+# - flake_root: <String> Flake checkout root
+# - host_dir:   <String> Host directory (…/hosts/…/hostname)
+_nds_install_flake_git_stage_install_files() {
+    local flake_root="$1" host_dir="$2"
+    local log rel f
+    local -a files=()
+
+    [[ -d "${flake_root}/.git" ]] || {
+        nds_install_log "flake: no .git in ${flake_root} — skip git add for install files"
+        return 0
+    }
+
+    for f in nds-boot.nix facter.json hardware-configuration.nix machine.nix; do
+        [[ -f "${host_dir}/${f}" ]] && files+=("${host_dir}/${f}")
+    done
+    [[ ${#files[@]} -gt 0 ]] || return 0
+
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    {
+        printf '\n=== git add -f install-time flake files (required for nix eval) ===\n'
+    } >>"$log"
+
+    for rel in "${files[@]}"; do
+        rel="${rel#"${flake_root}/"}"
+        git -C "$flake_root" add -f "$rel" >>"$log" 2>&1 || return 1
+        nds_install_log "flake: git add -f ${rel}"
+    done
+    return 0
+}
+
 # Description: Build flake system on target store; install into system profile.
 # Arguments:
 # - flake_root:  <String> Flake directory
@@ -364,7 +398,7 @@ _nixinstall_install_nixos_flake() {
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
     local -a build_flags=()
-    local root system_rel log
+    local root system_rel log host_dir_rel host_dir
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
     root=$(_nds_nix_target_root)
@@ -373,6 +407,13 @@ _nixinstall_install_nixos_flake() {
         error "Flake root not found: $flake_root"
         return 1
     fi
+
+    host_dir_rel="${NDS_CTX_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
+    host_dir="${flake_root}/${host_dir_rel}/${host_name}"
+    _nixinstall_flake_git_stage_install_files "$flake_root" "$host_dir" || {
+        error "Failed to stage install-time flake files for nix build"
+        return 1
+    }
 
     if [[ "$hw_placement" == "etc-nixos" ]]; then
         local hw_artifact

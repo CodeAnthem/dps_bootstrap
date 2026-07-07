@@ -51,12 +51,10 @@ _nds_install_disk_has_bios_grub() {
 # Returns:
 # - <Bool> 0 when non-empty / GRUB present
 _nds_install_bios_grub_populated() {
-    local part="$1" sample
+    local part="$1"
 
     [[ -b "$part" ]] || return 1
-    dd if="$part" bs=512 count=2 status=none 2>/dev/null | grep -aq GRUB && return 0
-    sample=$(dd if="$part" bs=512 count=1 status=none 2>/dev/null | LC_ALL=C tr -d '\0')
-    [[ -n "$sample" ]]
+    dd if="$part" bs=512 count=4 status=none 2>/dev/null | grep -aq GRUB
 }
 
 # Description: True when GRUB BIOS boot code is present (MBR or GPT bios_grub).
@@ -86,11 +84,10 @@ _nds_install_grub_install_bios() {
     root="${NDS_NIX_TARGET_ROOT:-/mnt}"
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
-    _nds_install_grub_bios_boot_ok "$disk" && return 0
     [[ -e "${root}/boot/grub/grub.cfg" ]] || return 1
     _nds_nix_system_profile_ok "$root" || return 1
 
-    info "Installing GRUB boot code on ${disk}"
+    info "Installing GRUB boot code on ${disk} (BIOS)"
     if ! nixos-enter --root "$root" -- \
         /nix/var/nix/profiles/system/bin/grub-install --target=i386-pc --recheck "$disk" \
         >>"$log" 2>&1; then
