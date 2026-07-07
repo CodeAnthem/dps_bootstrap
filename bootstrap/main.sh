@@ -7,7 +7,7 @@
 # shellcheck disable=SC2162
 set -euo pipefail
 
-readonly SCRIPT_VERSION="5.14.4"
+readonly SCRIPT_VERSION="5.14.5"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
@@ -87,13 +87,24 @@ _main_stopHandler() {
             printf '%sInstallation failed (exit code %s).\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
         fi
         nds_ui_b ""
-        local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
-        if [[ -f "$log" ]]; then
-            nds_ui_i "Full log: ${log}"
-            nds_ui_b "Last lines:"
+        if declare -f nds_install_logs_fetch_hints &>/dev/null; then
+            nds_install_logs_fetch_hints
+        else
+            local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+            if [[ -f "$log" ]]; then
+                nds_ui_i "Full log: ${log}"
+                nds_ui_b "Last lines:"
+                while IFS= read -r _line; do
+                    printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
+                done < <(tail -n 12 "$log" 2>/dev/null)
+                nds_ui_b ""
+            fi
+        fi
+        if [[ -f "${NDS_INSTALL_DIAG_LOG:-}" ]]; then
+            nds_ui_b "Diagnostics (last lines):"
             while IFS= read -r _line; do
                 printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
-            done < <(tail -n 12 "$log" 2>/dev/null)
+            done < <(tail -n 24 "${NDS_INSTALL_DIAG_LOG}" 2>/dev/null)
             nds_ui_b ""
         fi
         return 0

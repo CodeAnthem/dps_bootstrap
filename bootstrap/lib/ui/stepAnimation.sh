@@ -100,8 +100,11 @@ nds_step_exec() {
     fi
     step_fail "$label"
     if declare -f nds_install_diag_step_failure &>/dev/null; then
-        nds_install_diag_step_failure "$label" >>"$logfile" 2>&1
+        nds_install_diag_step_failure "$label"
     fi
-    warn "Step failed — see $logfile for details"
+    if declare -f nds_install_logs_fetch_hints &>/dev/null; then
+        nds_install_logs_fetch_hints
+    fi
+    warn "Step failed — see ${NDS_INSTALL_DIAG_LOG:-diag.log} (compact) or ${logfile} (verbose)"
     return "$rc"
 }

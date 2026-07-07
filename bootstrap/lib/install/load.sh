@@ -25,6 +25,7 @@ nds_install_load() {
     nds_import_file "${install_dir}/verify.sh" || return 1
     nds_import_file "${install_dir}/bundle/load.sh" || return 1
     nds_install_bundle_load "${install_dir}/bundle" || return 1
+    nds_import_file "${install_dir}/logs.sh" || return 1
     nds_import_file "${install_dir}/sops.sh" || return 1
     nds_import_file "${install_dir}/partitionTools.sh" || return 1
     nds_import_file "${install_dir}/disk-prep.sh" || return 1

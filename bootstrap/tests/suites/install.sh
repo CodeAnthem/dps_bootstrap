@@ -93,20 +93,19 @@ suite_install() {
         fi
     fi
 
-    if declare -f nds_install_diag_run &>/dev/null; then
+    if declare -f nds_install_diag_snapshot &>/dev/null; then
         local diag_log
         diag_log=$(mktemp)
-        export NDS_INSTALL_DETAIL_LOG="$diag_log"
-        nds_install_diag_section "test"
-        nds_install_diag_lines "sample" "line one"
-        if grep -q 'DIAG: test' "$diag_log" && grep -q 'line one' "$diag_log"; then
+        export NDS_INSTALL_DIAG_LOG="$diag_log"
+        nds_install_diag_snapshot "test"
+        if grep -q '=== test @' "$diag_log" && grep -q 'system_profile=' "$diag_log"; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ install_diag: writes to detail log"
+            console "  ✓ install_diag: compact snapshot in diag log"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
-            console "  ✗ install_diag: detail log capture"
+            console "  ✗ install_diag: compact snapshot"
         fi
         rm -f "$diag_log"
-        unset NDS_INSTALL_DETAIL_LOG
+        unset NDS_INSTALL_DIAG_LOG
     fi
 }

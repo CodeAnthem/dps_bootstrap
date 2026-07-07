@@ -39,8 +39,8 @@ _nixinstall_mount_filesystems() {
 
     log "Filesystems mounted successfully"
 
-    if declare -f nds_install_diag_mounts &>/dev/null; then
-        nds_install_diag_mounts
+    if declare -f nds_install_diag_after_mount &>/dev/null; then
+        nds_install_diag_after_mount
     fi
 
     return 0

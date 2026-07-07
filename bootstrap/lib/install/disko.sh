@@ -62,8 +62,8 @@ _nds_partition_disko_apply() {
         ) || rc=$?
     fi
 
-    if declare -f nds_install_diag_disk &>/dev/null; then
-        nds_install_diag_disk "$disk"
+    if declare -f nds_install_diag_after_partition &>/dev/null; then
+        nds_install_diag_after_partition "$disk"
     fi
 
     return "$rc"

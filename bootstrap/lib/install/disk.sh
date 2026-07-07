@@ -90,8 +90,8 @@ _nixinstall_partition_disk() {
         mkfs.ext4 -L nixos "$root_part" || return 1
     fi
 
-    if declare -f nds_install_diag_disk &>/dev/null; then
-        nds_install_diag_disk "$disk"
+    if declare -f nds_install_diag_after_partition &>/dev/null; then
+        nds_install_diag_after_partition "$disk"
     fi
 
     return 0

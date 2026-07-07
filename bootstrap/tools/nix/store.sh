@@ -138,13 +138,13 @@ _nds_nix_find_system_closure() {
         }
     fi
 
-    system_out=$(ls -dt "${root}"/nix/store/*-nixos-system-* 2>/dev/null | head -1 || true)
+    system_out=$(ls -dt "${root}"/nix/store/*-nixos-system-*/ 2>/dev/null | head -1 || true)
     [[ -n "$system_out" && -d "$system_out" ]] && {
         printf '%s\n' "$system_out"
         return 0
     }
 
-    system_out=$(ls -dt "${scratch}"/*-nixos-system-* 2>/dev/null | head -1 || true)
+    system_out=$(ls -dt "${scratch}"/*-nixos-system-*/ 2>/dev/null | head -1 || true)
     [[ -n "$system_out" && -d "$system_out" ]] && {
         printf '%s\n' "$system_out"
         return 0
@@ -179,6 +179,18 @@ _nds_nix_ensure_system_profile() {
     return 0
 }
 
+# Description: Link /run/current-system to the system profile on the target.
+# Arguments:
+# - root: <String> Target root mount
+_nds_nix_ensure_current_system_link() {
+    local root="$1"
+
+    [[ -e "${root}/nix/var/nix/profiles/system" ]] || return 1
+    mkdir -p "${root}/run"
+    ln -snf /nix/var/nix/profiles/system "${root}/run/current-system"
+    return 0
+}
+
 # Description: Reinstall bootloader when GRUB/EFI files are missing after nixos-install.
 # Arguments:
 # - root: <String> Target root mount
@@ -195,8 +207,7 @@ _nds_nix_reinstall_bootloader() {
 
     if [[ "$uefi" == "true" ]]; then
         _nds_install_verify_efi_files "$loader" && return 0
-    elif [[ -e "${root}/boot/grub/grub.cfg" ]] \
-        && _nds_install_verify_grub_bios "$disk"; then
+    elif [[ -e "${root}/boot/grub/grub.cfg" ]]; then
         return 0
     fi
 
@@ -236,31 +247,21 @@ _nds_nix_remount_target_if_needed() {
 # Returns:
 # - <Bool> 0 on success
 nds_nix_ensure_install_artifacts() {
-    local root log
+    local root
 
     root=$(_nds_nix_target_root)
-    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
-
-    if declare -f nds_install_diag_section &>/dev/null; then
-        {
-            nds_install_diag_section "ensure install artifacts: before"
-            nds_install_diag_nix_store
-        } >>"$log" 2>&1
-    fi
 
     _nds_nix_remount_target_if_needed || return 1
     _nds_nix_ensure_system_profile "$root" || return 1
-    _nds_nix_reinstall_bootloader "$root" || {
-        warn "Bootloader reinstall failed — system profile is set; check install log"
-    }
+    _nds_nix_ensure_current_system_link "$root" || true
 
-    if declare -f nds_install_diag_section &>/dev/null; then
-        {
-            nds_install_diag_section "ensure install artifacts: after"
-            nds_install_diag_nix_store
-            nds_install_diag_boot_artifacts
-        } >>"$log" 2>&1
+    if declare -f nds_install_diag_snapshot &>/dev/null; then
+        nds_install_diag_snapshot "after nixos-install"
     fi
+
+    _nds_nix_reinstall_bootloader "$root" || {
+        warn "Bootloader reinstall skipped or failed — see diag log"
+    }
 
     return 0
 }

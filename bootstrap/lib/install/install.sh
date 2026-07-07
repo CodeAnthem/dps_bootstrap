@@ -314,12 +314,6 @@ _nixinstall_install_nixos_flake() {
 
     nds_nix_ensure_install_artifacts || return 1
 
-    if declare -f nds_install_diag_nix_store &>/dev/null; then
-        nds_install_diag_section "after nixos-install"
-        nds_install_diag_nix_store
-        nds_install_diag_boot_artifacts
-    fi
-
     log "Flake-based NixOS installation completed"
     return 0
 }
@@ -352,12 +346,6 @@ _nixinstall_install_nixos() {
     fi
 
     nds_nix_ensure_install_artifacts || return 1
-
-    if declare -f nds_install_diag_nix_store &>/dev/null; then
-        nds_install_diag_section "after nixos-install (classic)"
-        nds_install_diag_nix_store
-        nds_install_diag_boot_artifacts
-    fi
 
     log "NixOS installation completed"
     return 0

@@ -8,6 +8,7 @@
 nds_install_bundle_create() {
     local staging bundle_path user item secret_files=()
     local install_log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    local diag_log="${NDS_INSTALL_DIAG_LOG:-/tmp/nds_install_diag.log}"
     local session_log="${NDS_INSTALL_LOG:-/tmp/nds_session.log}"
 
     if [[ -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
@@ -35,6 +36,7 @@ nds_install_bundle_create() {
     fi
 
     [[ -f "$install_log" ]] && cp "$install_log" "${staging}/logs/install.log"
+    [[ -f "$diag_log" ]] && cp "$diag_log" "${staging}/logs/diag.log"
     [[ -f "$session_log" ]] && cp "$session_log" "${staging}/logs/session.log"
 
     mapfile -t secret_files < <(nds_secrets_list_runtime)
