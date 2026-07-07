@@ -140,6 +140,25 @@ nds_ui_choice_row() {
     nds_ui_kv_row "${number}) ${name}" "$detail" "$width"
 }
 
+# Description: Build a standardized numbered-menu prompt line.
+# Arguments:
+# - min:         <Int>    Minimum valid digit
+# - max:         <Int>    Maximum valid digit
+# - default_opt: <String|optional> Default option key shown in brackets (Enter accepts)
+# - text:        <String|optional> Prompt text (default: Make your selection)
+# Returns:
+# - <String> Formatted prompt (stdout)
+nds_ui_numbered_prompt() {
+    local min="$1" max="$2" default_opt="${3:-}" text="${4:-Make your selection}"
+
+    nds_ui_init
+    if [[ -n "$default_opt" ]]; then
+        printf '%s%s [%s] (%s-%s): ' "$NDS_UI_INDENT_I" "$text" "$default_opt" "$min" "$max"
+    else
+        printf '%s%s (%s-%s): ' "$NDS_UI_INDENT_I" "$text" "$min" "$max"
+    fi
+}
+
 # Description: Read one menu digit without Enter (same UX as action select).
 # Arguments:
 # - prompt: <String> Prompt text

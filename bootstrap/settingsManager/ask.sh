@@ -74,30 +74,35 @@ nds_cfg_print_numbered_choice_options() {
 # Description: Choice prompt with numbered rows; single-key select (like action menu).
 # Arguments:
 # - var:     <String> Config variable name
-# - label:   <String> Prompt label
 # - options: <String> Pipe-separated option keys
 # - labels:  <String> key=description pairs separated by |
-# - default: <String|optional> Default option key
+# - default: <String|optional> Default option key (Enter accepts when set)
 nds_cfg_ask_numbered_choice() {
-    local var="$1" label="$2" options="$3" labels="${4:-}" default="${5:-}"
+    local var="$1" options="$2" labels="${3:-}" default="${4:-}"
     local -a opts=()
-    local count=0 digit current display resolved prompt
+    local count=0 digit current resolved prompt
 
-    [[ -n "$(nds_cfg_get "$var")" ]] || nds_cfg_set "$var" "$default"
+    [[ -n "$default" ]] && [[ -z "$(nds_cfg_get "$var")" ]] && nds_cfg_set "$var" "$default"
     IFS='|' read -ra opts <<< "$options"
     count=${#opts[@]}
     current=$(nds_cfg_get "$var")
 
     [[ -n "$labels" ]] && nds_cfg_print_numbered_choice_options "$options" "$labels"
-    display=$(nds_cfg_display_choice "$current" "$labels")
-    prompt="${NDS_UI_INDENT_I}${label} [${display}] (1-${count}): "
+    prompt="$(nds_ui_numbered_prompt 1 "$count" "$default")"
 
-    if digit=$(nds_ui_read_menu_digit "$prompt" 1 "$count"); then
-        resolved="${opts[$((digit - 1))]}"
-        nds_cfg_set "$var" "$resolved"
-        [[ "$current" != "$resolved" ]] \
-            && nds_ui_b "  -> Selected: $(nds_cfg_display_choice "$resolved" "$labels")"
-    fi
+    while true; do
+        if digit=$(nds_ui_read_menu_digit "$prompt" 1 "$count"); then
+            resolved="${opts[$((digit - 1))]}"
+            break
+        elif [[ -n "$default" ]]; then
+            resolved="$default"
+            break
+        fi
+        nds_ui_b "Invalid selection. Choose 1-${count}."
+    done
+
+    nds_cfg_set "$var" "$resolved"
+    [[ "$current" != "$resolved" ]] && nds_ui_b "  -> Selected: ${resolved}"
     return 0
 }
 

@@ -94,7 +94,8 @@ nds_actions_select() {
     nds_ui_b ""
 
     local choice max_choice="${#ACTION_NAMES[@]}"
-    local prompt="${NDS_UI_INDENT_B}Select action to preview [0-${max_choice}]: "
+    local prompt
+    prompt="$(nds_ui_numbered_prompt 0 "$max_choice")"
     while true; do
         if choice=$(nds_ui_read_menu_digit "$prompt" 0 "$max_choice"); then
             [[ "$choice" == "0" ]] && { nds_ui_b "Operation aborted"; exit 130; }
