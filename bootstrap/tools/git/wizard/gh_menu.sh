@@ -15,11 +15,15 @@ _nds_git_wizard_gh_auth_login() {
     nds_git_gh_cmd gh_cmd || return 1
     nds_git_gh_unset_blocking_tokens
 
+    nds_ui_b "gh stores a short-lived session on this ISO (plain text — no credential store on the live image)."
+    nds_ui_b ""
+
     BROWSER=false "${gh_cmd[@]}" auth login \
         --hostname github.com \
         --git-protocol ssh \
         --scopes repo,admin:public_key \
-        --skip-ssh-key || rc=$?
+        --skip-ssh-key \
+        --insecure-storage || rc=$?
 
     if [[ "$rc" -ne 0 ]]; then
         warn "GitHub login failed"
@@ -90,7 +94,11 @@ nds_git_wizard_menu_gh() {
     pub="$(nds_git_session_pubkey_path)"
 
     if nds_git_gh_register_for_repos "$pub" "${repos[@]}"; then
-        success "Read-only SSH key registered on your GitHub account ($(nds_git_ssh_key_title))"
+        if [[ "${NDS_GIT_SSH_KEY_READONLY:-}" == "true" ]]; then
+            success "Read-only SSH key registered on your GitHub account ($(nds_git_ssh_key_title))"
+        else
+            success "SSH key registered on your GitHub account ($(nds_git_ssh_key_title))"
+        fi
         nds_ui_i "Private key will be copied to $(nds_git_target_key_abs) on the target."
         return 0
     fi

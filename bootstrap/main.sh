@@ -7,7 +7,7 @@
 # shellcheck disable=SC2162
 set -euo pipefail
 
-readonly SCRIPT_VERSION="5.11.3"
+readonly SCRIPT_VERSION="5.11.4"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
@@ -86,6 +86,7 @@ _main_stopHandler() {
             printf '%sInstallation failed (exit code %s).\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
         fi
         nds_ui_b ""
+        _nds_callHook "exit_cleanup" "$exit_code" || true
         local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
         if [[ -f "$log" ]]; then
             nds_ui_i "Full log: ${log}"

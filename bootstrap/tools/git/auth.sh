@@ -18,8 +18,10 @@ nds_git_access_cleanup() {
 }
 
 # Description: Exit hook — prompt to clear gh session on abort; never auto-clear on failure.
+# Arguments:
+# - exit_code: <Int|optional> Process exit code (defaults to $?)
 hook_exit_cleanup() {
-  local exit_code=$?
+    local exit_code="${1:-$?}"
 
     if [[ "${NDS_GIT_INSTALL_SUCCEEDED:-}" == "true" ]]; then
         unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true

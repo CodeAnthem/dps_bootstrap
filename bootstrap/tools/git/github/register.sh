@@ -31,6 +31,22 @@ nds_git_gh_pubkey_on_user() {
         | grep -qF "$key_line"
 }
 
+# Description: True when the account SSH key title is marked read-only on GitHub.
+# Arguments:
+# - title: <String> Key title
+# Returns:
+# - <Bool> 0 when read_only is true
+nds_git_gh_ssh_key_is_readonly() {
+    local title="$1"
+    local ro
+    local -a gh_cmd=()
+
+    nds_git_gh_cmd gh_cmd || return 1
+    ro=$("${gh_cmd[@]}" ssh-key list --json title,read_only \
+        --jq ".[] | select(.title==\"${title}\") | .read_only" 2>/dev/null | head -1)
+    [[ "$ro" == "true" ]]
+}
+
 # Description: List account SSH key ids that match a title.
 # Arguments:
 # - title: <String> Key title
@@ -105,11 +121,15 @@ _nds_git_gh_api_add_readonly_key() {
     err=$("${gh_cmd[@]}" api -X POST user/keys \
         -f "title=${title}" \
         -f "key=${key_body}" \
-        -f "read_only=true" 2>&1) || rc=$?
-    [[ "${rc:-0}" -eq 0 ]]
+        -F "read_only=true" 2>&1) || rc=$?
+    if [[ "${rc:-0}" -ne 0 ]]; then
+        debug "gh api user/keys failed: ${err}"
+        return 1
+    fi
+    return 0
 }
 
-# Description: Register session public key on the GitHub account (read-only).
+# Description: Register session public key on the GitHub account (read-only when supported).
 # Arguments:
 # - pub_file: <String> Public key path
 # - title:    <String> Key title
@@ -118,7 +138,7 @@ _nds_git_gh_api_add_readonly_key() {
 nds_git_gh_register_account_key() {
     local pub_file="$1"
     local title="$2"
-    local id err rc
+    local id err
     local -a gh_cmd=()
 
     [[ -f "$pub_file" ]] || return 1
@@ -143,24 +163,21 @@ nds_git_gh_register_account_key() {
         fi
     done < <(_nds_git_gh_user_key_ids_by_title "$title")
 
-    if _nds_git_gh_api_add_readonly_key "$pub_file" "$title"; then
+    if ! _nds_git_gh_api_add_readonly_key "$pub_file" "$title"; then
+        warn "Could not add read-only SSH key to GitHub account"
+        nds_ui_i "  Check: org SSO authorized for gh, token has admin:public_key scope."
+        nds_ui_i "  Remove an old key with the same title on github.com/settings/keys and retry."
+        return 1
+    fi
+
+    if nds_git_gh_ssh_key_is_readonly "$title"; then
         nds_install_log "git: account SSH key added read-only (${title})"
-        return 0
+    else
+        nds_install_log "git: account SSH key added (${title}) — GitHub reports read/write"
+        warn "GitHub registered the key as read/write (not read-only)"
+        nds_ui_i "  Revoke it at github.com/settings/keys if you require read-only access."
     fi
-
-    err=$("${gh_cmd[@]}" ssh-key add "$pub_file" -t "$title" 2>&1) || rc=$?
-    if [[ "${rc:-0}" -eq 0 ]]; then
-        nds_install_log "git: account SSH key added via gh ssh-key add (${title})"
-        return 0
-    fi
-
-    if nds_git_gh_pubkey_on_user "$pub_file"; then
-        return 0
-    fi
-
-    warn "Could not add SSH key to GitHub account"
-    nds_ui_i "  ${err}"
-    return 1
+    return 0
 }
 
 # Description: Register account SSH key for GitHub repos in scope (expands flake.lock).
@@ -168,7 +185,7 @@ nds_git_gh_register_account_key() {
 # - pub_file: <String> Public key path
 # - repos:    <String...> owner/repo seeds
 # Returns:
-# - <Bool> 0 on success
+# - <Bool> 0 on success; sets NDS_GIT_SSH_KEY_READONLY=true|false when registered
 nds_git_gh_register_for_repos() {
     local pub_file="$1"
     shift
@@ -185,5 +202,11 @@ nds_git_gh_register_for_repos() {
     mapfile -t repos < <(nds_git_gh_expand_github_repos "${repos[@]}")
     nds_install_log "git: registering account SSH key for ${#repos[@]} repo(s)"
 
-    nds_git_gh_register_account_key "$pub_file" "$key_title"
+    nds_git_gh_register_account_key "$pub_file" "$key_title" || return 1
+    if nds_git_gh_ssh_key_is_readonly "$key_title"; then
+        export NDS_GIT_SSH_KEY_READONLY=true
+    else
+        export NDS_GIT_SSH_KEY_READONLY=false
+    fi
+    return 0
 }
