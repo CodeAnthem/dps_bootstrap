@@ -20,7 +20,7 @@ Installs `nixosConfigurations.<host>` from your flake. NDS handles disk prep, ha
 
 ## Menu categories
 
-installFlake exposes **Access**, **Disk**, **Your flake**, **Boot**, and **Encryption**.
+installFlake exposes **Your flake**, **Boot**, **Disk**, **Encryption**, and **Platform**.
 Boot uses the same **nixcfg** path as classicInstall: at install time NDS writes
 `nds-boot.nix` next to the host (imported via `mkNdsBoot.nix`) from the boot preset.
 

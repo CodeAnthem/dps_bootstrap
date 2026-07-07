@@ -76,6 +76,16 @@ suite_configurator() {
         console "  ✗ grouped export: menu skip flags missing"
     fi
 
+    if ! grep -Pz '# Configuration — portable[^\n]*\n\nexport ' <<<"$grouped" \
+       && ! grep -Pz '# This machine only[^\n]*\n\nexport ' <<<"$grouped" \
+       && ! grep -Pz '# Menu control[^\n]*\n\nexport ' <<<"$grouped"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ grouped export: no blank line between section comment and exports"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ grouped export: unexpected blank line after section comment"
+    fi
+
     CONFIG_DATA[FLAKE_HOST]="control-toolkit"
     CONFIG_DATA[PLATFORM_RUN_ON_VM]="true"
     CONFIG_DATA[PLATFORM_VM_TYPE]="vmware"

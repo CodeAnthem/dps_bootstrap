@@ -7,14 +7,16 @@
 # ==================================================================================================
 
 action_presets() {
-    printf '%s\n' remoteAction boot disk encryption
+    printf '%s\n' remoteAction boot disk encryption platform
 }
 
 action_config() {
     nds_configurator_preset_set_display remoteAction "Remote flake action"
     nds_configurator_preset_set_priority remoteAction 20
     nds_configurator_preset_set_priority boot 21
-    nds_configurator_preset_set_priority encryption 22
+    nds_configurator_preset_set_priority disk 22
+    nds_configurator_preset_set_priority encryption 23
+    nds_configurator_preset_set_priority platform 24
 }
 
 # Optional: extra preset dirs from env (colon-separated paths).

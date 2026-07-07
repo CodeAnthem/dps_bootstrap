@@ -2,19 +2,21 @@
 # ==================================================================================================
 # NDS - Install from flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-07-05
+# Date:          Created: 2026-06-28 | Modified: 2026-07-07
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
 action_presets() {
-    printf '%s\n' installFlake boot disk encryption
+    printf '%s\n' installFlake boot disk encryption platform
 }
 
 action_config() {
     nds_configurator_preset_set_display installFlake "Your flake"
     nds_configurator_preset_set_priority installFlake 20
     nds_configurator_preset_set_priority boot 21
-    nds_configurator_preset_set_priority encryption 22
+    nds_configurator_preset_set_priority disk 22
+    nds_configurator_preset_set_priority encryption 23
+    nds_configurator_preset_set_priority platform 24
 }
 
 action_preview() {

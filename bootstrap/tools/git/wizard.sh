@@ -93,8 +93,11 @@ _nds_git_gh_ensure_auth() {
     _nds_git_gh_cmd gh_cmd || return 1
 
     if ! "${gh_cmd[@]}" auth status &>/dev/null; then
-        info "GitHub device login (temporary — used only to register SSH access)"
-        nds_ui_b "Complete login in the browser, then return here."
+        info "GitHub login (temporary — used only to register SSH access)"
+        nds_ui_b "gh prints a one-time code and a github.com URL."
+        nds_ui_b "On your phone: open the URL (or github.com/login/device and enter the code)."
+        nds_ui_b "If the GitHub Android/iOS app is logged in, approve the prompt there"
+        nds_ui_b "or finish in mobile Chrome — no browser needed on this VM."
         nds_ui_b "If the org uses SSO, authorize the token for CodeAnthem after login."
         nds_ui_b "gh may warn that credentials are stored in plain text — expected on the live ISO."
         "${gh_cmd[@]}" auth login --web --git-protocol ssh --scopes repo,admin:public_key || return 1
@@ -498,7 +501,7 @@ nds_git_auth_prompt_method() {
     else
         gh_scope="your GitHub account (use generate/show if no github.com repos)"
     fi
-    gh_label="GitHub CLI (gh) — browser login once, adds read-only SSH key to ${gh_scope}"
+    gh_label="GitHub CLI (gh) — one-time login, adds read-only SSH key to ${gh_scope}"
 
     nds_ui_h "What do you want to do?"
     nds_cfg_ask_choice GIT_AUTH_METHOD "Deploy key — ${scope_label}" \
@@ -588,7 +591,7 @@ nds_git_auth_screen_closure() {
     fi
 
     if [[ ${#gh_repos[@]} -gt 0 ]]; then
-        nds_ui_i "gh: browser login once — adds one SSH key to your account for all ${#gh_repos[@]} listed repo(s)."
+        nds_ui_i "gh: one-time login (URL + code) — adds one SSH key to your account for all ${#gh_repos[@]} listed repo(s)."
         nds_ui_b ""
     fi
 

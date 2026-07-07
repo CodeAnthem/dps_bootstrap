@@ -183,7 +183,6 @@ nds_configurator_config_export_grouped() {
 
     if [[ ${#portable[@]} -gt 0 ]]; then
         echo "# Configuration — portable (reuse on any machine):"
-        echo ""
         for varname in "${portable[@]}"; do
             echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
         done
@@ -192,7 +191,6 @@ nds_configurator_config_export_grouped() {
     if [[ ${#hardware[@]} -gt 0 ]]; then
         [[ ${#portable[@]} -gt 0 ]] && echo ""
         echo "# This machine only — disk / boot / VM / static addressing:"
-        echo ""
         for varname in "${hardware[@]}"; do
             echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
         done
@@ -200,7 +198,6 @@ nds_configurator_config_export_grouped() {
 
     [[ ${#portable[@]} -gt 0 || ${#hardware[@]} -gt 0 ]] && echo ""
     echo "# Menu control — set any SKIP flag to true to skip that step (false = interactive):"
-    echo ""
     if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
         echo "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
     fi
