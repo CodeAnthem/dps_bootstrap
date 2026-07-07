@@ -29,8 +29,8 @@ nds_git_wizard_route_menu() {
         urls+=("$arg")
     done
 
-    nds_ui_h "What do you want to do?"
-    nds_cfg_ask_choice GIT_AUTH_ROUTE "SSH access — ${scope_label}" \
+    nds_cfg_section_title "What do you want to do?"
+    nds_cfg_ask_numbered_choice GIT_AUTH_ROUTE "SSH access — ${scope_label}" \
         "import|new|retry|skip" \
         "import=I already have a key — scan cwd and ~/.ssh, or pick a path|new=Create or register a new SSH key|retry=Re-check SSH access (no key change)|skip=Skip — continue anyway (clone may fail)" \
         "import"

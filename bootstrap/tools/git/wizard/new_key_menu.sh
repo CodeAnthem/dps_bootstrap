@@ -28,11 +28,11 @@ nds_git_wizard_menu_new_key() {
     done
 
     if nds_git_urls_all_github "${urls[@]}" && nds_git_gh_available; then
-        nds_ui_h "Register a new SSH key"
+        nds_cfg_section_title "Register a new SSH key"
         nds_ui_b "NDS can add a read-only SSH key to your GitHub account via gh"
         nds_ui_b "(one-time device login). The gh session is cleared after install."
         nds_ui_b ""
-        nds_cfg_ask_choice GIT_SSH_KEY_GH_AUTO \
+        nds_cfg_ask_numbered_choice GIT_SSH_KEY_GH_AUTO \
             "Allow NDS to add the key via gh?" \
             "yes|no" \
             "yes=Yes — gh device login, read-only account key|no=No — show key and register manually" \

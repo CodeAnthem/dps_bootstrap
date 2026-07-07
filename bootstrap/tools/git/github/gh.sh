@@ -59,3 +59,34 @@ nds_git_gh_available() {
     local -a gh_cmd=()
     nds_git_gh_cmd gh_cmd
 }
+
+# Description: Download gh via nix when not on PATH (shows spinner when available).
+# Returns:
+# - <Bool> 0 when gh can be invoked after prefetch
+nds_git_gh_prefetch() {
+    if command -v gh &>/dev/null; then
+        return 0
+    fi
+    if ! command -v nix &>/dev/null; then
+        return 1
+    fi
+    if declare -f nds_step_exec &>/dev/null; then
+        nds_step_exec "Downloading GitHub CLI (gh)" \
+            nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh --version
+    else
+        info "Downloading GitHub CLI (gh) — one-time download..."
+        nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh --version
+    fi
+}
+
+# Description: Clear env tokens that block interactive gh login.
+nds_git_gh_unset_blocking_tokens() {
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        warn "GITHUB_TOKEN is set — clearing for gh device login (invalid tokens cause 401 errors)"
+        unset GITHUB_TOKEN
+    fi
+    if [[ -n "${GH_TOKEN:-}" ]]; then
+        warn "GH_TOKEN is set — clearing for gh device login"
+        unset GH_TOKEN
+    fi
+}
