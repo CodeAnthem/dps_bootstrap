@@ -33,6 +33,11 @@ nds_nixos_install_flake() {
             nds_step_exec "Generating encryption secrets" _nixinstall_generate_encryption_secrets || return 1
         fi
 
+        if declare -f nds_git_prefetch_flake_closure &>/dev/null; then
+            nds_step_exec "Prefetching flake git inputs" \
+                nds_git_prefetch_flake_closure "$flake_root" || return 1
+        fi
+
         nds_step_exec "Installing via nixos-anywhere" \
             _nixinstall_via_nixos_anywhere "$flake_root" "$hostname" "$NDS_CTX_REMOTE_TARGET_IP" || return 1
 
@@ -91,6 +96,11 @@ nds_nixos_install_flake() {
     if [[ "$NDS_CTX_ENCRYPTION" == "true" ]]; then
         nds_step_exec "Writing machine facts (LUKS UUID)" \
             _nixinstall_write_machine_facts "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
+    fi
+
+    if declare -f nds_git_prefetch_flake_closure &>/dev/null; then
+        nds_step_exec "Prefetching flake git inputs" \
+            nds_git_prefetch_flake_closure "$flake_root" || return 1
     fi
 
     nds_step_exec "Installing NixOS from flake" \

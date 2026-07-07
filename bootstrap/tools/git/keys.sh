@@ -3,7 +3,6 @@
 # NDS - Git SSH key registry (multi-key / deploy-key support)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-07-07
-# ==================================================================================================
 
 # Description: Registry file listing session private key paths (one per line).
 _nds_git_keys_registry_file() {
@@ -177,12 +176,11 @@ nds_git_deploy_key_generate() {
     title="$(nds_git_deploy_key_title "$owner" "$repo")"
     nds_git_key_generate "$dest" "$title" || return 1
     nds_git_keys_register "$dest" || return 1
-    nds_git_repo_key_map_set "$owner" "$repo" "$dest" || true
     nds_git_auth_set_mode deploy
     return 0
 }
 
-# Description: Install all session keys and git-ssh wrapper onto the target under /mnt.
+# Description: Install all session deploy keys onto the target under /mnt/etc/nixos/secrets/.
 # Arguments:
 # - mount_root: <String|optional> Target mount (default /mnt)
 # Returns:
@@ -212,11 +210,6 @@ nds_git_install_keys_to_target() {
         install -m 600 -o root -g root "$key_path" "$dest"
         nds_install_log "git: SSH key -> /${dest_rel}"
     done
-
-    if declare -f nds_git_install_ssh_wrapper_to_target &>/dev/null; then
-        nds_git_install_ssh_wrapper_to_target "$mount_root" || true
-        log "Git SSH wrapper installed on target: /usr/local/bin/nds-git-ssh"
-    fi
 
     return 0
 }

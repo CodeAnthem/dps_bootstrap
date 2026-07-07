@@ -3,12 +3,12 @@
 # NDS - Git SSH environment
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-05 | Modified: 2026-07-07
-# Description:   Non-interactive SSH env for git and nix fetches
+# Description:   Per-repo SSH env for git probes and Nix prefetch (no wrapper, no multi-key SSH)
 # ==================================================================================================
 
-# Description: Refresh session git-ssh wrapper after keys change.
+# Description: No-op — kept for callers after key registration.
 nds_git_ssh_config_refresh() {
-    nds_git_ssh_wrapper_refresh || true
+    :
 }
 
 # Description: Best private key path for a git remote URL (deploy key per repo first).
@@ -44,7 +44,7 @@ _nds_git_identity_for_url() {
     return 1
 }
 
-# Description: GIT_SSH_COMMAND for one repository (single deploy key when available).
+# Description: GIT_SSH_COMMAND for one repository (single deploy key).
 # Arguments:
 # - url: <String> Git remote URL
 _nds_git_ssh_env_for_url() {
@@ -59,18 +59,10 @@ _nds_git_ssh_env_for_url() {
     _nds_git_ssh_env
 }
 
-# Description: GIT_SSH_COMMAND and related env for non-interactive git/nix fetches.
+# Description: GIT_SSH_COMMAND fallback (single session key or bare ssh).
 _nds_git_ssh_env() {
-    local key_path wrapper
+    local key_path
     local -a keys=()
-
-    if nds_git_ssh_wrapper_active 2>/dev/null; then
-        wrapper="$(nds_git_ssh_wrapper_path)"
-        printf '%s\n' \
-            "GIT_TERMINAL_PROMPT=0" \
-            "GIT_SSH_COMMAND=${wrapper}"
-        return 0
-    fi
 
     mapfile -t keys < <(nds_git_keys_list 2>/dev/null || true)
     if [[ ${#keys[@]} -eq 1 && -f "${keys[0]}" ]]; then
@@ -93,7 +85,7 @@ _nds_git_ssh_env() {
         "GIT_SSH_COMMAND=ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30"
 }
 
-# Description: Environment for nix/git fetches during flake eval and nixos-install.
+# Description: Environment for nix/git fetches (prefetch uses per-url env directly).
 # Arguments:
 # - out: <Array> Nameref to receive VAR=value pairs for env(1)
 nds_git_export_nix_env() {
