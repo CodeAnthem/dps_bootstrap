@@ -312,6 +312,8 @@ _nixinstall_install_nixos_flake() {
         return 1
     fi
 
+    nds_nix_finalize_install_store || return 1
+
     log "Flake-based NixOS installation completed"
     return 0
 }
@@ -342,6 +344,8 @@ _nixinstall_install_nixos() {
         error "NixOS installation failed"
         return 1
     fi
+
+    nds_nix_finalize_install_store || return 1
 
     log "NixOS installation completed"
     return 0

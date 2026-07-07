@@ -23,7 +23,7 @@ _nds_install_verify_fail() {
 _nds_install_verify_grub_bios() {
     local disk="$1"
 
-    [[ -f /mnt/boot/grub/grub.cfg ]] || return 1
+    [[ -e /mnt/boot/grub/grub.cfg ]] || return 1
     dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB
 }
 
