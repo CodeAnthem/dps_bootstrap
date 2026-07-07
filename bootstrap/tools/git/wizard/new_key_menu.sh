@@ -70,12 +70,12 @@ nds_git_wizard_ask_key_type() {
     nds_ui_b "Deploy key: read-only, one key per repository (recommended for private repos"
     nds_ui_b "without a machine GitHub user)."
     nds_ui_b ""
-    nds_ui_b "Account key: one key on a GitHub account — use a dedicated machine user"
-    nds_ui_b "with read-only access to every repo (org team or collaborator)."
+    nds_ui_b "Account key: one key on a dedicated GitHub user (full account SSH access)."
+    nds_ui_b "Limit what that account can do via org membership or repo collaborators."
     nds_ui_b ""
     nds_cfg_ask_numbered_choice GIT_SSH_KEY_TYPE \
         "deploy|account" \
-        "deploy=Deploy key (read-only, per repository)|account=Account key (machine user with read access)" \
+        "deploy=Deploy key (read-only, per repository)|account=Account key (dedicated user, full account SSH access)" \
         "deploy"
     choice="$(nds_cfg_get GIT_SSH_KEY_TYPE)"
     [[ "$choice" == "account" ]] && printf 'account\n' || printf 'deploy\n'
@@ -118,7 +118,7 @@ nds_git_wizard_register_account() {
 
     nds_ui_b ""
     nds_ui_b "Use a dedicated GitHub machine user — not your personal account."
-    nds_ui_b "Grant that user read-only access to every private repository."
+    nds_ui_b "The SSH key grants full account access; restrict repos via collaborators or teams."
     nds_ui_b ""
 
     if [[ ! -f "$(nds_git_session_pubkey_path)" ]]; then

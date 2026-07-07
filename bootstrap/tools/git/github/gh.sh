@@ -5,6 +5,11 @@
 # Date:          Created: 2026-07-07 | Modified: 2026-07-07
 # ==================================================================================================
 
+# Description: Nix CLI prefix for gh on live ISO (flakes required).
+_nds_git_gh_nix() {
+    nix --extra-experimental-features "nix-command flakes" "$@"
+}
+
 # Description: Resolve gh command (host binary or nix build cache).
 # Arguments:
 # - out: <Nameref> Command prefix array
@@ -21,7 +26,7 @@ nds_git_gh_cmd() {
         return 0
     fi
     if command -v nix &>/dev/null; then
-        _out=(nix --extra-experimental-features "nix-command flakes" shell nixpkgs#gh -c gh)
+        _out=(_nds_git_gh_nix shell nixpkgs#gh -c gh)
         return 0
     fi
     _out=()
@@ -72,20 +77,28 @@ nds_git_gh_prefetch() {
     if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
         return 0
     fi
-    local out_path
+    local out_path err
     if declare -f step_start &>/dev/null; then
         step_start "Downloading GitHub CLI (gh)"
     else
         info "Downloading GitHub CLI (gh) — one-time download..."
     fi
-    if ! out_path=$(nix build --no-link --print-out-paths nixpkgs#gh 2>/dev/null); then
-        declare -f step_fail &>/dev/null && step_fail "Downloading GitHub CLI (gh)"
-        return 1
+    err=$(_nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || true
+    out_path=$(printf '%s\n' "$err" | tail -1)
+    if [[ -n "$out_path" && -x "${out_path}/bin/gh" ]]; then
+        declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
+        NDS_GIT_GH_BIN="${out_path}/bin/gh"
+        export NDS_GIT_GH_BIN
+        return 0
     fi
-    declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
-    NDS_GIT_GH_BIN="${out_path}/bin/gh"
-    export NDS_GIT_GH_BIN
-    [[ -x "$NDS_GIT_GH_BIN" ]]
+    if _nds_git_gh_nix shell nixpkgs#gh -c gh --version &>/dev/null; then
+        declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
+        debug "gh via nix shell (build cache unavailable): ${err}"
+        return 0
+    fi
+    declare -f step_fail &>/dev/null && step_fail "Downloading GitHub CLI (gh)"
+    debug "gh prefetch failed: ${err}"
+    return 1
 }
 
 # Description: Clear env tokens that block interactive gh login.

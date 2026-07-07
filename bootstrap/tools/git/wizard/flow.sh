@@ -66,7 +66,7 @@ nds_git_wizard_route_menu_closure_account() {
 
     mapfile -t gh_repos < <(nds_git_urls_to_github_repos "${failed[@]}")
     nds_cfg_section_title "Account key — repositories still blocked"
-    nds_ui_b "Grant your machine GitHub user read access to each repo below,"
+    nds_ui_b "Grant your machine GitHub user access to each repo below,"
     nds_ui_b "or add a read-only deploy key per repository."
     nds_ui_b ""
     nds_cfg_ask_numbered_choice GIT_CLOSURE_ROUTE \

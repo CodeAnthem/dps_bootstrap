@@ -81,8 +81,8 @@ nds_git_wizard_confirm_manual_deploy() {
 # Returns:
 # - <Bool> 0 when user confirms
 nds_git_wizard_confirm_manual_account() {
-    nds_ui_b "Register the public key on your machine GitHub user — read-only repo access"
-    nds_ui_b "is enforced by collaborator/team permissions, not the key itself."
+    nds_ui_b "Register the public key on your machine GitHub user account."
+    nds_ui_b "The key has full account SSH access — repo reach is set by GitHub permissions."
     nds_ui_b ""
     nds_ui_i "GitHub: github.com/settings/ssh/new"
     nds_ui_i "Title: $(nds_git_ssh_key_title)"

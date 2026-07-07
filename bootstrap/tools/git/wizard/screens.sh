@@ -14,7 +14,8 @@ nds_git_wizard_screen_intro() {
     nds_ui_b "and every locked git input in flake.lock."
     nds_ui_b ""
     nds_ui_b "Deploy key (recommended): read-only, one key per repository."
-    nds_ui_b "Account key: one key on a machine GitHub user with read access to all repos."
+    nds_ui_b "Account key: one key on a dedicated GitHub user (full account SSH access;"
+    nds_ui_b "limit what that account can reach via repo permissions)."
     nds_ui_b ""
 }
 
@@ -25,20 +26,18 @@ nds_git_wizard_screen_intro() {
 nds_git_wizard_print_repo() {
     local url="$1"
     local status="${2:-}"
-    local ssh_url parsed host owner repo register_url
+    local ssh_url parsed host owner repo
 
     ssh_url=$(_nds_git_ssh_url "$url")
     if parsed=$(_nds_git_parse "$ssh_url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         if [[ "$status" == "ok" ]]; then
-            nds_ui_i "  [ok]  ${owner}/${repo}"
+            nds_ui_i "  [ok]  ${host}/${owner}/${repo}"
         elif [[ "$status" == "missing" ]]; then
-            nds_ui_i "  [!!]  ${owner}/${repo}"
+            nds_ui_i "  [!!]  ${host}/${owner}/${repo}"
         else
-            nds_ui_i "  ${owner}/${repo}"
+            nds_ui_i "  ${host}/${owner}/${repo}"
         fi
-        register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
-        nds_ui_i "        deploy: ${register_url}"
     else
         nds_ui_i "  ${ssh_url}"
     fi
@@ -103,7 +102,7 @@ nds_git_wizard_screen_single() {
     nds_git_wizard_screen_intro
     nds_git_wizard_collect_register_urls "$(_nds_git_to_ssh "$host" "$owner" "$repo")"
     nds_ui_h "Repository"
-    nds_git_wizard_print_repo "$(_nds_git_to_ssh "$host" "$owner" "$repo")" "missing"
+    nds_ui_i "  ${host}/${owner}/${repo}"
     nds_ui_b ""
 }
 
