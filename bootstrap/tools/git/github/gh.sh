@@ -46,11 +46,29 @@ nds_git_gh_session_active() {
     return 1
 }
 
+# Description: Mark gh session active after successful device login.
+nds_git_gh_session_mark_active() {
+    NDS_GIT_GH_SESSION_ACTIVE=true
+    export NDS_GIT_GH_SESSION_ACTIVE
+}
+
+# Description: Mark gh token scopes as sufficient for deploy/account key registration.
+nds_git_gh_session_mark_scopes_ok() {
+    NDS_GIT_GH_HAS_KEY_SCOPE=true
+    export NDS_GIT_GH_HAS_KEY_SCOPE
+    nds_git_gh_session_mark_active
+}
+
 # Description: True when token has admin:public_key scope.
 nds_git_gh_has_key_scope() {
+    [[ "${NDS_GIT_GH_HAS_KEY_SCOPE:-}" == "true" ]] && return 0
     local -a gh_cmd=()
     nds_git_gh_cmd gh_cmd || return 1
-    "${gh_cmd[@]}" auth status --show-token-scopes 2>/dev/null | grep -qF 'admin:public_key'
+    if "${gh_cmd[@]}" auth status --show-token-scopes 2>/dev/null | grep -qF 'admin:public_key'; then
+        nds_git_gh_session_mark_scopes_ok
+        return 0
+    fi
+    return 1
 }
 
 # Description: End temporary gh auth on the live ISO (SSH keys on GitHub are kept).
@@ -58,6 +76,7 @@ nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
 
     unset NDS_GIT_GH_SESSION_ACTIVE 2>/dev/null || true
+    unset NDS_GIT_GH_HAS_KEY_SCOPE 2>/dev/null || true
     nds_git_gh_cmd gh_cmd || return 0
     if "${gh_cmd[@]}" auth status &>/dev/null; then
         "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
@@ -146,10 +165,9 @@ nds_git_gh_ensure_prefetch() {
     nds_git_gh_prefetch
 }
 
-# Description: Mark gh session active after successful device login.
-nds_git_gh_session_mark_active() {
-    NDS_GIT_GH_SESSION_ACTIVE=true
-    export NDS_GIT_GH_SESSION_ACTIVE
+# Description: True when gh is logged in with scopes needed for key registration.
+nds_git_gh_session_ready() {
+    nds_git_gh_session_active && nds_git_gh_has_key_scope
 }
 
 # Description: Clear env tokens that block interactive gh login.

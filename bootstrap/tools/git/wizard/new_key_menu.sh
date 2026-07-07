@@ -6,14 +6,15 @@
 # ==================================================================================================
 
 # Description: Ask gh CLI vs manual registration.
-# Returns:
-# - <String> gh or manual (stdout)
+# Arguments:
+# - choice: <Nameref> Receives gh or manual (required — do not use command substitution)
 nds_git_wizard_ask_register_method() {
-    local choice host existing
+    local -n _choice=${1:?choice_nameref}
+    local existing
 
     existing="$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD 2>/dev/null || true)"
     if [[ -n "$existing" ]]; then
-        [[ "$existing" == "gh" ]] && printf 'gh\n' || printf 'manual\n'
+        [[ "$existing" == "gh" ]] && _choice=gh || _choice=manual
         return 0
     fi
 
@@ -21,7 +22,7 @@ nds_git_wizard_ask_register_method() {
         nds_git_gh_ensure_prefetch 2>/dev/null || true
     fi
     if ! nds_git_gh_available 2>/dev/null; then
-        printf 'manual\n'
+        _choice=manual
         return 0
     fi
 
@@ -29,8 +30,8 @@ nds_git_wizard_ask_register_method() {
         "gh|manual" \
         "gh=Use gh CLI (device login on this ISO)|manual=Show key and register on github.com yourself" \
         "gh"
-    choice="$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
-    [[ "$choice" == "gh" ]] && printf 'gh\n' || printf 'manual\n'
+    existing="$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
+    [[ "$existing" == "gh" ]] && _choice=gh || _choice=manual
 }
 
 # Description: Resolve git host for owner/repo from URL list.
@@ -59,10 +60,11 @@ _nds_git_host_for_owner_repo() {
 }
 
 # Description: Ask deploy key vs account key for new registration.
-# Returns:
-# - <String> deploy or account (stdout)
+# Arguments:
+# - choice: <Nameref> Receives deploy or account (required — do not use command substitution)
 nds_git_wizard_ask_key_type() {
-    local choice
+    local -n _choice=${1:?choice_nameref}
+    local resolved
 
     nds_cfg_section_title "New SSH key type"
     nds_ui_b "Deploy key: read-only, one key per repository (recommended for private repos"
@@ -75,8 +77,8 @@ nds_git_wizard_ask_key_type() {
         "deploy|account" \
         "deploy=Deploy key (read-only, per repository)|account=Account key (dedicated user, full account SSH access)" \
         "deploy"
-    choice="$(nds_cfg_get GIT_SSH_KEY_TYPE)"
-    [[ "$choice" == "account" ]] && printf 'account\n' || printf 'deploy\n'
+    resolved="$(nds_cfg_get GIT_SSH_KEY_TYPE)"
+    [[ "$resolved" == "account" ]] && _choice=account || _choice=deploy
 }
 
 # Description: Register read-only deploy key for one repo (gh or manual).
@@ -88,14 +90,14 @@ nds_git_wizard_ask_key_type() {
 # - <Bool> 0 on success
 nds_git_wizard_register_deploy() {
     local owner="$1" repo="$2" host="${3:-github.com}"
-    local method pub register_url
+    local method="" pub register_url
 
     nds_git_deploy_key_generate "$owner" "$repo" || return 1
     pub="$(nds_git_deploy_key_pubkey_path "$owner" "$repo")"
     register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
     NDS_GIT_AUTH_REGISTER_URLS=("$register_url")
 
-    method="$(nds_git_wizard_ask_register_method)" || return 1
+    nds_git_wizard_ask_register_method method || return 1
     if [[ "$method" == "gh" ]]; then
         nds_git_wizard_menu_gh_deploy "$owner" "$repo" || return 1
         return 0
@@ -112,7 +114,7 @@ nds_git_wizard_register_deploy() {
 # - <Bool> 0 on success
 nds_git_wizard_register_account() {
     local -a repos=("$@")
-    local method
+    local method=""
 
     nds_ui_b ""
     nds_ui_b "Use a dedicated GitHub machine user — not your personal account."
@@ -125,7 +127,7 @@ nds_git_wizard_register_account() {
     nds_git_keys_register "$(nds_git_session_key_path)" || true
     nds_git_auth_set_mode account
 
-    method="$(nds_git_wizard_ask_register_method)" || return 1
+    nds_git_wizard_ask_register_method method || return 1
     if [[ "$method" == "gh" ]]; then
         nds_git_wizard_menu_gh_account "${repos[@]}" || return 1
         return 0
@@ -143,7 +145,7 @@ nds_git_wizard_register_account() {
 # - <Bool> 0 on success
 nds_git_wizard_menu_new_key() {
     local -a urls=() repos=()
-    local key_type parsing_repos=false arg owner repo host
+    local key_type="" parsing_repos=false arg owner repo host
     local ssh_url parsed
 
     for arg in "$@"; do
@@ -158,7 +160,7 @@ nds_git_wizard_menu_new_key() {
         fi
     done
 
-    key_type="$(nds_git_wizard_ask_key_type)" || return 1
+    nds_git_wizard_ask_key_type key_type || return 1
 
     if [[ "$key_type" == "account" ]]; then
         [[ ${#repos[@]} -gt 0 ]] || {

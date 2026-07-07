@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git URL utilities
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-06
+# Date:          Created: 2026-07-05 | Modified: 2026-07-07
 # Description:   Parse and normalize git remote URLs (no config store access)
 # ==================================================================================================
 
@@ -65,20 +65,36 @@ nds_git_owner_slug() {
     [[ -n "$slug" ]] && printf '%s\n' "$slug" || printf 'unknown\n'
 }
 
-# Description: Normalize a remote URL to SSH for git operations.
+# Description: Normalize a remote URL to canonical git@host:owner/repo.git for git operations.
 # Arguments:
 # - url: <String> Git URL
 # Returns:
-# - <String> SSH URL on stdout (unchanged when already SSH or unparseable)
+# - <String> SSH URL on stdout (unchanged when unparseable)
 _nds_git_ssh_url() {
     local url="$1" parsed host owner repo
+
     case "$url" in
-        git@*|ssh://*) printf '%s\n' "$url"; return 0 ;;
+        git+ssh://*) url="${url#git+ssh://}" ;;
     esac
+    case "$url" in
+        *@*) ;;
+        */*)
+            url="git@${url}"
+            ;;
+    esac
+    case "$url" in
+        git@*:*/*) ;;
+        git@*/*)
+            local rest="${url#git@}"
+            url="git@${rest%%/*}:${rest#*/}"
+            ;;
+    esac
+
     if parsed=$(_nds_git_parse "$url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         _nds_git_to_ssh "$host" "$owner" "$repo"
-    else
-        printf '%s\n' "$url"
+        return 0
     fi
+
+    printf '%s\n' "$url"
 }

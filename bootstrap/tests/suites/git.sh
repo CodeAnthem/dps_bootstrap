@@ -27,6 +27,24 @@ suite_git() {
         console "  ✗ _nds_git_ssh_url: expected git@github.com:org/repo.git got $out"
     fi
 
+    out=$(_nds_git_ssh_url "ssh://git@github.com/org/thundercast.git")
+    if [[ "$out" == "git@github.com:org/thundercast.git" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ _nds_git_ssh_url: normalizes ssh:// to git@"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ _nds_git_ssh_url: ssh:// normalize got $out"
+    fi
+
+    out=$(_nds_git_ssh_url "git+ssh://git@github.com/org/thundercast.git")
+    if [[ "$out" == "git@github.com:org/thundercast.git" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ _nds_git_ssh_url: normalizes git+ssh:// to git@"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ _nds_git_ssh_url: git+ssh:// normalize got $out"
+    fi
+
     tmpdir=$(mktemp -d)
     urls=$(_nds_flake_collect_git_remote_urls "$tmpdir" "git@github.com:org/root.git")
     if grep -q 'git@github.com:org/root.git' <<<"$urls"; then

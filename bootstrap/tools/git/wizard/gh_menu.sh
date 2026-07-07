@@ -43,7 +43,7 @@ _nds_git_wizard_gh_auth_login() {
         nds_ui_i "You can also choose manual registration from the menu."
         return 1
     fi
-    nds_git_gh_session_mark_active
+    nds_git_gh_session_mark_scopes_ok
     return 0
 }
 
@@ -52,6 +52,10 @@ nds_git_wizard_gh_ensure_auth() {
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
+
+    if nds_git_gh_session_ready; then
+        return 0
+    fi
 
     if ! nds_git_gh_session_active; then
         nds_ui_b "gh prints a one-time code — use it on another device (phone or laptop)."
@@ -71,6 +75,7 @@ nds_git_wizard_gh_ensure_auth() {
         nds_ui_b ""
         nds_git_gh_unset_blocking_tokens
         BROWSER=false "${gh_cmd[@]}" auth refresh -h github.com -s repo,admin:public_key || return 1
+        nds_git_gh_session_mark_scopes_ok
     fi
     return 0
 }
@@ -83,6 +88,9 @@ nds_git_wizard_gh_prepare() {
         error "Could not install gh CLI"
         return 1
     }
+    if nds_git_gh_session_ready; then
+        return 0
+    fi
     if ! nds_git_gh_session_active 2>/dev/null; then
         section_header "GitHub CLI login"
     fi
