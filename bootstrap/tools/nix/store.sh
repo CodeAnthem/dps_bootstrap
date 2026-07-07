@@ -164,7 +164,13 @@ _nds_nix_ensure_system_profile() {
     profile_dst="${root}/nix/var/nix/profiles/system"
     [[ -e "$profile_dst" ]] && return 0
 
-    system_out=$(_nds_nix_find_system_closure "$root") || return 1
+    system_out=$(_nds_nix_find_system_closure "$root") || {
+        if declare -f _nds_install_diag_write &>/dev/null; then
+            _nds_install_diag_write "ensure_system_profile: no nixos-system closure found"
+        fi
+        return 1
+    }
+    system_out="${system_out%/}"
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
     scratch=$(_nds_nix_scratch_store_path)
@@ -174,7 +180,13 @@ _nds_nix_ensure_system_profile() {
     fi
 
     mkdir -p "$(dirname "$profile_dst")"
-    nix-env --store "$root" -p "$profile_dst" --set "$system_out" >>"$log" 2>&1 || return 1
+    if ! env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+        nix-env --store "$root" -p "$profile_dst" --set "$system_out" >>"$log" 2>&1; then
+        if declare -f _nds_install_diag_write &>/dev/null; then
+            _nds_install_diag_write "nix-env failed: store=${root} profile=${profile_dst} system=${system_out}"
+        fi
+        return 1
+    fi
     nds_install_log "nix: system profile -> ${profile_dst}"
     return 0
 }

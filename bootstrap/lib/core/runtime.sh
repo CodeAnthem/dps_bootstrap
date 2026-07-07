@@ -25,9 +25,7 @@ nds_runtime_init() {
     export RUNTIME_DIR
     export NDS_RUNTIME_DIR="$RUNTIME_DIR"
     export NDS_INSTALL_DETAIL_LOG="${RUNTIME_DIR}/install.log"
-    export NDS_INSTALL_DIAG_LOG="${RUNTIME_DIR}/diag.log"
     : >"$NDS_INSTALL_DETAIL_LOG"
-    : >"$NDS_INSTALL_DIAG_LOG"
     return 0
 }
 

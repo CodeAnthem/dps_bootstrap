@@ -49,6 +49,10 @@ nds_installation_init() {
         return 1
     }
 
+    if declare -f nds_install_logs_init &>/dev/null; then
+        nds_install_logs_init || true
+    fi
+
     nds_import_file "${SCRIPT_DIR}/tools/flake/load.sh" || return 1
     nds_flake_tools_load "${SCRIPT_DIR}/tools/flake" || {
         fatal "Failed to load flake tools"

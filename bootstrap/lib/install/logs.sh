@@ -3,7 +3,7 @@
 # NDS - Install log paths and fetch hints
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-07-07
-# Description:   Publish diag/verbose logs to /home/nixos for scp (same ownership model as bundle)
+# Description:   Diag log in /home/nixos (nixos-owned); verbose log published for scp
 # ==================================================================================================
 
 # Description: Compact diagnostics log in the nixos home directory.
@@ -24,7 +24,38 @@ nds_install_logs_home_verbose() {
     printf '/home/%s/nds_install_verbose.log' "$user"
 }
 
-# Description: Copy session logs into /home/nixos (chown nixos, mode 600).
+# Description: chown/chmod home log files for the live-ISO nixos user.
+# Arguments:
+# - user: <String> Target owner (e.g. nixos)
+# - paths: <String+> Files to fix
+_nds_install_logs_chown_files() {
+    local user="$1"
+    shift
+    local path
+
+    [[ -n "$user" ]] || return 0
+    for path in "$@"; do
+        [[ -e "$path" ]] || continue
+        chown "$user" "$path" 2>/dev/null || true
+        chmod 600 "$path" 2>/dev/null || true
+    done
+}
+
+# Description: Point diag log at /home/nixos and create nixos-owned log files.
+nds_install_logs_init() {
+    local user diag_home verbose_home
+
+    user=$(nds_install_ssh_user)
+    diag_home=$(nds_install_logs_home_diag)
+    verbose_home=$(nds_install_logs_home_verbose)
+    mkdir -p "/home/${user}"
+    : >"$diag_home"
+    : >"$verbose_home"
+    _nds_install_logs_chown_files "$user" "$diag_home" "$verbose_home"
+    export NDS_INSTALL_DIAG_LOG="$diag_home"
+}
+
+# Description: Copy verbose install log into /home/nixos; refresh ownership on both logs.
 nds_install_logs_publish() {
     local user diag_home verbose_home
 
@@ -33,15 +64,12 @@ nds_install_logs_publish() {
     verbose_home=$(nds_install_logs_home_verbose)
     mkdir -p "/home/${user}"
 
-    if [[ -f "${NDS_INSTALL_DIAG_LOG:-}" ]]; then
-        cp "${NDS_INSTALL_DIAG_LOG}" "$diag_home"
-    fi
-    if [[ -f "${NDS_INSTALL_DETAIL_LOG:-}" ]]; then
+    if [[ -f "${NDS_INSTALL_DETAIL_LOG:-}" \
+        && "${NDS_INSTALL_DETAIL_LOG}" != "$verbose_home" ]]; then
         cp "${NDS_INSTALL_DETAIL_LOG}" "$verbose_home"
     fi
 
-    chown "${user}:${user}" "$diag_home" "$verbose_home" 2>/dev/null || true
-    chmod 600 "$diag_home" "$verbose_home" 2>/dev/null || true
+    _nds_install_logs_chown_files "$user" "$diag_home" "$verbose_home"
 }
 
 # Description: Print scp commands to copy install logs to the operator machine.
