@@ -34,7 +34,9 @@ _nixinstall_mount_filesystems() {
     log "Mounting boot partition"
     mkdir -p /mnt/boot || return 1
     mount /dev/disk/by-label/boot /mnt/boot || return 1
-    
+
+    mkdir -p /mnt/nix/store
+
     log "Filesystems mounted successfully"
     return 0
 }

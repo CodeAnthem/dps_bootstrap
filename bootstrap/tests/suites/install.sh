@@ -10,12 +10,12 @@ suite_install() {
 
     _nds_nix_store_free_mb() { echo 100; }
     out=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
-    if [[ "$out" == *$'\n'"store = /mnt/var/nds-build-store" ]]; then
+    if [[ "$out" == "experimental-features = nix-command flakes" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ nix config: scratch store when target /nix not mounted"
+        console "  ✓ nix config: no store override before target root is mounted"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ nix config: expected scratch store on separate line"
+        console "  ✗ nix config: expected no store override before /mnt is mounted"
         console "    got: $(printf '%q' "$out")"
     fi
     assert_not_contains "$out" "flakes store" "nix config"
@@ -24,16 +24,17 @@ suite_install() {
     fake_root=$(mktemp -d)
     mkdir -p "${fake_root}/nix/store"
     export NDS_NIX_TARGET_ROOT="$fake_root"
+    export NDS_NIX_INSTALL_STORE_FORCE=1
     out=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
     if [[ "$out" == *$'\n'"store = ${fake_root}"* ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ nix config: chroot store on mounted target /nix"
+        console "  ✓ nix config: chroot store when target root is mounted"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ nix config: expected chroot store ${fake_root}"
         console "    got: $(printf '%q' "$out")"
     fi
-    unset NDS_NIX_TARGET_ROOT
+    unset NDS_NIX_TARGET_ROOT NDS_NIX_INSTALL_STORE_FORCE
     rm -rf "$fake_root"
 
     _nds_nix_store_free_mb() { echo 8192; }

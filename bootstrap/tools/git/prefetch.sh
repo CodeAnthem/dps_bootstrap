@@ -68,8 +68,9 @@ _nds_git_fetchtree_url() {
 # - <Bool> 0 on success
 nds_git_nix_prefetch_git_input() {
     local url="$1" rev="$2" narHash="${3:-}"
-    local fetch_url probe_url expr -a envv=() nix_config
+    local fetch_url probe_url expr -a envv=() store_args=()
     local rc=0 log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    local nix_config="experimental-features = nix-command flakes"
 
     [[ -n "$url" && -n "$rev" ]] || return 1
     [[ -n "$narHash" ]] || {
@@ -80,7 +81,7 @@ nds_git_nix_prefetch_git_input() {
     fetch_url="$(_nds_git_fetchtree_url "$url")"
     probe_url="$(_nds_git_ssh_url "$url")"
     while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env_for_url "$probe_url")
-    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    mapfile -t store_args < <(_nds_nix_install_store_args 2>/dev/null || true)
 
     expr="builtins.fetchTree { type = \"git\"; url = \"${fetch_url}\"; rev = \"${rev}\"; narHash = \"${narHash}\"; }"
 
@@ -90,7 +91,7 @@ nds_git_nix_prefetch_git_input() {
     } >>"$log"
 
     if ! env NIX_CONFIG="$nix_config" "${envv[@]}" \
-        nix build --no-link --print-out-paths --impure --expr "$expr" >>"$log" 2>&1; then
+        nix build "${store_args[@]}" --no-link --print-out-paths --impure --expr "$expr" >>"$log" 2>&1; then
         rc=$?
         debug "nix prefetch failed for ${probe_url} (${rev})"
         return "$rc"

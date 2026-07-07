@@ -304,7 +304,7 @@ _nixinstall_install_nixos_flake() {
         fi
     fi
 
-    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    nix_config=$(_nds_nix_nixos_install_config)
 
     if ! env NIX_CONFIG="$nix_config" \
         nixos-install "${install_args[@]}"; then
@@ -312,7 +312,7 @@ _nixinstall_install_nixos_flake() {
         return 1
     fi
 
-    nds_nix_finalize_install_store || return 1
+    nds_nix_ensure_install_artifacts || return 1
 
     log "Flake-based NixOS installation completed"
     return 0
@@ -345,7 +345,7 @@ _nixinstall_install_nixos() {
         return 1
     fi
 
-    nds_nix_finalize_install_store || return 1
+    nds_nix_ensure_install_artifacts || return 1
 
     log "NixOS installation completed"
     return 0
