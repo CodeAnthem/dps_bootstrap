@@ -109,6 +109,69 @@ _nds_nix_nixos_install_config() {
     printf '%s' "experimental-features = nix-command flakes"
 }
 
+# Description: Canonical /nix/store/… path for a store URI (nixos-anywhere style).
+# Chroot builds return /mnt/nix/store/… from readlink; nix-env needs /nix/store/….
+# Arguments:
+# - store_uri: <String> Nix store URI (e.g. /mnt)
+# - path:      <String> Store path or symlink
+# Returns:
+# - <String> /nix/store/… path (stdout)
+_nds_nix_canonical_store_path() {
+    local store_uri="$1" path="$2" canon root
+
+    path="${path%/}"
+    [[ -n "$path" ]] || return 1
+    canon=$(env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+        nix --store "$store_uri" path-info -M "$path" 2>/dev/null || true)
+    if [[ -n "$canon" && "$canon" == /nix/store/* ]]; then
+        printf '%s\n' "$canon"
+        return 0
+    fi
+    root=$(_nds_nix_target_root)
+    if [[ "$path" == "${root}/nix/store/"* ]]; then
+        printf '/nix/store/%s\n' "${path#${root}/nix/store/}"
+        return 0
+    fi
+    [[ "$path" == /nix/store/* ]] && {
+        printf '%s\n' "$path"
+        return 0
+    }
+    return 1
+}
+
+# Description: True when the target system profile resolves in the chroot store.
+# Host [[ -e /mnt/nix/…/system ]] is wrong: profile links target /nix/store/… on disk.
+# Arguments:
+# - root: <String> Target root mount (store URI)
+# Returns:
+# - <Bool> 0 when profile is valid
+_nds_nix_system_profile_ok() {
+    local root="$1"
+
+    env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+        nix --store "$root" path-info -M /nix/var/nix/profiles/system &>/dev/null
+}
+
+# Description: Create system profile symlinks without nix-env (last resort).
+# Arguments:
+# - root:       <String> Target root mount
+# - system_rel: <String> /nix/store/… nixos-system path
+# Returns:
+# - <Bool> 0 on success
+_nds_nix_link_system_profile() {
+    local root="$1" system_rel="$2"
+    local profiles="${root}/nix/var/nix/profiles" gen=1
+
+    [[ "$system_rel" == /nix/store/* ]] || return 1
+    while [[ -e "${profiles}/system-${gen}-link" ]]; do
+        gen=$((gen + 1))
+    done
+    mkdir -p "$profiles"
+    ln -sfn "$system_rel" "${profiles}/system-${gen}-link"
+    ln -sfn "system-${gen}-link" "${profiles}/system"
+    _nds_nix_system_profile_ok "$root"
+}
+
 # Description: Resolve a built NixOS system closure on the target or scratch store.
 # Arguments:
 # - root: <String> Target root mount
@@ -159,10 +222,10 @@ _nds_nix_find_system_closure() {
 # Returns:
 # - <Bool> 0 on success
 _nds_nix_ensure_system_profile() {
-    local root="$1" profile_dst system_out scratch log
+    local root="$1" profile_dst system_out system_rel scratch log err
 
     profile_dst="${root}/nix/var/nix/profiles/system"
-    [[ -e "$profile_dst" ]] && return 0
+    _nds_nix_system_profile_ok "$root" && return 0
 
     system_out=$(_nds_nix_find_system_closure "$root") || {
         if declare -f _nds_install_diag_write &>/dev/null; then
@@ -173,23 +236,39 @@ _nds_nix_ensure_system_profile() {
     system_out="${system_out%/}"
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
+    system_rel=$(_nds_nix_canonical_store_path "$root" "$system_out") || {
+        if declare -f _nds_install_diag_write &>/dev/null; then
+            _nds_install_diag_write "ensure_system_profile: cannot canonicalize ${system_out}"
+        fi
+        return 1
+    }
+
     scratch=$(_nds_nix_scratch_store_path)
     if [[ "$system_out" != "${root}"/* ]] && [[ -d "$scratch" ]]; then
         info "Copying NixOS system closure into ${root}/nix/store"
-        nix copy --to "$root" "$system_out" >>"$log" 2>&1 || return 1
+        nix copy --to "$root" "$system_rel" >>"$log" 2>&1 || return 1
     fi
 
     mkdir -p "$(dirname "$profile_dst")"
-    if ! env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+    if env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
         nix-env --store "$root" --extra-substituters "auto?trusted=1" \
-        -p "$profile_dst" --set "$system_out" >>"$log" 2>&1; then
-        if declare -f _nds_install_diag_write &>/dev/null; then
-            _nds_install_diag_write "nix-env failed: store=${root} profile=${profile_dst} system=${system_out}"
-        fi
-        return 1
+        -p "$profile_dst" --set "$system_rel" >>"$log" 2>&1; then
+        nds_install_log "nix: system profile -> ${profile_dst}"
+        return 0
     fi
-    nds_install_log "nix: system profile -> ${profile_dst}"
-    return 0
+
+    err=$(tail -3 "$log" 2>/dev/null || true)
+    if declare -f _nds_install_diag_write &>/dev/null; then
+        _nds_install_diag_write "nix-env failed: store=${root} profile=${profile_dst} system=${system_rel}"
+        [[ -n "$err" ]] && _nds_install_diag_write "nix-env stderr: ${err}"
+    fi
+
+    warn "nix-env profile failed — linking system profile manually"
+    if _nds_nix_link_system_profile "$root" "$system_rel"; then
+        nds_install_log "nix: system profile (manual link) -> ${profile_dst}"
+        return 0
+    fi
+    return 1
 }
 
 # Description: Link /run/current-system to the system profile on the target.
@@ -198,7 +277,7 @@ _nds_nix_ensure_system_profile() {
 _nds_nix_ensure_current_system_link() {
     local root="$1"
 
-    [[ -e "${root}/nix/var/nix/profiles/system" ]] || return 1
+    _nds_nix_system_profile_ok "$root" || return 1
     mkdir -p "${root}/run"
     ln -snf /nix/var/nix/profiles/system "${root}/run/current-system"
     return 0
@@ -224,7 +303,7 @@ _nds_nix_reinstall_bootloader() {
         return 0
     fi
 
-    [[ -e "${root}/nix/var/nix/profiles/system" ]] || return 1
+    _nds_nix_system_profile_ok "$root" || return 1
 
     info "Reinstalling bootloader on target"
     mkdir -p "${root}/etc"

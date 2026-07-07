@@ -192,7 +192,7 @@ nds_install_verify_local() {
     mountpoint -q /mnt \
         || _nds_install_verify_fail "Target root is not mounted at /mnt"
 
-    [[ -e /mnt/nix/var/nix/profiles/system ]] \
+    _nds_nix_system_profile_ok /mnt \
         || _nds_install_verify_fail "NixOS system profile missing — nixos-install did not complete"
 
     if [[ "$encryption" == "true" ]]; then

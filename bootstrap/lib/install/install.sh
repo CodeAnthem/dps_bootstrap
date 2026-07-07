@@ -328,7 +328,10 @@ _nixinstall_build_flake_system() {
         return 1
     fi
 
-    system_path=$(readlink -f "$out_link")
+    system_path=$(_nds_nix_canonical_store_path "$store" "$out_link") || {
+        rm -rf "$tmpdir"
+        return 1
+    }
     rm -rf "$tmpdir"
     printf '%s\n' "$system_path"
     return 0

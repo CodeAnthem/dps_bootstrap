@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install diagnostics (compact log, separate from nixos-install output)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # Description:   Structured install state in NDS_INSTALL_DIAG_LOG (not install.log)
 # ==================================================================================================
 
@@ -72,9 +72,10 @@ nds_install_diag_snapshot() {
         firmware=BIOS
     fi
 
-    if [[ -e "${root}/nix/var/nix/profiles/system" ]]; then
-        profile_txt=$(ls -la "${root}/nix/var/nix/profiles/system" 2>&1)
-        profile_txt="${profile_txt} -> $(readlink -f "${root}/nix/var/nix/profiles/system" 2>/dev/null || echo '?')"
+    if _nds_nix_system_profile_ok "$root"; then
+        profile_txt=$(env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+            nix --store "$root" path-info -M /nix/var/nix/profiles/system 2>/dev/null || echo ok)
+        profile_txt="${profile_txt} ($(ls -la "${root}/nix/var/nix/profiles/system" 2>/dev/null || echo no-symlink))"
     else
         profile_txt=missing
     fi

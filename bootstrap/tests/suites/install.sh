@@ -93,6 +93,17 @@ suite_install() {
         fi
     fi
 
+    if declare -f _nds_nix_canonical_store_path &>/dev/null; then
+        out=$(_nds_nix_canonical_store_path /mnt /mnt/nix/store/abc-nixos-system-host)
+        if [[ "$out" == '/nix/store/abc-nixos-system-host' ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ canonical store path: strips /mnt prefix"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ canonical store path: expected /nix/store/… got $out"
+        fi
+    fi
+
     if declare -f _nds_nix_flake_system_ref &>/dev/null; then
         out=$(_nds_nix_flake_system_ref "control-toolkit")
         if [[ "$out" == 'nixosConfigurations."control-toolkit".config.system.build.toplevel' ]]; then
