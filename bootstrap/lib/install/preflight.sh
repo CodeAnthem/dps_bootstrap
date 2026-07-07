@@ -137,25 +137,20 @@ nds_preflight_ssh_for_git() {
 # Usage: nds_preflight_probe_flake "git_url"
 nds_preflight_probe_flake() {
     local repo_url="$1"
-    local probe_dir="${NDS_RUNTIME_DIR}/flake_probe"
-    local cached="${NDS_FLAKE_LOCK_PROBE_REPO:-${NDS_RUNTIME_DIR}/flake_lock_probe/repo}"
+    local probe_dir="${NDS_FLAKE_PROBE_REPO:-}"
 
-    if [[ -f "${cached}/flake.nix" ]]; then
-        rm -rf "$probe_dir"
-        ln -sfn "$cached" "$probe_dir"
-        debug "Reusing closure shallow clone for disko probe: ${cached}"
-        echo "$probe_dir"
+    if [[ -f "${probe_dir}/flake.nix" ]]; then
+        debug "Reusing session flake clone: ${probe_dir}"
+        printf '%s\n' "$probe_dir"
         return 0
     fi
 
-    rm -rf "$probe_dir"
-
-    if ! nds_git_clone "$repo_url" "$probe_dir" 1; then
+    if ! nds_git_clone_flake_probe "$repo_url"; then
         error "Could not clone $repo_url for probe"
         return 1
     fi
 
-    echo "$probe_dir"
+    printf '%s\n' "${NDS_FLAKE_PROBE_REPO}"
     return 0
 }
 

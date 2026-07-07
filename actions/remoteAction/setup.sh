@@ -54,9 +54,9 @@ action_setup() {
     local probe_dir remote_script injected=0
     local disk_strategy disk_target
 
-    step_start "Fetching flake for action probe"
+    step_start "Cloning flake repository"
     probe_dir=$(nds_preflight_probe_flake "$repo_url") || exit 14
-    step_complete "Flake cloned for probe"
+    step_complete "Flake repository cloned"
     export NDS_FLAKE_PROBE_DIR="$probe_dir"
 
     nds_preset_inject_from_flake "$probe_dir" || true

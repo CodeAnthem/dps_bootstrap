@@ -11,7 +11,39 @@
 # NIXOS INSTALLATION
 # =============================================================================
 
-# Description: Return hardware artifact filename for the active generation mode.
+# Description: Stage flake checkout — reuse session clone or shallow-clone.
+# Arguments:
+# - repo_url:     <String> Git remote URL
+# - install_path: <String> Destination directory
+# Returns:
+# - <Bool> 0 on success
+_nds_install_stage_flake_repo() {
+    local repo_url="$1"
+    local install_path="$2"
+    local probe norm_url
+
+    [[ -n "$repo_url" && -n "$install_path" ]] || return 1
+    norm_url=$(_nds_git_ssh_url "$repo_url")
+    probe="${NDS_FLAKE_PROBE_REPO:-}"
+
+    mkdir -p "$(dirname "$install_path")"
+
+    if [[ -d "${install_path}/.git" ]]; then
+        return 0
+    fi
+
+    if [[ -n "$probe" && -f "${probe}/flake.nix" \
+        && "${NDS_FLAKE_PROBE_REPO_URL:-}" == "$norm_url" ]]; then
+        rm -rf "$install_path"
+        cp -a "$probe" "$install_path"
+        nds_install_log "git: staged flake from session clone -> ${install_path}"
+        return 0
+    fi
+
+    rm -rf "$install_path"
+    nds_git_clone "$repo_url" "$install_path" 1
+}
+
 # Returns:
 # - <String> facter.json or hardware-configuration.nix
 _nixinstall_hardware_artifact_name() {
@@ -47,15 +79,11 @@ _nixinstall_resolve_flake_root() {
             if [[ -z "$repo_url" ]]; then
                 error "Flake repo URL is required for remote install"
             fi
-            if [[ -d "${install_dir}/.git" ]]; then
+            if _nds_install_stage_flake_repo "$repo_url" "$install_dir"; then
                 echo "$install_dir"
                 return 0
             fi
-            rm -rf "$install_dir"
-            if ! nds_git_clone "$repo_url" "$install_dir" 1; then
-                error "Failed to clone $repo_url to $install_dir"
-            fi
-            echo "$install_dir"
+            error "Failed to stage $repo_url to $install_dir"
             ;;
     esac
 }
@@ -245,19 +273,12 @@ _nixinstall_ensure_flake_checkout() {
 
     log "Ensuring flake checkout at $install_path"
 
-    mkdir -p "$(dirname "$install_path")"
-
-    if [[ -d "${install_path}/.git" ]]; then
-        log "Flake checkout already present at $install_path"
+    if _nds_install_stage_flake_repo "$repo_url" "$install_path"; then
+        log "Flake staged at $install_path"
         return 0
     fi
 
-    if ! nds_git_clone "$repo_url" "$install_path" 1; then
-        error "Failed to clone $repo_url to $install_path"
-    fi
-
-    log "Flake cloned to $install_path"
-    return 0
+    error "Failed to stage $repo_url to $install_path"
 }
 
 # Usage: _nixinstall_install_nixos_flake "flake_root" "host_name" ["hardware_placement"]
