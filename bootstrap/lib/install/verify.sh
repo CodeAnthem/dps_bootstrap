@@ -189,6 +189,11 @@ nds_install_verify_local() {
 
     log "Verifying installation (${loader}, $([[ "$uefi" == "true" ]] && echo UEFI || echo BIOS))"
 
+    if declare -f nds_install_diag_post_install &>/dev/null; then
+        nds_install_diag_section "verify: start"
+        nds_install_diag_post_install
+    fi
+
     mountpoint -q /mnt \
         || _nds_install_verify_fail "Target root is not mounted at /mnt"
 
@@ -222,6 +227,11 @@ nds_install_verify_local() {
     _nds_install_verify_git_key
 
     if [[ ${#_NDS_INSTALL_VERIFY_FAILS[@]} -gt 0 ]]; then
+        if declare -f nds_install_diag_post_install &>/dev/null; then
+            nds_install_diag_section "verify: failed checks"
+            nds_install_diag_lines "failures" "$(printf '%s\n' "${_NDS_INSTALL_VERIFY_FAILS[@]}")"
+            nds_install_diag_post_install
+        fi
         error "Installation verification failed (${#_NDS_INSTALL_VERIFY_FAILS[@]} issue(s)):"
         local issue
         for issue in "${_NDS_INSTALL_VERIFY_FAILS[@]}"; do

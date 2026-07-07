@@ -42,25 +42,29 @@ _nds_partition_disko_pick_template() {
 # ----------------------------------------------------------------------------------
 _nds_partition_disko_apply() {
     local disk="$1" fs_type="$2" swap_mib="$3" separate_home="$4" home_size="$5" enc="$6" unlock="$7" user_file="$8"
-    local tmpl tmpl_dir tmpl_base params_path
+    local tmpl tmpl_dir tmpl_base params_path rc=0
 
     export NIX_CONFIG="experimental-features = nix-command flakes"
 
     if [[ -n "$user_file" ]]; then
         warn "Using user-provided disko file: $user_file"
-        nix run github:nix-community/disko -- --mode disko "$user_file"
-        return $?
+        nix run github:nix-community/disko -- --mode disko "$user_file" || rc=$?
+    else
+        tmpl=$(_nds_partition_disko_pick_template)
+        tmpl_dir="$(dirname "$tmpl")"
+        tmpl_base="$(basename "$tmpl")"
+        params_path="${tmpl_dir}/params.nix"
+        _nds_partition_disko_generate_params "$params_path" "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" || return 1
+
+        (
+            cd "$tmpl_dir" || exit 1
+            nix run github:nix-community/disko -- --mode disko "$tmpl_base"
+        ) || rc=$?
     fi
 
-    local tmpl_dir tmpl_base params_path
-    tmpl=$(_nds_partition_disko_pick_template)
-    tmpl_dir="$(dirname "$tmpl")"
-    tmpl_base="$(basename "$tmpl")"
-    params_path="${tmpl_dir}/params.nix"
-    _nds_partition_disko_generate_params "$params_path" "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" || return 1
+    if declare -f nds_install_diag_disk &>/dev/null; then
+        nds_install_diag_disk "$disk"
+    fi
 
-    (
-        cd "$tmpl_dir" || exit 1
-        nix run github:nix-community/disko -- --mode disko "$tmpl_base"
-    )
+    return "$rc"
 }

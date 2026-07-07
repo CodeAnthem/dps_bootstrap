@@ -92,4 +92,21 @@ suite_install() {
             console "  ✓ sops: age-keygen invoked as shell function"
         fi
     fi
+
+    if declare -f nds_install_diag_run &>/dev/null; then
+        local diag_log
+        diag_log=$(mktemp)
+        export NDS_INSTALL_DETAIL_LOG="$diag_log"
+        nds_install_diag_section "test"
+        nds_install_diag_lines "sample" "line one"
+        if grep -q 'DIAG: test' "$diag_log" && grep -q 'line one' "$diag_log"; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ install_diag: writes to detail log"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ install_diag: detail log capture"
+        fi
+        rm -f "$diag_log"
+        unset NDS_INSTALL_DETAIL_LOG
+    fi
 }

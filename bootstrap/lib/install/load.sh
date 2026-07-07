@@ -11,6 +11,7 @@ nds_install_load() {
     nds_import_file "${install_dir}/context.sh" || return 1
     nds_import_file "${install_dir}/disk.sh" || return 1
     nds_import_file "${install_dir}/filesystem.sh" || return 1
+    nds_import_file "${install_dir}/diagnostics.sh" || return 1
     nds_import_file "${install_dir}/encryption.sh" || return 1
     nds_import_file "${install_dir}/disko.sh" || return 1
     nds_import_file "${install_dir}/access.sh" || return 1

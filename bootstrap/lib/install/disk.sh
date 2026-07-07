@@ -89,6 +89,10 @@ _nixinstall_partition_disk() {
         log "Setting up standard root partition"
         mkfs.ext4 -L nixos "$root_part" || return 1
     fi
-    
+
+    if declare -f nds_install_diag_disk &>/dev/null; then
+        nds_install_diag_disk "$disk"
+    fi
+
     return 0
 }

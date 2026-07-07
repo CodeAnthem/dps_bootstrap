@@ -99,6 +99,9 @@ nds_step_exec() {
         return 0
     fi
     step_fail "$label"
+    if declare -f nds_install_diag_step_failure &>/dev/null; then
+        nds_install_diag_step_failure "$label" >>"$logfile" 2>&1
+    fi
     warn "Step failed — see $logfile for details"
     return "$rc"
 }

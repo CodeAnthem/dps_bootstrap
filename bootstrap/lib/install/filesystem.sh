@@ -38,5 +38,10 @@ _nixinstall_mount_filesystems() {
     mkdir -p /mnt/nix/store
 
     log "Filesystems mounted successfully"
+
+    if declare -f nds_install_diag_mounts &>/dev/null; then
+        nds_install_diag_mounts
+    fi
+
     return 0
 }

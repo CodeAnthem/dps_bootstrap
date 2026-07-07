@@ -236,14 +236,32 @@ _nds_nix_remount_target_if_needed() {
 # Returns:
 # - <Bool> 0 on success
 nds_nix_ensure_install_artifacts() {
-    local root
+    local root log
 
     root=$(_nds_nix_target_root)
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+
+    if declare -f nds_install_diag_section &>/dev/null; then
+        {
+            nds_install_diag_section "ensure install artifacts: before"
+            nds_install_diag_nix_store
+        } >>"$log" 2>&1
+    fi
+
     _nds_nix_remount_target_if_needed || return 1
     _nds_nix_ensure_system_profile "$root" || return 1
     _nds_nix_reinstall_bootloader "$root" || {
         warn "Bootloader reinstall failed — system profile is set; check install log"
     }
+
+    if declare -f nds_install_diag_section &>/dev/null; then
+        {
+            nds_install_diag_section "ensure install artifacts: after"
+            nds_install_diag_nix_store
+            nds_install_diag_boot_artifacts
+        } >>"$log" 2>&1
+    fi
+
     return 0
 }
 
