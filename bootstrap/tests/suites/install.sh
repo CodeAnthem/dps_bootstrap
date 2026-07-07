@@ -65,4 +65,14 @@ suite_install() {
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ verify grub bios: skipped (live /mnt layout)"
     fi
+
+    if declare -f _nds_run_age_keygen &>/dev/null; then
+        if grep -qE 'env NIX_CONFIG=.*_nds_run_age_keygen' "${BASH_SOURCE[0]%/*}/../../lib/install/sops.sh" 2>/dev/null; then
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ sops: age-keygen must not be invoked via env as external command"
+        else
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ sops: age-keygen invoked as shell function"
+        fi
+    fi
 }

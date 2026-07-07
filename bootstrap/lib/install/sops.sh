@@ -91,9 +91,7 @@ _nds_enroll_sops_key() {
     }
 
     if [[ ! -f "$key_file" ]]; then
-        local nix_config
-        nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
-        if ! env NIX_CONFIG="$nix_config" _nds_run_age_keygen -o "$key_file" \
+        if ! _nds_run_age_keygen -o "$key_file" \
             2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
             error "age-keygen failed — cannot generate machine age key"
             return 1
