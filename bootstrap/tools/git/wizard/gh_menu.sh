@@ -101,7 +101,7 @@ nds_git_wizard_menu_gh_deploy() {
     local owner="$1" repo="$2"
 
     nds_git_wizard_gh_prepare || return 1
-    info "Registering read-only deploy key on ${owner}/${repo}..."
+    info "Registering read-only deploy key on GitHub (${owner}/${repo})..."
     if nds_git_gh_register_deploy_for_repo "$owner" "$repo"; then
         success "Read-only deploy key registered on ${owner}/${repo}"
         nds_ui_i "Private key: $(nds_git_deploy_key_path "$owner" "$repo")"

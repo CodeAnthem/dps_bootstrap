@@ -49,10 +49,15 @@ nds_git_gh_register_deploy_key() {
 # - <Bool> 0 on success
 nds_git_gh_register_deploy_for_repo() {
     local owner="$1" repo="$2"
-    local pub title
+    local pub title key_path
 
-    nds_git_deploy_key_generate "$owner" "$repo" || return 1
-    pub="$(nds_git_deploy_key_pubkey_path "$owner" "$repo")"
+    key_path="$(nds_git_deploy_key_path "$owner" "$repo")"
+    pub="${key_path}.pub"
+    if [[ ! -f "$pub" ]]; then
+        nds_git_deploy_key_generate "$owner" "$repo" || return 1
+    else
+        nds_git_keys_register "$key_path" || true
+    fi
     title="$(nds_git_deploy_key_title "$owner" "$repo")"
     nds_git_gh_register_deploy_key "$pub" "$owner" "$repo" "$title" || return 1
     return 0

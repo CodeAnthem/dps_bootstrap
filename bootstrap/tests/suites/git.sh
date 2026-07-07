@@ -47,6 +47,17 @@ suite_git() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ closure collect: flake.lock inputs missing"
     fi
+
+    printf '%s\n' '{"nodes":{"t":{"locked":{"type":"git","url":"ssh://git@github.com/CodeAnthem/thundercore.git"}}}}' \
+        > "${tmpdir}/flake.lock.ssh"
+    urls=$(_nds_flake_lock_ssh_urls "${tmpdir}/flake.lock.ssh")
+    if grep -q 'ssh://git@github.com/CodeAnthem/thundercore.git' <<<"$urls"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ flake.lock: parses ssh://git@ URLs"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ flake.lock: ssh://git@ URL parse failed"
+    fi
     rm -rf "$tmpdir"
 
     repos=$(nds_git_urls_to_github_repos \

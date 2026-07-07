@@ -64,6 +64,7 @@ nds_flake_detect_disko() {
     if [[ -n "$local_path" ]]; then
         [[ -d "$local_path" ]] && nds_preflight_apply_disko_strategy "$local_path" "$host" "$host_dir"
     elif [[ -n "$repo_url" ]]; then
+        info "Shallow clone for disk layout (disko detection)..."
         probe_root=$(nds_preflight_probe_flake "$repo_url") || return 0
         nds_preflight_apply_disko_strategy "$probe_root" "$host" "$host_dir"
     fi
