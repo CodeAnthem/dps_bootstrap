@@ -120,6 +120,7 @@ nds_git_gh_register_deploy_for_repo() {
     else
         nds_git_keys_register "$key_path" || true
     fi
+    nds_git_repo_key_map_set "$owner" "$repo" "$key_path" || true
     title="$(nds_git_deploy_key_title "$owner" "$repo")"
     nds_git_gh_register_deploy_key "$pub" "$owner" "$repo" "$title" || return 1
     return 0

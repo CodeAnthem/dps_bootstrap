@@ -175,6 +175,24 @@ suite_git() {
         fi
     fi
 
+    if declare -f nds_git_repo_key_map_set &>/dev/null; then
+        id_tmp=$(mktemp -d)
+        export NDS_RUNTIME_DIR="${id_tmp}/nds-runtime"
+        export NDS_GIT_DEPLOY_KEYS_DIR="${id_tmp}/ssh"
+        mkdir -p "$NDS_RUNTIME_DIR" "$NDS_GIT_DEPLOY_KEYS_DIR"
+        nds_git_deploy_key_generate CodeAnthem thundercast || true
+        if grep -q $'CodeAnthem\tthundercast\t' "$(nds_git_repo_key_map_file)" 2>/dev/null \
+            && [[ -x "$(nds_git_ssh_wrapper_path)" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ repo_key_map: deploy key mapped for nix/git wrapper"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ repo_key_map: missing map entry or git-ssh wrapper"
+        fi
+        unset NDS_RUNTIME_DIR NDS_GIT_DEPLOY_KEYS_DIR
+        rm -rf "$id_tmp"
+    fi
+
     if declare -f _nds_git_identity_for_url &>/dev/null; then
         local id_tmp id_key
         id_tmp=$(mktemp -d)

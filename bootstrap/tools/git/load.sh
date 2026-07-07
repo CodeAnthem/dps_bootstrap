@@ -11,6 +11,7 @@ nds_git_tools_load() {
     local tools_dir="${1:?tools dir}"
     nds_import_file "${tools_dir}/url.sh" || return 1
     nds_import_file "${tools_dir}/ssh.sh" || return 1
+    nds_import_file "${tools_dir}/ssh-wrap.sh" || return 1
     nds_import_file "${tools_dir}/probe.sh" || return 1
     nds_import_file "${tools_dir}/closure.sh" || return 1
     nds_import_file "${tools_dir}/key.sh" || return 1

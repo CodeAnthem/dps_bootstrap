@@ -27,6 +27,7 @@ nds_git_ssh_config_refresh() {
         printf '  IdentitiesOnly yes\n'
     } >"$cfg"
     chmod 600 "$cfg"
+    nds_git_ssh_wrapper_refresh || true
 }
 
 # Description: Best private key path for a git remote URL (deploy key per repo first).
@@ -79,8 +80,16 @@ _nds_git_ssh_env_for_url() {
 
 # Description: GIT_SSH_COMMAND and related env for non-interactive git/nix fetches.
 _nds_git_ssh_env() {
-    local key_path identity_args=() cfg
+    local key_path identity_args=() cfg wrapper
     local -a keys=()
+
+    if nds_git_ssh_wrapper_active 2>/dev/null; then
+        wrapper="$(nds_git_ssh_wrapper_path)"
+        printf '%s\n' \
+            "GIT_TERMINAL_PROMPT=0" \
+            "GIT_SSH_COMMAND=${wrapper}"
+        return 0
+    fi
 
     cfg="$(nds_git_ssh_config_path)"
     if [[ -f "$cfg" ]] && grep -q IdentityFile "$cfg" 2>/dev/null; then

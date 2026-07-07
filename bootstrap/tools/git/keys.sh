@@ -177,6 +177,7 @@ nds_git_deploy_key_generate() {
     title="$(nds_git_deploy_key_title "$owner" "$repo")"
     nds_git_key_generate "$dest" "$title" || return 1
     nds_git_keys_register "$dest" || return 1
+    nds_git_repo_key_map_set "$owner" "$repo" "$dest" || true
     nds_git_auth_set_mode deploy
     return 0
 }
