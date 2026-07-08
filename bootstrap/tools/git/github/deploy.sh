@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - GitHub deploy key registration (logic)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # ==================================================================================================
 
 # Description: List deploy key ids on a repo that match a title.
@@ -19,6 +19,42 @@ _nds_git_gh_deploy_key_ids_by_title() {
     nds_git_gh_cmd gh_cmd || return 1
     "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" \
         --jq ".[] | select(.title==\"${title}\") | .id" 2>/dev/null
+}
+
+# Description: Resolve deploy-key title collision on one repository.
+# Arguments:
+# - owner: <String> Repository owner
+# - repo:  <String> Repository name
+# - title: <Nameref> Desired key title (may be changed for alternate)
+# Returns:
+# - <Bool> 0 when a title strategy is chosen
+_nds_git_gh_deploy_resolve_title_collision() {
+    local owner="$1" repo="$2"
+    local -n _title=$3
+    local prompt choice suffix n=2
+
+    prompt="Deploy key title \"${_title}\" already exists on ${owner}/${repo} with a different public key"
+    nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
+        "$prompt" \
+        "overwrite|alternate|cancel" \
+        "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
+        "cancel"
+    choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
+    case "$choice" in
+        overwrite) return 0 ;;
+        alternate)
+            while :; do
+                suffix="${_title}-${n}"
+                if [[ -z "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$suffix")" ]]; then
+                    _title="$suffix"
+                    return 0
+                fi
+                n=$((n + 1))
+                [[ "$n" -gt 50 ]] && return 1
+            done
+            ;;
+        *) return 1 ;;
+    esac
 }
 
 # Description: True when the public key is already a deploy key on the repository.
@@ -61,24 +97,25 @@ nds_git_gh_register_deploy_key() {
     [[ -n "$owner" && -n "$repo" && -n "$title" ]] || return 1
     nds_git_gh_cmd gh_cmd || return 1
 
+    if [[ -n "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
+        _nds_git_gh_deploy_resolve_title_collision "$owner" "$repo" title || return 1
+    fi
+
     if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
         nds_install_log "git: deploy key already on ${owner}/${repo} (${title})"
         nds_git_gh_session_mark_scopes_ok
         return 0
     fi
 
-    if [[ -n "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
-        _nds_git_gh_resolve_title_collision title \
-            "Deploy key title \"${title}\" already exists on ${owner}/${repo} with a different public key" \
-            || return 1
+    if [[ "$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null)" == "overwrite" ]]; then
+        while IFS= read -r id; do
+            [[ -n "$id" ]] || continue
+            _nds_git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
+        done < <(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")
         if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
+            nds_install_log "git: deploy key already on ${owner}/${repo} (${title})"
+            nds_git_gh_session_mark_scopes_ok
             return 0
-        fi
-        if [[ "$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null)" == "overwrite" ]]; then
-            while IFS= read -r id; do
-                [[ -n "$id" ]] || continue
-                _nds_git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
-            done < <(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")
         fi
     fi
 
