@@ -410,7 +410,7 @@ _nixinstall_install_nixos_flake() {
 
     host_dir_rel="${NDS_CTX_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     host_dir="${flake_root}/${host_dir_rel}/${host_name}"
-    _nixinstall_flake_git_stage_install_files "$flake_root" "$host_dir" || {
+    _nds_install_flake_git_stage_install_files "$flake_root" "$host_dir" || {
         error "Failed to stage install-time flake files for nix build"
         return 1
     }
