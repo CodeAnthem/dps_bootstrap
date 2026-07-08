@@ -136,23 +136,29 @@ _nds_install_verify_classic_hardware() {
     [[ -s "$dest" ]] || _nds_install_verify_fail "Hardware artifact missing: ${dest}"
 }
 
-# Description: Verify git SSH keys and SSH config were installed when session keys exist.
+# Description: Verify deploy keys + nds-git-ssh were installed when deploy keys exist.
 _nds_install_verify_git_key() {
     local -a keys=()
-    local key_path base dest cfg
+    local key_path base dest wrap map_file
 
-    mapfile -t keys < <(nds_git_keys_list 2>/dev/null || true)
-    if [[ ${#keys[@]} -eq 0 ]]; then
-        key_path=$(nds_git_session_key_path 2>/dev/null || true)
-        [[ -f "$key_path" ]] || return 0
-        keys=("$key_path")
-    fi
-    [[ ${#keys[@]} -gt 0 ]] || return 0
-
+    mapfile -t keys < <(_nds_git_collect_deploy_key_paths 2>/dev/null || true)
+    # Only enforce nds_deploy_* — account/session keys are not copied to target.
+    local -a deploy_keys=()
     for key_path in "${keys[@]}"; do
         [[ -f "$key_path" ]] || continue
+        [[ "$(basename "$key_path")" == nds_deploy_* ]] || continue
+        deploy_keys+=("$key_path")
+    done
+    [[ ${#deploy_keys[@]} -gt 0 ]] || return 0
+
+    wrap="/mnt/root/.ssh/nds-git-ssh"
+    map_file="/mnt/root/.ssh/nds-git.map"
+    [[ -x "$wrap" ]] || _nds_install_verify_fail "nds-git-ssh missing on target: ${wrap}"
+    [[ -f "$map_file" ]] || _nds_install_verify_fail "nds-git.map missing on target: ${map_file}"
+
+    for key_path in "${deploy_keys[@]}"; do
         base="$(basename "$key_path")"
-        dest="/mnt/etc/nixos/secrets/${base}"
+        dest="/mnt/root/.ssh/${base}"
         [[ -f "$dest" ]] || _nds_install_verify_fail "Git SSH key missing on target: ${dest}"
     done
 }

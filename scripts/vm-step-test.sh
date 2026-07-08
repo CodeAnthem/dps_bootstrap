@@ -11,7 +11,7 @@
 #   bash scripts/vm-step-test.sh list
 #
 # Env:
-#   NDS_FLAKE_ROOT     Flake checkout (default: /mnt/opt/flake if present)
+#   NDS_FLAKE_ROOT     Flake checkout (default: /mnt/etc/nixos if present)
 #   NDS_HOSTNAME       Host name under hosts/… (default: control-toolkit)
 #   NDS_FLAKE_HOST_DIR Relative host dir (default: hosts/x86_64-linux)
 set -euo pipefail
@@ -68,7 +68,16 @@ _nds_vm_step_sanitize() {
 }
 
 _nds_vm_step_stage_boot() {
-    local flake_root="${NDS_FLAKE_ROOT:-/mnt/opt/flake}"
+    local flake_root="${NDS_FLAKE_ROOT:-}"
+    if [[ -z "$flake_root" ]]; then
+        if [[ -d /mnt/etc/nixos ]]; then
+            flake_root=/mnt/etc/nixos
+        elif [[ -d /mnt/opt/flake ]]; then
+            flake_root=/mnt/opt/flake
+        else
+            flake_root=/mnt/etc/nixos
+        fi
+    fi
     local host_rel="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     local hostname="${NDS_HOSTNAME:-control-toolkit}"
     local host_dir="${flake_root}/${host_rel}/${hostname}"

@@ -51,14 +51,14 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `FLAKE_LOCATION` | `NDS_FLAKE_LOCATION` | never | Derived — use `FLAKE_REPO_URL` or `FLAKE_LOCAL_PATH` |
 | `FLAKE_SOURCE` | `NDS_FLAKE_SOURCE` | never | Derived `remote` or `local` |
 | `FLAKE_HOST` | `NDS_FLAKE_HOST` | when set | `nixosConfigurations` name |
-| `FLAKE_INSTALL_PATH` | `NDS_FLAKE_INSTALL_PATH` | when set | Staging path on target (default `/mnt/opt/flake`) |
+| `FLAKE_INSTALL_PATH` | `NDS_FLAKE_INSTALL_PATH` | when set | Flake git root on target (default `/mnt/etc/nixos`) |
 | `FLAKE_HOST_DIR` | `NDS_FLAKE_HOST_DIR` | when set | Host directory under flake (default `hosts/x86_64-linux`) |
 | `FLAKE_HARDWARE_PLACEMENT` | `NDS_FLAKE_HARDWARE_PLACEMENT` | when set | `host-dir`, `flake-root`, or `skip` |
 
-After install, the session private key is copied to `/etc/nixos/secrets/git-<owner>-key` on the  
-target (e.g. `git-codeanthem-key` for `CodeAnthem/dps_swarm`, mode 600, not in backup zip).  
-`NDS_GIT_TARGET_KEY_ABS` is set during install. Import, generate, and gh paths share the same  
-session key file under `/root/.ssh/git-<owner>-key` on the live ISO (reused across NDS restarts).
+After install, per-repo deploy keys land under `/root/.ssh/nds_deploy_<owner>_<repo>` with  
+`nds-git-ssh` + `nds-git.map` so stock `git+ssh://git@github.com/...` flake URLs keep working  
+via `GIT_SSH_COMMAND`. Session / account keys stay on the live ISO; only `nds_deploy_*` keys  
+are copied to the installed system.
 
 ---
 

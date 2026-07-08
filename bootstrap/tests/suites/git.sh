@@ -276,7 +276,8 @@ LOCK
     fi
     unset NDS_GIT_IMPORT_KEY_PATH NDS_GIT_SESSION_KEY_PATH
 
-    export NDS_GIT_SESSION_KEY_PATH="${tmpdir}/gen_key"
+    export NDS_GIT_DEPLOY_KEYS_DIR="$tmpdir"
+    export NDS_GIT_SESSION_KEY_PATH="${tmpdir}/nds_deploy_org_repo"
     if nds_git_key_generate "$NDS_GIT_SESSION_KEY_PATH" "test-gen" \
         && [[ -f "${NDS_GIT_SESSION_KEY_PATH}.pub" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
@@ -294,22 +295,28 @@ LOCK
         console "  ✗ nds_git_key_generate: reuse failed"
     fi
 
-    mkdir -p "${tmpdir}/mnt/etc/nixos/secrets"
+    mkdir -p "${tmpdir}/mnt"
     nds_git_keys_register "$NDS_GIT_SESSION_KEY_PATH" || true
-    if nds_git_install_keys_to_target "${tmpdir}/mnt" \
-        && [[ -f "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" ]]; then
-        perms=$(stat -c '%a' "${tmpdir}/mnt/etc/nixos/secrets/$(basename "$NDS_GIT_SESSION_KEY_PATH")" 2>/dev/null || echo "")
-        if [[ "$perms" == "600" ]]; then
+    # Unit test: install keys without network RO probe (no flake checkout)
+    unset NDS_CTX_FLAKE_INSTALL_PATH NDS_FLAKE_INSTALL_PATH NDS_FLAKE_REPO_URL NDS_CTX_FLAKE_REPO_URL
+    if nds_git_install_keys_to_target "${tmpdir}/mnt" "" \
+        && [[ -f "${tmpdir}/mnt/root/.ssh/nds_deploy_org_repo" ]] \
+        && [[ -x "${tmpdir}/mnt/root/.ssh/nds-git-ssh" ]] \
+        && [[ -f "${tmpdir}/mnt/root/.ssh/nds-git.map" ]]; then
+        perms=$(stat -c '%a' "${tmpdir}/mnt/root/.ssh/nds_deploy_org_repo" 2>/dev/null || echo "")
+        if [[ "$perms" == "600" ]] \
+            && grep -q 'org/repo' "${tmpdir}/mnt/root/.ssh/nds-git.map"; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ SSH keys installed on target"
+            console "  ✓ SSH keys + nds-git-ssh installed on target"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
-            console "  ✗ SSH key target permissions (got ${perms})"
+            console "  ✗ SSH key target map/perms (got ${perms})"
         fi
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ SSH keys install on target"
     fi
+    unset NDS_GIT_DEPLOY_KEYS_DIR
 
     if declare -f nds_git_discover_key_candidates &>/dev/null; then
         cp "$key_src" "${tmpdir}/id_ed25519_test"
