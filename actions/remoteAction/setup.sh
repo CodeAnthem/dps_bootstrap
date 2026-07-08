@@ -7,7 +7,8 @@
 # ==================================================================================================
 
 action_presets() {
-    printf '%s\n' remoteAction boot disk encryption platform
+    # platform is classicInstall-only — flake path uses facter + host modules
+    printf '%s\n' remoteAction boot disk encryption
 }
 
 action_config() {
@@ -16,7 +17,6 @@ action_config() {
     nds_configurator_preset_set_priority boot 21
     nds_configurator_preset_set_priority disk 22
     nds_configurator_preset_set_priority encryption 23
-    nds_configurator_preset_set_priority platform 24
 }
 
 # Optional: extra preset dirs from env (colon-separated paths).

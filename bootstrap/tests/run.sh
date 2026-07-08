@@ -41,6 +41,8 @@ source "${TEST_ROOT}/suites/nixWriter.sh"
 source "${TEST_ROOT}/suites/skip.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/install.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/facter.sh"
 
 nds_run_self_tests() {
     TEST_PASSED=0
@@ -58,6 +60,7 @@ nds_run_self_tests() {
     run_named_suite "inputs" suite_inputs
     run_named_suite "classicConfig" suite_classic_config
     run_named_suite "install" suite_install
+    run_named_suite "facter" suite_facter
 
     print_test_summary
 }

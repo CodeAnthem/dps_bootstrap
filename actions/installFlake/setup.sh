@@ -2,12 +2,13 @@
 # ==================================================================================================
 # NDS - Install from flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-07-07
+# Date:          Created: 2026-06-28 | Modified: 2026-07-08
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
 action_presets() {
-    printf '%s\n' installFlake boot disk encryption platform
+    # platform (VM guest tools) is classicInstall-only — flake hosts use facter + flake modules
+    printf '%s\n' installFlake boot disk encryption
 }
 
 action_config() {
@@ -16,7 +17,6 @@ action_config() {
     nds_configurator_preset_set_priority boot 21
     nds_configurator_preset_set_priority disk 22
     nds_configurator_preset_set_priority encryption 23
-    nds_configurator_preset_set_priority platform 24
 }
 
 action_preview() {
@@ -26,6 +26,8 @@ action_preview() {
     nds_ui_i "install mode (local live ISO or remote nixos-anywhere)"
     nds_ui_i "flake location (git URL or path, auto-detected), host name, host directory"
     nds_ui_i "bootloader (UEFI mode + GRUB / systemd-boot / rEFInd), disk (local mode)"
+    nds_ui_b ""
+    nds_ui_b "VM guest tools come from facter / your flake modules (no NDS platform menu)."
     nds_ui_b ""
     nds_ui_b "For a private repo, NDS shallow-clones the root flake once, scans"
     nds_ui_b "flake.lock for git inputs, and probes SSH access to each (no extra clones)."
