@@ -302,7 +302,7 @@ LOCK
     if nds_git_install_keys_to_target "${tmpdir}/mnt" "" \
         && [[ -f "${tmpdir}/mnt/root/.ssh/nds_deploy_org_repo" ]] \
         && [[ -x "${tmpdir}/mnt/root/.ssh/nds-git-ssh" ]] \
-        && [[ -x "${tmpdir}/mnt/root/bin/nds-switch" ]] \
+        && [[ -x "${tmpdir}/mnt/root/.nds/bin/nds-switch" ]] \
         && [[ -f "${tmpdir}/mnt/root/.ssh/nds-git.map" ]]; then
         perms=$(stat -c '%a' "${tmpdir}/mnt/root/.ssh/nds_deploy_org_repo" 2>/dev/null || echo "")
         if [[ "$perms" == "600" ]] \

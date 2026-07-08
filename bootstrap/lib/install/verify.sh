@@ -158,7 +158,7 @@ _nds_install_verify_git_key() {
 
     wrap="/mnt/root/.ssh/nds-git-ssh"
     map_file="/mnt/root/.ssh/nds-git.map"
-    switch_bin="/mnt/root/bin/nds-switch"
+    switch_bin="/mnt/root/.nds/bin/nds-switch"
     [[ -x "$wrap" ]] || _nds_install_verify_fail "nds-git-ssh missing on target: ${wrap}"
     [[ -f "$map_file" ]] || _nds_install_verify_fail "nds-git.map missing on target: ${map_file}"
     [[ -x "$switch_bin" ]] || _nds_install_verify_fail "nds-switch missing on target: ${switch_bin}"

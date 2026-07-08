@@ -58,8 +58,10 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 After install, per-repo deploy keys land under `/root/.ssh/nds_deploy_<owner>_<repo>` with  
 `nds-git-ssh` + `nds-git.map` so stock `git+ssh://git@github.com/...` flake URLs keep working  
 via `GIT_SSH_COMMAND`. Session / account keys stay on the live ISO; only `nds_deploy_*` keys  
-are copied to the installed system. NDS also installs `/root/bin/nds-switch` (fetch +  
-ff-only pull + `nixos-rebuild switch`; `/root/bin` on PATH via profile.d). Install-time  
+are copied to the installed system. NDS also installs `/root/.nds/bin/nds-switch` (and  
+legacy `/root/bin`). Prefer enabling `services.nds.helpers.enable` in the flake so  
+`nds-switch` is on PATH after rebuild. Use `nds-switch --self-update` during NDS  
+development to refresh scripts from dps_bootstrap without reinstalling. Install-time  
 `facter.json` / `nds-boot.nix` / `machine.nix` are unstaged and gitignored after the flake  
 build so the checkout stays pullable. `machine.nix` holds by-uuid root/boot mounts (not  
 by-label) so VMware hard resets are less likely to hang in initrd.

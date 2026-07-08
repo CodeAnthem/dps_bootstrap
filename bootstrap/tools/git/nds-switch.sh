@@ -3,20 +3,23 @@
 # NDS - Pull flake updates and switch (deploy-key aware)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-08 | Modified: 2026-07-08
-# Description:   Fetch origin, fast-forward (or rebase with local identity), nixos-rebuild switch.
-#                Uses /root/.ssh/nds-git-ssh when present. Install-time host facts must stay
-#                untracked/gitignored — this tool refuses divergent local commits.
+# Description:   Fetch origin, fast-forward, nixos-rebuild switch.
+#                --self-update refreshes this script + nds-git-ssh from dps_bootstrap main
+#                into /root/.nds/bin (no full reinstall).
 # Env:
 #   NDS_FLAKE_ROOT   Flake root (default /etc/nixos)
 #   NDS_FLAKE_HOST   nixosConfigurations attr (default: hostname -s)
 #   NDS_FLAKE_REF    Remote ref (default origin/main)
+#   NDS_BOOTSTRAP_RAW_BASE  Raw GitHub base for self-update (optional)
 # ==================================================================================================
 set -euo pipefail
 
 FLAKE_ROOT="${NDS_FLAKE_ROOT:-/etc/nixos}"
 HOST_NAME="${NDS_FLAKE_HOST:-$(hostname -s 2>/dev/null || echo nixos)}"
 REMOTE_REF="${NDS_FLAKE_REF:-origin/main}"
-WRAP="${NDS_GIT_SSH_WRAPPER:-/root/.ssh/nds-git-ssh}"
+WRAP="${NDS_GIT_SSH_WRAPPER:-}"
+NDS_BIN_DIR="${NDS_BIN_DIR:-/root/.nds/bin}"
+RAW_BASE="${NDS_BOOTSTRAP_RAW_BASE:-https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/bootstrap/tools/git}"
 
 _nds_switch_die() {
     echo "nds-switch: $*" >&2
@@ -27,16 +30,57 @@ _nds_switch_info() {
     echo "nds-switch: $*"
 }
 
+_nds_switch_resolve_wrap() {
+    if [[ -n "$WRAP" && -x "$WRAP" ]]; then
+        return 0
+    fi
+    if [[ -x "${NDS_BIN_DIR}/nds-git-ssh" ]]; then
+        WRAP="${NDS_BIN_DIR}/nds-git-ssh"
+    elif [[ -x /root/.ssh/nds-git-ssh ]]; then
+        WRAP=/root/.ssh/nds-git-ssh
+    elif command -v nds-git-ssh &>/dev/null; then
+        WRAP="$(command -v nds-git-ssh)"
+    else
+        WRAP=""
+    fi
+}
+
+# Description: Download latest helpers from dps_bootstrap into /root/.nds/bin.
+_nds_switch_self_update() {
+    local dest="$NDS_BIN_DIR"
+    mkdir -p "$dest"
+    _nds_switch_info "self-update -> ${dest}"
+    curl -fsSL "${RAW_BASE}/nds-switch.sh" -o "${dest}/nds-switch.tmp" \
+        || _nds_switch_die "failed to download nds-switch.sh"
+    curl -fsSL "${RAW_BASE}/nds-git-ssh.sh" -o "${dest}/nds-git-ssh.tmp" \
+        || _nds_switch_die "failed to download nds-git-ssh.sh"
+    chmod 755 "${dest}/nds-switch.tmp" "${dest}/nds-git-ssh.tmp"
+    mv -f "${dest}/nds-switch.tmp" "${dest}/nds-switch"
+    mv -f "${dest}/nds-git-ssh.tmp" "${dest}/nds-git-ssh"
+    # Keep ISO/install copy in sync when present
+    if [[ -d /root/.ssh ]]; then
+        cp -f "${dest}/nds-git-ssh" /root/.ssh/nds-git-ssh
+        chmod 755 /root/.ssh/nds-git-ssh
+    fi
+    _nds_switch_info "updated. Put ${dest} first on PATH (extraInit already prefers it after rebuild)."
+    _nds_switch_info "run now: ${dest}/nds-switch"
+    exit 0
+}
+
+if [[ "${1:-}" == "--self-update" || "${1:-}" == "self-update" ]]; then
+    _nds_switch_self_update
+fi
+
 [[ -d "$FLAKE_ROOT" ]] || _nds_switch_die "flake root missing: ${FLAKE_ROOT}"
 [[ -d "${FLAKE_ROOT}/.git" ]] || _nds_switch_die "not a git checkout: ${FLAKE_ROOT}"
 
-if [[ -x "$WRAP" ]]; then
+_nds_switch_resolve_wrap
+if [[ -n "$WRAP" && -x "$WRAP" ]]; then
     export GIT_SSH_COMMAND="$WRAP"
 fi
 
 cd "$FLAKE_ROOT"
 
-# Local identity only for this repo (rebase / amend never needed for clean installs)
 if [[ -z "$(git config --local user.email 2>/dev/null || true)" ]]; then
     git config --local user.email "nds@$(hostname -s 2>/dev/null || echo host)"
 fi
@@ -51,22 +95,20 @@ else
     git fetch origin
 fi
 
-# Refuse local commits that would force merge/rebase games (install must not create these)
 ahead=$(git rev-list --count "${REMOTE_REF}..HEAD" 2>/dev/null || echo 0)
 behind=$(git rev-list --count "HEAD..${REMOTE_REF}" 2>/dev/null || echo 0)
 
 if [[ "${ahead:-0}" -gt 0 ]]; then
     _nds_switch_die "local branch is ahead of ${REMOTE_REF} by ${ahead} commit(s).
-Install-time host facts (facter.json, nds-boot.nix) must stay untracked/gitignored — do not commit them.
-To drop local-only commits and match remote:  git reset --hard ${REMOTE_REF}
-(Keep host facts as untracked files; restore from backup if reset removes tracked paths you need.)"
+Install-time host facts (facter.json, nds-boot.nix, machine.nix) must stay untracked/gitignored.
+To match remote:  git reset --hard ${REMOTE_REF}
+(Keep host facts as untracked files.)"
 fi
 
 if [[ "${behind:-0}" -eq 0 ]]; then
     _nds_switch_info "already up to date with ${REMOTE_REF}"
 else
     _nds_switch_info "fast-forward ${behind} commit(s) from ${REMOTE_REF}"
-    # Move aside untracked host facts that would block checkout of newly tracked remote files
     host_dir=$(find hosts -mindepth 2 -maxdepth 2 -type d -name "$HOST_NAME" 2>/dev/null | head -1 || true)
     stash_dir=""
     if [[ -n "$host_dir" ]]; then
@@ -88,7 +130,6 @@ else
         _nds_switch_die "fast-forward failed — resolve manually in ${FLAKE_ROOT}"
     fi
 
-    # Restore parked files only when remote did not introduce the same path
     if [[ -n "$stash_dir" && -d "$stash_dir" ]]; then
         while IFS= read -r -d '' parked; do
             rel="${parked#"${stash_dir}/"}"

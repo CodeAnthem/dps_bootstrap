@@ -329,9 +329,9 @@ _nds_git_install_ssh_wrapper_to_target() {
     local wrap_dst="${ssh_dir}/nds-git-ssh"
     local switch_src switch_dst wrap_src env_dir env_file installed_map=0
 
-    # NixOS: /usr is usually read-only — put helpers under /root, not /usr/local.
+    # NixOS: prefer /root/.nds/bin (survives self-update); keep profile.d PATH tip.
     mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d" \
-        "${mount_root}/root/bin" "${mount_root}/etc/profile.d"
+        "${mount_root}/root/bin" "${mount_root}/root/.nds/bin" "${mount_root}/etc/profile.d"
     wrap_src="$(_nds_git_ssh_wrapper_src)"
     [[ -f "$wrap_src" ]] || {
         error "nds-git-ssh source missing: ${wrap_src}"
@@ -344,19 +344,33 @@ _nds_git_install_ssh_wrapper_to_target() {
     fi
 
     switch_src="$(_nds_git_switch_src)"
-    switch_dst="${mount_root}/root/bin/nds-switch"
+    switch_dst="${mount_root}/root/.nds/bin/nds-switch"
     if [[ -f "$switch_src" ]]; then
         if [[ "$(id -u)" -eq 0 ]]; then
             install -m 755 -o root -g root "$switch_src" "$switch_dst"
+            install -m 755 -o root -g root "$wrap_src" "${mount_root}/root/.nds/bin/nds-git-ssh"
         else
             install -m 755 "$switch_src" "$switch_dst"
+            install -m 755 "$wrap_src" "${mount_root}/root/.nds/bin/nds-git-ssh"
         fi
+        # Legacy + convenience copies
+        cp -f "$switch_dst" "${mount_root}/root/bin/nds-switch"
         cp -f "$switch_dst" "${ssh_dir}/nds-switch"
-        chmod 755 "${ssh_dir}/nds-switch"
-        printf 'export PATH="/root/bin:${PATH}"\n' \
+        chmod 755 "${mount_root}/root/bin/nds-switch" "${ssh_dir}/nds-switch"
+        printf 'export PATH="/root/.nds/bin:/root/bin:${PATH}"\n' \
             >"${mount_root}/etc/profile.d/nds-root-bin.sh"
         chmod 644 "${mount_root}/etc/profile.d/nds-root-bin.sh"
-        nds_install_log "git: nds-switch -> /root/bin/nds-switch"
+        # Login shells often skip /etc/profile.d — force PATH for interactive root
+        if [[ -f "${mount_root}/root/.bashrc" ]]; then
+            grep -q '/root/.nds/bin' "${mount_root}/root/.bashrc" 2>/dev/null \
+                || printf '\n# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n' \
+                    >>"${mount_root}/root/.bashrc"
+        else
+            printf '# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n' \
+                >"${mount_root}/root/.bashrc"
+            chmod 644 "${mount_root}/root/.bashrc"
+        fi
+        nds_install_log "git: nds-switch -> /root/.nds/bin/nds-switch"
     else
         warn "nds-switch source missing: ${switch_src}"
     fi
