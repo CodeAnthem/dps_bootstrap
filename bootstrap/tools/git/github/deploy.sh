@@ -5,6 +5,22 @@
 # Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # ==================================================================================================
 
+# Description: Run gh api with a bounded timeout to avoid silent hangs.
+# Arguments:
+# - timeout_s: <Int> Timeout seconds
+# - ...:       <String...> gh api args
+# Returns:
+# - <String> command output (stdout)
+_nds_git_gh_api_with_timeout() {
+    local timeout_s="$1"
+    shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "${timeout_s}s" "$@"
+    else
+        "$@"
+    fi
+}
+
 # Description: List deploy key ids on a repo that match a title.
 # Arguments:
 # - owner: <String> Repository owner
@@ -17,7 +33,7 @@ _nds_git_gh_deploy_key_ids_by_title() {
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
-    "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" \
+    _nds_git_gh_api_with_timeout 20 "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" \
         --jq ".[] | select(.title==\"${title}\") | .id" 2>/dev/null
 }
 
@@ -67,7 +83,7 @@ nds_git_gh_deploy_pubkey_on_repo() {
     nds_git_gh_cmd gh_cmd || return 1
     key_body="$(awk '{print $2}' "$pub_file")"
     [[ -n "$key_body" ]] || return 1
-    "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" --jq '.[].key' 2>/dev/null \
+    _nds_git_gh_api_with_timeout 20 "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" --jq '.[].key' 2>/dev/null \
         | grep -qF "$key_body"
 }
 
@@ -77,7 +93,7 @@ _nds_git_gh_deploy_key_delete() {
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
-    "${gh_cmd[@]}" api --method DELETE "repos/${owner}/${repo}/keys/${id}" 2>/dev/null
+    _nds_git_gh_api_with_timeout 20 "${gh_cmd[@]}" api --method DELETE "repos/${owner}/${repo}/keys/${id}" 2>/dev/null
 }
 
 # Description: Add read-only deploy key to a repository via gh API.
@@ -97,10 +113,12 @@ nds_git_gh_register_deploy_key() {
     [[ -n "$owner" && -n "$repo" && -n "$title" ]] || return 1
     nds_git_gh_cmd gh_cmd || return 1
 
+    nds_ui_i "Checking existing deploy keys on ${owner}/${repo}..."
     if [[ -n "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
         _nds_git_gh_deploy_resolve_title_collision "$owner" "$repo" title || return 1
     fi
 
+    nds_ui_i "Checking whether this public key is already registered..."
     if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
         nds_install_log "git: deploy key already on ${owner}/${repo} (${title})"
         nds_git_gh_session_mark_scopes_ok
@@ -108,6 +126,7 @@ nds_git_gh_register_deploy_key() {
     fi
 
     if [[ "$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null)" == "overwrite" ]]; then
+        nds_ui_i "Removing existing deploy keys with title: ${title}"
         while IFS= read -r id; do
             [[ -n "$id" ]] || continue
             _nds_git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
@@ -122,12 +141,18 @@ nds_git_gh_register_deploy_key() {
     key_body="$(tr -d '\n' < "$pub_file")"
     payload=$(printf '{"title":"%s","key":"%s","read_only":true}' "$title" "$key_body")
 
-    err=$("${gh_cmd[@]}" api --method POST "repos/${owner}/${repo}/keys" \
+    nds_ui_i "Creating deploy key \"${title}\" on ${owner}/${repo}..."
+    err=$(_nds_git_gh_api_with_timeout 30 "${gh_cmd[@]}" api --method POST "repos/${owner}/${repo}/keys" \
         -H "Accept: application/vnd.github+json" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         --input - <<< "$payload" 2>&1) || rc=$?
     if [[ "${rc:-0}" -ne 0 ]]; then
         debug "gh api POST repos/${owner}/${repo}/keys failed: ${err}"
+        if grep -qi 'timed out' <<< "$err"; then
+            error "GitHub API timed out while creating deploy key on ${owner}/${repo}"
+            nds_ui_i "Network/SSO issues can cause this. Retry or use manual registration."
+            return 1
+        fi
         if grep -qi 'already exists\|key is already in use' <<< "$err"; then
             nds_install_log "git: deploy key may already exist on ${owner}/${repo}"
             nds_git_gh_session_mark_scopes_ok

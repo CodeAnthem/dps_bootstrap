@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard GitHub CLI menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # ==================================================================================================
 
 # Description: Print device-login lines from captured gh output.
@@ -138,15 +138,15 @@ nds_git_wizard_gh_prepare() {
 # - <Bool> 0 on success
 nds_git_wizard_menu_gh_deploy() {
     local owner="$1" repo="$2"
+    local label="Registering deploy key on ${owner}/${repo}"
 
     nds_git_wizard_gh_prepare || return 1
-    if declare -f nds_step_exec &>/dev/null; then
-        nds_step_exec "Registering deploy key on ${owner}/${repo}" \
-            nds_git_gh_register_deploy_for_repo "$owner" "$repo" || return 1
-    else
-        info "Registering read-only deploy key on GitHub (${owner}/${repo})..."
-        nds_git_gh_register_deploy_for_repo "$owner" "$repo" || return 1
+    step_start "$label"
+    if ! nds_git_gh_register_deploy_for_repo "$owner" "$repo"; then
+        step_fail "$label"
+        return 1
     fi
+    step_complete "$label"
     success "Read-only deploy key registered on ${owner}/${repo}"
     nds_ui_i "Private key: $(nds_git_deploy_key_path "$owner" "$repo")"
     nds_ui_i "Target: /$(nds_git_deploy_key_target_rel "$owner" "$repo")"
