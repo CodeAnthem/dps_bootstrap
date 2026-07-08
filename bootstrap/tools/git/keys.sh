@@ -180,6 +180,74 @@ nds_git_deploy_key_generate() {
     return 0
 }
 
+# Description: List deploy private key paths (session registry + nds_deploy_* on disk).
+# Returns:
+# - <String> paths (stdout, one per line)
+_nds_git_collect_deploy_key_paths() {
+    local deploy_dir="${NDS_GIT_DEPLOY_KEYS_DIR:-/root/.ssh}"
+    local key_path
+
+    {
+        while IFS= read -r key_path; do
+            [[ -f "$key_path" ]] && printf '%s\n' "$key_path"
+        done < <(nds_git_keys_list 2>/dev/null || true)
+
+        if [[ -d "$deploy_dir" ]]; then
+            for key_path in "${deploy_dir}"/nds_deploy_*; do
+                [[ -f "$key_path" ]] || continue
+                [[ "$key_path" == *.pub ]] && continue
+                printf '%s\n' "$key_path"
+            done
+        fi
+    } | awk 'NF' | sort -u
+}
+
+# Description: Install GitHub host key for non-interactive git on the target.
+# Arguments:
+# - mount_root: <String> Target mount (default /mnt)
+_nds_git_install_github_known_hosts() {
+    local mount_root="${1:-/mnt}"
+    local kh="${mount_root}/etc/ssh/ssh_known_hosts"
+    local github_line="github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWiVhwzGm9JRs"
+
+    mkdir -p "${mount_root}/etc/ssh"
+    if [[ -f "$kh" ]] && grep -qF 'github.com' "$kh" 2>/dev/null; then
+        return 0
+    fi
+    printf '%s\n' "$github_line" >>"$kh"
+    chmod 644 "$kh"
+    nds_install_log "git: github.com -> /etc/ssh/ssh_known_hosts"
+}
+
+# Description: ssh_config.d snippet so git/nix/comin use deploy keys on the installed host.
+# Arguments:
+# - mount_root: <String> Target mount (default /mnt)
+_nds_git_install_ssh_config_to_target() {
+    local mount_root="${1:-/mnt}"
+    local conf="${mount_root}/etc/ssh/ssh_config.d/nds-git.conf"
+    local -a keys=()
+    local key_path base dest
+
+    mapfile -t keys < <(_nds_git_collect_deploy_key_paths)
+    [[ ${#keys[@]} -gt 0 ]] || return 0
+
+    mkdir -p "${mount_root}/etc/ssh/ssh_config.d" "${mount_root}/etc/nixos/secrets"
+    {
+        printf '# NDS — per-repo GitHub deploy keys (install-time)\n'
+        printf 'Host github.com\n'
+        for key_path in "${keys[@]}"; do
+            [[ -f "$key_path" ]] || continue
+            base="$(basename "$key_path")"
+            dest="/etc/nixos/secrets/${base}"
+            printf '  IdentityFile %s\n' "$dest"
+        done
+        printf '  IdentitiesOnly yes\n'
+    } >"$conf"
+    chmod 644 "$conf"
+    nds_install_log "git: ssh_config.d -> /etc/ssh/ssh_config.d/nds-git.conf (${#keys[@]} key(s))"
+    _nds_git_install_github_known_hosts "$mount_root"
+}
+
 # Description: Install all session deploy keys onto the target under /mnt/etc/nixos/secrets/.
 # Arguments:
 # - mount_root: <String|optional> Target mount (default /mnt)
@@ -188,28 +256,35 @@ nds_git_deploy_key_generate() {
 nds_git_install_keys_to_target() {
     local mount_root="${1:-/mnt}"
     local -a keys=()
-    local key_path base dest_rel dest
+    local key_path base dest_rel dest installed=0
 
     [[ -d "$mount_root" ]] || {
         debug "Target mount missing — skip git SSH key install"
         return 0
     }
 
-    mapfile -t keys < <(nds_git_keys_list)
+    mapfile -t keys < <(_nds_git_collect_deploy_key_paths)
     if [[ ${#keys[@]} -eq 0 ]]; then
-        nds_git_install_key_to_target "" "$mount_root" || return 0
+        warn "No deploy keys found to install on target (registry empty and no nds_deploy_* under ${NDS_GIT_DEPLOY_KEYS_DIR:-/root/.ssh})"
         return 0
     fi
 
+    mkdir -p "${mount_root}/etc/nixos/secrets"
     for key_path in "${keys[@]}"; do
         [[ -f "$key_path" ]] || continue
         base="$(basename "$key_path")"
         dest_rel="etc/nixos/secrets/${base}"
         dest="${mount_root}/${dest_rel}"
-        mkdir -p "$(dirname "$dest")"
         install -m 600 -o root -g root "$key_path" "$dest"
         nds_install_log "git: SSH key -> /${dest_rel}"
+        installed=$((installed + 1))
     done
 
+    [[ "$installed" -gt 0 ]] || {
+        warn "Deploy key paths were listed but none could be installed on target"
+        return 1
+    }
+
+    _nds_git_install_ssh_config_to_target "$mount_root"
     return 0
 }
