@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Flake install pipeline (local + remote nixos-anywhere)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-07
+# Date:          Created: 2026-07-06 | Modified: 2026-07-08
 # ==================================================================================================
 
 # Description: Full flake-based NixOS install.
@@ -93,10 +93,8 @@ nds_nixos_install_flake() {
         nds_nixcfg_write_boot_module "${host_dir}/nds-boot.nix" || return 1
     nds_install_log "boot: wrote ${host_dir}/nds-boot.nix from boot preset"
 
-    if [[ "$NDS_CTX_ENCRYPTION" == "true" ]]; then
-        nds_step_exec "Writing machine facts (LUKS UUID)" \
-            _nixinstall_write_machine_facts "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
-    fi
+    nds_step_exec "Writing machine facts (root/boot UUID mounts)" \
+        _nixinstall_write_machine_facts "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
 
     if declare -f nds_git_prefetch_flake_closure &>/dev/null; then
         nds_step_exec "Prefetching flake git inputs" \

@@ -125,6 +125,11 @@ _nds_install_verify_flake_hardware() {
     if [[ ! -f "${host_dir}/nds-boot.nix" ]]; then
         _nds_install_verify_fail "Boot module missing: ${host_dir}/nds-boot.nix"
     fi
+    if [[ ! -f "${host_dir}/machine.nix" ]]; then
+        _nds_install_verify_fail "machine.nix missing (root/boot UUID mounts): ${host_dir}/machine.nix"
+    elif ! grep -q 'by-uuid' "${host_dir}/machine.nix" 2>/dev/null; then
+        _nds_install_verify_fail "machine.nix missing by-uuid mounts: ${host_dir}/machine.nix"
+    fi
 }
 
 # Description: Verify classic-install hardware artifact on the target.
