@@ -14,10 +14,21 @@
 _nds_git_gh_api_with_timeout() {
     local timeout_s="$1"
     shift
+    local -a cmd=("$@")
+
+    [[ ${#cmd[@]} -gt 0 ]] || return 1
+
+    # nds_git_gh_cmd may return a shell function prefix:
+    #   _nds_git_gh_nix shell nixpkgs#gh -c gh
+    # timeout cannot execute shell functions directly, so normalize to nix.
+    if [[ "${cmd[0]}" == "_nds_git_gh_nix" ]]; then
+        cmd=(nix --extra-experimental-features "nix-command flakes" "${cmd[@]:1}")
+    fi
+
     if command -v timeout >/dev/null 2>&1; then
-        timeout "${timeout_s}s" "$@"
+        timeout "${timeout_s}s" "${cmd[@]}"
     else
-        "$@"
+        "${cmd[@]}"
     fi
 }
 
