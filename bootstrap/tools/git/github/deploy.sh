@@ -49,6 +49,8 @@ _nds_git_gh_deploy_key_ids_by_title() {
 }
 
 # Description: Resolve deploy-key title collision on one repository.
+# Skip only via dedicated NDS_GIT_SSH_KEY_TITLE_COLLISION (overwrite|alternate|cancel).
+# Do NOT use NDS_AUTO_CONFIRM / stdin-TTY checks — curl|bash has non-TTY stdin but /dev/tty still works.
 # Arguments:
 # - owner: <String> Repository owner
 # - repo:  <String> Repository name
@@ -58,30 +60,34 @@ _nds_git_gh_deploy_key_ids_by_title() {
 _nds_git_gh_deploy_resolve_title_collision() {
     local owner="$1" repo="$2"
     local -n _title=$3
-    local prompt choice suffix n=2
+    local choice suffix n=2
 
-    prompt="Deploy key title \"${_title}\" already exists on ${owner}/${repo} with a different public key"
-    choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null || true)"
-    if [[ -z "$choice" ]] && (nds_env_is_true "${NDS_AUTO_CONFIRM:-false}" || [[ ! -t 0 ]]); then
-        choice="alternate"
-        nds_install_log "git: non-interactive mode -> deploy key title collision uses alternate"
-    fi
+    # Dedicated skip only — never sticky session config from a previous collision.
+    choice="${NDS_GIT_SSH_KEY_TITLE_COLLISION:-}"
     if [[ -z "$choice" ]]; then
-        nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
-            "$prompt" \
+        nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION ""
+        nds_ui_b ""
+        nds_ui_b "Deploy key title \"${_title}\" already exists on ${owner}/${repo}"
+        nds_ui_b "with a different public key."
+        nds_ui_b ""
+        # No default: curl|bash still has /dev/tty; force an explicit 1/2/3 choice.
+        nds_cfg_ask_numbered_choice GIT_SSH_KEY_TITLE_COLLISION \
             "overwrite|alternate|cancel" \
-            "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
-            "cancel"
+            "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach"
         choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
     fi
     case "$choice" in
-        overwrite) return 0 ;;
+        overwrite)
+            nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "overwrite"
+            return 0
+            ;;
         alternate)
             while :; do
                 suffix="${_title}-${n}"
                 if [[ -z "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$suffix")" ]]; then
                     _title="$suffix"
                     nds_ui_i "Using alternate deploy key title: ${_title}"
+                    nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "alternate"
                     return 0
                 fi
                 n=$((n + 1))
@@ -90,7 +96,7 @@ _nds_git_gh_deploy_resolve_title_collision() {
             ;;
         *)
             error "Deploy key registration cancelled for ${owner}/${repo} (title collision)."
-            nds_ui_i "Set NDS_GIT_SSH_KEY_TITLE_COLLISION=alternate to auto-resolve in non-interactive runs."
+            nds_ui_i "To skip this prompt next time: export NDS_GIT_SSH_KEY_TITLE_COLLISION=overwrite|alternate|cancel"
             return 1
             ;;
     esac

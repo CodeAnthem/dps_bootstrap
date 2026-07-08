@@ -7,7 +7,7 @@
 # shellcheck disable=SC2162
 set -euo pipefail
 
-readonly SCRIPT_VERSION="5.14.15"
+readonly SCRIPT_VERSION="5.14.16"
 readonly SCRIPT_NAME="Nix Deploy System (a NixOS Bootstrapper)"
 
 currentPath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd || exit 1)"
@@ -168,6 +168,10 @@ Environment (menu skip flags — each also honored when --auto-confirm is set):
   NDS_PREFLIGHT_WARN_SKIP     Auto-continue past preflight warnings
   NDS_PROMPTS_SKIP            Skip generic Y/n prompts (nds_askUser*)
   NDS_AUTO_CONFIRM            Umbrella — same effect as all skip flags above
+
+  NDS_GIT_SSH_KEY_TITLE_COLLISION  Dedicated skip for SSH/deploy key title
+                                   collision prompt: overwrite|alternate|cancel
+                                   (not covered by NDS_AUTO_CONFIRM / stdin checks)
 EOF
             exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;

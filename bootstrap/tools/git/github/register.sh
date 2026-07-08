@@ -66,7 +66,8 @@ _nds_git_gh_user_key_delete() {
     "${gh_cmd[@]}" ssh-key delete "$id" 2>/dev/null
 }
 
-# Description: Resolve title collision — overwrite, alternate suffix, or abort.
+# Description: Resolve account SSH key title collision — overwrite, alternate, or abort.
+# Skip only via dedicated NDS_GIT_SSH_KEY_TITLE_COLLISION (overwrite|alternate|cancel).
 # Arguments:
 # - title:   <Nameref> Title to register (may be suffixed when alternate)
 # - prompt:  <String|optional> User-facing collision message
@@ -75,26 +76,40 @@ _nds_git_gh_resolve_title_collision() {
     local prompt="${2:-SSH key title \"${_title}\" already exists on GitHub with a different public key}"
     local choice suffix n=2
 
-    nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
-        "$prompt" \
-        "overwrite|alternate|cancel" \
-        "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
-        "cancel"
-    choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
+    choice="${NDS_GIT_SSH_KEY_TITLE_COLLISION:-}"
+    if [[ -z "$choice" ]]; then
+        nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION ""
+        nds_ui_b ""
+        nds_ui_b "$prompt"
+        nds_ui_b ""
+        nds_cfg_ask_numbered_choice GIT_SSH_KEY_TITLE_COLLISION \
+            "overwrite|alternate|cancel" \
+            "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach"
+        choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
+    fi
     case "$choice" in
-        overwrite) return 0 ;;
+        overwrite)
+            nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "overwrite"
+            return 0
+            ;;
         alternate)
             while :; do
                 suffix="${_title}-${n}"
                 if [[ -z "$(_nds_git_gh_user_key_ids_by_title "$suffix")" ]]; then
                     _title="$suffix"
+                    nds_ui_i "Using alternate SSH key title: ${_title}"
+                    nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "alternate"
                     return 0
                 fi
                 n=$((n + 1))
                 [[ "$n" -gt 20 ]] && return 1
             done
             ;;
-        *) return 1 ;;
+        *)
+            error "SSH key registration cancelled (title collision)."
+            nds_ui_i "To skip this prompt next time: export NDS_GIT_SSH_KEY_TITLE_COLLISION=overwrite|alternate|cancel"
+            return 1
+            ;;
     esac
 }
 
