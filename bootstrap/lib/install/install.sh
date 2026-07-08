@@ -324,6 +324,23 @@ _nds_nix_flake_system_ref() {
     printf 'nixosConfigurations."%s".config.system.build.toplevel' "$host_name"
 }
 
+# Description: Install-time host fact filenames (nix-visible only while staged).
+_nds_install_flake_host_fact_names() {
+    printf '%s\n' nds-boot.nix facter.json hardware-configuration.nix machine.nix
+}
+
+# Description: Collect absolute paths of install-time host fact files that exist.
+# Arguments:
+# - host_dir: <String> Host directory
+# Returns:
+# - <String> absolute paths (stdout)
+_nds_install_flake_host_fact_paths() {
+    local host_dir="$1" f
+    for f in $(_nds_install_flake_host_fact_names); do
+        [[ -f "${host_dir}/${f}" ]] && printf '%s\n' "${host_dir}/${f}"
+    done
+}
+
 # Description: Stage install-time host files into the flake Git tree for nix eval.
 # Gitignored or untracked files (nds-boot.nix, facter.json) are invisible to
 # builtins.pathExists during nix build — the flake falls back to eval-boot (nodev).
@@ -332,7 +349,7 @@ _nds_nix_flake_system_ref() {
 # - host_dir:   <String> Host directory (…/hosts/…/hostname)
 _nds_install_flake_git_stage_install_files() {
     local flake_root="$1" host_dir="$2"
-    local log rel f
+    local log rel
     local -a files=()
 
     [[ -d "${flake_root}/.git" ]] || {
@@ -340,9 +357,7 @@ _nds_install_flake_git_stage_install_files() {
         return 0
     }
 
-    for f in nds-boot.nix facter.json hardware-configuration.nix machine.nix; do
-        [[ -f "${host_dir}/${f}" ]] && files+=("${host_dir}/${f}")
-    done
+    mapfile -t files < <(_nds_install_flake_host_fact_paths "$host_dir")
     [[ ${#files[@]} -gt 0 ]] || return 0
 
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
@@ -354,6 +369,58 @@ _nds_install_flake_git_stage_install_files() {
         rel="${rel#"${flake_root}/"}"
         git -C "$flake_root" add -f "$rel" >>"$log" 2>&1 || return 1
         nds_install_log "flake: git add -f ${rel}"
+    done
+    return 0
+}
+
+# Description: Unstage install-time host facts and mark them gitignored so the
+# checkout stays fast-forwardable with origin (no machine-local commits).
+# Files remain on disk for the installed system; only the Git index is cleaned.
+# Arguments:
+# - flake_root: <String> Flake checkout root
+# - host_dir:   <String> Host directory
+_nds_install_flake_git_unstage_install_files() {
+    local flake_root="$1" host_dir="$2"
+    local log rel gi line
+    local -a files=() needed=()
+
+    [[ -d "${flake_root}/.git" ]] || return 0
+
+    mapfile -t files < <(_nds_install_flake_host_fact_paths "$host_dir")
+    [[ ${#files[@]} -gt 0 ]] || return 0
+
+    log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    gi="${flake_root}/.gitignore"
+
+    needed=(
+        'hosts/**/nds-boot.nix'
+        'hosts/**/facter.json'
+        'hosts/**/machine.nix'
+        'hosts/**/hardware-configuration.nix'
+    )
+
+    touch "$gi"
+    for line in "${needed[@]}"; do
+        if ! grep -qxF "$line" "$gi" 2>/dev/null; then
+            printf '%s\n' "$line" >>"$gi"
+            nds_install_log "flake: append .gitignore ${line}"
+        fi
+    done
+
+    {
+        printf '\n=== git reset HEAD install-time flake files (keep pullable) ===\n'
+    } >>"$log"
+
+    for rel in "${files[@]}"; do
+        rel="${rel#"${flake_root}/"}"
+        # Drop from index only — leave working tree files on disk.
+        git -C "$flake_root" reset HEAD -- "$rel" >>"$log" 2>&1 || true
+        # If somehow still tracked from a prior commit, leave it (operator ownership).
+        if git -C "$flake_root" ls-files --error-unmatch "$rel" &>/dev/null; then
+            nds_install_log "flake: ${rel} still tracked — leave (operator/repo owned)"
+        else
+            nds_install_log "flake: unstaged ${rel} (ignored / untracked)"
+        fi
     done
     return 0
 }
@@ -465,6 +532,10 @@ _nixinstall_install_nixos_flake() {
         return 1
     fi
     nds_install_log "nix: built system ${system_rel}"
+
+    # After nix eval, keep host facts on disk but out of the Git index so
+    # post-boot `git pull --ff-only` / nds-switch is not blocked by local commits.
+    _nds_install_flake_git_unstage_install_files "$flake_root" "$host_dir" || true
 
     log "Activating system (profile + bootloader)"
     if ! nds_nix_activate_system "$root" "$system_rel" >>"$log" 2>&1; then

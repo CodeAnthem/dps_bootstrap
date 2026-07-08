@@ -3,8 +3,7 @@
 # NDS - Git SSH key registry (multi-key / deploy-key support)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-07-08
-
-# Description: Registry file listing session private key paths (one per line).
+# Description:   Registry file listing session private key paths (one per line).
 _nds_git_keys_registry_file() {
     printf '%s/git_session_keys\n' "${NDS_RUNTIME_DIR:-/tmp/nds}"
 }
@@ -159,6 +158,23 @@ _nds_git_ssh_wrapper_src() {
     printf '%s/nds-git-ssh.sh\n' "$here"
 }
 
+# Description: Absolute path of nds-switch helper in this NDS tree.
+_nds_git_switch_src() {
+    local here
+    here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    printf '%s/nds-switch.sh\n' "$here"
+}
+
+# Description: Official GitHub SSH host key lines (docs.github.com fingerprints).
+# Returns:
+# - <String> known_hosts lines (stdout)
+nds_git_github_official_host_keys() {
+    printf '%s\n' \
+        "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" \
+        "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=" \
+        "github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk="
+}
+
 # Description: owner/repo slug from a deploy key basename (nds_deploy_owner_repo).
 # Arguments:
 # - base: <String> Filename basename
@@ -232,13 +248,6 @@ _nds_git_install_github_known_hosts() {
     local mount_root="${1:-/mnt}"
     local kh="${mount_root}/etc/ssh/ssh_known_hosts"
     local kh_root="${mount_root}/root/.ssh/known_hosts"
-    # Official GitHub host keys:
-    # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
-    local -a github_lines=(
-        "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
-        "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg="
-        "github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk="
-    )
     local line
 
     mkdir -p "${mount_root}/etc/ssh" "${mount_root}/root/.ssh"
@@ -250,9 +259,10 @@ _nds_git_install_github_known_hosts() {
         else
             : >"$kh"
         fi
-        for line in "${github_lines[@]}"; do
+        while IFS= read -r line; do
+            [[ -n "$line" ]] || continue
             printf '%s\n' "$line" >>"$kh"
-        done
+        done < <(nds_git_github_official_host_keys)
         chmod 644 "$kh"
     done
     nds_install_log "git: github.com official host keys -> ssh_known_hosts"
@@ -317,9 +327,9 @@ _nds_git_install_ssh_wrapper_to_target() {
     local ssh_dir="${mount_root}/root/.ssh"
     local map_file="${ssh_dir}/nds-git.map"
     local wrap_dst="${ssh_dir}/nds-git-ssh"
-    local wrap_src env_dir env_file installed_map=0
+    local switch_src switch_dst wrap_src env_dir env_file installed_map=0
 
-    mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d"
+    mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d" "${mount_root}/usr/local/bin"
     wrap_src="$(_nds_git_ssh_wrapper_src)"
     [[ -f "$wrap_src" ]] || {
         error "nds-git-ssh source missing: ${wrap_src}"
@@ -329,6 +339,22 @@ _nds_git_install_ssh_wrapper_to_target() {
         install -m 755 -o root -g root "$wrap_src" "$wrap_dst"
     else
         install -m 755 "$wrap_src" "$wrap_dst"
+    fi
+
+    switch_src="$(_nds_git_switch_src)"
+    switch_dst="${mount_root}/usr/local/bin/nds-switch"
+    if [[ -f "$switch_src" ]]; then
+        if [[ "$(id -u)" -eq 0 ]]; then
+            install -m 755 -o root -g root "$switch_src" "$switch_dst"
+        else
+            install -m 755 "$switch_src" "$switch_dst"
+        fi
+        # Convenience copy next to deploy keys
+        cp -f "$switch_dst" "${ssh_dir}/nds-switch"
+        chmod 755 "${ssh_dir}/nds-switch"
+        nds_install_log "git: nds-switch -> /usr/local/bin/nds-switch"
+    else
+        warn "nds-switch source missing: ${switch_src}"
     fi
 
     _nds_git_write_deploy_map_lines "$mount_root" "$flake_root" >"$map_file"

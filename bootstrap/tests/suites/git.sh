@@ -302,21 +302,50 @@ LOCK
     if nds_git_install_keys_to_target "${tmpdir}/mnt" "" \
         && [[ -f "${tmpdir}/mnt/root/.ssh/nds_deploy_org_repo" ]] \
         && [[ -x "${tmpdir}/mnt/root/.ssh/nds-git-ssh" ]] \
+        && [[ -x "${tmpdir}/mnt/usr/local/bin/nds-switch" ]] \
         && [[ -f "${tmpdir}/mnt/root/.ssh/nds-git.map" ]]; then
         perms=$(stat -c '%a' "${tmpdir}/mnt/root/.ssh/nds_deploy_org_repo" 2>/dev/null || echo "")
         if [[ "$perms" == "600" ]] \
-            && grep -q 'org/repo' "${tmpdir}/mnt/root/.ssh/nds-git.map"; then
+            && grep -q 'org/repo' "${tmpdir}/mnt/root/.ssh/nds-git.map" \
+            && grep -qF 'Wi0dh2l9GKJl' "${tmpdir}/mnt/root/.ssh/known_hosts"; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ SSH keys + nds-git-ssh installed on target"
+            console "  ✓ SSH keys + nds-git-ssh + nds-switch installed on target"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
-            console "  ✗ SSH key target map/perms (got ${perms})"
+            console "  ✗ SSH key target map/perms/hostkeys (got ${perms})"
         fi
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ SSH keys install on target"
     fi
     unset NDS_GIT_DEPLOY_KEYS_DIR
+
+    if declare -f nds_git_github_official_host_keys &>/dev/null; then
+        ed25519=$(nds_git_github_official_host_keys | awk '/ssh-ed25519/{print $3; exit}')
+        # Official docs.github.com Ed25519 host key (must not regress to the typo WiVhwz… blob)
+        if [[ "$ed25519" == "AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ github official host key: Ed25519 matches docs"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ github official host key: Ed25519 mismatch"
+        fi
+        if printf '%s' "$ed25519" | grep -q 'WiVhwzGm9JRs'; then
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ github host key: known-bad typo blob present"
+        else
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ github official host key: rejects known-bad typo"
+        fi
+    fi
+
+    if [[ -f "$(_nds_git_switch_src 2>/dev/null || true)" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ nds-switch.sh present in tools/git"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ nds-switch.sh missing"
+    fi
 
     if declare -f nds_git_discover_key_candidates &>/dev/null; then
         cp "$key_src" "${tmpdir}/id_ed25519_test"

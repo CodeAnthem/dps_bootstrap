@@ -139,7 +139,7 @@ _nds_install_verify_classic_hardware() {
 # Description: Verify deploy keys + nds-git-ssh were installed when deploy keys exist.
 _nds_install_verify_git_key() {
     local -a keys=()
-    local key_path base dest wrap map_file
+    local key_path base dest wrap map_file switch_bin
 
     mapfile -t keys < <(_nds_git_collect_deploy_key_paths 2>/dev/null || true)
     # Only enforce nds_deploy_* — account/session keys are not copied to target.
@@ -153,8 +153,10 @@ _nds_install_verify_git_key() {
 
     wrap="/mnt/root/.ssh/nds-git-ssh"
     map_file="/mnt/root/.ssh/nds-git.map"
+    switch_bin="/mnt/usr/local/bin/nds-switch"
     [[ -x "$wrap" ]] || _nds_install_verify_fail "nds-git-ssh missing on target: ${wrap}"
     [[ -f "$map_file" ]] || _nds_install_verify_fail "nds-git.map missing on target: ${map_file}"
+    [[ -x "$switch_bin" ]] || _nds_install_verify_fail "nds-switch missing on target: ${switch_bin}"
 
     for key_path in "${deploy_keys[@]}"; do
         base="$(basename "$key_path")"
