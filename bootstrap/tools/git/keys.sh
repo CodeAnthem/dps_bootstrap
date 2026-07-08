@@ -329,7 +329,9 @@ _nds_git_install_ssh_wrapper_to_target() {
     local wrap_dst="${ssh_dir}/nds-git-ssh"
     local switch_src switch_dst wrap_src env_dir env_file installed_map=0
 
-    mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d" "${mount_root}/usr/local/bin"
+    # NixOS: /usr is usually read-only — put helpers under /root, not /usr/local.
+    mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d" \
+        "${mount_root}/root/bin" "${mount_root}/etc/profile.d"
     wrap_src="$(_nds_git_ssh_wrapper_src)"
     [[ -f "$wrap_src" ]] || {
         error "nds-git-ssh source missing: ${wrap_src}"
@@ -342,17 +344,19 @@ _nds_git_install_ssh_wrapper_to_target() {
     fi
 
     switch_src="$(_nds_git_switch_src)"
-    switch_dst="${mount_root}/usr/local/bin/nds-switch"
+    switch_dst="${mount_root}/root/bin/nds-switch"
     if [[ -f "$switch_src" ]]; then
         if [[ "$(id -u)" -eq 0 ]]; then
             install -m 755 -o root -g root "$switch_src" "$switch_dst"
         else
             install -m 755 "$switch_src" "$switch_dst"
         fi
-        # Convenience copy next to deploy keys
         cp -f "$switch_dst" "${ssh_dir}/nds-switch"
         chmod 755 "${ssh_dir}/nds-switch"
-        nds_install_log "git: nds-switch -> /usr/local/bin/nds-switch"
+        printf 'export PATH="/root/bin:${PATH}"\n' \
+            >"${mount_root}/etc/profile.d/nds-root-bin.sh"
+        chmod 644 "${mount_root}/etc/profile.d/nds-root-bin.sh"
+        nds_install_log "git: nds-switch -> /root/bin/nds-switch"
     else
         warn "nds-switch source missing: ${switch_src}"
     fi
