@@ -61,17 +61,17 @@ _nds_git_gh_deploy_resolve_title_collision() {
     local prompt choice suffix n=2
 
     prompt="Deploy key title \"${_title}\" already exists on ${owner}/${repo} with a different public key"
-    if nds_env_is_true "${NDS_AUTO_CONFIRM:-false}" \
-        || nds_env_is_true "${NDS_SKIP_MENU:-false}" \
-        || nds_env_is_true "${NDS_PROMPTS_SKIP:-false}"; then
+    choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null || true)"
+    if [[ -z "$choice" ]] && (nds_env_is_true "${NDS_AUTO_CONFIRM:-false}" || [[ ! -t 0 ]]); then
         choice="alternate"
         nds_install_log "git: non-interactive mode -> deploy key title collision uses alternate"
-    else
-    nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
-        "$prompt" \
-        "overwrite|alternate|cancel" \
-        "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
-        "cancel"
+    fi
+    if [[ -z "$choice" ]]; then
+        nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
+            "$prompt" \
+            "overwrite|alternate|cancel" \
+            "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
+            "cancel"
         choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
     fi
     case "$choice" in
