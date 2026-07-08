@@ -50,12 +50,19 @@ _nds_git_gh_deploy_resolve_title_collision() {
     local prompt choice suffix n=2
 
     prompt="Deploy key title \"${_title}\" already exists on ${owner}/${repo} with a different public key"
+    if nds_env_is_true "${NDS_AUTO_CONFIRM:-false}" \
+        || nds_env_is_true "${NDS_SKIP_MENU:-false}" \
+        || nds_env_is_true "${NDS_PROMPTS_SKIP:-false}"; then
+        choice="alternate"
+        nds_install_log "git: non-interactive mode -> deploy key title collision uses alternate"
+    else
     nds_cfg_ask_choice GIT_SSH_KEY_TITLE_COLLISION \
         "$prompt" \
         "overwrite|alternate|cancel" \
         "overwrite=Remove the old key and register this one|alternate=Use an alternate title (${_title}-2)|cancel=Cancel — choose a different approach" \
         "cancel"
-    choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
+        choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
+    fi
     case "$choice" in
         overwrite) return 0 ;;
         alternate)
@@ -63,13 +70,18 @@ _nds_git_gh_deploy_resolve_title_collision() {
                 suffix="${_title}-${n}"
                 if [[ -z "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$suffix")" ]]; then
                     _title="$suffix"
+                    nds_ui_i "Using alternate deploy key title: ${_title}"
                     return 0
                 fi
                 n=$((n + 1))
                 [[ "$n" -gt 50 ]] && return 1
             done
             ;;
-        *) return 1 ;;
+        *)
+            error "Deploy key registration cancelled for ${owner}/${repo} (title collision)."
+            nds_ui_i "Set NDS_GIT_SSH_KEY_TITLE_COLLISION=alternate to auto-resolve in non-interactive runs."
+            return 1
+            ;;
     esac
 }
 
@@ -158,6 +170,8 @@ nds_git_gh_register_deploy_key() {
             nds_git_gh_session_mark_scopes_ok
             return 0
         fi
+        error "GitHub API rejected deploy key on ${owner}/${repo}"
+        nds_ui_i "API error: ${err}"
         return 1
     fi
     nds_install_log "git: deploy key added read-only on ${owner}/${repo} (${title})"
