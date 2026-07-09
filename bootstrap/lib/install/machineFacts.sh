@@ -135,6 +135,8 @@ _nixinstall_write_machine_facts() {
             "  fileSystems.\"/boot\" = {" \
             "    device = \"/dev/disk/by-uuid/${boot_uuid}\";" \
             "    fsType = \"${boot_fs}\";" \
+            "    neededForBoot = true;" \
+            "    options = [ \"fmask=0077\" \"dmask=0077\" ];" \
             '  };'
         if [[ -n "$luks_uuid" ]]; then
             printf '  opts.nixos.security.luks.device = "/dev/disk/by-uuid/%s";\n' "$luks_uuid"

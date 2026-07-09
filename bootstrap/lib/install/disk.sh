@@ -30,7 +30,13 @@ _nixinstall_partition_disk() {
     local uefi_mode boot_idx root_idx
 
     uefi_mode=$(nds_config_get "boot" "BOOT_UEFI_MODE")
-    uefi_mode="${uefi_mode:-true}"
+    if [[ -z "$uefi_mode" ]]; then
+        if [[ -d /sys/firmware/efi ]]; then
+            uefi_mode=true
+        else
+            uefi_mode=false
+        fi
+    fi
 
     # Validate disk exists
     if [[ ! -b "$disk" ]]; then
