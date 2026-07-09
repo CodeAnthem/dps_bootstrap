@@ -360,16 +360,22 @@ _nds_git_install_ssh_wrapper_to_target() {
         printf 'export PATH="/root/.nds/bin:/root/bin:${PATH}"\n' \
             >"${mount_root}/etc/profile.d/nds-root-bin.sh"
         chmod 644 "${mount_root}/etc/profile.d/nds-root-bin.sh"
-        # Login shells often skip /etc/profile.d — force PATH for interactive root
-        if [[ -f "${mount_root}/root/.bashrc" ]]; then
-            grep -q '/root/.nds/bin' "${mount_root}/root/.bashrc" 2>/dev/null \
-                || printf '\n# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n' \
-                    >>"${mount_root}/root/.bashrc"
-        else
-            printf '# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n' \
-                >"${mount_root}/root/.bashrc"
-            chmod 644 "${mount_root}/root/.bashrc"
-        fi
+        _nds_git_append_root_path_snippet() {
+            local dotfile="$1"
+            local target="${mount_root}/root/${dotfile}"
+            grep -q '/root/.nds/bin' "$target" 2>/dev/null \
+                && return 0
+            if [[ -f "$target" ]]; then
+                printf '\n# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n[ -x /root/.nds/bin/nds-git-ssh ] && export GIT_SSH_COMMAND=/root/.nds/bin/nds-git-ssh\n' >>"$target"
+            else
+                printf '# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n[ -x /root/.nds/bin/nds-git-ssh ] && export GIT_SSH_COMMAND=/root/.nds/bin/nds-git-ssh\n' >"$target"
+            fi
+            chmod 644 "$target"
+        }
+        # SSH login reads .bash_profile first; tty login reads .profile
+        _nds_git_append_root_path_snippet .bash_profile
+        _nds_git_append_root_path_snippet .profile
+        _nds_git_append_root_path_snippet .bashrc
         nds_install_log "git: nds-switch -> /root/.nds/bin/nds-switch"
     else
         warn "nds-switch source missing: ${switch_src}"
