@@ -324,9 +324,9 @@ _nds_nix_flake_system_ref() {
     printf 'nixosConfigurations."%s".config.system.build.toplevel' "$host_name"
 }
 
-# Description: Install-time host fact filenames (nix-visible only while staged).
+# Description: Install-time secrets / legacy filenames (gitignored after staging).
 _nds_install_flake_host_fact_names() {
-    printf '%s\n' nds-boot.nix facter.json hardware-configuration.nix machine.nix
+    printf '%s\n' facter.json hardware-configuration.nix machine.nix nds-boot.nix
 }
 
 # Description: Collect absolute paths of install-time host fact files that exist.
@@ -342,8 +342,8 @@ _nds_install_flake_host_fact_paths() {
 }
 
 # Description: Stage install-time host files into the flake Git tree for nix eval.
-# Gitignored or untracked files (nds-boot.nix, facter.json) are invisible to
-# builtins.pathExists during nix build — the flake falls back to eval-boot (nodev).
+# Gitignored secrets (facter.json) are invisible to flake eval unless git add -f.
+# Committed mounts.nix / boot.nix are staged separately and stay tracked.
 # Arguments:
 # - flake_root: <String> Flake checkout root
 # - host_dir:   <String> Host directory (…/hosts/…/hostname)
@@ -393,10 +393,10 @@ _nds_install_flake_git_unstage_install_files() {
     gi="${flake_root}/.gitignore"
 
     needed=(
-        'hosts/**/nds-boot.nix'
         'hosts/**/facter.json'
-        'hosts/**/machine.nix'
         'hosts/**/hardware-configuration.nix'
+        'hosts/**/machine.nix'
+        'hosts/**/nds-boot.nix'
     )
 
     touch "$gi"
@@ -510,6 +510,10 @@ _nixinstall_install_nixos_flake() {
 
     host_dir_rel="${NDS_CTX_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     host_dir="${flake_root}/${host_dir_rel}/${host_name}"
+    _nds_install_flake_git_stage_committed_files "$flake_root" "$host_dir" || {
+        error "Failed to stage committed host structure for nix build"
+        return 1
+    }
     _nds_install_flake_git_stage_install_files "$flake_root" "$host_dir" || {
         error "Failed to stage install-time flake files for nix build"
         return 1

@@ -34,7 +34,7 @@ Steps:
   list          Show available steps
   facter        Generate + sanitize facter.json under /tmp (no partition)
   sanitize      Sanitize an existing report (path arg or NDS_FACTER_IN)
-  stage-boot    git add -f nds-boot.nix + facter.json in a flake checkout
+  stage-boot    git add mounts.nix + boot.nix + facter.json in a flake checkout
   selftest      Run CI self-tests (safe on any host)
 
 These do NOT run full installFlake. Use them on the live ISO to isolate failures.

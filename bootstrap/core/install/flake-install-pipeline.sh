@@ -90,11 +90,17 @@ nds_nixos_install_flake() {
     fi
 
     nds_step_exec "Writing boot module from preset" \
-        nds_nixcfg_write_boot_module "${host_dir}/nds-boot.nix" || return 1
-    nds_install_log "boot: wrote ${host_dir}/nds-boot.nix from boot preset"
+        nds_nixcfg_write_boot_module "${host_dir}/boot.nix" || return 1
+    nds_install_log "boot: wrote ${host_dir}/boot.nix from boot preset"
 
-    nds_step_exec "Writing machine facts (root/boot UUID mounts)" \
-        _nixinstall_write_machine_facts "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
+    nds_step_exec "Writing mounts (root/boot UUID)" \
+        _nixinstall_write_mounts_nix "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
+
+    nds_step_exec "Patching host configuration imports" \
+        _nixinstall_ensure_host_imports "$host_dir" || return 1
+
+    nds_step_exec "Staging committed host structure in git" \
+        _nds_install_flake_git_stage_committed_files "$flake_root" "$host_dir" || return 1
 
     if declare -f nds_git_prefetch_flake_closure &>/dev/null; then
         nds_step_exec "Prefetching flake git inputs" \

@@ -165,6 +165,13 @@ _nds_git_switch_src() {
     printf '%s/nds-switch.sh\n' "$here"
 }
 
+# Description: Absolute path of nds-clean helper in this NDS tree.
+_nds_git_clean_src() {
+    local here
+    here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    printf '%s/nds-clean.sh\n' "$here"
+}
+
 # Description: Official GitHub SSH host key lines (docs.github.com fingerprints).
 # Returns:
 # - <String> known_hosts lines (stdout)
@@ -345,6 +352,8 @@ _nds_git_install_ssh_wrapper_to_target() {
 
     switch_src="$(_nds_git_switch_src)"
     switch_dst="${mount_root}/root/.nds/bin/nds-switch"
+    clean_src="$(_nds_git_clean_src)"
+    clean_dst="${mount_root}/root/.nds/bin/nds-clean"
     if [[ -f "$switch_src" ]]; then
         if [[ "$(id -u)" -eq 0 ]]; then
             install -m 755 -o root -g root "$switch_src" "$switch_dst"
@@ -352,6 +361,15 @@ _nds_git_install_ssh_wrapper_to_target() {
         else
             install -m 755 "$switch_src" "$switch_dst"
             install -m 755 "$wrap_src" "${mount_root}/root/.nds/bin/nds-git-ssh"
+        fi
+        if [[ -f "$clean_src" ]]; then
+            if [[ "$(id -u)" -eq 0 ]]; then
+                install -m 755 -o root -g root "$clean_src" "$clean_dst"
+            else
+                install -m 755 "$clean_src" "$clean_dst"
+            fi
+            cp -f "$clean_dst" "${mount_root}/root/bin/nds-clean"
+            chmod 755 "${mount_root}/root/bin/nds-clean"
         fi
         # Legacy + convenience copies
         cp -f "$switch_dst" "${mount_root}/root/bin/nds-switch"
@@ -377,6 +395,7 @@ _nds_git_install_ssh_wrapper_to_target() {
         _nds_git_append_root_path_snippet .profile
         _nds_git_append_root_path_snippet .bashrc
         nds_install_log "git: nds-switch -> /root/.nds/bin/nds-switch"
+        [[ -f "$clean_src" ]] && nds_install_log "git: nds-clean -> /root/.nds/bin/nds-clean"
     else
         warn "nds-switch source missing: ${switch_src}"
     fi

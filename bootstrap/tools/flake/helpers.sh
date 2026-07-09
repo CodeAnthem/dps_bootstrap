@@ -174,6 +174,10 @@ _nds_scaffold_host_folder() {
     [[ -n "$dns2" ]] && nameservers="${nameservers:+$nameservers }\"${dns2}\""
 
     sed -e "s/__HOSTNAME__/${hostname}/g" \
+        -e "s/__DATE__/$(date -u +%Y-%m-%d)/g" \
+        "${tmpl_dir}/host-mounts.nix.tmpl" > "${host_dir}/mounts.nix" || return 1
+
+    sed -e "s/__HOSTNAME__/${hostname}/g" \
         -e "s/__IP__/${ip}/g" \
         -e "s/__GATEWAY__/${gateway}/g" \
         -e "s/__PREFIX__/${prefix}/g" \

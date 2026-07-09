@@ -4,7 +4,7 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-08 | Modified: 2026-07-08
 # Description:   Fetch origin, fast-forward, nixos-rebuild switch.
-#                --self-update refreshes this script + nds-git-ssh from dps_bootstrap main
+#                --self-update refreshes this script + nds-git-ssh + nds-clean from dps_bootstrap main
 #                into /root/.nds/bin (no full reinstall).
 # Env:
 #   NDS_FLAKE_ROOT   Flake root (default /etc/nixos)
@@ -54,9 +54,12 @@ _nds_switch_self_update() {
         || _nds_switch_die "failed to download nds-switch.sh"
     curl -fsSL "${RAW_BASE}/nds-git-ssh.sh" -o "${dest}/nds-git-ssh.tmp" \
         || _nds_switch_die "failed to download nds-git-ssh.sh"
-    chmod 755 "${dest}/nds-switch.tmp" "${dest}/nds-git-ssh.tmp"
+    curl -fsSL "${RAW_BASE}/nds-clean.sh" -o "${dest}/nds-clean.tmp" \
+        || _nds_switch_die "failed to download nds-clean.sh"
+    chmod 755 "${dest}/nds-switch.tmp" "${dest}/nds-git-ssh.tmp" "${dest}/nds-clean.tmp"
     mv -f "${dest}/nds-switch.tmp" "${dest}/nds-switch"
     mv -f "${dest}/nds-git-ssh.tmp" "${dest}/nds-git-ssh"
+    mv -f "${dest}/nds-clean.tmp" "${dest}/nds-clean"
     # Keep ISO/install copy in sync when present
     if [[ -d /root/.ssh ]]; then
         cp -f "${dest}/nds-git-ssh" /root/.ssh/nds-git-ssh
@@ -100,7 +103,8 @@ behind=$(git rev-list --count "HEAD..${REMOTE_REF}" 2>/dev/null || echo 0)
 
 if [[ "${ahead:-0}" -gt 0 ]]; then
     _nds_switch_die "local branch is ahead of ${REMOTE_REF} by ${ahead} commit(s).
-Install-time host facts (facter.json, nds-boot.nix, machine.nix) must stay untracked/gitignored.
+Install-time secrets (facter.json) must stay untracked/gitignored.
+Legacy nds-boot.nix / machine.nix are obsolete — use committed mounts.nix + boot.nix.
 To match remote:  git reset --hard ${REMOTE_REF}
 (Keep host facts as untracked files.)"
 fi
@@ -112,7 +116,7 @@ else
     host_dir=$(find hosts -mindepth 2 -maxdepth 2 -type d -name "$HOST_NAME" 2>/dev/null | head -1 || true)
     stash_dir=""
     if [[ -n "$host_dir" ]]; then
-        for f in facter.json nds-boot.nix machine.nix hardware-configuration.nix; do
+        for f in facter.json hardware-configuration.nix nds-boot.nix machine.nix; do
             [[ -f "${host_dir}/${f}" ]] || continue
             if git check-ignore -q "${host_dir}/${f}" 2>/dev/null \
                 || ! git ls-files --error-unmatch "${host_dir}/${f}" &>/dev/null; then

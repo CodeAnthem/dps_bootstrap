@@ -122,13 +122,17 @@ _nds_install_verify_flake_hardware() {
     fi
 
     host_dir="${flake_root}/${host_dir_rel}/${hostname}"
-    if [[ ! -f "${host_dir}/nds-boot.nix" ]]; then
-        _nds_install_verify_fail "Boot module missing: ${host_dir}/nds-boot.nix"
+    if [[ ! -f "${host_dir}/boot.nix" ]]; then
+        _nds_install_verify_fail "Boot module missing: ${host_dir}/boot.nix"
     fi
-    if [[ ! -f "${host_dir}/machine.nix" ]]; then
-        _nds_install_verify_fail "machine.nix missing (root/boot UUID mounts): ${host_dir}/machine.nix"
-    elif ! grep -q 'by-uuid' "${host_dir}/machine.nix" 2>/dev/null; then
-        _nds_install_verify_fail "machine.nix missing by-uuid mounts: ${host_dir}/machine.nix"
+    if [[ ! -f "${host_dir}/mounts.nix" ]]; then
+        _nds_install_verify_fail "mounts.nix missing (root/boot mounts): ${host_dir}/mounts.nix"
+    elif ! grep -qE 'fileSystems|by-uuid|by-label' "${host_dir}/mounts.nix" 2>/dev/null; then
+        _nds_install_verify_fail "mounts.nix missing fileSystems mounts: ${host_dir}/mounts.nix"
+    fi
+    if [[ -f "${host_dir}/configuration.nix" ]] \
+        && ! grep -q './mounts.nix' "${host_dir}/configuration.nix" 2>/dev/null; then
+        _nds_install_verify_fail "configuration.nix must import ./mounts.nix"
     fi
 }
 
