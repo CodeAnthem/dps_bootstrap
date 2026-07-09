@@ -118,9 +118,9 @@ boot.loader = lib.mkForce {
     enable = true;
     device = "nodev";
     efiSupport = true;
-    efiInstallAsRemovable = false;
+    efiInstallAsRemovable = true;
   };
-  efi.canTouchEfiVariables = true;
+  efi.canTouchEfiVariables = false;
 };
 EOF
 )
