@@ -3,7 +3,7 @@
 # NDS - Live ISO quickstart
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-12 | Modified: 2026-06-28
-# Description:   One-liner: clone repo to /tmp and run bootstrap/main.sh
+# Description:   One-liner: clone repo to /tmp and run src/app/main.sh
 # ==================================================================================================
 
 set -euo pipefail
@@ -40,7 +40,7 @@ REPO_URL="$(nds_resolve_repo_url)"
 readonly REPO_URL
 readonly REPO_NAME="${NDS_REPO_NAME:-$(basename "${REPO_URL%.git}")}"
 readonly REPO_PATH="/tmp/${REPO_NAME}"
-readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/bootstrap/"
+readonly REPO_PATH_BOOTSTRAPPER="${REPO_PATH}/src/app/"
 readonly REPO_TARGET_SCRIPT="main.sh"
 readonly DEFAULT_BRANCHES=("main" "master")
 

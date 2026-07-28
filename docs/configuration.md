@@ -141,7 +141,7 @@ flake eval always sees root/boot mounts and the bootloader device.
 
 ## region / quick / platform / security
 
-See preset defaults in `bootstrap/presets/`. Keys follow the same `NDS_<KEY>` pattern.
+See preset defaults in `src/framework/presets/`. Keys follow the same `NDS_<KEY>` pattern.
 
 ---
 
@@ -165,7 +165,7 @@ Extra paths before the action runs (no flake clone needed):
 
 Actions may also implement `action_presets_paths()` to print extra paths (one per line).
 
-See `bootstrap/tests/fixtures/nds-remote-preset.sh` for a minimal example.
+See `src/tests/fixtures/nds-remote-preset.sh` for a minimal example.
 
 ## Headless installFlake example
 
@@ -179,7 +179,7 @@ export NDS_GIT_IMPORT_KEY_PATH="/tmp/nds-ssh-key"
 export NDS_SKIP_MENU="false"
 export NDS_INSTALL_CONFIRM_SKIP="false"
 export NDS_GIT_SSH_KEY_USE_QR=true
-sudo -E bash bootstrap/main.sh --auto-confirm
+sudo -E bash src/app/main.sh --auto-confirm
 ```
 
 After interactive configuration, the **Configuration export** screen lists every
@@ -191,7 +191,7 @@ Set `NDS_ACTION` and any `NDS_*_SKIP=true` you need before re-running.
 On your laptop (with `gh` authenticated):
 
 ```bash
-./scripts/operator/prepare-install-kit.sh worker-01
+./dev/operator/prepare-install-kit.sh worker-01
 ```
 
 Copy `ssh_key` to the live ISO and set `NDS_GIT_IMPORT_KEY_PATH` as above.

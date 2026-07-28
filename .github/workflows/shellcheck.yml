@@ -13,4 +13,4 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Lint shell scripts
-        run: bash scripts/shellcheck.sh
+        run: bash dev/shellcheck.sh

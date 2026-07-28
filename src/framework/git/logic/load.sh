@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# ==================================================================================================
+# NDS - Git framework logic loader
+# ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# Date:          Created: 2026-07-28 | Modified: 2026-07-28
+# ==================================================================================================
+
+nds_git_logic_load() {
+    [[ "${NDS_GIT_LOGIC_LOADED:-false}" == "true" ]] && return 0
+    local logic_dir="${1:?logic dir}"
+
+    nds_import_file "${logic_dir}/auth-flow.sh" || return 1
+    NDS_GIT_LOGIC_LOADED=true
+    return 0
+}

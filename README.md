@@ -31,7 +31,7 @@
 |------|--------|----------|
 | **A** — first install, no flake | `classicInstall` | Live ISO + `nixos` user (sudo) |
 | **B** — existing flake | `installFlake` | `nixosConfigurations.<host>`, Git SSH for private repos |
-| **C** — custom leaf flow | `remoteAction` | Same as B + `.nds/action.sh` ([API](actions/remoteAction/README.md)) |
+| **C** — custom leaf flow | `remoteAction` | Same as B + `.nds/action.sh` ([API](src/actions/remoteAction/README.md)) |
 
 ---
 
@@ -66,7 +66,7 @@ curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.
 ```bash
 git clone https://github.com/CodeAnthem/dps_bootstrap.git /tmp/dps_bootstrap
 cd /tmp/dps_bootstrap
-sudo bash bootstrap/main.sh    # nixos user — NDS re-execs with sudo if needed
+sudo bash src/app/main.sh    # nixos user — NDS re-execs with sudo if needed
 ```
 
 Fork or offline? Set `NDS_REPO_URL` before the one-liner, or clone your fork in option B. See [TRUST.md](TRUST.md).
@@ -82,7 +82,7 @@ Any `NDS_<FIELD>` overrides the matching menu field (same names as the backup ex
 
 ```bash
 source ./my-install.env    # or paste exports directly into the shell
-sudo bash bootstrap/main.sh
+sudo bash src/app/main.sh
 ```
 
 | Variable | Purpose |
@@ -96,9 +96,9 @@ sudo bash bootstrap/main.sh
 
 | Action | When | Guide |
 |--------|------|-------|
-| **classicInstall** | First NixOS install, no flake yet | [classicInstall](actions/classicInstall/README.md) |
-| **installFlake** | Generic `nixos-install --flake` | [installFlake](actions/installFlake/README.md) |
-| **remoteAction** | Your repo ships `.nds/action.sh` (e.g. dps_swarm) | [remoteAction](actions/remoteAction/README.md) |
+| **classicInstall** | First NixOS install, no flake yet | [classicInstall](src/actions/classicInstall/README.md) |
+| **installFlake** | Generic `nixos-install --flake` | [installFlake](src/actions/installFlake/README.md) |
+| **remoteAction** | Your repo ships `.nds/action.sh` (e.g. dps_swarm) | [remoteAction](src/actions/remoteAction/README.md) |
 
 Then: walk the menu (or rely on your `NDS_*` imports) → press **X** → optionally save the export block (or get it in the final zip) → confirm the destructive step → install → back up the install package → reboot manually.
 
@@ -132,9 +132,9 @@ before rebooting, then follow that file.
 
 Post-install details live in each action's guide (kept out of this README to avoid clutter):
 
-- **classicInstall** — [first login & remote unlock](actions/classicInstall/README.md#after-install)
-- **installFlake** — your flake owns users, services and unlocking; see [installFlake](actions/installFlake/README.md)
-- **remoteAction** — see [remoteAction](actions/remoteAction/README.md)
+- **classicInstall** — [first login & remote unlock](src/actions/classicInstall/README.md#after-install)
+- **installFlake** — your flake owns users, services and unlocking; see [installFlake](src/actions/installFlake/README.md)
+- **remoteAction** — see [remoteAction](src/actions/remoteAction/README.md)
 
 Topic guides live in [`docs/`](docs/) (e.g. [remote unlock](docs/remote-unlock.md)).
 
@@ -169,8 +169,8 @@ Link here from your leaf README for live-ISO installs. For custom flows, ship `.
 ## Develop
 
 ```bash
-bash scripts/shellcheck.sh              # lint (installs ShellCheck to ~/.cache if needed)
-bash scripts/selftest.sh                # read-only self-tests
-DEBUG=1 sudo bash bootstrap/main.sh
-NDS_TEST=true sudo bash bootstrap/main.sh   # self-test action only
+bash dev/shellcheck.sh              # lint (installs ShellCheck to ~/.cache if needed)
+bash dev/selftest.sh                # read-only self-tests
+DEBUG=1 sudo bash src/app/main.sh
+NDS_TEST=true sudo bash src/app/main.sh   # self-test action only
 ```

@@ -6,21 +6,21 @@ NDS runs with **root privileges** (via `sudo` from the **`nixos`** live-ISO user
 
 | Step | What happens |
 |------|----------------|
-| **`start.sh`** | Clones or refreshes this repo under `/tmp/<repo-name>`, optionally warns about untracked files, then runs `bootstrap/main.sh` |
-| **`bootstrap/main.sh`** | Loads shell libraries, shows the configuration menu, partitions the target disk, and runs `nixos-install` |
+| **`start.sh`** | Clones or refreshes this repo under `/tmp/<repo-name>`, optionally warns about untracked files, then runs `src/app/main.sh` |
+| **`src/app/main.sh`** | Loads shell libraries, shows the configuration menu, partitions the target disk, and runs `nixos-install` |
 
 This repository contains **no cluster secrets**, no private keys, and no org-specific credentials. LUKS keys are generated at install time; NDS packs them with your config and logs into a zip under `/home/nixos/` (and shows `scp` / `ssh` copy commands with your machine's IP). Copy the package before reboot.
 
 ## Verify before you run
 
-1. **Read the entrypoints** — [`start.sh`](start.sh) and [`bootstrap/main.sh`](bootstrap/main.sh) are short and readable.
+1. **Read the entrypoints** — [`start.sh`](start.sh) and [`src/app/main.sh`](src/app/main.sh) are short and readable.
 2. **Clone without installing** — download only, then inspect:
    ```bash
    curl -sSL https://raw.githubusercontent.com/CodeAnthem/dps_bootstrap/main/start.sh | bash -s -- --no-exec
    ls /tmp/dps_bootstrap   # or /tmp/<NDS_REPO_NAME> when using a fork
    ```
-3. **Manual steps** — clone with git and run `sudo bash bootstrap/main.sh` yourself when you are satisfied.
-4. **CI** — on every push: [ShellCheck](.github/workflows/shellcheck.yml) (`bash scripts/shellcheck.sh`) and [self-tests](.github/workflows/selftest.yml) (`bash scripts/selftest.sh`). Run the same locally before opening a PR.
+3. **Manual steps** — clone with git and run `sudo bash src/app/main.sh` yourself when you are satisfied.
+4. **CI** — on every push: [ShellCheck](.github/workflows/shellcheck.yml) (`bash dev/shellcheck.sh`) and [self-tests](.github/workflows/selftest.yml) (`bash dev/selftest.sh`). Run the same locally before opening a PR.
 
 ## Forks and renamed repositories
 
