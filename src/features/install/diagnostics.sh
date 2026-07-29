@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install diagnostics (compact log, separate from nixos-install output)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-08
+# Date:          Created: 2026-07-07 | Modified: 2026-07-29
 # Description:   Structured install state in NDS_INSTALL_DIAG_LOG (not install.log)
 # ==================================================================================================
 
@@ -143,11 +143,23 @@ nds_install_diag_after_mount() {
 }
 
 # Description: Snapshot when an install step fails (once, no duplicates).
+# Appends the last lines of the verbose install log so the UI/diag show the real error.
 # Arguments:
 # - step_label: <String> Failed step name
 nds_install_diag_step_failure() {
     local step_label="$1"
+    local verbose="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+    local line
+
     nds_install_diag_snapshot "FAILED: ${step_label}"
+
+    if [[ -f "$verbose" ]]; then
+        _install_diag_write ""
+        _install_diag_write "=== verbose log tail (${verbose}) ==="
+        while IFS= read -r line; do
+            _install_diag_write "$line"
+        done < <(tail -n 40 "$verbose" 2>/dev/null || true)
+    fi
 }
 
 # Legacy section helpers — map to snapshot (avoid spam in install.log).

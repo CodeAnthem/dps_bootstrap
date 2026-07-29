@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-08
+# Date:          Created: 2025-10-28 | Modified: 2026-07-29
 # Description:   NixOS installation commands
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
@@ -48,12 +48,21 @@ _install_stage_flake_repo() {
 
 # Returns:
 # - <String> facter.json or hardware-configuration.nix
+# Classic install always needs hardware-configuration.nix (configuration.nix imports it).
+# Flake installs default to facter.json unless NDS_HARDWARE_GEN=legacy.
 _install_hardware_artifact_name() {
-    local facter_mode="${NDS_HARDWARE_GEN:-facter}"
+    local facter_mode="${NDS_HARDWARE_GEN:-}"
+
+    if [[ "${NDS_CURRENT_ACTION:-}" == "classicInstall" ]]; then
+        printf '%s\n' "hardware-configuration.nix"
+        return 0
+    fi
+
+    facter_mode="${facter_mode:-facter}"
     if [[ "$facter_mode" == "facter" ]]; then
-        echo "facter.json"
+        printf '%s\n' "facter.json"
     else
-        echo "hardware-configuration.nix"
+        printf '%s\n' "hardware-configuration.nix"
     fi
 }
 
@@ -556,9 +565,23 @@ _install_nixos_flake() {
     return 0
 }
 
-# Copy generated configs from runtime to /mnt/etc/nixos.
-# Usage: _install_configs
+# Description: Ensure classicInstall has hardware-configuration.nix on /mnt and in runtime.
+# Regenerates with legacy nixos-generate-config when only facter.json exists (or nothing).
+_install_classic_ensure_hardware_config() {
+    local dest="/mnt/etc/nixos/hardware-configuration.nix"
+
+    mkdir -p /mnt/etc/nixos "${NDS_RUNTIME_DIR}/config"
+    if [[ ! -s "$dest" ]]; then
+        _install_generate_legacy_hardware "$dest" || return 1
+        chmod 600 "$dest" || return 1
+    fi
+    cp "$dest" "${NDS_RUNTIME_DIR}/config/hardware-configuration.nix" || return 1
+    return 0
+}
+
+# Description: Copy generated Nix configs into /mnt/etc/nixos for nixos-install.
 _install_configs() {
+    mkdir -p /mnt/etc/nixos
     cp "$NDS_RUNTIME_DIR/config/"*.nix /mnt/etc/nixos/ || return 1
 
     if [[ -n "${NDS_ACTION_CONFIG_SOURCE:-}" ]] && [[ -f "${NDS_ACTION_CONFIG_SOURCE}" ]]; then
@@ -570,16 +593,20 @@ _install_configs() {
 # Install NixOS system
 # Usage: _install_nixos
 _install_nixos() {
+    local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+
     log "Installing NixOS system"
 
-    # Verify configuration exists
     if [[ ! -f /mnt/etc/nixos/configuration.nix ]]; then
         error "No configuration.nix found - run nds_nixcfg_write first"
+        return 1
     fi
 
-    # Run nixos-install
     if ! nixos-install --root /mnt --no-root-passwd; then
-        error "NixOS installation failed"
+        error "NixOS installation failed — last lines of ${log}:"
+        tail -n 30 "$log" 2>/dev/null | while IFS= read -r _line; do
+            printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
+        done || true
         return 1
     fi
 

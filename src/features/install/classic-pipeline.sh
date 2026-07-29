@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Classic install pipeline
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-07
+# Date:          Created: 2026-07-06 | Modified: 2026-07-29
 # ==================================================================================================
 
 # Description: Full classic NixOS install (disk prep + nixos-install).
@@ -17,11 +17,8 @@ nds_nixos_install() {
         return 1
     fi
 
-    if [[ -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
-        cp /mnt/etc/nixos/hardware-configuration.nix "$NDS_RUNTIME_DIR/config/"
-    elif [[ -f /mnt/etc/nixos/facter.json ]]; then
-        cp /mnt/etc/nixos/facter.json "$NDS_RUNTIME_DIR/config/"
-    fi
+    # classic configuration.nix always imports ./hardware-configuration.nix
+    _install_classic_ensure_hardware_config || return 1
 
     nds_step_exec "Installing configuration files" _install_configs || return 1
     nds_step_exec "Installing NixOS" _install_nixos || return 1

@@ -2,11 +2,44 @@
 # ==================================================================================================
 # NDS - Install pipeline tests (read-only / mocked)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-08
+# Date:          Created: 2026-07-07 | Modified: 2026-07-29
 # ==================================================================================================
 
 suite_install() {
     local out
+
+    NDS_CURRENT_ACTION=classicInstall
+    unset NDS_HARDWARE_GEN
+    out=$(_install_hardware_artifact_name)
+    if [[ "$out" == "hardware-configuration.nix" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ classicInstall hardware artifact: hardware-configuration.nix"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ classicInstall hardware artifact: expected hardware-configuration.nix got $out"
+    fi
+
+    NDS_CURRENT_ACTION=installFlake
+    unset NDS_HARDWARE_GEN
+    out=$(_install_hardware_artifact_name)
+    if [[ "$out" == "facter.json" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ installFlake hardware artifact: facter.json (default)"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ installFlake hardware artifact: expected facter.json got $out"
+    fi
+
+    NDS_HARDWARE_GEN=legacy
+    out=$(_install_hardware_artifact_name)
+    if [[ "$out" == "hardware-configuration.nix" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ installFlake hardware artifact: legacy override"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ installFlake hardware artifact: expected hardware-configuration.nix got $out"
+    fi
+    unset NDS_CURRENT_ACTION NDS_HARDWARE_GEN
 
     _install_nix_store_free_mb() { echo 100; }
     out=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
