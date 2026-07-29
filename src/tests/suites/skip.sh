@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Menu skip env tests
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-07-29
 # ==================================================================================================
 
 suite_skip() {
@@ -84,5 +84,26 @@ suite_skip() {
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ module boundaries: expected helpers missing"
+    fi
+
+    # Fresh process mimics main.sh: lifecycle only — no pre-sourced standalone/*.
+    # Catches loaders that call nds_standalone_*_load without importing load.sh.
+    local prepare_out=""
+    if prepare_out=$(
+        env SCRIPT_DIR="$SCRIPT_DIR" bash -euo pipefail -c '
+            source "${SCRIPT_DIR}/shared/core/import.sh"
+            nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
+            nds_framework_prepare_action_runtime || exit 1
+            declare -f nds_standalone_git_load >/dev/null
+            declare -f nds_standalone_install_load >/dev/null
+            declare -f nds_nixos_install >/dev/null
+        ' 2>&1
+    ); then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ prepare_action_runtime: loads standalone deps without pre-source"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ prepare_action_runtime: loads standalone deps without pre-source"
+        console "    ${prepare_out}"
     fi
 }

@@ -2,12 +2,13 @@
 # ==================================================================================================
 # NDS - Install stack loader (explicit order)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-07
+# Date:          Created: 2026-07-06 | Modified: 2026-07-29
 # ==================================================================================================
 
 nds_install_load() {
     local install_dir="${1:?install dir}"
 
+    nds_import_file "${SCRIPT_DIR}/standalone/install/load.sh" || return 1
     nds_standalone_install_load || return 1
     nds_import_file "${install_dir}/detect.sh" || return 1
     nds_import_file "${install_dir}/nix-store.sh" || return 1

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git tools loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-28
+# Date:          Created: 2026-07-05 | Modified: 2026-07-29
 # Description:   Load standalone git helpers, then framework git + UI
 # ==================================================================================================
 
@@ -10,6 +10,7 @@ nds_git_tools_load() {
     [[ "${NDS_GIT_TOOLS_LOADED:-false}" == "true" ]] && return 0
     local tools_dir="${1:?tools dir}"
 
+    nds_import_file "${SCRIPT_DIR}/standalone/git/load.sh" || return 1
     nds_standalone_git_load || return 1
     nds_import_file "${tools_dir}/ssh.sh" || return 1
     nds_import_file "${tools_dir}/prefetch.sh" || return 1
