@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Per-step VM / live-ISO tests (destructive steps opt-in)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-08 | Modified: 2026-07-08
+# Date:          Created: 2026-07-08 | Modified: 2026-07-29
 # Description:   Run one install concern without the full installFlake menu cycle.
 # ==================================================================================================
 # Usage (on NixOS live ISO / VM):
@@ -17,16 +17,27 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCRIPT_DIR="${ROOT}/bootstrap"
+SCRIPT_DIR="${ROOT}/src"
 export SCRIPT_DIR
+
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/core/import.sh"
+source "${SCRIPT_DIR}/shared/core/import.sh"
 nds_bootstrap_load_libs "$SCRIPT_DIR" || {
     echo "Failed to load NDS libs" >&2
     exit 1
 }
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/standalone/git/load.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/standalone/install/load.sh"
+nds_standalone_git_load
+nds_standalone_install_load
+nds_framework_load_remaining || {
+    echo "Failed to load install framework" >&2
+    exit 1
+}
 
-_vm_step_usage() {
+_vmstep_usage() {
     cat <<'EOF'
 vm-step-test.sh <step>
 
@@ -41,7 +52,7 @@ These do NOT run full installFlake. Use them on the live ISO to isolate failures
 EOF
 }
 
-_vm_step_facter() {
+_vmstep_facter() {
     local dest="/tmp/nds-vm-facter-$$.json"
     echo "==> generating facter -> ${dest}"
     _install_generate_facter_report "$dest"
@@ -54,7 +65,7 @@ in map (c: if c == null then \"null\" else (c.model_name or \"obj\")) (r.hardwar
 "
 }
 
-_vm_step_sanitize() {
+_vmstep_sanitize() {
     local src="${1:-${NDS_FACTER_IN:-}}"
     [[ -n "$src" && -f "$src" ]] || {
         echo "Need path: vm-step-test.sh sanitize /path/to/facter.json" >&2
@@ -67,7 +78,7 @@ _vm_step_sanitize() {
     echo "sanitized copy: ${dest}"
 }
 
-_vm_step_stage_boot() {
+_vmstep_stage_boot() {
     local flake_root="${NDS_FLAKE_ROOT:-}"
     if [[ -z "$flake_root" ]]; then
         if [[ -d /mnt/etc/nixos ]]; then
@@ -97,14 +108,14 @@ _vm_step_stage_boot() {
 
 step="${1:-list}"
 case "$step" in
-    list|-h|--help) _vm_step_usage ;;
-    facter) _vm_step_facter ;;
-    sanitize) _vm_step_sanitize "${2:-}" ;;
-    stage-boot) _vm_step_stage_boot ;;
+    list|-h|--help) _vmstep_usage ;;
+    facter) _vmstep_facter ;;
+    sanitize) _vmstep_sanitize "${2:-}" ;;
+    stage-boot) _vmstep_stage_boot ;;
     selftest) exec bash "${ROOT}/dev/selftest.sh" ;;
     *)
         echo "Unknown step: ${step}" >&2
-        _vm_step_usage
+        _vmstep_usage
         exit 1
         ;;
 esac
