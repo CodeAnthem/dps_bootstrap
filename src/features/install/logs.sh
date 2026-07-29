@@ -42,7 +42,7 @@ nds_install_logs_home_verbose() {
 # Arguments:
 # - user: <String> Target owner (e.g. nixos)
 # - paths: <String+> Files to fix
-_nds_install_logs_chown_files() {
+_install_logs_chown_files() {
     local user="$1"
     shift
     local path
@@ -64,7 +64,7 @@ nds_install_logs_init() {
     verbose_home=$(nds_install_logs_home_verbose)
     : >"$diag_home"
     : >"$verbose_home"
-    _nds_install_logs_chown_files "$user" "$diag_home" "$verbose_home"
+    _install_logs_chown_files "$user" "$diag_home" "$verbose_home"
     export NDS_INSTALL_DIAG_LOG="$diag_home"
 }
 
@@ -81,7 +81,7 @@ nds_install_logs_publish() {
         cp "${NDS_INSTALL_DETAIL_LOG}" "$verbose_home"
     fi
 
-    _nds_install_logs_chown_files "$user" "$diag_home" "$verbose_home"
+    _install_logs_chown_files "$user" "$diag_home" "$verbose_home"
 }
 
 # Description: Print scp commands to copy install logs to the operator machine.

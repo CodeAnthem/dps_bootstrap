@@ -6,6 +6,8 @@
 # Description:   Access gates wiring git tools + auth wizard UI
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_AUTH_SKIP
+
 nds_git_access_cleanup_success() {
     nds_git_gh_session_cleanup 2>/dev/null || true
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
@@ -39,7 +41,7 @@ nds_git_ensure_flake_closure_access() {
     nds_git_keys_load_all || true
 
     if [[ -n "$flake_root" && -d "$flake_root" ]]; then
-        mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
+        mapfile -t urls < <(_flake_collect_git_remote_urls "$flake_root" "$root_url")
     elif [[ -n "$root_url" ]]; then
         if [[ ! -f "${NDS_FLAKE_PROBE_REPO:-}/flake.nix" ]]; then
             if declare -f nds_step_exec &>/dev/null; then
@@ -50,7 +52,7 @@ nds_git_ensure_flake_closure_access() {
                 nds_git_clone_flake_probe "$root_url" || true
             fi
         fi
-        mapfile -t urls < <(_nds_flake_collect_git_remote_urls_from_root "$root_url")
+        mapfile -t urls < <(_flake_collect_git_remote_urls_from_root "$root_url")
     else
         error "Flake root or repo URL required for closure check"
         return 1
@@ -82,7 +84,7 @@ nds_git_ensure_flake_closure_access() {
         fi
 
         for url in "${failed[@]}"; do
-            ssh_url=$(_nds_git_ssh_url "$url")
+            ssh_url=$(_git_ssh_url "$url")
             nds_install_log "git: no access — ${ssh_url}"
         done
 
@@ -111,10 +113,10 @@ nds_git_ensure_access() {
         *) return 0 ;;
     esac
 
-    if parsed=$(_nds_git_parse "$url"); then
+    if parsed=$(_git_parse "$url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         if [[ "$url" != git@* && "$url" != ssh://* ]]; then
-            _nds_git_update_repo_url "$(_nds_git_to_ssh "$host" "$owner" "$repo")"
+            _git_update_repo_url "$(_git_to_ssh "$host" "$owner" "$repo")"
             url="$(nds_cfg_get FLAKE_REPO_URL)"
         fi
     fi
@@ -126,7 +128,7 @@ nds_git_ensure_access() {
         return 0
     fi
 
-    if _nds_git_auth_try_existing_access "$url"; then
+    if _git_auth_try_existing_access "$url"; then
         success "Git access confirmed for ${owner}/${repo} (existing key)."
         nds_git_access_mark_verified
         return 0
@@ -146,7 +148,7 @@ nds_git_ensure_access() {
         }
 
         url="$(nds_cfg_get FLAKE_REPO_URL)"
-        [[ -z "$url" ]] && url="$(_nds_git_to_ssh "$host" "$owner" "$repo")"
+        [[ -z "$url" ]] && url="$(_git_to_ssh "$host" "$owner" "$repo")"
         nds_git_keys_load_all || true
 
         if nds_git_probe_access "$url"; then

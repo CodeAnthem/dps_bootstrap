@@ -11,26 +11,26 @@ declare -g _NDS_INSTALL_DIAG_LAST_KEY=""
 # Description: Path to the compact diagnostics log.
 # Returns:
 # - <String> log file path (stdout)
-_nds_install_diag_log() {
+_install_diag_log() {
     printf '%s\n' "${NDS_INSTALL_DIAG_LOG:-/tmp/nds_install_diag.log}"
 }
 
 # Description: Append one line to the diagnostics log.
 # Arguments:
 # - line: <String> Log line
-_nds_install_diag_write() {
+_install_diag_write() {
     local line="$1"
-    printf '%s\n' "$line" >>"$(_nds_install_diag_log)"
+    printf '%s\n' "$line" >>"$(_install_diag_log)"
 }
 
 # Description: Compact one-line or short multi-line fact.
 # Arguments:
 # - key:   <String> Fact name
 # - value: <String> Fact value
-_nds_install_diag_kv() {
+_install_diag_kv() {
     local key="$1"
     local value="$2"
-    _nds_install_diag_write "${key}=${value}"
+    _install_diag_write "${key}=${value}"
 }
 
 # Description: Disk layout summary (no command echo).
@@ -39,14 +39,14 @@ _nds_install_diag_kv() {
 nds_install_diag_disk() {
     local disk="${1:-}"
 
-    _nds_install_diag_write ""
-    _nds_install_diag_write "=== disk: ${disk:-unknown} ==="
+    _install_diag_write ""
+    _install_diag_write "=== disk: ${disk:-unknown} ==="
     [[ -n "$disk" ]] || return 0
-    lsblk -f "$disk" >>"$(_nds_install_diag_log)" 2>&1 || true
+    lsblk -f "$disk" >>"$(_install_diag_log)" 2>&1 || true
     if command -v parted &>/dev/null; then
-        parted "$disk" print >>"$(_nds_install_diag_log)" 2>&1 || true
+        parted "$disk" print >>"$(_install_diag_log)" 2>&1 || true
     fi
-    blkid "${disk}"* >>"$(_nds_install_diag_log)" 2>&1 || true
+    blkid "${disk}"* >>"$(_install_diag_log)" 2>&1 || true
 }
 
 # Description: Single compact install-state snapshot (deduped per reason).
@@ -73,8 +73,8 @@ nds_install_diag_snapshot() {
         firmware=BIOS
     fi
 
-    if _nds_nix_system_profile_ok "$root"; then
-        profile_txt=$(env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+    if _install_nix_system_profile_ok "$root"; then
+        profile_txt=$(env NIX_CONFIG="$(_install_nix_nixos_install_config)" \
             nix --store "$root" path-info -M /nix/var/nix/profiles/system 2>/dev/null || echo ok)
         profile_txt="${profile_txt} ($(ls -la "${root}/nix/var/nix/profiles/system" 2>/dev/null || echo no-symlink))"
     else
@@ -90,8 +90,8 @@ nds_install_diag_snapshot() {
     if [[ -n "$disk" && -b "$disk" ]]; then
         if dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB; then
             mbr_txt=mbr
-        elif _nds_install_disk_has_bios_grub "$disk" \
-            && _nds_install_bios_grub_populated "${disk}1"; then
+        elif _install_disk_has_bios_grub "$disk" \
+            && _install_bios_grub_populated "${disk}1"; then
             mbr_txt=bios_grub
         else
             mbr_txt=no
@@ -102,29 +102,29 @@ nds_install_diag_snapshot() {
 
     nixos_sys=$(ls -dt "${root}"/nix/store/*-nixos-system-*/ 2>/dev/null | head -1 || true)
     [[ -z "$nixos_sys" ]] && nixos_sys=none
-    free_mb="$(_nds_nix_store_free_mb 2>/dev/null || echo unknown)"
-    uri="$(_nds_nix_install_store_uri 2>/dev/null || echo iso)"
+    free_mb="$(_install_nix_store_free_mb 2>/dev/null || echo unknown)"
+    uri="$(_install_nix_install_store_uri 2>/dev/null || echo iso)"
 
-    _nds_install_diag_write ""
-    _nds_install_diag_write "=== ${reason} @ $(date -Iseconds 2>/dev/null || date) ==="
-    _nds_install_diag_kv "live_firmware" "$firmware"
-    _nds_install_diag_kv "BOOT_UEFI_MODE" "${uefi:-unset}"
-    _nds_install_diag_kv "BOOT_LOADER" "${loader:-unset}"
-    _nds_install_diag_kv "DISK_TARGET" "${disk:-unset}"
-    _nds_install_diag_kv "install_store_uri" "$uri"
-    _nds_install_diag_kv "iso_store_free_mb" "$free_mb"
-    _nds_install_diag_kv "mnt_mounted" "$(mountpoint -q "$root" 2>/dev/null && echo yes || echo no)"
-    _nds_install_diag_kv "mnt_boot_mounted" "$(mountpoint -q "${root}/boot" 2>/dev/null && echo yes || echo no)"
-    _nds_install_diag_kv "system_profile" "$profile_txt"
-    _nds_install_diag_kv "run_current_system" \
+    _install_diag_write ""
+    _install_diag_write "=== ${reason} @ $(date -Iseconds 2>/dev/null || date) ==="
+    _install_diag_kv "live_firmware" "$firmware"
+    _install_diag_kv "BOOT_UEFI_MODE" "${uefi:-unset}"
+    _install_diag_kv "BOOT_LOADER" "${loader:-unset}"
+    _install_diag_kv "DISK_TARGET" "${disk:-unset}"
+    _install_diag_kv "install_store_uri" "$uri"
+    _install_diag_kv "iso_store_free_mb" "$free_mb"
+    _install_diag_kv "mnt_mounted" "$(mountpoint -q "$root" 2>/dev/null && echo yes || echo no)"
+    _install_diag_kv "mnt_boot_mounted" "$(mountpoint -q "${root}/boot" 2>/dev/null && echo yes || echo no)"
+    _install_diag_kv "system_profile" "$profile_txt"
+    _install_diag_kv "run_current_system" \
         "$(ls -la "${root}/run/current-system" 2>&1 || echo missing)"
-    _nds_install_diag_kv "grub_cfg" "$grub_txt"
-    _nds_install_diag_kv "mbr_grub_sig" "$mbr_txt"
-    _nds_install_diag_kv "nixos_system" "$nixos_sys"
+    _install_diag_kv "grub_cfg" "$grub_txt"
+    _install_diag_kv "mbr_grub_sig" "$mbr_txt"
+    _install_diag_kv "nixos_system" "$nixos_sys"
 
     if command -v findmnt &>/dev/null; then
-        _nds_install_diag_write "findmnt:"
-        findmnt -R "$root" >>"$(_nds_install_diag_log)" 2>&1 || true
+        _install_diag_write "findmnt:"
+        findmnt -R "$root" >>"$(_install_diag_log)" 2>&1 || true
     fi
 }
 

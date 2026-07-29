@@ -12,10 +12,10 @@
 # =============================================================================
 
 # Auto-mode: reads from configuration modules
-# Usage: nds_nixinstall_auto [skip_hardware]
+# Usage: nds_install_auto [skip_hardware]
 # - skip_hardware: <Bool> When "true", skip hardware/facter generation (flake install
 #   generates into the host dir after the flake is staged)
-nds_nixinstall_auto() {
+nds_install_auto() {
     local skip_hardware="${1:-false}"
     local disk encryption hostname remote_unlock
     disk=$(nds_config_get "disk" "DISK_TARGET")
@@ -38,18 +38,18 @@ nds_nixinstall_auto() {
         nds_step_exec "Running disko" nds_partition_run_disko_from_config || return 1
     else
         if [[ "$encryption" == "true" ]]; then
-            nds_step_exec "Generating encryption secrets" _nixinstall_generate_encryption_secrets || return 1
+            nds_step_exec "Generating encryption secrets" _install_generate_encryption_secrets || return 1
         fi
-        nds_step_exec "Partitioning disk" _nixinstall_partition_disk "$disk" "$encryption" || return 1
-        nds_step_exec "Mounting filesystems" _nixinstall_mount_filesystems "$encryption" || return 1
+        nds_step_exec "Partitioning disk" _install_partition_disk "$disk" "$encryption" || return 1
+        nds_step_exec "Mounting filesystems" _install_mount_filesystems "$encryption" || return 1
     fi
 
     if [[ "$encryption" == "true" && "$remote_unlock" == "true" ]]; then
-        nds_step_exec "Setting up initrd SSH keys" _nixinstall_setup_initrd_ssh_keys || return 1
+        nds_step_exec "Setting up initrd SSH keys" _install_setup_initrd_ssh_keys || return 1
     fi
 
     if [[ "$skip_hardware" != "true" ]]; then
-        nds_step_exec "Generating hardware configuration" _nixinstall_generate_hardware_config || return 1
+        nds_step_exec "Generating hardware configuration" _install_generate_hardware_config || return 1
     fi
     log "NixOS disk preparation completed successfully"
     return 0
@@ -68,7 +68,7 @@ nds_nixos_install() {
 
     NDS_UI_QUIET=true
 
-    if ! nds_nixinstall_auto; then
+    if ! nds_install_auto; then
         return 1
     fi
 
@@ -78,12 +78,12 @@ nds_nixos_install() {
         cp /mnt/etc/nixos/facter.json "$NDS_RUNTIME_DIR/config/"
     fi
 
-    nds_step_exec "Installing configuration files" _nixinstall_install_configs || return 1
-    nds_step_exec "Installing NixOS" _nixinstall_install_nixos || return 1
+    nds_step_exec "Installing configuration files" _install_configs || return 1
+    nds_step_exec "Installing NixOS" _install_nixos || return 1
 
     local disk
     disk=$(nds_config_get "disk" "DISK_TARGET")
-    nds_step_exec "Registering EFI boot entry" _nixinstall_register_efi_entry "$disk" || true
+    nds_step_exec "Registering EFI boot entry" _install_register_efi_entry "$disk" || true
 
     nds_install_log "classicInstall: completed"
     return 0
@@ -123,17 +123,17 @@ nds_nixos_install_flake() {
         nds_install_log "installFlake: remote host=${hostname} target=${target_ip}"
         NDS_UI_QUIET=true
 
-        if ! flake_root=$(_nixinstall_resolve_flake_root "$source" "$local_path" "$repo_url"); then
+        if ! flake_root=$(_install_resolve_flake_root "$source" "$local_path" "$repo_url"); then
             return 1
         fi
         export NDS_FLAKE_ROOT="$flake_root"
 
         if [[ "$encryption" == "true" ]]; then
-            nds_step_exec "Generating encryption secrets" _nixinstall_generate_encryption_secrets || return 1
+            nds_step_exec "Generating encryption secrets" _install_generate_encryption_secrets || return 1
         fi
 
         nds_step_exec "Installing via nixos-anywhere" \
-            _nixinstall_via_nixos_anywhere "$flake_root" "$hostname" "$target_ip" || return 1
+            _install_via_nixos_anywhere "$flake_root" "$hostname" "$target_ip" || return 1
 
         nds_install_log "installFlake: remote completed ${flake_root}#${hostname}"
         return 0
@@ -152,7 +152,7 @@ nds_nixos_install_flake() {
             return 1
         }
     else
-        if ! nds_nixinstall_auto true; then
+        if ! nds_install_auto true; then
             return 1
         fi
     fi
@@ -160,14 +160,14 @@ nds_nixos_install_flake() {
     case "$source" in
         local)
             nds_step_exec "Staging flake on target disk" \
-                _nixinstall_stage_local_flake "$local_path" "$install_path" || return 1
+                _install_stage_local_flake "$local_path" "$install_path" || return 1
             ;;
         remote|*)
             if [[ -z "$repo_url" ]]; then
                 error "FLAKE_REPO_URL is required for remote flake source"
             fi
             nds_step_exec "Staging flake on target disk" \
-                _nixinstall_ensure_flake_checkout "$repo_url" "$install_path" || return 1
+                _install_ensure_flake_checkout "$repo_url" "$install_path" || return 1
             ;;
     esac
     flake_root="$install_path"
@@ -178,7 +178,7 @@ nds_nixos_install_flake() {
 
     if [[ "$hw_mode" != "skip" ]]; then
         nds_step_exec "Generating hardware facts for flake host" \
-            _nixinstall_place_hardware_artifact "$host_dir" "$hw_mode" true || return 1
+            _install_place_hardware_artifact "$host_dir" "$hw_mode" true || return 1
     else
         log "Skipping hardware artifact (FLAKE_HARDWARE_PLACEMENT=skip)"
     fi
@@ -192,11 +192,11 @@ nds_nixos_install_flake() {
 
     if [[ "$encryption" == "true" ]]; then
         nds_step_exec "Writing machine facts (LUKS UUID)" \
-            _nixinstall_write_machine_facts "$disk" "$hostname" "$flake_root" "$encryption" "$host_dir_rel" || return 1
+            _install_write_machine_facts "$disk" "$hostname" "$flake_root" "$encryption" "$host_dir_rel" || return 1
     fi
 
     nds_step_exec "Installing NixOS from flake" \
-        _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$hw_mode" || return 1
+        _install_nixos_flake "$flake_root" "$hostname" "$hw_mode" || return 1
 
     if [[ -n "$repo_url" || "$source" == "remote" ]]; then
         nds_step_exec "Installing git deploy key on target" \
@@ -204,10 +204,10 @@ nds_nixos_install_flake() {
     fi
 
     nds_step_exec "Enrolling sops age key" \
-        _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || true
+        _sops_enroll_key "$flake_root" "$hostname" "/mnt" || true
 
     nds_step_exec "Registering EFI boot entry" \
-        _nixinstall_register_efi_entry "$disk" || true
+        _install_register_efi_entry "$disk" || true
 
     nds_install_log "installFlake: completed ${flake_root}#${hostname}"
     return 0

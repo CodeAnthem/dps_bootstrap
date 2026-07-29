@@ -7,6 +7,8 @@
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_HARDWARE_OVERWRITE_SKIP
+
 # =============================================================================
 # NIXOS INSTALLATION
 # =============================================================================
@@ -17,13 +19,13 @@
 # - install_path: <String> Destination directory
 # Returns:
 # - <Bool> 0 on success
-_nds_install_stage_flake_repo() {
+_install_stage_flake_repo() {
     local repo_url="$1"
     local install_path="$2"
     local probe norm_url
 
     [[ -n "$repo_url" && -n "$install_path" ]] || return 1
-    norm_url=$(_nds_git_ssh_url "$repo_url")
+    norm_url=$(_git_ssh_url "$repo_url")
     probe="${NDS_FLAKE_PROBE_REPO:-}"
 
     mkdir -p "$(dirname "$install_path")"
@@ -46,7 +48,7 @@ _nds_install_stage_flake_repo() {
 
 # Returns:
 # - <String> facter.json or hardware-configuration.nix
-_nixinstall_hardware_artifact_name() {
+_install_hardware_artifact_name() {
     local facter_mode="${NDS_HARDWARE_GEN:-facter}"
     if [[ "$facter_mode" == "facter" ]]; then
         echo "facter.json"
@@ -62,7 +64,7 @@ _nixinstall_hardware_artifact_name() {
 # - repo_url:   <String> Git URL when source=remote
 # Returns:
 # - <String> Absolute flake root path (stdout)
-_nixinstall_resolve_flake_root() {
+_install_resolve_flake_root() {
     local source="$1"
     local local_path="$2"
     local repo_url="$3"
@@ -79,7 +81,7 @@ _nixinstall_resolve_flake_root() {
             if [[ -z "$repo_url" ]]; then
                 error "Flake repo URL is required for remote install"
             fi
-            if _nds_install_stage_flake_repo "$repo_url" "$install_dir"; then
+            if _install_stage_flake_repo "$repo_url" "$install_dir"; then
                 echo "$install_dir"
                 return 0
             fi
@@ -93,7 +95,7 @@ _nixinstall_resolve_flake_root() {
 # - flake_root: <String> Flake root on the operator machine
 # - hostname:   <String> nixosConfigurations name
 # - target_ip:  <String> Target host IP or hostname
-_nixinstall_via_nixos_anywhere() {
+_install_via_nixos_anywhere() {
     local flake_root="$1"
     local hostname="$2"
     local target_ip="$3"
@@ -129,7 +131,7 @@ _nixinstall_via_nixos_anywhere() {
 # hardware/facter/virtualisation.nix then fails with: expected a set but found null.
 # Arguments:
 # - dest: <String> Absolute path to facter.json (rewritten in place)
-_nixinstall_sanitize_facter_report() {
+_install_sanitize_facter_report() {
     local dest="$1"
     local tmp
 
@@ -159,12 +161,12 @@ in scrub report
 # Description: Generate facter.json at dest via nixos-facter (live-ISO hardware scan).
 # Arguments:
 # - dest: <String> Absolute output path (e.g. .../facter.json)
-_nixinstall_generate_facter_report() {
+_install_generate_facter_report() {
     local dest="$1"
     mkdir -p "$(dirname "$dest")"
     log "Generating hardware report via nixos-facter -> ${dest}"
     local nix_config
-    nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    nix_config=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
     if ! env NIX_CONFIG="$nix_config" \
         nix run nixpkgs#nixos-facter -- -o "$dest" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
@@ -175,7 +177,7 @@ _nixinstall_generate_facter_report() {
         error "nixos-facter did not write ${dest}"
         return 1
     fi
-    _nixinstall_sanitize_facter_report "$dest" || return 1
+    _install_sanitize_facter_report "$dest" || return 1
     log "Generated facter.json at ${dest}"
     return 0
 }
@@ -183,7 +185,7 @@ _nixinstall_generate_facter_report() {
 # Description: Generate legacy hardware-configuration.nix at dest.
 # Arguments:
 # - dest: <String> Absolute output path
-_nixinstall_generate_legacy_hardware() {
+_install_generate_legacy_hardware() {
     local dest="$1"
     mkdir -p "$(dirname "$dest")"
     log "Generating hardware configuration (legacy) -> ${dest}"
@@ -205,13 +207,13 @@ _nixinstall_generate_legacy_hardware() {
 # - host_dir:      <String> Flake host directory (for host-dir placement)
 # - hw_mode:       <String> host-dir | etc-nixos | skip
 # - runtime_copy:  <Bool> When true, mirror into $NDS_RUNTIME_DIR/config/ for backup
-_nixinstall_place_hardware_artifact() {
+_install_place_hardware_artifact() {
     local host_dir="$1"
     local hw_mode="${2:-host-dir}"
     local runtime_copy="${3:-true}"
     local hw_artifact dest
 
-    hw_artifact=$(_nixinstall_hardware_artifact_name)
+    hw_artifact=$(_install_hardware_artifact_name)
 
     case "$hw_mode" in
         skip)
@@ -228,7 +230,7 @@ _nixinstall_place_hardware_artifact() {
                 NDS_UI_QUIET=false
                 warn "${hw_artifact} already exists: $dest"
                 if ! nds_skip_menu NDS_HARDWARE_OVERWRITE_SKIP; then
-                    if ! nds_askUserToProceed "Overwrite existing ${hw_artifact}?"; then
+                    if ! nds_ask_user_to_proceed "Overwrite existing ${hw_artifact}?"; then
                         log "Keeping existing ${hw_artifact}"
                         NDS_UI_QUIET=true
                         [[ "$runtime_copy" == true ]] && cp "$dest" "${NDS_RUNTIME_DIR}/config/" 2>/dev/null || true
@@ -241,9 +243,9 @@ _nixinstall_place_hardware_artifact() {
     esac
 
     if [[ "$hw_artifact" == "facter.json" ]]; then
-        _nixinstall_generate_facter_report "$dest" || return 1
+        _install_generate_facter_report "$dest" || return 1
     else
-        _nixinstall_generate_legacy_hardware "$dest" || return 1
+        _install_generate_legacy_hardware "$dest" || return 1
     fi
     chmod 600 "$dest" || return 1
 
@@ -255,22 +257,22 @@ _nixinstall_place_hardware_artifact() {
 }
 
 # Generate hardware configuration
-# Usage: _nixinstall_generate_hardware_config
-_nixinstall_generate_hardware_config() {
+# Usage: _install_generate_hardware_config
+_install_generate_hardware_config() {
     local hw_artifact
-    hw_artifact=$(_nixinstall_hardware_artifact_name)
+    hw_artifact=$(_install_hardware_artifact_name)
     mkdir -p /mnt/etc/nixos
     if [[ "$hw_artifact" == "facter.json" ]]; then
-        _nixinstall_generate_facter_report "/mnt/etc/nixos/${hw_artifact}" || return 1
+        _install_generate_facter_report "/mnt/etc/nixos/${hw_artifact}" || return 1
     else
-        _nixinstall_generate_legacy_hardware "/mnt/etc/nixos/${hw_artifact}" || return 1
+        _install_generate_legacy_hardware "/mnt/etc/nixos/${hw_artifact}" || return 1
     fi
     return 0
 }
 
 # Copy a local flake directory onto the mounted target root.
-# Usage: _nixinstall_stage_local_flake "local_path" "install_path"
-_nixinstall_stage_local_flake() {
+# Usage: _install_stage_local_flake "local_path" "install_path"
+_install_stage_local_flake() {
     local local_path="$1"
     local install_path="$2"
 
@@ -291,8 +293,8 @@ _nixinstall_stage_local_flake() {
 }
 
 # Clone or refresh flake checkout on the mounted target root.
-# Usage: _nixinstall_ensure_flake_checkout "repo_url" "install_path"
-_nixinstall_ensure_flake_checkout() {
+# Usage: _install_ensure_flake_checkout "repo_url" "install_path"
+_install_ensure_flake_checkout() {
     local repo_url="$1"
     local install_path="$2"
 
@@ -306,7 +308,7 @@ _nixinstall_ensure_flake_checkout() {
 
     log "Ensuring flake checkout at $install_path"
 
-    if _nds_install_stage_flake_repo "$repo_url" "$install_path"; then
+    if _install_stage_flake_repo "$repo_url" "$install_path"; then
         log "Flake staged at $install_path"
         return 0
     fi
@@ -319,14 +321,14 @@ _nixinstall_ensure_flake_checkout() {
 # - host_name: <String> nixosConfigurations key
 # Returns:
 # - <String> flake fragment (stdout)
-_nds_nix_flake_system_ref() {
+_install_nix_flake_system_ref() {
     local host_name="$1"
 
     printf 'nixosConfigurations."%s".config.system.build.toplevel' "$host_name"
 }
 
 # Description: Install-time secrets / legacy filenames (gitignored after staging).
-_nds_install_flake_host_fact_names() {
+_install_flake_host_fact_names() {
     printf '%s\n' facter.json hardware-configuration.nix machine.nix nds-boot.nix
 }
 
@@ -335,9 +337,9 @@ _nds_install_flake_host_fact_names() {
 # - host_dir: <String> Host directory
 # Returns:
 # - <String> absolute paths (stdout)
-_nds_install_flake_host_fact_paths() {
+_install_flake_host_fact_paths() {
     local host_dir="$1" f
-    for f in $(_nds_install_flake_host_fact_names); do
+    for f in $(_install_flake_host_fact_names); do
         [[ -f "${host_dir}/${f}" ]] && printf '%s\n' "${host_dir}/${f}"
     done
 }
@@ -348,7 +350,7 @@ _nds_install_flake_host_fact_paths() {
 # Arguments:
 # - flake_root: <String> Flake checkout root
 # - host_dir:   <String> Host directory (…/hosts/…/hostname)
-_nds_install_flake_git_stage_install_files() {
+_install_flake_git_stage_install_files() {
     local flake_root="$1" host_dir="$2"
     local log rel
     local -a files=()
@@ -358,7 +360,7 @@ _nds_install_flake_git_stage_install_files() {
         return 0
     }
 
-    mapfile -t files < <(_nds_install_flake_host_fact_paths "$host_dir")
+    mapfile -t files < <(_install_flake_host_fact_paths "$host_dir")
     [[ ${#files[@]} -gt 0 ]] || return 0
 
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
@@ -380,14 +382,14 @@ _nds_install_flake_git_stage_install_files() {
 # Arguments:
 # - flake_root: <String> Flake checkout root
 # - host_dir:   <String> Host directory
-_nds_install_flake_git_unstage_install_files() {
+_install_flake_git_unstage_install_files() {
     local flake_root="$1" host_dir="$2"
     local log rel gi line
     local -a files=() needed=()
 
     [[ -d "${flake_root}/.git" ]] || return 0
 
-    mapfile -t files < <(_nds_install_flake_host_fact_paths "$host_dir")
+    mapfile -t files < <(_install_flake_host_fact_paths "$host_dir")
     [[ ${#files[@]} -gt 0 ]] || return 0
 
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
@@ -433,7 +435,7 @@ _nds_install_flake_git_unstage_install_files() {
 # - build_flags: <String...> Extra nix build flags (e.g. --override-input)
 # Returns:
 # - <String> /nix/store/… nixos-system path (stdout)
-_nixinstall_build_flake_system() {
+_install_build_flake_system() {
     local flake_root="$1"
     local host_name="$2"
     shift 2
@@ -441,16 +443,16 @@ _nixinstall_build_flake_system() {
     local root store log profile_dst flake_ref system_rel tmpdir out_link
 
     [[ -d "$flake_root" ]] || return 1
-    root=$(_nds_nix_target_root)
+    root=$(_install_nix_target_root)
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
     store="$root"
     profile_dst="${root}/nix/var/nix/profiles/system"
-    flake_ref=$(_nds_nix_flake_system_ref "$host_name")
+    flake_ref=$(_install_nix_flake_system_ref "$host_name")
 
     mkdir -p "${root}/nix/store" "$(dirname "$profile_dst")"
-    _nds_nix_ensure_store_ready "$store" || true
+    _install_nix_ensure_store_ready "$store" || true
 
-    if env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+    if env NIX_CONFIG="$(_install_nix_nixos_install_config)" \
         nix build \
         --extra-experimental-features 'nix-command flakes' \
         --store "$store" \
@@ -458,12 +460,12 @@ _nixinstall_build_flake_system() {
         --profile "$profile_dst" \
         "${build_flags[@]}" \
         "${flake_root}#${flake_ref}" >>"$log" 2>&1 \
-        && _nds_nix_system_profile_ok "$root"; then
-        system_rel=$(env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+        && _install_nix_system_profile_ok "$root"; then
+        system_rel=$(env NIX_CONFIG="$(_install_nix_nixos_install_config)" \
             nix --store "$store" path-info -M /nix/var/nix/profiles/system 2>/dev/null || true)
-        [[ -n "$system_rel" ]] || system_rel=$(_nds_nix_find_system_closure "$root")
+        [[ -n "$system_rel" ]] || system_rel=$(_install_nix_find_system_closure "$root")
         [[ -n "$system_rel" ]] || return 1
-        system_rel=$(_nds_nix_canonical_store_path "$store" "$system_rel") || return 1
+        system_rel=$(_install_nix_canonical_store_path "$store" "$system_rel") || return 1
         printf '%s\n' "$system_rel"
         return 0
     fi
@@ -472,7 +474,7 @@ _nixinstall_build_flake_system() {
     tmpdir=$(mktemp -d -p "$root")
     out_link="${tmpdir}/system"
 
-    if ! env NIX_CONFIG="$(_nds_nix_nixos_install_config)" \
+    if ! env NIX_CONFIG="$(_install_nix_nixos_install_config)" \
         nix build \
         --extra-experimental-features 'nix-command flakes' \
         --store "$store" \
@@ -484,7 +486,7 @@ _nixinstall_build_flake_system() {
         return 1
     fi
 
-    system_rel=$(_nds_nix_canonical_store_path "$store" "$out_link") || {
+    system_rel=$(_install_nix_canonical_store_path "$store" "$out_link") || {
         rm -rf "$tmpdir"
         return 1
     }
@@ -493,8 +495,8 @@ _nixinstall_build_flake_system() {
     return 0
 }
 
-# Usage: _nixinstall_install_nixos_flake "flake_root" "host_name" ["hardware_placement"]
-_nixinstall_install_nixos_flake() {
+# Usage: _install_nixos_flake "flake_root" "host_name" ["hardware_placement"]
+_install_nixos_flake() {
     local flake_root="$1"
     local host_name="$2"
     local hw_placement="${3:-host-dir}"
@@ -502,7 +504,7 @@ _nixinstall_install_nixos_flake() {
     local root system_rel log host_dir_rel host_dir
 
     log "Installing NixOS from flake ${flake_root}#${host_name}"
-    root=$(_nds_nix_target_root)
+    root=$(_install_nix_target_root)
 
     if [[ ! -d "$flake_root" ]]; then
         error "Flake root not found: $flake_root"
@@ -511,18 +513,18 @@ _nixinstall_install_nixos_flake() {
 
     host_dir_rel="${NDS_CTX_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
     host_dir="${flake_root}/${host_dir_rel}/${host_name}"
-    _nds_install_flake_git_stage_committed_files "$flake_root" "$host_dir" || {
+    _install_flake_git_stage_committed_files "$flake_root" "$host_dir" || {
         error "Failed to stage committed host structure for nix build"
         return 1
     }
-    _nds_install_flake_git_stage_install_files "$flake_root" "$host_dir" || {
+    _install_flake_git_stage_install_files "$flake_root" "$host_dir" || {
         error "Failed to stage install-time flake files for nix build"
         return 1
     }
 
     if [[ "$hw_placement" == "etc-nixos" ]]; then
         local hw_artifact
-        hw_artifact=$(_nixinstall_hardware_artifact_name)
+        hw_artifact=$(_install_hardware_artifact_name)
         if [[ "$hw_artifact" == "hardware-configuration.nix" && -f /mnt/etc/nixos/hardware-configuration.nix ]]; then
             build_flags+=(--override-input hardware "path:/etc/nixos/hardware-configuration.nix")
             log "Using --override-input hardware path:/etc/nixos/hardware-configuration.nix"
@@ -532,7 +534,7 @@ _nixinstall_install_nixos_flake() {
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
     log "Building NixOS system on target store"
-    if ! system_rel=$(_nixinstall_build_flake_system "$flake_root" "$host_name" "${build_flags[@]}"); then
+    if ! system_rel=$(_install_build_flake_system "$flake_root" "$host_name" "${build_flags[@]}"); then
         error "Flake-based NixOS build failed"
         return 1
     fi
@@ -540,7 +542,7 @@ _nixinstall_install_nixos_flake() {
 
     # After nix eval, keep host facts on disk but out of the Git index so
     # post-boot `git pull --ff-only` / nds-switch is not blocked by local commits.
-    _nds_install_flake_git_unstage_install_files "$flake_root" "$host_dir" || true
+    _install_flake_git_unstage_install_files "$flake_root" "$host_dir" || true
 
     log "Activating system (profile + bootloader)"
     if ! nds_nix_activate_system "$root" "$system_rel" >>"$log" 2>&1; then
@@ -555,8 +557,8 @@ _nixinstall_install_nixos_flake() {
 }
 
 # Copy generated configs from runtime to /mnt/etc/nixos.
-# Usage: _nixinstall_install_configs
-_nixinstall_install_configs() {
+# Usage: _install_configs
+_install_configs() {
     cp "$NDS_RUNTIME_DIR/config/"*.nix /mnt/etc/nixos/ || return 1
 
     if [[ -n "${NDS_ACTION_CONFIG_SOURCE:-}" ]] && [[ -f "${NDS_ACTION_CONFIG_SOURCE}" ]]; then
@@ -566,8 +568,8 @@ _nixinstall_install_configs() {
 }
 
 # Install NixOS system
-# Usage: _nixinstall_install_nixos
-_nixinstall_install_nixos() {
+# Usage: _install_nixos
+_install_nixos() {
     log "Installing NixOS system"
 
     # Verify configuration exists

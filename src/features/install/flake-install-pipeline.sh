@@ -9,7 +9,7 @@
 nds_nixos_install_flake() {
     local flake_root host_dir hostname host_dir_rel
 
-    _nixinstall_gather_flake_context
+    _install_gather_flake_context
     hostname="$NDS_CTX_HOSTNAME"
 
     if [[ -z "$hostname" ]]; then
@@ -24,13 +24,13 @@ nds_nixos_install_flake() {
         nds_install_log "installFlake: remote host=${hostname} target=${NDS_CTX_REMOTE_TARGET_IP}"
         NDS_UI_QUIET=true
 
-        if ! flake_root=$(_nixinstall_resolve_flake_root "$NDS_CTX_FLAKE_SOURCE" "$NDS_CTX_FLAKE_LOCAL_PATH" "$NDS_CTX_FLAKE_REPO_URL"); then
+        if ! flake_root=$(_install_resolve_flake_root "$NDS_CTX_FLAKE_SOURCE" "$NDS_CTX_FLAKE_LOCAL_PATH" "$NDS_CTX_FLAKE_REPO_URL"); then
             return 1
         fi
         export NDS_FLAKE_ROOT="$flake_root"
 
         if [[ "$NDS_CTX_ENCRYPTION" == "true" ]]; then
-            nds_step_exec "Generating encryption secrets" _nixinstall_generate_encryption_secrets || return 1
+            nds_step_exec "Generating encryption secrets" _install_generate_encryption_secrets || return 1
         fi
 
         if declare -f nds_git_prefetch_flake_closure &>/dev/null; then
@@ -39,7 +39,7 @@ nds_nixos_install_flake() {
         fi
 
         nds_step_exec "Installing via nixos-anywhere" \
-            _nixinstall_via_nixos_anywhere "$flake_root" "$hostname" "$NDS_CTX_REMOTE_TARGET_IP" || return 1
+            _install_via_nixos_anywhere "$flake_root" "$hostname" "$NDS_CTX_REMOTE_TARGET_IP" || return 1
 
         nds_install_log "installFlake: remote completed ${flake_root}#${hostname}"
         return 0
@@ -57,7 +57,7 @@ nds_nixos_install_flake() {
             return 1
         }
     else
-        if ! nds_nixinstall_auto true; then
+        if ! nds_install_auto true; then
             return 1
         fi
     fi
@@ -65,14 +65,14 @@ nds_nixos_install_flake() {
     case "$NDS_CTX_FLAKE_SOURCE" in
         local)
             nds_step_exec "Staging flake on target disk" \
-                _nixinstall_stage_local_flake "$NDS_CTX_FLAKE_LOCAL_PATH" "$NDS_CTX_FLAKE_INSTALL_PATH" || return 1
+                _install_stage_local_flake "$NDS_CTX_FLAKE_LOCAL_PATH" "$NDS_CTX_FLAKE_INSTALL_PATH" || return 1
             ;;
         remote|*)
             if [[ -z "$NDS_CTX_FLAKE_REPO_URL" ]]; then
                 error "FLAKE_REPO_URL is required for remote flake source"
             fi
             nds_step_exec "Staging flake on target disk" \
-                _nixinstall_ensure_flake_checkout "$NDS_CTX_FLAKE_REPO_URL" "$NDS_CTX_FLAKE_INSTALL_PATH" || return 1
+                _install_ensure_flake_checkout "$NDS_CTX_FLAKE_REPO_URL" "$NDS_CTX_FLAKE_INSTALL_PATH" || return 1
             ;;
     esac
     flake_root="$NDS_CTX_FLAKE_INSTALL_PATH"
@@ -84,7 +84,7 @@ nds_nixos_install_flake() {
 
     if [[ "$NDS_CTX_HW_PLACEMENT" != "skip" ]]; then
         nds_step_exec "Generating hardware facts for flake host" \
-            _nixinstall_place_hardware_artifact "$host_dir" "$NDS_CTX_HW_PLACEMENT" true || return 1
+            _install_place_hardware_artifact "$host_dir" "$NDS_CTX_HW_PLACEMENT" true || return 1
     else
         log "Skipping hardware artifact (FLAKE_HARDWARE_PLACEMENT=skip)"
     fi
@@ -94,13 +94,13 @@ nds_nixos_install_flake() {
     nds_install_log "boot: wrote ${host_dir}/boot.nix from boot preset"
 
     nds_step_exec "Writing mounts (root/boot UUID)" \
-        _nixinstall_write_mounts_nix "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
+        _install_write_mounts_nix "$NDS_CTX_DISK" "$hostname" "$flake_root" "$NDS_CTX_ENCRYPTION" "$host_dir_rel" || return 1
 
     nds_step_exec "Patching host configuration imports" \
-        _nixinstall_ensure_host_imports "$host_dir" || return 1
+        _install_ensure_host_imports "$host_dir" || return 1
 
     nds_step_exec "Staging committed host structure in git" \
-        _nds_install_flake_git_stage_committed_files "$flake_root" "$host_dir" || return 1
+        _install_flake_git_stage_committed_files "$flake_root" "$host_dir" || return 1
 
     if declare -f nds_git_prefetch_flake_closure &>/dev/null; then
         nds_step_exec "Prefetching flake git inputs" \
@@ -108,16 +108,16 @@ nds_nixos_install_flake() {
     fi
 
     nds_step_exec "Installing NixOS from flake" \
-        _nixinstall_install_nixos_flake "$flake_root" "$hostname" "$NDS_CTX_HW_PLACEMENT" || return 1
+        _install_nixos_flake "$flake_root" "$hostname" "$NDS_CTX_HW_PLACEMENT" || return 1
 
     nds_step_exec "Installing git SSH keys on target" \
         nds_git_install_keys_to_target "/mnt" "$flake_root" || return 1
 
     nds_step_exec "Enrolling sops age key" \
-        _nds_enroll_sops_key "$flake_root" "$hostname" "/mnt" || return 1
+        _sops_enroll_key "$flake_root" "$hostname" "/mnt" || return 1
 
     nds_step_exec "Registering EFI boot entry" \
-        _nixinstall_register_efi_entry "$NDS_CTX_DISK" || return 1
+        _install_register_efi_entry "$NDS_CTX_DISK" || return 1
 
     nds_step_exec "Verifying installation" \
         nds_install_verify_local || return 1

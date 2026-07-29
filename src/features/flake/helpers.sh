@@ -6,6 +6,8 @@
 # Description:   Shared flake helpers for installFlake + remoteAction actions
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_SCAFFOLD_OVERWRITE_SKIP
+
 # Description: Export NDS_FLAKE_* env vars from the configurator answers so the
 # install pipeline (nds_nixos_install_flake) can read them. Also mirrors the
 # chosen host into NETWORK_HOSTNAME. Pass a source ("remote"|"local") to override
@@ -72,7 +74,7 @@ nds_flake_detect_disko() {
 # Description: Absolute path to the NDS install templates directory.
 # Returns:
 # - <String> templates dir (stdout)
-_nds_templates_dir() {
+_flake_templates_dir() {
     local bootstrap_dir="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
     echo "${bootstrap_dir}/lib/install/templates/scaffold"
 }
@@ -83,7 +85,7 @@ _nds_templates_dir() {
 # - flake_root: <String> Path to the checked-out flake
 # Returns:
 # - <String> Pipe-joined role names (stdout), empty when none found
-_nds_discover_roles() {
+_flake_discover_roles() {
     local flake_root="$1"
     local profiles_dir="${flake_root}/profiles"
 
@@ -102,7 +104,7 @@ _nds_discover_roles() {
 # - disk: <String> Device node (e.g. /dev/sda)
 # Returns:
 # - <String> Resolved device path (stdout)
-_nds_disk_by_id() {
+_flake_disk_by_id() {
     local disk="$1"
     local target link
     [[ -z "$disk" ]] && { echo "$disk"; return 0; }
@@ -129,13 +131,13 @@ _nds_disk_by_id() {
 # - system:     <String|optional> Nix system (default: x86_64-linux)
 # Returns:
 # - <Int> 0 on success, non-zero on failure
-_nds_scaffold_host_folder() {
+_flake_scaffold_host_folder() {
     local flake_root="$1"
     local hostname="$2"
     local role="$3"
     local system="${4:-x86_64-linux}"
     local tmpl_dir host_dir
-    tmpl_dir="$(_nds_templates_dir)"
+    tmpl_dir="$(_flake_templates_dir)"
     host_dir="${flake_root}/hosts/${system}/${hostname}"
 
     if [[ -z "$hostname" || -z "$role" ]]; then
@@ -146,7 +148,7 @@ _nds_scaffold_host_folder() {
     if [[ -d "$host_dir" ]]; then
         warn "Host folder already exists: $host_dir"
         if ! nds_skip_menu NDS_SCAFFOLD_OVERWRITE_SKIP; then
-            nds_askUserToProceed "Overwrite files in $host_dir?" || return 1
+            nds_ask_user_to_proceed "Overwrite files in $host_dir?" || return 1
         fi
     fi
 
@@ -195,7 +197,7 @@ _nds_scaffold_host_folder() {
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
     enc_bool="false"
     [[ "$encryption" == "true" ]] && enc_bool="true"
-    disk_by_id="$(_nds_disk_by_id "$disk")"
+    disk_by_id="$(_flake_disk_by_id "$disk")"
 
     sed -e "s|__DEVICE__|${disk_by_id}|g" \
         -e "s/__FSTYPE__/${fs_type}/g" \
@@ -221,7 +223,7 @@ nds_flake_scaffold_interactive() {
     local system="${2:-x86_64-linux}"
     local roles hosts_dir existing default_role
 
-    roles="$(_nds_discover_roles "$flake_root")"
+    roles="$(_flake_discover_roles "$flake_root")"
     if [[ -z "$roles" ]]; then
         return 1
     fi
@@ -262,7 +264,7 @@ nds_flake_scaffold_interactive() {
     nds_configurator_config_set "NETWORK_HOSTNAME" "$host"
     export NDS_FLAKE_HOST="$host"
 
-    _nds_scaffold_host_folder "$flake_root" "$host" "$role" "$system" || return 1
+    _flake_scaffold_host_folder "$flake_root" "$host" "$role" "$system" || return 1
 
     # Stage the updated checkout locally so the new host files are installed.
     export NDS_FLAKE_SOURCE="local"

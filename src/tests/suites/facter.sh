@@ -9,7 +9,7 @@
 suite_facter() {
     local fixture sample tmp cleaned
 
-    if ! declare -f _nixinstall_sanitize_facter_report &>/dev/null; then
+    if ! declare -f _install_sanitize_facter_report &>/dev/null; then
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ sanitize helper missing"
         return 0
@@ -37,7 +37,7 @@ in has
 
     tmp=$(mktemp)
     cp "$sample" "$tmp"
-    if _nixinstall_sanitize_facter_report "$tmp"; then
+    if _install_sanitize_facter_report "$tmp"; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ sanitize rewrites report"
     else
@@ -70,7 +70,7 @@ in { ok = has; n = builtins.length report.hardware.cpu; }
     if [[ -f "$fixture" ]]; then
         tmp=$(mktemp)
         cp "$fixture" "$tmp"
-        if _nixinstall_sanitize_facter_report "$tmp" \
+        if _install_sanitize_facter_report "$tmp" \
             && nix-instantiate --eval -E "
 let
   report = builtins.fromJSON (builtins.readFile \"${tmp}\");

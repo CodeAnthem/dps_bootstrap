@@ -115,7 +115,7 @@ nds_cfg_section_title() {
     nds_ui_b ""
 }
 
-_nds_cfg_prompt_value() {
+_settings_prompt_value() {
     local var="$1" label="$2" hint="$3" required="${4:-false}"
     local current value
 
@@ -165,7 +165,7 @@ nds_cfg_ask_string() {
     [[ -n "$(nds_cfg_get "$var")" ]] || nds_cfg_set "$var" "$default"
     local value current
     current=$(nds_cfg_get "$var")
-    value=$(_nds_cfg_prompt_value "$var" "$label" "$hint" "$required") || return 1
+    value=$(_settings_prompt_value "$var" "$label" "$hint" "$required") || return 1
     [[ -z "$value" ]] && return 0
     if [[ "$current" != "$value" ]]; then
         nds_cfg_set "$var" "$value"
@@ -209,7 +209,7 @@ nds_cfg_ask_int() {
     fi
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "$hint" false) || continue
+        value=$(_settings_prompt_value "$var" "$label" "$hint" false) || continue
         [[ -z "$value" ]] && return 0
         if validate_int "$value" "$min" "$max"; then
             nds_cfg_set "$var" "$value"
@@ -228,7 +228,7 @@ nds_cfg_ask_choice() {
     while true; do
         [[ -n "$labels" ]] && nds_cfg_print_choice_options "$options" "$labels"
         display=$(nds_cfg_display_choice "$current" "$labels")
-        value=$(_nds_cfg_prompt_value "$var" "$label" "$hint" false) || continue
+        value=$(_settings_prompt_value "$var" "$label" "$hint" false) || continue
         [[ -z "$value" ]] && return 0
         if validate_choice "$value" "$options"; then
             nds_cfg_set "$var" "$value"
@@ -245,7 +245,7 @@ nds_cfg_ask_ip() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(e.g. 192.168.1.1)" "$required") || continue
+        value=$(_settings_prompt_value "$var" "$label" "(e.g. 192.168.1.1)" "$required") || continue
         [[ -z "$value" ]] && return 0
         if validate_ip "$value"; then
             nds_cfg_set "$var" "$value"
@@ -262,7 +262,7 @@ nds_cfg_ask_hostname() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "" "$required") || continue
+        value=$(_settings_prompt_value "$var" "$label" "" "$required") || continue
         [[ -z "$value" ]] && return 0
         if validate_hostname "$value"; then
             nds_cfg_set "$var" "$value"
@@ -279,7 +279,7 @@ nds_cfg_ask_username() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "" "$required") || continue
+        value=$(_settings_prompt_value "$var" "$label" "" "$required") || continue
         [[ -z "$value" ]] && return 0
         if validate_username "$value"; then
             nds_cfg_set "$var" "$value"
@@ -300,7 +300,7 @@ nds_cfg_ask_path() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(absolute path)" "$required") || continue
+        value=$(_settings_prompt_value "$var" "$label" "(absolute path)" "$required") || continue
         [[ -z "$value" ]] && return 0
         if validate_path "$value"; then
             nds_cfg_set "$var" "$value"
@@ -317,7 +317,7 @@ nds_cfg_ask_url() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(https://, ssh://, git@host:owner/repo)" "$required") || continue
+        value=$(_settings_prompt_value "$var" "$label" "(https://, ssh://, git@host:owner/repo)" "$required") || continue
         [[ -z "$value" ]] && return 0
         if validate_url "$value"; then
             nds_cfg_set "$var" "$value"
@@ -440,7 +440,7 @@ nds_cfg_ask_locale() {
     local value current normalized
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(e.g. en_US.UTF-8)" true) || continue
+        value=$(_settings_prompt_value "$var" "$label" "(e.g. en_US.UTF-8)" true) || continue
         [[ -z "$value" ]] && return 0
         normalized="${value/.utf8/.UTF-8}"
         if validate_locale "$normalized"; then
@@ -458,7 +458,7 @@ nds_cfg_ask_keyboard() {
     local value current
     current=$(nds_cfg_get "$var")
     while true; do
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(us, de, ch)" true) || continue
+        value=$(_settings_prompt_value "$var" "$label" "(us, de, ch)" true) || continue
         [[ -z "$value" ]] && return 0
         value="${value,,}"
         if validate_keyboard "$value"; then
@@ -475,7 +475,7 @@ nds_cfg_ask_country() {
     [[ -n "$(nds_cfg_get "$var")" ]] || nds_cfg_set "$var" ""
     while true; do
         local value
-        value=$(_nds_cfg_prompt_value "$var" "$label" "(US, DE, CH — empty = manual)" false) || continue
+        value=$(_settings_prompt_value "$var" "$label" "(US, DE, CH — empty = manual)" false) || continue
         [[ -z "$value" ]] && return 0
         value="${value^^}"
         if validate_country "$value"; then

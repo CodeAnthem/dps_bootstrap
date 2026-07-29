@@ -6,6 +6,8 @@
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_CONFIG_CONFIRM_SKIP
+
 declare -gA CONFIG_DATA=()
 declare -gA CONFIG_DEFAULTS=()
 declare -gA PRESET_REGISTRY=()
@@ -103,7 +105,7 @@ nds_config_snapshot_defaults() {
     done
 }
 
-_nds_export_is_always() {
+_settings_export_is_always() {
     local key="$1" a
     for a in $_NDS_EXPORT_ALWAYS; do
         [[ "$key" == "$a" ]] && return 0
@@ -111,7 +113,7 @@ _nds_export_is_always() {
     return 1
 }
 
-_nds_export_is_when_set() {
+_settings_export_is_when_set() {
     local key="$1" a
     for a in $_NDS_EXPORT_WHEN_SET; do
         [[ "$key" == "$a" ]] && return 0
@@ -119,7 +121,7 @@ _nds_export_is_when_set() {
     return 1
 }
 
-_nds_export_is_hardware() {
+_settings_export_is_hardware() {
     local key="$1" a
     for a in $_NDS_EXPORT_HARDWARE; do
         [[ "$key" == "$a" ]] && return 0
@@ -129,7 +131,7 @@ _nds_export_is_hardware() {
 
 # Whether a key belongs in the concise export: auto-detected essentials always,
 # otherwise only when the user changed it from the seeded default.
-_nds_export_is_skipped() {
+_settings_export_is_skipped() {
     local key="$1" a
     for a in $_NDS_EXPORT_SKIP; do
         [[ "$key" == "$a" ]] && return 0
@@ -137,14 +139,14 @@ _nds_export_is_skipped() {
     return 1
 }
 
-_nds_export_should_include() {
+_settings_export_should_include() {
     local key="$1" cur="${CONFIG_DATA[$1]}"
-    _nds_export_is_skipped "$key" && return 1
-    if _nds_export_is_when_set "$key"; then
+    _settings_export_is_skipped "$key" && return 1
+    if _settings_export_is_when_set "$key"; then
         [[ -n "$cur" ]]
         return
     fi
-    if _nds_export_is_always "$key"; then
+    if _settings_export_is_always "$key"; then
         [[ -n "$cur" ]]
         return
     fi
@@ -160,7 +162,7 @@ nds_configurator_config_export_modified() {
     local varname
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
-        _nds_export_should_include "$varname" || continue
+        _settings_export_should_include "$varname" || continue
         echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 }
@@ -173,8 +175,8 @@ nds_configurator_config_export_grouped() {
 
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
-        _nds_export_should_include "$varname" || continue
-        if _nds_export_is_hardware "$varname"; then
+        _settings_export_should_include "$varname" || continue
+        if _settings_export_is_hardware "$varname"; then
             hardware+=("$varname")
         else
             portable+=("$varname")
@@ -260,7 +262,7 @@ nds_configurator_preset_get_display() {
     echo "$display"
 }
 
-_nds_configurator_sort_presets() {
+_settings_configurator_sort_presets() {
     local presets=("$@")
     [[ ${#presets[@]} -eq 0 ]] && return 0
     local sorted=() preset priority
@@ -276,7 +278,7 @@ nds_configurator_preset_get_all_enabled() {
     for preset in "${!PRESET_REGISTRY[@]}"; do
         [[ "${PRESET_REGISTRY[$preset]}" == "enabled" ]] && presets+=("$preset")
     done
-    _nds_configurator_sort_presets "${presets[@]}"
+    _settings_configurator_sort_presets "${presets[@]}"
 }
 
 nds_configurator_reset_for_action() {
@@ -314,6 +316,6 @@ nds_configurator_confirm_config_saved() {
         log "Configuration review confirmation skipped"
         return 0
     fi
-    nds_askUserToProceed "Continue to installation review" || return 1
+    nds_ask_user_to_proceed "Continue to installation review" || return 1
     return 0
 }

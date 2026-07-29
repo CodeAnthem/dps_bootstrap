@@ -6,7 +6,7 @@
 # ==================================================================================================
 
 # Description: Normalize public key to "type body" for comparison.
-_nds_git_gh_pubkey_line() {
+_git_gh_pubkey_line() {
     local pub_file="$1"
     awk '{print $1" "$2}' "$pub_file"
 }
@@ -18,7 +18,7 @@ nds_git_gh_pubkey_on_user() {
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
-    key_line="$(_nds_git_gh_pubkey_line "$pub_file")"
+    key_line="$(_git_gh_pubkey_line "$pub_file")"
     "${gh_cmd[@]}" ssh-key list --json key --jq '.[].key' 2>/dev/null \
         | grep -qF "$key_line"
 }
@@ -30,7 +30,7 @@ nds_git_gh_pubkey_is_readonly() {
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
-    key_line="$(_nds_git_gh_pubkey_line "$pub_file")"
+    key_line="$(_git_gh_pubkey_line "$pub_file")"
     ro=$("${gh_cmd[@]}" ssh-key list --json key,read_only \
         --jq ".[] | select(.key==\"${key_line}\") | .read_only" 2>/dev/null | head -1)
     [[ "$ro" == "true" ]]
@@ -49,7 +49,7 @@ nds_git_gh_ssh_key_is_readonly() {
 }
 
 # Description: List account SSH key ids that match a title.
-_nds_git_gh_user_key_ids_by_title() {
+_git_gh_user_key_ids_by_title() {
     local title="$1"
     local -a gh_cmd=()
 
@@ -58,7 +58,7 @@ _nds_git_gh_user_key_ids_by_title() {
 }
 
 # Description: Delete one account SSH key by id.
-_nds_git_gh_user_key_delete() {
+_git_gh_user_key_delete() {
     local id="$1"
     local -a gh_cmd=()
 
@@ -71,7 +71,7 @@ _nds_git_gh_user_key_delete() {
 # Arguments:
 # - title:   <Nameref> Title to register (may be suffixed when alternate)
 # - prompt:  <String|optional> User-facing collision message
-_nds_git_gh_resolve_title_collision() {
+_git_gh_resolve_title_collision() {
     local -n _title=$1
     local prompt="${2:-SSH key title \"${_title}\" already exists on GitHub with a different public key}"
     local choice suffix n=2
@@ -95,7 +95,7 @@ _nds_git_gh_resolve_title_collision() {
         alternate)
             while :; do
                 suffix="${_title}-${n}"
-                if [[ -z "$(_nds_git_gh_user_key_ids_by_title "$suffix")" ]]; then
+                if [[ -z "$(_git_gh_user_key_ids_by_title "$suffix")" ]]; then
                     _title="$suffix"
                     nds_ui_i "Using alternate SSH key title: ${_title}"
                     nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "alternate"
@@ -119,7 +119,7 @@ _nds_git_gh_resolve_title_collision() {
 # - title:    <String> Key title
 # Returns:
 # - <Bool> 0 on success
-_nds_git_gh_api_add_readonly_key() {
+_git_gh_api_add_readonly_key() {
     local pub_file="$1" title="$2"
     local key_body payload err rc
     local -a gh_cmd=()
@@ -158,8 +158,8 @@ nds_git_gh_register_account_key() {
         return 1
     fi
 
-    if [[ -n "$(_nds_git_gh_user_key_ids_by_title "$title")" ]]; then
-        _nds_git_gh_resolve_title_collision title || return 1
+    if [[ -n "$(_git_gh_user_key_ids_by_title "$title")" ]]; then
+        _git_gh_resolve_title_collision title || return 1
         if nds_git_gh_pubkey_on_user "$pub_file"; then
             nds_git_gh_pubkey_is_readonly "$pub_file" && return 0
             error "SSH key on GitHub is read/write"
@@ -170,11 +170,11 @@ nds_git_gh_register_account_key() {
     while IFS= read -r id; do
         [[ -n "$id" ]] || continue
         if [[ "$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null)" == "overwrite" ]]; then
-            _nds_git_gh_user_key_delete "$id" || true
+            _git_gh_user_key_delete "$id" || true
         fi
-    done < <(_nds_git_gh_user_key_ids_by_title "$title")
+    done < <(_git_gh_user_key_ids_by_title "$title")
 
-    if ! _nds_git_gh_api_add_readonly_key "$pub_file" "$title"; then
+    if ! _git_gh_api_add_readonly_key "$pub_file" "$title"; then
         error "Could not add read-only SSH key to GitHub account"
         nds_ui_i "  Manual test:"
         nds_ui_i "    gh api --method POST user/keys -H \"X-GitHub-Api-Version: 2022-11-28\" \\"
@@ -192,8 +192,8 @@ nds_git_gh_register_account_key() {
     nds_ui_i "  Delete the key at github.com/settings/keys and report this if the API ignored read_only."
     while IFS= read -r id; do
         [[ -n "$id" ]] || continue
-        _nds_git_gh_user_key_delete "$id" || true
-    done < <(_nds_git_gh_user_key_ids_by_title "$title")
+        _git_gh_user_key_delete "$id" || true
+    done < <(_git_gh_user_key_ids_by_title "$title")
     return 1
 }
 

@@ -132,7 +132,7 @@ nds_git_auth_wizard_step_repo() {
     local host="$1" owner="$2" repo="$3"
     local root_url
 
-    root_url="$(_nds_git_to_ssh "$host" "$owner" "$repo")"
+    root_url="$(_git_to_ssh "$host" "$owner" "$repo")"
     nds_git_wizard_screen_single "$host" "$owner" "$repo"
     nds_git_wizard_route_menu "this repository" "$root_url" --repos "${owner}/${repo}"
 }

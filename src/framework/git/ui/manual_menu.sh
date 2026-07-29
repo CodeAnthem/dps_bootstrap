@@ -73,7 +73,7 @@ nds_git_wizard_confirm_manual_deploy() {
     nds_ui_i "Repository: ${owner}/${repo}"
     nds_ui_i "Title: $(nds_git_deploy_key_title "$owner" "$repo")"
     nds_ui_b ""
-    nds_askUserToProceed "Added the deploy key on ${owner}/${repo}?" || return 1
+    nds_ask_user_to_proceed "Added the deploy key on ${owner}/${repo}?" || return 1
     return 0
 }
 
@@ -87,7 +87,7 @@ nds_git_wizard_confirm_manual_account() {
     nds_ui_i "GitHub: github.com/settings/ssh/new"
     nds_ui_i "Title: $(nds_git_ssh_key_title)"
     nds_ui_b ""
-    nds_askUserToProceed "Added this SSH key to the machine user account?" || return 1
+    nds_ask_user_to_proceed "Added this SSH key to the machine user account?" || return 1
     return 0
 }
 

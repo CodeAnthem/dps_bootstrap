@@ -10,6 +10,20 @@ declare -ga NDS_DEFAULT_PRESET_BUNDLE=(
 )
 
 declare -g NDS_FRAMEWORK_REST_LOADED=false
+declare -g NDS_FRAMEWORK_SETTINGS_LOADED=false
+
+# Description: Load settingsManager and validator-facing framework pieces on demand.
+nds_framework_load_settings_manager() {
+    [[ "${NDS_FRAMEWORK_SETTINGS_LOADED}" == "true" ]] && return 0
+
+    nds_import_file "${SCRIPT_DIR}/framework/settings-manager/load.sh" || return 1
+    nds_settings_manager_load \
+        "${SCRIPT_DIR}/framework/settings-manager" \
+        "${SCRIPT_DIR}/standalone/validators" || return 1
+
+    NDS_FRAMEWORK_SETTINGS_LOADED=true
+    return 0
+}
 
 # Description: Catalog builtin presets without enabling or seeding.
 nds_settings_catalog_init() {
@@ -26,6 +40,7 @@ nds_settings_catalog_init() {
 nds_configurator_init() {
     debug "Initializing settings manager..."
 
+    nds_framework_load_settings_manager || return 1
     nds_settings_catalog_init || return 1
 
     nds_preset_enable_bundle "$SCRIPT_DIR" "${NDS_DEFAULT_PRESET_BUNDLE[@]}" || {
@@ -80,6 +95,8 @@ nds_framework_load_remaining() {
 # Description: After action import: allow settingsManager extension, catalog presets,
 #              then load heavy modules. Action enables its preset bundle next.
 nds_framework_prepare_action_runtime() {
+    nds_framework_load_settings_manager || return 1
+
     if declare -f action_extend_settings_manager &>/dev/null; then
         action_extend_settings_manager || return 1
     fi

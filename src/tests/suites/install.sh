@@ -8,8 +8,8 @@
 suite_install() {
     local out
 
-    _nds_nix_store_free_mb() { echo 100; }
-    out=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    _install_nix_store_free_mb() { echo 100; }
+    out=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
     if [[ "$out" == "experimental-features = nix-command flakes" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ nix config: no store override before target root is mounted"
@@ -25,7 +25,7 @@ suite_install() {
     mkdir -p "${fake_root}/nix/store"
     export NDS_NIX_TARGET_ROOT="$fake_root"
     export NDS_NIX_INSTALL_STORE_FORCE=1
-    out=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    out=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
     if [[ "$out" == *$'\n'"store = ${fake_root}"* ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ nix config: chroot store when target root is mounted"
@@ -37,8 +37,8 @@ suite_install() {
     unset NDS_NIX_TARGET_ROOT NDS_NIX_INSTALL_STORE_FORCE
     rm -rf "$fake_root"
 
-    _nds_nix_store_free_mb() { echo 8192; }
-    out=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+    _install_nix_store_free_mb() { echo 8192; }
+    out=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
     if [[ "$out" == "experimental-features = nix-command flakes" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ nix config: large store unchanged"
@@ -46,11 +46,11 @@ suite_install() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ nix config: large store should pass through base config"
     fi
-    unset -f _nds_nix_store_free_mb
+    unset -f _install_nix_store_free_mb
 
     nds_test_snapshot_config
     CONFIG_DATA[BOOT_LOADER]=grub
-    out=$(_nixinstall_efi_loader_path)
+    out=$(_install_efi_loader_path)
     if [[ "$out" == '\\EFI\\nixos\\grubx64.efi' ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ EFI loader path: grub"
@@ -60,7 +60,7 @@ suite_install() {
     fi
 
     CONFIG_DATA[BOOT_LOADER]=systemd-boot
-    out=$(_nixinstall_efi_loader_path)
+    out=$(_install_efi_loader_path)
     if [[ "$out" == '\\EFI\\systemd\\systemd-bootx64.efi' ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ EFI loader path: systemd-boot"
@@ -71,7 +71,7 @@ suite_install() {
     nds_test_reset_config
 
     if [[ ! -f /mnt/boot/grub/grub.cfg ]]; then
-        if _nds_install_verify_grub_bios /dev/null; then
+        if _install_verify_grub_bios /dev/null; then
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ verify grub bios: should fail without grub.cfg on /mnt"
         else
@@ -83,8 +83,8 @@ suite_install() {
         console "  ✓ verify grub bios: skipped (live /mnt layout)"
     fi
 
-    if declare -f _nds_run_age_keygen &>/dev/null; then
-        if grep -qE 'env NIX_CONFIG=.*_nds_run_age_keygen' "${BASH_SOURCE[0]%/*}/../../lib/install/sops.sh" 2>/dev/null; then
+    if declare -f _sops_run_age_keygen &>/dev/null; then
+        if grep -qE 'env NIX_CONFIG=.*_sops_run_age_keygen' "${SCRIPT_DIR}/features/install/sops.sh" 2>/dev/null; then
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ sops: age-keygen must not be invoked via env as external command"
         else
@@ -93,8 +93,8 @@ suite_install() {
         fi
     fi
 
-    if declare -f _nds_install_disk_has_bios_grub &>/dev/null; then
-        if _nds_install_disk_has_bios_grub /dev/null; then
+    if declare -f _install_disk_has_bios_grub &>/dev/null; then
+        if _install_disk_has_bios_grub /dev/null; then
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ bios_grub detect: /dev/null should not match"
         else
@@ -103,8 +103,8 @@ suite_install() {
         fi
     fi
 
-    if declare -f _nds_nix_canonical_store_path &>/dev/null; then
-        out=$(_nds_nix_canonical_store_path /mnt /mnt/nix/store/abc-nixos-system-host)
+    if declare -f _install_nix_canonical_store_path &>/dev/null; then
+        out=$(_install_nix_canonical_store_path /mnt /mnt/nix/store/abc-nixos-system-host)
         if [[ "$out" == '/nix/store/abc-nixos-system-host' ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ canonical store path: strips /mnt prefix"
@@ -114,8 +114,8 @@ suite_install() {
         fi
     fi
 
-    if declare -f _nds_nix_flake_system_ref &>/dev/null; then
-        out=$(_nds_nix_flake_system_ref "control-toolkit")
+    if declare -f _install_nix_flake_system_ref &>/dev/null; then
+        out=$(_install_nix_flake_system_ref "control-toolkit")
         if [[ "$out" == 'nixosConfigurations."control-toolkit".config.system.build.toplevel' ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ flake system ref: nixosConfigurations host attr"

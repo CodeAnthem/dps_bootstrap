@@ -18,18 +18,18 @@
 # substitution (no pipe, so `set -o pipefail` cannot trip on SIGPIPE) and
 # truncates to N. Alphanumeric only, so it is safe on cryptsetup stdin and in
 # shell contexts.
-# Usage: _nds_urandom_chars <char_count>
-_nds_urandom_chars() {
+# Usage: _install_urandom_chars <char_count>
+_install_urandom_chars() {
     nds_install_urandom_chars "$@"
 }
 
 # Description: Generate or collect unlock secrets (password and/or keyfile)
 # and save them to the runtime secrets directory for the backup bundle and
-# for _nixinstall_format_luks to read back. Run before partitioning.
+# for _install_format_luks to read back. Run before partitioning.
 # NOTE: This runs under nds_step_exec (a subshell with stderr -> install log),
 # so interactive prompts write to /dev/tty explicitly. Do NOT rely on env vars
 # exported here — they do not propagate back to the parent shell.
-_nixinstall_generate_encryption_secrets() {
+_install_generate_encryption_secrets() {
     local use_password use_key password_auto password_length use_key_auto key_length
     local runtime_secrets
 
@@ -48,7 +48,7 @@ _nixinstall_generate_encryption_secrets() {
         local passphrase pw_file="$runtime_secrets/luks_password.txt"
         if [[ "$password_auto" == "true" ]]; then
             log "Generating password (/dev/urandom, $password_length hex chars)"
-            passphrase=$(_nds_urandom_chars "$password_length")
+            passphrase=$(_install_urandom_chars "$password_length")
             if [[ -z "$passphrase" ]]; then
                 error "Password generation from /dev/urandom failed"
                 return 1
@@ -114,8 +114,8 @@ _nixinstall_generate_encryption_secrets() {
 # subshell boundaries), add a second slot if both password and key are
 # present, open it, and create the root filesystem on the mapped device.
 # Always LUKS2 + Argon2id (cryptsetup defaults).
-# Usage: _nixinstall_format_luks "partition"
-_nixinstall_format_luks() {
+# Usage: _install_format_luks "partition"
+_install_format_luks() {
     local partition="$1"
     local use_password use_key runtime_secrets
 

@@ -6,7 +6,7 @@
 # ==================================================================================================
 
 # Description: Write personalized quick-start markdown from NDS_CTX_* snapshot.
-_nds_install_bundle_quickstart() {
+_install_bundle_quickstart() {
     local dest="$1"
     local hostname admin_user ssh_port ssh_pw_auth admin_ssh_key port_opt host_ip
     local encryption use_password use_key key_device key_file

@@ -10,7 +10,7 @@
 # - dir: <String> Directory to scan
 # Returns:
 # - <String> candidate paths (stdout)
-_nds_git_discover_in_dir() {
+_git_discover_in_dir() {
     local dir="$1"
     local f base
 
@@ -29,8 +29,8 @@ nds_git_discover_key_candidates() {
     local owner_key
     owner_key="/root/.ssh/$(nds_git_secrets_basename)"
     {
-        _nds_git_discover_in_dir "$PWD"
-        _nds_git_discover_in_dir "/root/.ssh"
+        _git_discover_in_dir "$PWD"
+        _git_discover_in_dir "/root/.ssh"
         [[ -f "$owner_key" ]] && printf '%s\n' "$owner_key"
         if [[ -n "${NDS_GIT_IMPORT_KEY_PATH:-}" && -f "${NDS_GIT_IMPORT_KEY_PATH}" ]]; then
             printf '%s\n' "${NDS_GIT_IMPORT_KEY_PATH}"

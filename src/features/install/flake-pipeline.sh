@@ -14,7 +14,7 @@ nds_flake_install_prepare_and_verify() {
     local local_path repo_url
 
     nds_flake_prepare "$source"
-    _nixinstall_gather_flake_context
+    _install_gather_flake_context
     repo_url="$(nds_install_ctx_get FLAKE_REPO_URL)"
     local_path="$(nds_install_ctx_get FLAKE_LOCAL_PATH)"
 
@@ -34,7 +34,7 @@ nds_flake_install_prepare_and_verify() {
 # Description: Preflight + confirm screen before flake install runs.
 nds_flake_install_confirm() {
     local disk_strategy disk_target install_mode target_ip
-    _nixinstall_gather_flake_context
+    _install_gather_flake_context
     disk_strategy="$(nds_install_ctx_get DISK_STRATEGY)"
     disk_strategy="${disk_strategy:-nds}"
     disk_target="$(nds_install_ctx_get DISK)"

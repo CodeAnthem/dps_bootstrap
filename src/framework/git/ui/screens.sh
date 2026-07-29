@@ -14,8 +14,8 @@ nds_git_ui_log_closure_repo_list() {
     local url ssh_url parsed host owner repo
     nds_ui_h "Git repositories"
     for url in "$@"; do
-        ssh_url=$(_nds_git_ssh_url "$url")
-        if parsed=$(_nds_git_parse "$ssh_url"); then
+        ssh_url=$(_git_ssh_url "$url")
+        if parsed=$(_git_parse "$ssh_url"); then
             IFS=$'\t' read -r host owner repo <<< "$parsed"
             nds_ui_i "  ${owner}/${repo}"
         else
@@ -29,7 +29,7 @@ nds_git_ui_log_closure_repo_list() {
 # Returns:
 # - <Bool> 0 when user wants cleanup
 nds_git_ui_ask_clear_gh_session() {
-    nds_askUserToProceed "Clear gh session on this ISO?"
+    nds_ask_user_to_proceed "Clear gh session on this ISO?"
 }
 
 # Description: Short intro — deploy keys and machine-user account keys.
@@ -53,8 +53,8 @@ nds_git_wizard_print_repo() {
     local status="${2:-}"
     local ssh_url parsed host owner repo
 
-    ssh_url=$(_nds_git_ssh_url "$url")
-    if parsed=$(_nds_git_parse "$ssh_url"); then
+    ssh_url=$(_git_ssh_url "$url")
+    if parsed=$(_git_parse "$ssh_url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         if [[ "$status" == "ok" ]]; then
             nds_ui_i "  [ok]  ${host}/${owner}/${repo}"
@@ -75,8 +75,8 @@ nds_git_wizard_collect_register_urls() {
     local url parsed host owner repo register_url
     NDS_GIT_AUTH_REGISTER_URLS=()
     for url in "$@"; do
-        url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$url") || continue
+        url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
         [[ "$register_url" == http* ]] && NDS_GIT_AUTH_REGISTER_URLS+=("$register_url")
@@ -95,16 +95,16 @@ nds_git_wizard_screen_list_repos() {
 
     nds_ui_h "Repositories"
     for url in "${_urls[@]}"; do
-        ssh_url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$ssh_url") || continue
+        ssh_url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$ssh_url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         key="${owner}/${repo}"
         repo_sample[$key]="$url"
         [[ -z "${repo_status[$key]:-}" ]] && repo_status[$key]="ok"
     done
     for url in "${_failed[@]}"; do
-        ssh_url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$ssh_url") || continue
+        ssh_url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$ssh_url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         repo_status["${owner}/${repo}"]="missing"
         [[ -z "${repo_sample[${owner}/${repo}]:-}" ]] && repo_sample["${owner}/${repo}"]="$url"
@@ -125,7 +125,7 @@ nds_git_wizard_screen_single() {
     local host="$1" owner="$2" repo="$3"
 
     nds_git_wizard_screen_intro
-    nds_git_wizard_collect_register_urls "$(_nds_git_to_ssh "$host" "$owner" "$repo")"
+    nds_git_wizard_collect_register_urls "$(_git_to_ssh "$host" "$owner" "$repo")"
     nds_ui_h "Repository"
     nds_ui_i "  ${host}/${owner}/${repo}"
     nds_ui_b ""

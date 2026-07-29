@@ -11,7 +11,7 @@
 # Uses BOOT_UEFI_MODE when set; otherwise detects from firmware.
 # Returns:
 # - <Bool> 0 when UEFI
-_nds_install_live_is_uefi() {
+_install_live_is_uefi() {
     local configured
     nds_install_ctx_ensure
     configured="$(nds_install_ctx_get BOOT_UEFI_MODE)"
@@ -23,7 +23,7 @@ _nds_install_live_is_uefi() {
 # Description: EFI loader path for efibootmgr from the configured bootloader preset.
 # Returns:
 # - <String> Backslash-separated EFI path (stdout)
-_nixinstall_efi_loader_path() {
+_install_efi_loader_path() {
     local loader
     nds_install_ctx_ensure
     loader="$(nds_install_ctx_get BOOT_LOADER)"
@@ -40,7 +40,7 @@ _nixinstall_efi_loader_path() {
 # - disk: <String> Block device
 # Returns:
 # - <Bool> 0 when bios_grub is present
-_nds_install_disk_has_bios_grub() {
+_install_disk_has_bios_grub() {
     local disk="$1"
 
     [[ -n "$disk" && -b "$disk" ]] || return 1
@@ -52,7 +52,7 @@ _nds_install_disk_has_bios_grub() {
 # - part: <String> Partition block device (e.g. /dev/sda1)
 # Returns:
 # - <Bool> 0 when non-empty / GRUB present
-_nds_install_bios_grub_populated() {
+_install_bios_grub_populated() {
     local part="$1"
 
     [[ -b "$part" ]] || return 1
@@ -64,12 +64,12 @@ _nds_install_bios_grub_populated() {
 # - disk: <String> Target block device
 # Returns:
 # - <Bool> 0 when boot code is present
-_nds_install_grub_bios_boot_ok() {
+_install_grub_bios_boot_ok() {
     local disk="$1"
 
     [[ -n "$disk" && -b "$disk" ]] || return 1
     dd if="$disk" bs=512 count=1 status=none 2>/dev/null | grep -aq GRUB && return 0
-    if _nds_install_disk_has_bios_grub "$disk" && _nds_install_bios_grub_populated "${disk}1"; then
+    if _install_disk_has_bios_grub "$disk" && _install_bios_grub_populated "${disk}1"; then
         return 0
     fi
     return 1
@@ -80,14 +80,14 @@ _nds_install_grub_bios_boot_ok() {
 # - disk: <String> Target block device
 # Returns:
 # - <Bool> 0 on success
-_nds_install_grub_install_bios() {
+_install_grub_install_bios() {
     local disk="$1" root log
 
     root="${NDS_NIX_TARGET_ROOT:-/mnt}"
     log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
 
     [[ -e "${root}/boot/grub/grub.cfg" ]] || return 1
-    _nds_nix_system_profile_ok "$root" || return 1
+    _install_nix_system_profile_ok "$root" || return 1
 
     info "Installing GRUB boot code on ${disk} (BIOS)"
     if ! nixos-enter --root "$root" -- \
@@ -96,7 +96,7 @@ _nds_install_grub_install_bios() {
         return 1
     fi
     nds_install_log "grub: installed BIOS boot code on ${disk}"
-    _nds_install_grub_bios_boot_ok "$disk"
+    _install_grub_bios_boot_ok "$disk"
 }
 
 # Description: Register the NixOS EFI boot entry in firmware NVRAM.
@@ -107,11 +107,11 @@ _nds_install_grub_install_bios() {
 # - disk: <String> Target block device (ESP is partition 1)
 # Returns:
 # - <Bool> 0 on success or when BIOS mode; 1 when UEFI registration fails
-_nixinstall_register_efi_entry() {
+_install_register_efi_entry() {
     local disk="$1"
     local loader_path
 
-    _nds_install_live_is_uefi || return 0
+    _install_live_is_uefi || return 0
 
     if [[ ! -d /sys/firmware/efi/efivars ]]; then
         error "Configured UEFI install but live ISO is not booted in UEFI mode"
@@ -119,7 +119,7 @@ _nixinstall_register_efi_entry() {
         return 1
     fi
 
-    loader_path=$(_nixinstall_efi_loader_path)
+    loader_path=$(_install_efi_loader_path)
 
     if ! command -v efibootmgr &>/dev/null; then
         error "efibootmgr not available — cannot register EFI boot entry"

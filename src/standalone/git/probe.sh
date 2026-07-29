@@ -32,7 +32,7 @@ nds_git_probe_public() {
     local url="$1" ssh_url
     local -a envv=()
 
-    ssh_url=$(_nds_git_ssh_url "$url")
+    ssh_url=$(_git_ssh_url "$url")
     while IFS= read -r line; do envv+=("$line"); done < <(nds_git_ssh_env_bare)
     if command -v timeout &>/dev/null; then
         timeout 8 env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
@@ -53,7 +53,7 @@ nds_git_clone_with_key() {
     local url="$1" dest="$2" depth="${3:-1}" key_path="${4:-}" ssh_url
     local -a envv=()
 
-    ssh_url=$(_nds_git_ssh_url "$url")
+    ssh_url=$(_git_ssh_url "$url")
     if [[ -n "$key_path" ]]; then
         while IFS= read -r line; do envv+=("$line"); done < <(nds_git_ssh_env_for_key "$key_path")
     else

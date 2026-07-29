@@ -6,6 +6,8 @@
 # Description:   Category menu — calls per-preset configure/summary/validate (no hook framework)
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_SKIP_MENU
+
 nds_configurator_prompt_errors() {
     local presets=("$@") preset fixed=false
     if [[ ${#presets[@]} -eq 0 ]]; then

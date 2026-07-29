@@ -11,7 +11,7 @@
 # - device: <String> Block device path
 # Returns:
 # - <String> UUID (stdout)
-_nds_blkid_uuid() {
+_install_blkid_uuid() {
     local device="$1"
     blkid -s UUID -o value "$device" 2>/dev/null || true
 }
@@ -21,14 +21,14 @@ _nds_blkid_uuid() {
 # - mountpoint: <String> Mount path
 # Returns:
 # - <String> source device (stdout)
-_nds_findmnt_source() {
+_install_findmnt_source() {
     local mountpoint="$1"
     findmnt -n -o SOURCE --target "$mountpoint" 2>/dev/null || true
 }
 
 # Find LUKS partition UUID (works for nds, disko, and nvme layouts).
-# Usage: _nixinstall_find_luks_uuid ["disk"]
-_nixinstall_find_luks_uuid() {
+# Usage: _install_find_luks_uuid ["disk"]
+_install_find_luks_uuid() {
     local disk="${1:-}"
     local part uuid backing
 
@@ -54,7 +54,7 @@ _nixinstall_find_luks_uuid() {
             fi
         done
 
-        part=$(_nixinstall_disk_part "$disk" 2)
+        part=$(_install_disk_part "$disk" 2)
         uuid=$(blkid -s UUID -o value "$part" 2>/dev/null || true)
         if [[ -n "$uuid" ]]; then
             echo "$uuid"
@@ -68,8 +68,8 @@ _nixinstall_find_luks_uuid() {
 # Description: Write mounts.nix with by-uuid root/boot mounts (and LUKS when encrypted).
 # Skips when committed by-label mounts.nix already exists.
 # Prefer UUID over filesystem labels — VMware hard resets often race by-label in initrd.
-# Usage: _nixinstall_write_mounts_nix "disk" "hostname" "flake_root" "encryption" ["host_dir_rel"]
-_nixinstall_write_mounts_nix() {
+# Usage: _install_write_mounts_nix "disk" "hostname" "flake_root" "encryption" ["host_dir_rel"]
+_install_write_mounts_nix() {
     local disk="$1"
     local hostname="$2"
     local flake_root="$3"
@@ -91,8 +91,8 @@ _nixinstall_write_mounts_nix() {
         return 0
     fi
 
-    root_dev="$(_nds_findmnt_source /mnt)"
-    boot_dev="$(_nds_findmnt_source /mnt/boot)"
+    root_dev="$(_install_findmnt_source /mnt)"
+    boot_dev="$(_install_findmnt_source /mnt/boot)"
 
     if [[ -z "$root_dev" ]]; then
         if [[ "$use_encryption" == "true" ]]; then
@@ -105,13 +105,13 @@ _nixinstall_write_mounts_nix() {
 
     # Resolve to underlying block UUID when findmnt returns a mapper or path
     if [[ -e /dev/mapper/cryptroot && "$root_dev" == /dev/mapper/cryptroot ]]; then
-        root_uuid="$(_nds_blkid_uuid /dev/mapper/cryptroot)"
+        root_uuid="$(_install_blkid_uuid /dev/mapper/cryptroot)"
         root_fs=$(blkid -s TYPE -o value /dev/mapper/cryptroot 2>/dev/null || echo ext4)
     else
-        root_uuid="$(_nds_blkid_uuid "$root_dev")"
+        root_uuid="$(_install_blkid_uuid "$root_dev")"
         root_fs=$(blkid -s TYPE -o value "$root_dev" 2>/dev/null || echo ext4)
     fi
-    boot_uuid="$(_nds_blkid_uuid "$boot_dev")"
+    boot_uuid="$(_install_blkid_uuid "$boot_dev")"
     boot_fs=$(blkid -s TYPE -o value "$boot_dev" 2>/dev/null || echo vfat)
 
     if [[ -z "$root_uuid" ]]; then
@@ -124,7 +124,7 @@ _nixinstall_write_mounts_nix() {
     fi
 
     if [[ "$use_encryption" == "true" ]]; then
-        if ! luks_uuid=$(_nixinstall_find_luks_uuid "$disk"); then
+        if ! luks_uuid=$(_install_find_luks_uuid "$disk"); then
             error "Could not determine LUKS UUID (disk=${disk})"
             return 1
         fi
@@ -162,6 +162,6 @@ _nixinstall_write_mounts_nix() {
 }
 
 # Legacy alias — callers migrating from machine.nix
-_nixinstall_write_machine_facts() {
-    _nixinstall_write_mounts_nix "$@"
+_install_write_machine_facts() {
+    _install_write_mounts_nix "$@"
 }

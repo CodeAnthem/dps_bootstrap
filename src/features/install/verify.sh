@@ -11,7 +11,7 @@ declare -ga _NDS_INSTALL_VERIFY_FAILS=()
 # Description: Record a failed verification check.
 # Arguments:
 # - message: <String> Human-readable failure description
-_nds_install_verify_fail() {
+_install_verify_fail() {
     _NDS_INSTALL_VERIFY_FAILS+=("$1")
 }
 
@@ -20,11 +20,11 @@ _nds_install_verify_fail() {
 # - disk: <String> Target block device
 # Returns:
 # - <Bool> 0 when GRUB boot code is present
-_nds_install_verify_grub_bios() {
+_install_verify_grub_bios() {
     local disk="$1"
 
     [[ -e /mnt/boot/grub/grub.cfg ]] || return 1
-    _nds_install_grub_bios_boot_ok "$disk"
+    _install_grub_bios_boot_ok "$disk"
 }
 
 # Description: Verify UEFI bootloader files exist on the ESP.
@@ -32,7 +32,7 @@ _nds_install_verify_grub_bios() {
 # - loader: <String> grub | systemd-boot | refind
 # Returns:
 # - <Bool> 0 when the expected EFI binary is present
-_nds_install_verify_efi_files() {
+_install_verify_efi_files() {
     local loader="$1"
 
     case "$loader" in
@@ -59,7 +59,7 @@ _nds_install_verify_efi_files() {
 # - loader: <String> Bootloader id
 # - uefi:   <String> true | false
 # - disk:   <String> Target block device
-_nds_install_verify_bootloader() {
+_install_verify_bootloader() {
     local loader="$1"
     local uefi="$2"
     local disk="$3"
@@ -67,27 +67,27 @@ _nds_install_verify_bootloader() {
     case "$loader" in
         systemd-boot)
             if [[ "$uefi" != "true" ]]; then
-                _nds_install_verify_fail "systemd-boot requires UEFI mode"
+                _install_verify_fail "systemd-boot requires UEFI mode"
                 return 0
             fi
-            _nds_install_verify_efi_files systemd-boot \
-                || _nds_install_verify_fail "systemd-boot EFI binary missing on /mnt/boot"
+            _install_verify_efi_files systemd-boot \
+                || _install_verify_fail "systemd-boot EFI binary missing on /mnt/boot"
             ;;
         refind)
             if [[ "$uefi" != "true" ]]; then
-                _nds_install_verify_fail "rEFInd requires UEFI mode"
+                _install_verify_fail "rEFInd requires UEFI mode"
                 return 0
             fi
-            _nds_install_verify_efi_files refind \
-                || _nds_install_verify_fail "rEFInd EFI binary missing on /mnt/boot"
+            _install_verify_efi_files refind \
+                || _install_verify_fail "rEFInd EFI binary missing on /mnt/boot"
             ;;
         grub|*)
             if [[ "$uefi" == "true" ]]; then
-                _nds_install_verify_efi_files grub \
-                    || _nds_install_verify_fail "GRUB EFI binary missing on /mnt/boot"
+                _install_verify_efi_files grub \
+                    || _install_verify_fail "GRUB EFI binary missing on /mnt/boot"
             else
-                _nds_install_verify_grub_bios "$disk" \
-                    || _nds_install_verify_fail "GRUB BIOS install missing (grub.cfg or ${disk} boot code)"
+                _install_verify_grub_bios "$disk" \
+                    || _install_verify_fail "GRUB BIOS install missing (grub.cfg or ${disk} boot code)"
             fi
             ;;
     esac
@@ -96,14 +96,14 @@ _nds_install_verify_bootloader() {
 # Description: Verify hardware artifact for flake installs.
 # Arguments:
 # - hostname: <String> Flake host name
-_nds_install_verify_flake_hardware() {
+_install_verify_flake_hardware() {
     local hostname="$1"
     local hw_artifact host_dir_rel host_dir dest flake_root
 
-    _nixinstall_gather_flake_context
+    _install_gather_flake_context
     [[ "$NDS_CTX_HW_PLACEMENT" != "skip" ]] || return 0
 
-    hw_artifact=$(_nixinstall_hardware_artifact_name)
+    hw_artifact=$(_install_hardware_artifact_name)
     host_dir_rel="$NDS_CTX_FLAKE_HOST_DIR"
     [[ -z "$host_dir_rel" ]] && host_dir_rel="hosts/x86_64-linux"
     flake_root="${NDS_FLAKE_ROOT:-$NDS_CTX_FLAKE_INSTALL_PATH}"
@@ -118,39 +118,39 @@ _nds_install_verify_flake_hardware() {
     esac
 
     if [[ ! -s "$dest" ]]; then
-        _nds_install_verify_fail "Hardware artifact missing: ${dest}"
+        _install_verify_fail "Hardware artifact missing: ${dest}"
     fi
 
     host_dir="${flake_root}/${host_dir_rel}/${hostname}"
     if [[ ! -f "${host_dir}/boot.nix" ]]; then
-        _nds_install_verify_fail "Boot module missing: ${host_dir}/boot.nix"
+        _install_verify_fail "Boot module missing: ${host_dir}/boot.nix"
     fi
     if [[ ! -f "${host_dir}/mounts.nix" ]]; then
-        _nds_install_verify_fail "mounts.nix missing (root/boot mounts): ${host_dir}/mounts.nix"
+        _install_verify_fail "mounts.nix missing (root/boot mounts): ${host_dir}/mounts.nix"
     elif ! grep -qE 'fileSystems|by-uuid|by-label' "${host_dir}/mounts.nix" 2>/dev/null; then
-        _nds_install_verify_fail "mounts.nix missing fileSystems mounts: ${host_dir}/mounts.nix"
+        _install_verify_fail "mounts.nix missing fileSystems mounts: ${host_dir}/mounts.nix"
     fi
     if [[ -f "${host_dir}/configuration.nix" ]] \
         && ! grep -q './mounts.nix' "${host_dir}/configuration.nix" 2>/dev/null; then
-        _nds_install_verify_fail "configuration.nix must import ./mounts.nix"
+        _install_verify_fail "configuration.nix must import ./mounts.nix"
     fi
 }
 
 # Description: Verify classic-install hardware artifact on the target.
-_nds_install_verify_classic_hardware() {
+_install_verify_classic_hardware() {
     local hw_artifact dest
 
-    hw_artifact=$(_nixinstall_hardware_artifact_name)
+    hw_artifact=$(_install_hardware_artifact_name)
     dest="/mnt/etc/nixos/${hw_artifact}"
-    [[ -s "$dest" ]] || _nds_install_verify_fail "Hardware artifact missing: ${dest}"
+    [[ -s "$dest" ]] || _install_verify_fail "Hardware artifact missing: ${dest}"
 }
 
 # Description: Verify deploy keys + nds-git-ssh were installed when deploy keys exist.
-_nds_install_verify_git_key() {
+_install_verify_git_key() {
     local -a keys=()
     local key_path base dest wrap map_file switch_bin
 
-    mapfile -t keys < <(_nds_git_collect_deploy_key_paths 2>/dev/null || true)
+    mapfile -t keys < <(_git_collect_deploy_key_paths 2>/dev/null || true)
     # Only enforce nds_deploy_* — account/session keys are not copied to target.
     local -a deploy_keys=()
     for key_path in "${keys[@]}"; do
@@ -163,26 +163,26 @@ _nds_install_verify_git_key() {
     wrap="/mnt/root/.ssh/nds-git-ssh"
     map_file="/mnt/root/.ssh/nds-git.map"
     switch_bin="/mnt/root/.nds/bin/nds-switch"
-    [[ -x "$wrap" ]] || _nds_install_verify_fail "nds-git-ssh missing on target: ${wrap}"
-    [[ -f "$map_file" ]] || _nds_install_verify_fail "nds-git.map missing on target: ${map_file}"
-    [[ -x "$switch_bin" ]] || _nds_install_verify_fail "nds-switch missing on target: ${switch_bin}"
+    [[ -x "$wrap" ]] || _install_verify_fail "nds-git-ssh missing on target: ${wrap}"
+    [[ -f "$map_file" ]] || _install_verify_fail "nds-git.map missing on target: ${map_file}"
+    [[ -x "$switch_bin" ]] || _install_verify_fail "nds-switch missing on target: ${switch_bin}"
 
     for key_path in "${deploy_keys[@]}"; do
         base="$(basename "$key_path")"
         dest="/mnt/root/.ssh/${base}"
-        [[ -f "$dest" ]] || _nds_install_verify_fail "Git SSH key missing on target: ${dest}"
+        [[ -f "$dest" ]] || _install_verify_fail "Git SSH key missing on target: ${dest}"
     done
 }
 
 # Description: Verify sops age key on target when the flake uses sops.
 # Arguments:
 # - flake_root: <String> Flake checkout path on the target
-_nds_install_verify_sops() {
+_install_verify_sops() {
     local flake_root="$1"
 
     [[ -n "$flake_root" && -f "${flake_root}/.sops.yaml" ]] || return 0
     [[ -s /mnt/etc/sops/age/keys.txt ]] \
-        || _nds_install_verify_fail "sops age key missing on target (.sops.yaml in flake)"
+        || _install_verify_fail "sops age key missing on target (.sops.yaml in flake)"
 }
 
 # Description: Verify a local install is bootable before bundle/reboot.
@@ -193,7 +193,7 @@ nds_install_verify_local() {
     local disk loader uefi encryption hostname action flake_root
 
     _NDS_INSTALL_VERIFY_FAILS=()
-    _nixinstall_gather_context
+    _install_gather_context
 
     disk="$NDS_CTX_DISK"
     loader="${NDS_CTX_BOOT_LOADER:-grub}"
@@ -206,36 +206,36 @@ nds_install_verify_local() {
     log "Verifying installation (${loader}, $([[ "$uefi" == "true" ]] && echo UEFI || echo BIOS))"
 
     mountpoint -q /mnt \
-        || _nds_install_verify_fail "Target root is not mounted at /mnt"
+        || _install_verify_fail "Target root is not mounted at /mnt"
 
-    _nds_nix_system_profile_ok /mnt \
-        || _nds_install_verify_fail "NixOS system profile missing — nixos-install did not complete"
+    _install_nix_system_profile_ok /mnt \
+        || _install_verify_fail "NixOS system profile missing — nixos-install did not complete"
 
     if [[ "$encryption" == "true" ]]; then
         [[ -e /dev/mapper/cryptroot ]] \
-            || _nds_install_verify_fail "Encrypted root device /dev/mapper/cryptroot is not available"
+            || _install_verify_fail "Encrypted root device /dev/mapper/cryptroot is not available"
     else
         [[ -d /mnt/nix/store ]] \
-            || _nds_install_verify_fail "Nix store missing on installed system (/mnt/nix/store)"
+            || _install_verify_fail "Nix store missing on installed system (/mnt/nix/store)"
     fi
 
     mountpoint -q /mnt/boot \
-        || _nds_install_verify_fail "Boot partition is not mounted at /mnt/boot"
+        || _install_verify_fail "Boot partition is not mounted at /mnt/boot"
 
     case "$action" in
         installFlake)
-            _nixinstall_gather_flake_context
+            _install_gather_flake_context
             flake_root="${flake_root:-$NDS_CTX_FLAKE_INSTALL_PATH}"
-            _nds_install_verify_flake_hardware "$hostname"
-            _nds_install_verify_sops "$flake_root"
+            _install_verify_flake_hardware "$hostname"
+            _install_verify_sops "$flake_root"
             ;;
         *)
-            _nds_install_verify_classic_hardware
+            _install_verify_classic_hardware
             ;;
     esac
 
-    _nds_install_verify_bootloader "$loader" "$uefi" "$disk"
-    _nds_install_verify_git_key
+    _install_verify_bootloader "$loader" "$uefi" "$disk"
+    _install_verify_git_key
 
     if [[ ${#_NDS_INSTALL_VERIFY_FAILS[@]} -gt 0 ]]; then
         if declare -f nds_install_diag_snapshot &>/dev/null; then

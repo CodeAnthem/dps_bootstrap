@@ -14,7 +14,7 @@ MAP="${NDS_GIT_SSH_MAP:-/root/.ssh/nds-git.map}"
 ROOT_PREFIX="${NDS_GIT_SSH_ROOT:-}"
 SSH_BIN="${NDS_GIT_SSH_BIN:-ssh}"
 
-_nds_git_ssh_extract_repo() {
+_git_ssh_extract_repo() {
     local arg owner repo
     for arg in "$@"; do
         if [[ "$arg" =~ ([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)(\.git)?([\"\']|$) ]]; then
@@ -35,7 +35,7 @@ _nds_git_ssh_extract_repo() {
     return 1
 }
 
-_nds_git_ssh_lookup_key() {
+_git_ssh_lookup_key() {
     local want="$1" line kpath
 
     [[ -f "${ROOT_PREFIX}${MAP}" ]] || [[ -f "$MAP" ]] || return 1
@@ -58,10 +58,10 @@ _nds_git_ssh_lookup_key() {
     return 1
 }
 
-REPO="$(_nds_git_ssh_extract_repo "$@" || true)"
+REPO="$(_git_ssh_extract_repo "$@" || true)"
 KEY=""
 if [[ -n "$REPO" ]]; then
-    KEY="$(_nds_git_ssh_lookup_key "$REPO" || true)"
+    KEY="$(_git_ssh_lookup_key "$REPO" || true)"
 fi
 
 extra=(

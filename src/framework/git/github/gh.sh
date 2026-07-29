@@ -6,7 +6,7 @@
 # ==================================================================================================
 
 # Description: Nix CLI prefix for gh on live ISO (flakes required).
-_nds_git_gh_nix() {
+_git_gh_nix() {
     nix --extra-experimental-features "nix-command flakes" "$@"
 }
 
@@ -26,7 +26,7 @@ nds_git_gh_cmd() {
         return 0
     fi
     if command -v nix &>/dev/null; then
-        _out=(_nds_git_gh_nix shell nixpkgs#gh -c gh)
+        _out=(_git_gh_nix shell nixpkgs#gh -c gh)
         return 0
     fi
     _out=()
@@ -108,7 +108,7 @@ nds_git_gh_available() {
 # - out_path: <String> nix store path for nixpkgs#gh (optional)
 # Returns:
 # - <Bool> 0 when NDS_GIT_GH_BIN is set
-_nds_git_gh_cache_bin_from_nix() {
+_git_gh_cache_bin_from_nix() {
     local out_path="${1:-}"
     local gh_path
 
@@ -117,7 +117,7 @@ _nds_git_gh_cache_bin_from_nix() {
         export NDS_GIT_GH_BIN
         return 0
     fi
-    gh_path=$(_nds_git_gh_nix shell nixpkgs#gh -c command -v gh 2>/dev/null) || gh_path=""
+    gh_path=$(_git_gh_nix shell nixpkgs#gh -c command -v gh 2>/dev/null) || gh_path=""
     if [[ -n "$gh_path" && -x "$gh_path" ]]; then
         NDS_GIT_GH_BIN="$gh_path"
         export NDS_GIT_GH_BIN
@@ -152,7 +152,7 @@ nds_git_gh_prefetch() {
         step_start "Downloading GitHub CLI (gh)"
         mkdir -p "$(dirname "$prefetch_log")"
         (
-            _nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh
+            _git_gh_nix build --no-link --print-out-paths nixpkgs#gh
         ) >"$prefetch_log" 2>&1 &
         local pid=$!
         if declare -f show_spinner &>/dev/null; then
@@ -166,7 +166,7 @@ nds_git_gh_prefetch() {
         } >>"$logfile"
     else
         info "Downloading GitHub CLI (gh) — one-time download..."
-        build_out=$(_nds_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || rc=$?
+        build_out=$(_git_gh_nix build --no-link --print-out-paths nixpkgs#gh 2>&1) || rc=$?
         {
             printf '\n=== Downloading GitHub CLI (gh) ===\n'
             printf '%s\n' "$build_out"
@@ -178,7 +178,7 @@ nds_git_gh_prefetch() {
         debug "gh prefetch failed"
         return 1
     fi
-    if _nds_git_gh_cache_bin_from_nix "$out_path"; then
+    if _git_gh_cache_bin_from_nix "$out_path"; then
         declare -f step_complete &>/dev/null && step_complete "Downloading GitHub CLI (gh)"
         NDS_GIT_GH_PREFETCH_DONE=true
         export NDS_GIT_GH_PREFETCH_DONE

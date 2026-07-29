@@ -15,7 +15,7 @@ nds_install_bundle_create() {
         return 0
     fi
 
-    _nixinstall_gather_context
+    _install_gather_context
 
     user=$(nds_install_ssh_user)
     bundle_path=$(nds_install_bundle_path)
@@ -44,7 +44,7 @@ nds_install_bundle_create() {
         [[ -f "$item" ]] && cp "$item" "${staging}/secrets/"
     done
 
-    _nds_install_bundle_quickstart "${staging}/NDS_QUICK_START.md"
+    _install_bundle_quickstart "${staging}/NDS_QUICK_START.md"
 
     mkdir -p "/home/${user}"
     if command -v zip &>/dev/null; then

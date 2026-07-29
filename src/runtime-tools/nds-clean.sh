@@ -16,16 +16,16 @@ OLDER_THAN="${NDS_CLEAN_OLDER_THAN:-7d}"
 DRY_RUN=0
 OPTIMISE=0
 
-_nds_clean_die() {
+_clean_die() {
     echo "nds-clean: $*" >&2
     exit 1
 }
 
-_nds_clean_info() {
+_clean_info() {
     echo "nds-clean: $*"
 }
 
-_nds_clean_usage() {
+_clean_usage() {
     cat <<EOF
 nds-clean: remove unused Nix store paths and old system generations.
 
@@ -42,11 +42,11 @@ Env:
 EOF
 }
 
-_nds_clean_run() {
+_clean_run() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        _nds_clean_info "[dry-run] $*"
+        _clean_info "[dry-run] $*"
     else
-        _nds_clean_info "$*"
+        _clean_info "$*"
         "$@"
     fi
 }
@@ -55,45 +55,45 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
         --keep-gens)
-            [[ $# -ge 2 ]] || _nds_clean_die "--keep-gens requires a number"
+            [[ $# -ge 2 ]] || _clean_die "--keep-gens requires a number"
             KEEP_GENS="$2"
             shift 2
             ;;
         --older-than)
-            [[ $# -ge 2 ]] || _nds_clean_die "--older-than requires a value"
+            [[ $# -ge 2 ]] || _clean_die "--older-than requires a value"
             OLDER_THAN="$2"
             shift 2
             ;;
         --optimise) OPTIMISE=1; shift ;;
         -h|--help)
-            _nds_clean_usage
+            _clean_usage
             exit 0
             ;;
         *)
-            _nds_clean_die "unknown option: $1 (try --help)"
+            _clean_die "unknown option: $1 (try --help)"
             ;;
     esac
 done
 
-[[ "$(id -u)" -eq 0 ]] || _nds_clean_die "run as root"
+[[ "$(id -u)" -eq 0 ]] || _clean_die "run as root"
 
 shopt -s nullglob
 for d in /tmp/nds-switch-hostfacts.*; do
     [[ -d "$d" ]] || continue
-    _nds_clean_run rm -rf "$d"
+    _clean_run rm -rf "$d"
 done
 
 if command -v nix-env &>/dev/null; then
-    _nds_clean_run nix-env -p /nix/var/nix/profiles/system --delete-generations "+${KEEP_GENS}"
+    _clean_run nix-env -p /nix/var/nix/profiles/system --delete-generations "+${KEEP_GENS}"
 fi
 
 if command -v nix-collect-garbage &>/dev/null; then
-    _nds_clean_run nix-collect-garbage --delete-older-than "$OLDER_THAN"
-    _nds_clean_run nix-collect-garbage -d
+    _clean_run nix-collect-garbage --delete-older-than "$OLDER_THAN"
+    _clean_run nix-collect-garbage -d
 fi
 
 if [[ "$OPTIMISE" -eq 1 ]] && command -v nix &>/dev/null; then
-    _nds_clean_run nix store optimise
+    _clean_run nix store optimise
 fi
 
-_nds_clean_info "done"
+_clean_info "done"

@@ -7,7 +7,7 @@
 # ==================================================================================================
 
 # Description: Read CONFIG_DATA into NDS_CTX_* globals.
-_nixinstall_gather_context() {
+_install_gather_context() {
     NDS_CTX_DISK=$(nds_config_get "disk" "DISK_TARGET")
     NDS_CTX_DISK_STRATEGY=$(nds_config_get "disk" "DISK_STRATEGY")
     NDS_CTX_DISK_STRATEGY="${NDS_CTX_DISK_STRATEGY:-nds}"
@@ -50,8 +50,8 @@ _nixinstall_gather_context() {
 }
 
 # Description: Extend base context with flake install fields.
-_nixinstall_gather_flake_context() {
-    _nixinstall_gather_context
+_install_gather_flake_context() {
+    _install_gather_context
     NDS_CTX_FLAKE_SOURCE="${NDS_FLAKE_SOURCE:-$(nds_configurator_config_get "FLAKE_SOURCE")}"
     NDS_CTX_FLAKE_REPO_URL="${NDS_FLAKE_REPO_URL:-$(nds_configurator_config_get "FLAKE_REPO_URL")}"
     NDS_CTX_FLAKE_LOCAL_PATH="${NDS_FLAKE_LOCAL_PATH:-$(nds_configurator_config_get "FLAKE_LOCAL_PATH")}"
@@ -71,13 +71,13 @@ _nixinstall_gather_flake_context() {
 
 # Description: Ensure base install context is populated.
 nds_install_ctx_ensure() {
-    [[ -n "${NDS_CTX_DISK+x}" ]] || _nixinstall_gather_context
+    [[ -n "${NDS_CTX_DISK+x}" ]] || _install_gather_context
 }
 
 # Description: Ensure flake install context is populated.
 nds_install_ctx_ensure_flake() {
     [[ -n "${NDS_CTX_FLAKE_REPO_URL+x}" || -n "${NDS_CTX_FLAKE_LOCAL_PATH+x}" ]] \
-        || _nixinstall_gather_flake_context
+        || _install_gather_flake_context
 }
 
 # Description: Read one NDS_CTX_* field by short name (DISK → NDS_CTX_DISK).

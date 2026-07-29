@@ -6,13 +6,13 @@
 # Description:   Slugs and basenames for git keys (argument-only; no NDS config)
 # ==================================================================================================
 
-_nds_slug_part() {
+_git_slug_part() {
     local s="$1"
     s=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')
     printf '%s' "$s" | sed -e 's/[^a-z0-9]/-/g' -e 's/--*/-/g' -e 's/^-//' -e 's/-$//'
 }
 
-_nds_deploy_slug_part() {
+_git_deploy_slug_part() {
     local s="$1"
     s=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]')
     printf '%s' "$s" | sed -e 's/[^a-z0-9]/_/g' -e 's/__*/_/g' -e 's/^_//' -e 's/_$//'
@@ -26,7 +26,7 @@ _nds_deploy_slug_part() {
 # - <String> slug e.g. codeanthem-dps-swarm (stdout)
 nds_git_repo_slug() {
     local owner="$1" repo="$2"
-    printf '%s-%s\n' "$(_nds_slug_part "$owner")" "$(_nds_slug_part "$repo")"
+    printf '%s-%s\n' "$(_git_slug_part "$owner")" "$(_git_slug_part "$repo")"
 }
 
 # Description: Basename for a per-repo deploy key file.
@@ -37,7 +37,7 @@ nds_git_repo_slug() {
 # - <String> e.g. nds_deploy_codeanthem_thundercast (stdout)
 nds_git_deploy_key_basename() {
     local owner="$1" repo="$2"
-    printf 'nds_deploy_%s_%s' "$(_nds_deploy_slug_part "$owner")" "$(_nds_deploy_slug_part "$repo")"
+    printf 'nds_deploy_%s_%s' "$(_git_deploy_slug_part "$owner")" "$(_git_deploy_slug_part "$repo")"
 }
 
 # Description: owner/repo slug from a deploy key basename (nds_deploy_owner_repo).

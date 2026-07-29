@@ -27,7 +27,7 @@ _installFlake_ask_location() {
     [[ -z "$current" ]] && current="$(nds_cfg_get FLAKE_LOCAL_PATH)"
     nds_cfg_set FLAKE_LOCATION "$current"
     while true; do
-        value=$(_nds_cfg_prompt_value FLAKE_LOCATION "Flake location" \
+        value=$(_settings_prompt_value FLAKE_LOCATION "Flake location" \
             "(git URL, git@host:owner/repo, or /path)" true) || continue
         [[ -z "$value" ]] && value="$current"
         if [[ -z "$value" ]]; then

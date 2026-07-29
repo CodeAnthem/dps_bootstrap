@@ -24,7 +24,7 @@ nds_nixcfg_access_auto() {
     admin_password=""
     [[ -f "$pw_file" ]] && admin_password=$(<"$pw_file")
     if [[ -z "$admin_password" ]]; then
-        warn "Admin password file missing — falling back to 'changeme'. Run _nixinstall_generate_access_secrets first."
+        warn "Admin password file missing — falling back to 'changeme'. Run _install_generate_access_secrets first."
         admin_password="changeme"
     fi
     _nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_pw_auth" "$admin_ssh_key" "$admin_password"

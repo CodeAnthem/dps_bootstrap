@@ -11,7 +11,7 @@
 # - url: <String> Git URL
 # Returns:
 # - <String> "host<TAB>owner<TAB>repo" on stdout, non-zero when unparseable
-_nds_git_parse() {
+_git_parse() {
     local url="$1" host path rest
     case "$url" in
         *://*)
@@ -35,7 +35,7 @@ _nds_git_parse() {
     printf '%s\t%s\t%s\n' "$host" "${path%/*}" "${path##*/}"
 }
 
-_nds_git_to_ssh() { printf 'git@%s:%s/%s.git\n' "$1" "$2" "$3"; }
+_git_to_ssh() { printf 'git@%s:%s/%s.git\n' "$1" "$2" "$3"; }
 
 # Description: Lowercase filesystem slug from a git remote owner (org or user).
 # Arguments:
@@ -48,8 +48,8 @@ nds_git_owner_slug() {
 
     [[ -n "$url" ]] || { printf 'unknown\n'; return 0; }
 
-    url=$(_nds_git_ssh_url "$url")
-    parsed=$(_nds_git_parse "$url") || { printf 'unknown\n'; return 0; }
+    url=$(_git_ssh_url "$url")
+    parsed=$(_git_parse "$url") || { printf 'unknown\n'; return 0; }
     IFS=$'\t' read -r host owner repo <<< "$parsed"
     [[ -n "$owner" ]] || { printf 'unknown\n'; return 0; }
 
@@ -63,7 +63,7 @@ nds_git_owner_slug() {
 # - url: <String> Git URL
 # Returns:
 # - <String> SSH URL on stdout (unchanged when unparseable)
-_nds_git_ssh_url() {
+_git_ssh_url() {
     local url="$1" parsed host owner repo
 
     case "$url" in
@@ -83,9 +83,9 @@ _nds_git_ssh_url() {
             ;;
     esac
 
-    if parsed=$(_nds_git_parse "$url"); then
+    if parsed=$(_git_parse "$url"); then
         IFS=$'\t' read -r host owner repo <<< "$parsed"
-        _nds_git_to_ssh "$host" "$owner" "$repo"
+        _git_to_ssh "$host" "$owner" "$repo"
         return 0
     fi
 

@@ -7,13 +7,13 @@
 # ==================================================================================================
 
 # Run age-keygen, resolving the binary via PATH or a transient nix shell.
-# Usage: _nds_run_age_keygen [args...]
-_nds_run_age_keygen() {
+# Usage: _sops_run_age_keygen [args...]
+_sops_run_age_keygen() {
     if command -v age-keygen &>/dev/null; then
         age-keygen "$@"
     elif command -v nix &>/dev/null; then
         local nix_config
-        nix_config=$(_nds_nix_combined_nix_config "experimental-features = nix-command flakes")
+        nix_config=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
         env NIX_CONFIG="$nix_config" nix shell nixpkgs#age -c age-keygen "$@"
     else
         return 127
@@ -25,7 +25,7 @@ _nds_run_age_keygen() {
 # - dest:     <String> Note file path
 # - hostname: <String> Host name
 # - pubkey:   <String> Machine age public key
-_nds_sops_write_enroll_note() {
+_sops_write_enroll_note() {
     local dest="$1"
     local hostname="$2"
     local pubkey="$3"
@@ -65,7 +65,7 @@ EOF
 # - target_root: <String|optional> Installed system root (default: /mnt)
 # Returns:
 # - <Bool> 0 on success or when sops is not used; 1 when enrollment fails for a sops flake
-_nds_enroll_sops_key() {
+_sops_enroll_key() {
     local flake_root="$1"
     local hostname="$2"
     local target_root="${3:-/mnt}"
@@ -91,7 +91,7 @@ _nds_enroll_sops_key() {
     }
 
     if [[ ! -f "$key_file" ]]; then
-        if ! _nds_run_age_keygen -o "$key_file" \
+        if ! _sops_run_age_keygen -o "$key_file" \
             2>>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"; then
             error "age-keygen failed — cannot generate machine age key"
             return 1
@@ -99,7 +99,7 @@ _nds_enroll_sops_key() {
         chmod 600 "$key_file"
     fi
 
-    if ! pubkey=$(_nds_run_age_keygen -y "$key_file" 2>/dev/null); then
+    if ! pubkey=$(_sops_run_age_keygen -y "$key_file" 2>/dev/null); then
         error "Could not derive age public key from $key_file"
         return 1
     fi
@@ -108,7 +108,7 @@ _nds_enroll_sops_key() {
     echo "$pubkey" > "${secrets_dir}/age_pubkey.txt"
     cp "$key_file" "${secrets_dir}/machine_age_key.txt"
     chmod 600 "${secrets_dir}/machine_age_key.txt"
-    _nds_sops_write_enroll_note "${secrets_dir}/sops_enroll.md" "$hostname" "$pubkey"
+    _sops_write_enroll_note "${secrets_dir}/sops_enroll.md" "$hostname" "$pubkey"
 
     log "Machine age public key: $pubkey"
 

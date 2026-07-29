@@ -7,14 +7,14 @@
 # ==================================================================================================
 
 # Description: Filenames that must stay in the flake Git tree (not gitignored).
-_nds_install_flake_committed_host_names() {
+_install_flake_committed_host_names() {
     printf '%s\n' mounts.nix boot.nix
 }
 
 # Description: Ensure configuration.nix imports committed mounts.nix and boot.nix.
 # Arguments:
 # - host_dir: <String> Host directory (…/hosts/…/hostname)
-_nixinstall_ensure_host_imports() {
+_install_ensure_host_imports() {
     local host_dir="$1"
     local cfg="${host_dir}/configuration.nix"
     local tmp
@@ -50,14 +50,14 @@ _nixinstall_ensure_host_imports() {
 # Arguments:
 # - flake_root: <String> Flake checkout root
 # - host_dir:   <String> Host directory
-_nds_install_flake_git_stage_committed_files() {
+_install_flake_git_stage_committed_files() {
     local flake_root="$1" host_dir="$2"
     local log rel f
     local -a files=()
 
     [[ -d "${flake_root}/.git" ]] || return 0
 
-    for f in $(_nds_install_flake_committed_host_names); do
+    for f in $(_install_flake_committed_host_names); do
         [[ -f "${host_dir}/${f}" ]] && files+=("${host_dir}/${f}")
     done
     [[ -f "${host_dir}/configuration.nix" ]] && files+=("${host_dir}/configuration.nix")

@@ -16,11 +16,11 @@ nds_git_ssh_config_refresh() {
 # - url: <String> Git remote URL
 # Returns:
 # - <String> Private key path (stdout), non-zero when none found
-_nds_git_identity_for_url() {
+_git_identity_for_url() {
     local url="$1" ssh_url parsed host owner repo key base reg_key
 
-    ssh_url=$(_nds_git_ssh_url "$url")
-    parsed=$(_nds_git_parse "$ssh_url") || return 1
+    ssh_url=$(_git_ssh_url "$url")
+    parsed=$(_git_parse "$ssh_url") || return 1
     IFS=$'\t' read -r host owner repo <<< "$parsed"
     key="$(nds_git_deploy_key_path "$owner" "$repo" 2>/dev/null || true)"
     [[ -f "$key" ]] && {
@@ -47,18 +47,18 @@ _nds_git_identity_for_url() {
 # Description: GIT_SSH_COMMAND for one repository (single deploy key).
 # Arguments:
 # - url: <String> Git remote URL
-_nds_git_ssh_env_for_url() {
+_git_ssh_env_for_url() {
     local url="$1" key_path
 
-    if key_path=$(_nds_git_identity_for_url "$url" 2>/dev/null); then
+    if key_path=$(_git_identity_for_url "$url" 2>/dev/null); then
         nds_git_ssh_env_for_key "$key_path"
         return 0
     fi
-    _nds_git_ssh_env
+    _git_ssh_env
 }
 
 # Description: GIT_SSH_COMMAND fallback (single session key or bare ssh).
-_nds_git_ssh_env() {
+_git_ssh_env() {
     local key_path
     local -a keys=()
 
@@ -83,7 +83,7 @@ _nds_git_ssh_env() {
 nds_git_export_nix_env() {
     local -n _out=$1
     _out=()
-    while IFS= read -r line; do _out+=("$line"); done < <(_nds_git_ssh_env)
+    while IFS= read -r line; do _out+=("$line"); done < <(_git_ssh_env)
 }
 
 # Description: Mark git access as verified for this session (closure complete).

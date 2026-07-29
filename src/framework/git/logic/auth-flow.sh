@@ -6,7 +6,7 @@
 # Description:   NDS-aware auth gates without interactive UI
 # ==================================================================================================
 
-_nds_git_update_repo_url() {
+_git_update_repo_url() {
     local new_url="$1"
     nds_cfg_set FLAKE_REPO_URL "$new_url"
     nds_cfg_set FLAKE_LOCATION "$new_url"
@@ -21,7 +21,7 @@ _nds_git_update_repo_url() {
 # - url: <String> Git URL to probe
 # Returns:
 # - <Bool> 0 when access works with an existing key
-_nds_git_auth_try_existing_access() {
+_git_auth_try_existing_access() {
     local url="$1"
     local found
 

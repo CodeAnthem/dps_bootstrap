@@ -48,7 +48,7 @@ nds_install_bundle_local_name() {
 # staging, and remote unlock - filled in from the live configuration.
 # Arguments:
 # - dest: <String> Output markdown file path
-_nds_install_bundle_quickstart() {
+_install_bundle_quickstart() {
     local dest="$1"
     local hostname admin_user ssh_port ssh_pw_auth admin_ssh_key port_opt host_ip
     local encryption use_password use_key key_device key_file
@@ -287,7 +287,7 @@ nds_install_bundle_create() {
         [[ -f "$item" ]] && cp "$item" "${staging}/secrets/"
     done
 
-    _nds_install_bundle_quickstart "${staging}/NDS_QUICK_START.md"
+    _install_bundle_quickstart "${staging}/NDS_QUICK_START.md"
 
     mkdir -p "/home/${user}"
     if command -v zip &>/dev/null; then
@@ -321,7 +321,7 @@ nds_install_bundle_create() {
 # Arguments:
 # - color: <String> ANSI code (e.g. 32 for green, 35 for magenta, 31 for red)
 # - text:  <String> Message
-_nds_ui_colored() {
+_bundle_ui_colored() {
     local color="$1"
     local text="$2"
     nds_ui_init
@@ -332,7 +332,7 @@ _nds_ui_colored() {
     fi
 }
 
-_nds_install_bundle_remote_copy_hint() {
+_install_bundle_remote_copy_hint() {
     local bundle_path="$1"
     local ssh_user host local_name
 
@@ -358,7 +358,7 @@ _nds_install_bundle_remote_copy_hint() {
 # target disk, so it must be copied onto the USB from the live system BEFORE the
 # reboot — this cannot wait for the README. Post-boot help (first login, remote
 # unlock) lives in the README instead.
-_nds_install_bundle_usbkey_instructions() {
+_install_bundle_usbkey_instructions() {
     local encryption use_password use_key key_device key_file
     encryption=$(nds_config_get "encryption" "ENCRYPTION")
     [[ "$encryption" == "true" ]] || return 0
@@ -390,9 +390,9 @@ _nds_install_bundle_usbkey_instructions() {
 
     if [[ "$use_password" != "true" ]]; then
         nds_ui_b ""
-        _nds_ui_colored 31 "WARNING: key-only mode (no password)."
-        _nds_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
-        _nds_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
+        _bundle_ui_colored 31 "WARNING: key-only mode (no password)."
+        _bundle_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
+        _bundle_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
     fi
 }
 
@@ -409,16 +409,16 @@ nds_install_bundle_finish() {
         nds_ui_b ""
 
         if [[ "$(nds_config_get "encryption" "ENCRYPTION")" == "true" ]]; then
-            _nds_ui_colored 35 "Encryption was enabled — saving this zip is important."
-            _nds_ui_colored 35 "Keep it somewhere safe and offline; it contains your unlock secrets."
+            _bundle_ui_colored 35 "Encryption was enabled — saving this zip is important."
+            _bundle_ui_colored 35 "Keep it somewhere safe and offline; it contains your unlock secrets."
             nds_ui_b ""
         fi
 
-        _nds_install_bundle_usbkey_instructions
+        _install_bundle_usbkey_instructions
 
-        _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+        _install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
 
-        nds_askUserToProceed "I have copied the package (or do not need it)" || return 1
+        nds_ask_user_to_proceed "I have copied the package (or do not need it)" || return 1
 
         nds_ui_b ""
         nds_ui_h "Next steps"
@@ -428,7 +428,7 @@ nds_install_bundle_finish() {
         nds_ui_i "https://github.com/CodeAnthem/dps_bootstrap/blob/main/actions/classicInstall/README.md"
         nds_ui_b ""
         nds_ui_b "Reboot when ready: sudo reboot"
-        nds_askUserToProceed "Reboot now?" && reboot
+        nds_ask_user_to_proceed "Reboot now?" && reboot
         return 0
     fi
 
@@ -438,7 +438,7 @@ nds_install_bundle_finish() {
     fi
     nds_ui_b ""
     nds_ui_b "Reboot when ready: sudo reboot"
-    nds_askUserToProceed "Reboot now?" && reboot
+    nds_ask_user_to_proceed "Reboot now?" && reboot
     return 0
 }
 
@@ -462,7 +462,7 @@ nds_install_remote_finish() {
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
         nds_ui_i "Install backup: ${NDS_INSTALL_BUNDLE}"
-        _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+        _install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
     fi
 
     return 0

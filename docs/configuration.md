@@ -22,7 +22,7 @@ Set variables before starting NDS, or paste the export lines printed at the end 
 | `NDS_SCAFFOLD_OVERWRITE_SKIP` | Skip scaffold host-dir overwrite prompt (`true`) |
 | `NDS_HARDWARE_OVERWRITE_SKIP` | Skip hardware file overwrite prompt (`true`) |
 | `NDS_PREFLIGHT_WARN_SKIP` | Auto-continue past preflight warnings (`true`) |
-| `NDS_PROMPTS_SKIP` | Skip generic Y/n prompts (`nds_askUser*`) (`true`) |
+| `NDS_PROMPTS_SKIP` | Skip generic Y/n prompts (`nds_ask_user_*`) (`true`) |
 | `NDS_TEST` | Enable the test action in the action menu (`true`) |
 | `NDS_GIT_IMPORT_KEY_PATH` | Path to a private SSH key to import before git auth (USB/scp) |
 | `NDS_DEPLOY_KEY_PATH` | Deprecated alias for `NDS_GIT_IMPORT_KEY_PATH` |

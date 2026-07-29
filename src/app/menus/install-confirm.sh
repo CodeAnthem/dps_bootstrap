@@ -1,26 +1,17 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Menu: local install confirmation screen
+# NDS - Install confirmation screen
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-07-29
 # ==================================================================================================
 
-nds_trim() {
-    local s="$1"
-    s="${s#"${s%%[![:space:]]*}"}"
-    s="${s%"${s##*[![:space:]]}"}"
-    printf '%s' "$s"
-}
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_INSTALL_CONFIRM_SKIP
 
-nds_action_items() {
-    local items="$1"
-    local item
-    IFS=',' read -ra _items <<< "$items"
-    for item in "${_items[@]}"; do
-        nds_ui_i "$(nds_trim "$item")"
-    done
-}
-
+# Description: Show the pre-install warning screen.
+# Arguments:
+# - disk:     <String> Target block device
+# - strategy: <String|optional> Partitioning strategy label (default: nds)
+# - extra:    <String|optional> Extra message line
 nds_ui_install_warning() {
     local disk="$1"
     local strategy="${2:-nds}"
@@ -65,6 +56,11 @@ nds_ui_install_warning() {
     [[ -n "$extra" ]] && nds_ui_b "$extra" && nds_ui_b ""
 }
 
+# Description: Show the install warning screen and ask the user to confirm.
+# Arguments:
+# - disk:     <String> Target block device
+# - strategy: <String|optional> Partitioning strategy label
+# - extra:    <String|optional> Extra message line
 nds_action_confirm_install() {
     local disk="$1"
     local strategy="${2:-nds}"
@@ -75,6 +71,6 @@ nds_action_confirm_install() {
         log "Install confirmation skipped"
         return 0
     fi
-    nds_askUserToProceed "Start installation now" || return 1
+    nds_ask_user_to_proceed "Start installation now" || return 1
     return 0
 }

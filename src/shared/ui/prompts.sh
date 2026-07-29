@@ -2,9 +2,11 @@
 # ==================================================================================================
 # NDS - UI - User prompts and confirmations
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2026-07-06
+# Date:          Created: 2025-10-21 | Modified: 2026-07-29
 # Description:   Interactive yes/no/back prompts and legacy password helpers
 # ==================================================================================================
+
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_PROMPTS_SKIP
 
 # Description: True when a value is boolean true (true/1, case-insensitive).
 # Arguments:
@@ -16,19 +18,7 @@ nds_env_is_true() {
     [[ "${value,,}" == "true" || "$value" == "1" ]]
 }
 
-# Description: Skip an interactive menu when its NDS_*_SKIP flag or NDS_AUTO_CONFIRM is set.
-# Arguments:
-# - skip_var: <String> Name of the skip env var (e.g. NDS_INSTALL_CONFIRM_SKIP)
-# Returns:
-# - 0 when the step should be skipped, 1 when the menu should run
-nds_skip_menu() {
-    local skip_var="${1:-}"
-    nds_env_is_true "${NDS_AUTO_CONFIRM:-false}" && return 0
-    [[ -n "$skip_var" ]] && nds_env_is_true "${!skip_var:-false}" && return 0
-    return 1
-}
-
-nds_askUserContinue() {
+nds_ask_user_continue() {
     local prompt="${1:-Do you want to proceed?}"
 
     if nds_skip_menu NDS_PROMPTS_SKIP; then
@@ -59,7 +49,7 @@ nds_askUserContinue() {
     done
 }
 
-nds_askUserToProceed() {
+nds_ask_user_to_proceed() {
     local prompt="${1:-Do you want to proceed?}"
 
     if nds_skip_menu NDS_PROMPTS_SKIP; then
@@ -89,9 +79,9 @@ nds_askUserToProceed() {
     done
 }
 
-nds_askUserContinue_or_exit() {
+nds_ask_user_continue_or_exit() {
     local prompt="${1:-Continue?}"
-    nds_askUserContinue "$prompt"
+    nds_ask_user_continue "$prompt"
     local rc=$?
     case "$rc" in
         0) return 0 ;;
@@ -100,7 +90,7 @@ nds_askUserContinue_or_exit() {
     esac
 }
 
-prompt_yes_no() {
+nds_prompt_yes_no() {
     local prompt="$1"
     local default_yes="${2:-false}"
     local response
@@ -136,7 +126,7 @@ prompt_yes_no() {
     esac
 }
 
-prompt_password() {
+nds_prompt_password() {
     local prompt="$1"
     local password
     local confirm_password

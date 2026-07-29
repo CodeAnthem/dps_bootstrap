@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Menu: remote install confirmation screen
+# NDS - Remote install confirmation screen
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-07-29
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_REMOTE_CONFIRM_SKIP
+
+# Description: Show the remote install warning screen and ask the user to confirm.
+# Arguments:
+# - target_ip: <String> Remote host IP or hostname
+# - extra:     <String|optional> Extra message line
 nds_action_confirm_remote_install() {
     local target_ip="$1"
     local extra="${2:-}"
@@ -29,6 +35,6 @@ nds_action_confirm_remote_install() {
         log "Remote install confirmation skipped"
         return 0
     fi
-    nds_askUserToProceed "Start remote installation now" || return 1
+    nds_ask_user_to_proceed "Start remote installation now" || return 1
     return 0
 }

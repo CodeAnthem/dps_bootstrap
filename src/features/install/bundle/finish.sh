@@ -5,12 +5,15 @@
 # Date:          Created: 2026-06-30 | Modified: 2026-07-07
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_BACKUP_CONFIRM_SKIP
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_REBOOT_SKIP
+
 nds_install_bundle_finish() {
     local bundle_ok=1
     nds_install_bundle_create || bundle_ok=0
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
-        _nixinstall_gather_context
+        _install_gather_context
         section_header "Backup bundle"
         nds_ui_h "Save the restore package for future use"
         nds_ui_b "Copy this zip off the machine before you reboot."
@@ -18,18 +21,18 @@ nds_install_bundle_finish() {
         nds_ui_b ""
 
         if [[ "$NDS_CTX_ENCRYPTION" == "true" ]]; then
-            _nds_ui_colored 35 "Encryption was enabled — saving this zip is important."
-            _nds_ui_colored 35 "Keep it somewhere safe and offline; it contains your unlock secrets."
+            _bundle_ui_colored 35 "Encryption was enabled — saving this zip is important."
+            _bundle_ui_colored 35 "Keep it somewhere safe and offline; it contains your unlock secrets."
             nds_ui_b ""
         fi
 
-        _nds_install_bundle_usbkey_instructions
-        _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+        _install_bundle_usbkey_instructions
+        _install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
 
         if nds_skip_menu NDS_BACKUP_CONFIRM_SKIP; then
             log "Backup copy confirmation skipped"
         else
-            nds_askUserToProceed "I have copied the package (or do not need it)" || return 1
+            nds_ask_user_to_proceed "I have copied the package (or do not need it)" || return 1
         fi
 
         nds_ui_b ""
@@ -43,7 +46,7 @@ nds_install_bundle_finish() {
         if nds_skip_menu NDS_REBOOT_SKIP; then
             log "Reboot prompt skipped"
         else
-            nds_askUserToProceed "Reboot now?" && reboot
+            nds_ask_user_to_proceed "Reboot now?" && reboot
         fi
         return 0
     fi
@@ -56,7 +59,7 @@ nds_install_bundle_finish() {
     if nds_skip_menu NDS_REBOOT_SKIP; then
         log "Reboot prompt skipped"
     else
-        nds_askUserToProceed "Reboot now?" && reboot
+        nds_ask_user_to_proceed "Reboot now?" && reboot
     fi
     return 0
 }
@@ -79,7 +82,7 @@ nds_install_remote_finish() {
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
         nds_ui_i "Install backup: ${NDS_INSTALL_BUNDLE}"
-        _nds_install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+        _install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
     fi
 
     return 0

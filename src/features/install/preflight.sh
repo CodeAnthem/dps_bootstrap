@@ -6,6 +6,8 @@
 # Description:   Disk, nix, and boot checks before destructive install steps
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_PREFLIGHT_WARN_SKIP
+
 # Description: Verify nix tooling, target disk, and boot mode before install.
 # Git SSH access is verified earlier by nds_git_ensure_access / closure checks.
 # Arguments:
@@ -52,7 +54,7 @@ nds_preflight_install() {
         warn "UEFI mode is on but the live ISO is BIOS-booted."
         warn "Reboot the ISO in UEFI mode, or disable UEFI mode and use GRUB."
         if ! nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
-            nds_askUserToProceed "Continue anyway?" || return 1
+            nds_ask_user_to_proceed "Continue anyway?" || return 1
         fi
     fi
 
@@ -82,7 +84,7 @@ nds_preflight_remote_install() {
     else
         warn "Cannot reach root@${target_ip} via SSH (passwordless root login required)"
         if ! nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
-            nds_askUserToProceed "Continue without verified SSH access?" || return 1
+            nds_ask_user_to_proceed "Continue without verified SSH access?" || return 1
         fi
     fi
 

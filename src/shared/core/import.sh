@@ -8,7 +8,7 @@
 
 declare -g NDS_IMPORT_ERRORS=""
 
-_nds_import_and_validate_file() {
+_core_import_and_validate_file() {
     local filepath="$1"
     local err_output
 
@@ -43,7 +43,7 @@ _nds_import_and_validate_file() {
     return 0
 }
 
-_nds_import_showErrors() {
+_core_import_show_errors() {
     if [[ -n "$NDS_IMPORT_ERRORS" ]]; then
         echo "$NDS_IMPORT_ERRORS" >&2
         NDS_IMPORT_ERRORS=""
@@ -61,8 +61,8 @@ nds_import_file() {
     }
 
     NDS_IMPORT_ERRORS=""
-    _nds_import_and_validate_file "$filepath"
-    _nds_import_showErrors
+    _core_import_and_validate_file "$filepath"
+    _core_import_show_errors
 }
 
 nds_import_dir() {
@@ -98,14 +98,14 @@ nds_import_dir() {
         fi
 
         if [[ "${basename: -3}" == ".sh" ]]; then
-            if ! _nds_import_and_validate_file "$item"; then
+            if ! _core_import_and_validate_file "$item"; then
                 had_error=true
             fi
         fi
     done
 
     if [[ "$had_error" == "true" ]]; then
-        _nds_import_showErrors
+        _core_import_show_errors
         return 1
     fi
 
@@ -116,6 +116,9 @@ nds_import_dir() {
 # Usage: nds_bootstrap_load_libs
 nds_bootstrap_load_libs() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
-    nds_import_file "${script_dir}/app/bootstrap.sh" || return 1
-    nds_core_load_all "$script_dir"
+    nds_import_file "${script_dir}/app/lifecycle.sh" || return 1
+    nds_lifecycle_load_core "$script_dir" || return 1
+    nds_lifecycle_load_ui "$script_dir" || return 1
+    nds_lifecycle_load_actions "$script_dir" || return 1
+    nds_import_file "${script_dir}/framework/bootstrap/load.sh" || return 1
 }

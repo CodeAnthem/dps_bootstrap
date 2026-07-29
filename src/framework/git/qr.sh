@@ -46,7 +46,7 @@ nds_git_qr_preinstall() {
 }
 
 # Description: Run qrencode with a terminal output format.
-_nds_git_qr_try_format() {
+_git_qr_try_format() {
     local fmt="$1" payload="$2"
     shift 2
     local -a qr_cmd=("$@")
@@ -74,7 +74,7 @@ nds_git_qr_show_payload() {
     nds_ui_b ""
 
     for fmt in ANSIUTF8 ANSI UTF8; do
-        if _nds_git_qr_try_format "$fmt" "$payload" "${qr_cmd[@]}"; then
+        if _git_qr_try_format "$fmt" "$payload" "${qr_cmd[@]}"; then
             nds_ui_b ""
             return 0
         fi

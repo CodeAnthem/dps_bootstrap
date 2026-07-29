@@ -13,8 +13,8 @@
 nds_git_urls_to_github_repos() {
     local url parsed host owner repo
     for url in "$@"; do
-        url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$url") || continue
+        url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         nds_git_host_is_github "$host" || continue
         printf '%s/%s\n' "$owner" "$repo"
@@ -26,7 +26,7 @@ nds_git_urls_to_github_repos() {
 # - gh_repo: <String> owner/repo
 # Returns:
 # - <String> git remote URLs from the lock (stdout)
-_nds_git_gh_lock_git_urls() {
+_git_gh_lock_git_urls() {
     local gh_repo="$1"
     local owner repo content tmp
     local -a gh_cmd=()
@@ -45,7 +45,7 @@ _nds_git_gh_lock_git_urls() {
         rm -f "$tmp"
         return 0
     fi
-    _nds_flake_lock_ssh_urls "$tmp"
+    _flake_lock_ssh_urls "$tmp"
     rm -f "$tmp"
 }
 
@@ -69,7 +69,7 @@ nds_git_gh_expand_github_repos() {
             [[ -n "$url" ]] || continue
             mapfile -t gh_repos < <(nds_git_urls_to_github_repos "$url")
             mapfile -t out < <(printf '%s\n' "${out[@]}" "${gh_repos[@]}")
-        done < <(_nds_git_gh_lock_git_urls "$gh_repo")
+        done < <(_git_gh_lock_git_urls "$gh_repo")
     done
     printf '%s\n' "${out[@]}" | awk 'NF' | sort -u
 }

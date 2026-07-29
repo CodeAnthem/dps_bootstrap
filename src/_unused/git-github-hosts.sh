@@ -26,8 +26,8 @@ nds_git_urls_all_github() {
     local url ssh_url parsed host owner repo
     for url in "$@"; do
         [[ -n "$url" ]] || continue
-        ssh_url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$ssh_url") || return 1
+        ssh_url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$ssh_url") || return 1
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         nds_git_host_is_github "$host" || return 1
     done
@@ -85,8 +85,8 @@ nds_git_primary_host_from_urls() {
     local url ssh_url parsed host owner repo
     for url in "$@"; do
         [[ -n "$url" ]] || continue
-        ssh_url=$(_nds_git_ssh_url "$url")
-        if parsed=$(_nds_git_parse "$ssh_url"); then
+        ssh_url=$(_git_ssh_url "$url")
+        if parsed=$(_git_parse "$ssh_url"); then
             IFS=$'\t' read -r host owner repo <<< "$parsed"
             printf '%s\n' "$host"
             return 0

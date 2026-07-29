@@ -13,10 +13,10 @@
 # - <Bool> 0 when accessible
 nds_git_probe_access() {
     local url="$1" ssh_url key_path=""
-    ssh_url=$(_nds_git_ssh_url "$url")
+    ssh_url=$(_git_ssh_url "$url")
     local -a envv=()
-    key_path=$(_nds_git_identity_for_url "$url" 2>/dev/null || true)
-    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env_for_url "$url")
+    key_path=$(_git_identity_for_url "$url" 2>/dev/null || true)
+    while IFS= read -r line; do envv+=("$line"); done < <(_git_ssh_env_for_url "$url")
     if command -v timeout &>/dev/null; then
         timeout 15 env "${envv[@]}" git -c credential.helper= ls-remote "$ssh_url" &>/dev/null
     else
@@ -39,6 +39,6 @@ nds_git_probe_access() {
 # - <Bool> 0 on success
 nds_git_clone() {
     local url="$1" dest="$2" depth="${3:-1}" key_path=""
-    key_path=$(_nds_git_identity_for_url "$url" 2>/dev/null || true)
+    key_path=$(_git_identity_for_url "$url" 2>/dev/null || true)
     nds_git_clone_with_key "$url" "$dest" "$depth" "$key_path"
 }

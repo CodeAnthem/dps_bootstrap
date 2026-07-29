@@ -8,45 +8,45 @@
 suite_git() {
     local parsed host owner repo urls tmpdir key_src dest out perms repos register_url
 
-    parsed=$(_nds_git_parse "https://github.com/CodeAnthem/dps_swarm.git")
+    parsed=$(_git_parse "https://github.com/CodeAnthem/dps_swarm.git")
     IFS=$'\t' read -r host owner repo <<< "$parsed"
     if [[ "$host" == "github.com" && "$owner" == "CodeAnthem" && "$repo" == "dps_swarm" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ _nds_git_parse: https github URL"
+        console "  ✓ _git_parse: https github URL"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ _nds_git_parse: https github URL"
+        console "  ✗ _git_parse: https github URL"
     fi
 
-    out=$(_nds_git_ssh_url "https://github.com/org/repo.git")
+    out=$(_git_ssh_url "https://github.com/org/repo.git")
     if [[ "$out" == "git@github.com:org/repo.git" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ _nds_git_ssh_url: normalizes HTTPS to SSH"
+        console "  ✓ _git_ssh_url: normalizes HTTPS to SSH"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ _nds_git_ssh_url: expected git@github.com:org/repo.git got $out"
+        console "  ✗ _git_ssh_url: expected git@github.com:org/repo.git got $out"
     fi
 
-    out=$(_nds_git_ssh_url "ssh://git@github.com/org/thundercast.git")
+    out=$(_git_ssh_url "ssh://git@github.com/org/thundercast.git")
     if [[ "$out" == "git@github.com:org/thundercast.git" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ _nds_git_ssh_url: normalizes ssh:// to git@"
+        console "  ✓ _git_ssh_url: normalizes ssh:// to git@"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ _nds_git_ssh_url: ssh:// normalize got $out"
+        console "  ✗ _git_ssh_url: ssh:// normalize got $out"
     fi
 
-    out=$(_nds_git_ssh_url "git+ssh://git@github.com/org/thundercast.git")
+    out=$(_git_ssh_url "git+ssh://git@github.com/org/thundercast.git")
     if [[ "$out" == "git@github.com:org/thundercast.git" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ _nds_git_ssh_url: normalizes git+ssh:// to git@"
+        console "  ✓ _git_ssh_url: normalizes git+ssh:// to git@"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ _nds_git_ssh_url: git+ssh:// normalize got $out"
+        console "  ✗ _git_ssh_url: git+ssh:// normalize got $out"
     fi
 
     tmpdir=$(mktemp -d)
-    urls=$(_nds_flake_collect_git_remote_urls "$tmpdir" "git@github.com:org/root.git")
+    urls=$(_flake_collect_git_remote_urls "$tmpdir" "git@github.com:org/root.git")
     if grep -q 'git@github.com:org/root.git' <<<"$urls"; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ closure collect: includes root URL"
@@ -56,7 +56,7 @@ suite_git() {
     fi
 
     cp "${TEST_ROOT}/fixtures/flake.lock.sample" "${tmpdir}/flake.lock"
-    urls=$(_nds_flake_collect_git_remote_urls "$tmpdir" "")
+    urls=$(_flake_collect_git_remote_urls "$tmpdir" "")
     if grep -q 'git@github.com:org/thundercore' <<<"$urls" \
        && grep -q 'git@github.com:org/thundercast' <<<"$urls"; then
         TEST_PASSED=$((TEST_PASSED + 1))
@@ -68,7 +68,7 @@ suite_git() {
 
     printf '%s\n' '{"nodes":{"t":{"locked":{"type":"git","url":"ssh://git@github.com/CodeAnthem/thundercore.git"}}}}' \
         > "${tmpdir}/flake.lock.ssh"
-    urls=$(_nds_flake_lock_ssh_urls "${tmpdir}/flake.lock.ssh")
+    urls=$(_flake_lock_ssh_urls "${tmpdir}/flake.lock.ssh")
     if grep -q 'ssh://git@github.com/CodeAnthem/thundercore.git' <<<"$urls"; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ flake.lock: parses ssh://git@ URLs"
@@ -176,7 +176,7 @@ suite_git() {
         fi
     fi
 
-    if declare -f _nds_flake_lock_git_entries &>/dev/null; then
+    if declare -f _flake_lock_git_entries &>/dev/null; then
         local lock_tmp lock_file
         lock_tmp=$(mktemp -d)
         lock_file="${lock_tmp}/flake.lock"
@@ -195,7 +195,7 @@ suite_git() {
   }
 }
 LOCK
-        if _nds_flake_lock_git_entries "$lock_file" | grep -q $'ssh://git@github.com/CodeAnthem/thundercast\tabc123def456\tsha256-TEST'; then
+        if _flake_lock_git_entries "$lock_file" | grep -q $'ssh://git@github.com/CodeAnthem/thundercast\tabc123def456\tsha256-TEST'; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ flake_lock_git_entries: parses git inputs from flake.lock"
         else
@@ -205,7 +205,7 @@ LOCK
         rm -rf "$lock_tmp"
     fi
 
-    if declare -f _nds_git_identity_for_url &>/dev/null; then
+    if declare -f _git_identity_for_url &>/dev/null; then
         local id_tmp id_key
         id_tmp=$(mktemp -d)
         export NDS_RUNTIME_DIR="${id_tmp}/nds-runtime"
@@ -214,7 +214,7 @@ LOCK
         id_key="$(nds_git_deploy_key_path CodeAnthem thundercast)"
         ssh-keygen -t ed25519 -N "" -f "$id_key" -C test >/dev/null 2>&1 || true
         nds_git_keys_register "$id_key" || true
-        key=$(_nds_git_identity_for_url "git@github.com:CodeAnthem/thundercast.git" 2>/dev/null || true)
+        key=$(_git_identity_for_url "git@github.com:CodeAnthem/thundercast.git" 2>/dev/null || true)
         if [[ "$key" == "$id_key" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ identity_for_url: deploy key per repository"
@@ -340,7 +340,7 @@ LOCK
         fi
     fi
 
-    if [[ -f "$(_nds_git_switch_src 2>/dev/null || true)" ]]; then
+    if [[ -f "$(_git_switch_src 2>/dev/null || true)" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ nds-switch.sh present in runtime-tools"
     else

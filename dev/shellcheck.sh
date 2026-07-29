@@ -41,7 +41,7 @@ Exit code: 0 on success, non-zero if ShellCheck reports issues.
 EOF
 }
 
-_nds_shellcheck_platform() {
+_shellcheck_platform() {
     local os arch
     os="$(uname -s)"
     arch="$(uname -m)"
@@ -57,7 +57,7 @@ _nds_shellcheck_platform() {
     esac
 }
 
-_nds_shellcheck_collect_scripts() {
+_shellcheck_collect_scripts() {
     mapfile -t _NDS_LINT_SCRIPTS < <(
         find "${ROOT}/src" -name '*.sh' \
             ! -path '*/tests/*' \
@@ -66,9 +66,9 @@ _nds_shellcheck_collect_scripts() {
     _NDS_LINT_SCRIPTS+=("${ROOT}/start.sh")
 }
 
-_nds_shellcheck_install() {
+_shellcheck_install() {
     local platform archive extract_dir url
-    platform="$(_nds_shellcheck_platform)"
+    platform="$(_shellcheck_platform)"
     extract_dir="${CACHE_ROOT}/${SHELLCHECK_VERSION}"
     archive="${CACHE_ROOT}/shellcheck-v${SHELLCHECK_VERSION}.${platform}.tar.xz"
     url="https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.${platform}.tar.xz"
@@ -87,7 +87,7 @@ _nds_shellcheck_install() {
     SHELLCHECK_BIN="${extract_dir}/shellcheck"
 }
 
-_nds_shellcheck_resolve_bin() {
+_shellcheck_resolve_bin() {
     if [[ -n "${SHELLCHECK_BIN:-}" && -x "${SHELLCHECK_BIN}" ]]; then
         return 0
     fi
@@ -108,10 +108,10 @@ _nds_shellcheck_resolve_bin() {
         return 0
     fi
 
-    _nds_shellcheck_install
+    _shellcheck_install
 }
 
-_nds_shellcheck_run() {
+_shellcheck_run() {
     local install_only=false
     local list_only=false
 
@@ -141,7 +141,7 @@ _nds_shellcheck_run() {
         esac
     done
 
-    _nds_shellcheck_resolve_bin
+    _shellcheck_resolve_bin
     "${SHELLCHECK_BIN}" --version
 
     if [[ "$install_only" == true ]]; then
@@ -149,7 +149,7 @@ _nds_shellcheck_run() {
         exit 0
     fi
 
-    _nds_shellcheck_collect_scripts
+    _shellcheck_collect_scripts
 
     if [[ "$list_only" == true ]]; then
         printf '%s\n' "${_NDS_LINT_SCRIPTS[@]}"
@@ -160,4 +160,4 @@ _nds_shellcheck_run() {
     "${SHELLCHECK_BIN}" -S warning --rcfile="${ROOT}/.shellcheckrc" "${_NDS_LINT_SCRIPTS[@]}"
 }
 
-_nds_shellcheck_run "$@"
+_shellcheck_run "$@"

@@ -5,7 +5,7 @@
 # Date:          Created: 2026-06-30 | Modified: 2026-07-06
 # ==================================================================================================
 
-_nds_ui_colored() {
+_bundle_ui_colored() {
     local color="$1"
     local text="$2"
     nds_ui_init
@@ -16,7 +16,7 @@ _nds_ui_colored() {
     fi
 }
 
-_nds_install_bundle_remote_copy_hint() {
+_install_bundle_remote_copy_hint() {
     local bundle_path="$1"
     local ssh_user host local_name
 
@@ -36,8 +36,8 @@ _nds_install_bundle_remote_copy_hint() {
     nds_ui_b ""
 }
 
-_nds_install_bundle_usbkey_instructions() {
-    _nixinstall_gather_context
+_install_bundle_usbkey_instructions() {
+    _install_gather_context
     [[ "$NDS_CTX_ENCRYPTION" == "true" ]] || return 0
     [[ "$NDS_CTX_ENCRYPTION_KEY" == "true" ]] || return 0
 
@@ -61,8 +61,8 @@ _nds_install_bundle_usbkey_instructions() {
 
     if [[ "$NDS_CTX_ENCRYPTION_PASSWORD" != "true" ]]; then
         nds_ui_b ""
-        _nds_ui_colored 31 "WARNING: key-only mode (no password)."
-        _nds_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
-        _nds_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
+        _bundle_ui_colored 31 "WARNING: key-only mode (no password)."
+        _bundle_ui_colored 31 "If this USB is lost, stolen, or corrupted, the system CANNOT boot."
+        _bundle_ui_colored 31 "There is no fallback. Consider re-installing with a password too."
     fi
 }

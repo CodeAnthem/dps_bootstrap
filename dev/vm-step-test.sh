@@ -26,7 +26,7 @@ nds_bootstrap_load_libs "$SCRIPT_DIR" || {
     exit 1
 }
 
-_nds_vm_step_usage() {
+_vm_step_usage() {
     cat <<'EOF'
 vm-step-test.sh <step>
 
@@ -41,10 +41,10 @@ These do NOT run full installFlake. Use them on the live ISO to isolate failures
 EOF
 }
 
-_nds_vm_step_facter() {
+_vm_step_facter() {
     local dest="/tmp/nds-vm-facter-$$.json"
     echo "==> generating facter -> ${dest}"
-    _nixinstall_generate_facter_report "$dest"
+    _install_generate_facter_report "$dest"
     echo "==> ok (null-scrub applied)"
     echo "    path: ${dest}"
     echo "    cpu entries:"
@@ -54,7 +54,7 @@ in map (c: if c == null then \"null\" else (c.model_name or \"obj\")) (r.hardwar
 "
 }
 
-_nds_vm_step_sanitize() {
+_vm_step_sanitize() {
     local src="${1:-${NDS_FACTER_IN:-}}"
     [[ -n "$src" && -f "$src" ]] || {
         echo "Need path: vm-step-test.sh sanitize /path/to/facter.json" >&2
@@ -63,11 +63,11 @@ _nds_vm_step_sanitize() {
     local dest
     dest=$(mktemp --suffix=.json)
     cp "$src" "$dest"
-    _nixinstall_sanitize_facter_report "$dest"
+    _install_sanitize_facter_report "$dest"
     echo "sanitized copy: ${dest}"
 }
 
-_nds_vm_step_stage_boot() {
+_vm_step_stage_boot() {
     local flake_root="${NDS_FLAKE_ROOT:-}"
     if [[ -z "$flake_root" ]]; then
         if [[ -d /mnt/etc/nixos ]]; then
@@ -90,21 +90,21 @@ _nds_vm_step_stage_boot() {
         echo "Host dir missing: ${host_dir}" >&2
         return 1
     }
-    _nds_install_flake_git_stage_install_files "$flake_root" "$host_dir"
+    _install_flake_git_stage_install_files "$flake_root" "$host_dir"
     echo "staged install-time files under ${host_dir}"
     git -C "$flake_root" status --short -- "hosts/" || true
 }
 
 step="${1:-list}"
 case "$step" in
-    list|-h|--help) _nds_vm_step_usage ;;
-    facter) _nds_vm_step_facter ;;
-    sanitize) _nds_vm_step_sanitize "${2:-}" ;;
-    stage-boot) _nds_vm_step_stage_boot ;;
+    list|-h|--help) _vm_step_usage ;;
+    facter) _vm_step_facter ;;
+    sanitize) _vm_step_sanitize "${2:-}" ;;
+    stage-boot) _vm_step_stage_boot ;;
     selftest) exec bash "${ROOT}/dev/selftest.sh" ;;
     *)
         echo "Unknown step: ${step}" >&2
-        _nds_vm_step_usage
+        _vm_step_usage
         exit 1
         ;;
 esac

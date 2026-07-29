@@ -47,15 +47,15 @@ nds_git_wizard_ask_register_method() {
 # - urls:  <String...> Git URLs to search
 # Returns:
 # - <String> host name (stdout)
-_nds_git_host_for_owner_repo() {
+_git_host_for_owner_repo() {
     local want_owner="$1" want_repo="$2"
     shift 2
     local url ssh_url parsed host owner repo
 
     for url in "$@"; do
         [[ -n "$url" ]] || continue
-        ssh_url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$ssh_url") || continue
+        ssh_url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$ssh_url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         if [[ "$owner" == "$want_owner" && "$repo" == "$want_repo" ]]; then
             printf '%s\n' "$host"
@@ -171,8 +171,8 @@ nds_git_wizard_menu_new_key() {
     if [[ "$key_type" == "account" ]]; then
         [[ ${#repos[@]} -gt 0 ]] || {
             for arg in "${urls[@]}"; do
-                ssh_url=$(_nds_git_ssh_url "$arg")
-                parsed=$(_nds_git_parse "$ssh_url") || continue
+                ssh_url=$(_git_ssh_url "$arg")
+                parsed=$(_git_parse "$ssh_url") || continue
                 IFS=$'\t' read -r host owner repo <<< "$parsed"
                 repos+=("${owner}/${repo}")
             done
@@ -183,8 +183,8 @@ nds_git_wizard_menu_new_key() {
 
     [[ ${#repos[@]} -gt 0 ]] || {
         for arg in "${urls[@]}"; do
-            ssh_url=$(_nds_git_ssh_url "$arg")
-            parsed=$(_nds_git_parse "$ssh_url") || continue
+            ssh_url=$(_git_ssh_url "$arg")
+            parsed=$(_git_parse "$ssh_url") || continue
             IFS=$'\t' read -r host owner repo <<< "$parsed"
             repos+=("${owner}/${repo}")
         done
@@ -194,7 +194,7 @@ nds_git_wizard_menu_new_key() {
         owner="${arg%%/*}"
         repo="${arg##*/}"
         [[ -n "$owner" && -n "$repo" ]] || continue
-        host="$(_nds_git_host_for_owner_repo "$owner" "$repo" "${urls[@]}")"
+        host="$(_git_host_for_owner_repo "$owner" "$repo" "${urls[@]}")"
         info "Deploy key for ${owner}/${repo}..."
         nds_git_wizard_register_deploy "$owner" "$repo" "$host" || return 1
     done
@@ -211,8 +211,8 @@ nds_git_wizard_register_deploy_for_urls() {
     declare -A seen=()
 
     for url in "$@"; do
-        ssh_url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$ssh_url") || continue
+        ssh_url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$ssh_url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         [[ -n "${seen[${owner}/${repo}]:-}" ]] && continue
         seen["${owner}/${repo}"]=1

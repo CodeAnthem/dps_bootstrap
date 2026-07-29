@@ -6,7 +6,7 @@
 # Description:   NDS-aware paths and session wiring around standalone git key ops
 # ==================================================================================================
 
-_nds_git_host_label_from_cfg() {
+_git_host_label_from_cfg() {
     local name=""
 
     if declare -f nds_configurator_config_get &>/dev/null; then
@@ -83,7 +83,7 @@ nds_git_session_pubkey_path() {
 # Returns:
 # - <String> e.g. nds-codeanthem-control-toolkit
 nds_git_ssh_key_title() {
-    nds_git_session_key_title_for "$(nds_git_cfg_owner_slug)" "$(_nds_git_host_label_from_cfg)"
+    nds_git_session_key_title_for "$(nds_git_cfg_owner_slug)" "$(_git_host_label_from_cfg)"
 }
 
 # Description: Copy a private key into place with safe permissions and load into ssh-agent.

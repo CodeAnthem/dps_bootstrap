@@ -11,7 +11,7 @@
 # - ...:       <String...> gh api args
 # Returns:
 # - <String> command output (stdout)
-_nds_git_gh_api_with_timeout() {
+_git_gh_api_with_timeout() {
     local timeout_s="$1"
     shift
     local -a cmd=("$@")
@@ -19,9 +19,9 @@ _nds_git_gh_api_with_timeout() {
     [[ ${#cmd[@]} -gt 0 ]] || return 1
 
     # nds_git_gh_cmd may return a shell function prefix:
-    #   _nds_git_gh_nix shell nixpkgs#gh -c gh
+    #   _git_gh_nix shell nixpkgs#gh -c gh
     # timeout cannot execute shell functions directly, so normalize to nix.
-    if [[ "${cmd[0]}" == "_nds_git_gh_nix" ]]; then
+    if [[ "${cmd[0]}" == "_git_gh_nix" ]]; then
         cmd=(nix --extra-experimental-features "nix-command flakes" "${cmd[@]:1}")
     fi
 
@@ -39,12 +39,12 @@ _nds_git_gh_api_with_timeout() {
 # - title: <String> Deploy key title
 # Returns:
 # - <String> key ids (stdout, one per line)
-_nds_git_gh_deploy_key_ids_by_title() {
+_git_gh_deploy_key_ids_by_title() {
     local owner="$1" repo="$2" title="$3"
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
-    _nds_git_gh_api_with_timeout 20 "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" \
+    _git_gh_api_with_timeout 20 "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" \
         --jq ".[] | select(.title==\"${title}\") | .id" 2>/dev/null
 }
 
@@ -57,7 +57,7 @@ _nds_git_gh_deploy_key_ids_by_title() {
 # - title: <Nameref> Desired key title (may be changed for alternate)
 # Returns:
 # - <Bool> 0 when a title strategy is chosen
-_nds_git_gh_deploy_resolve_title_collision() {
+_git_gh_deploy_resolve_title_collision() {
     local owner="$1" repo="$2"
     local -n _title=$3
     local choice suffix n=2
@@ -84,7 +84,7 @@ _nds_git_gh_deploy_resolve_title_collision() {
         alternate)
             while :; do
                 suffix="${_title}-${n}"
-                if [[ -z "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$suffix")" ]]; then
+                if [[ -z "$(_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$suffix")" ]]; then
                     _title="$suffix"
                     nds_ui_i "Using alternate deploy key title: ${_title}"
                     nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "alternate"
@@ -112,17 +112,17 @@ nds_git_gh_deploy_pubkey_on_repo() {
     nds_git_gh_cmd gh_cmd || return 1
     key_body="$(awk '{print $2}' "$pub_file")"
     [[ -n "$key_body" ]] || return 1
-    _nds_git_gh_api_with_timeout 20 "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" --jq '.[].key' 2>/dev/null \
+    _git_gh_api_with_timeout 20 "${gh_cmd[@]}" api "repos/${owner}/${repo}/keys" --jq '.[].key' 2>/dev/null \
         | grep -qF "$key_body"
 }
 
 # Description: Delete one deploy key from a repository.
-_nds_git_gh_deploy_key_delete() {
+_git_gh_deploy_key_delete() {
     local owner="$1" repo="$2" id="$3"
     local -a gh_cmd=()
 
     nds_git_gh_cmd gh_cmd || return 1
-    _nds_git_gh_api_with_timeout 20 "${gh_cmd[@]}" api --method DELETE "repos/${owner}/${repo}/keys/${id}" 2>/dev/null
+    _git_gh_api_with_timeout 20 "${gh_cmd[@]}" api --method DELETE "repos/${owner}/${repo}/keys/${id}" 2>/dev/null
 }
 
 # Description: Add read-only deploy key to a repository via gh API.
@@ -143,8 +143,8 @@ nds_git_gh_register_deploy_key() {
     nds_git_gh_cmd gh_cmd || return 1
 
     nds_ui_i "Checking existing deploy keys on ${owner}/${repo}..."
-    if [[ -n "$(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
-        _nds_git_gh_deploy_resolve_title_collision "$owner" "$repo" title || return 1
+    if [[ -n "$(_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
+        _git_gh_deploy_resolve_title_collision "$owner" "$repo" title || return 1
     fi
 
     nds_ui_i "Checking whether this public key is already registered..."
@@ -158,8 +158,8 @@ nds_git_gh_register_deploy_key() {
         nds_ui_i "Removing existing deploy keys with title: ${title}"
         while IFS= read -r id; do
             [[ -n "$id" ]] || continue
-            _nds_git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
-        done < <(_nds_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")
+            _git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
+        done < <(_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")
         if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
             nds_install_log "git: deploy key already on ${owner}/${repo} (${title})"
             nds_git_gh_session_mark_scopes_ok
@@ -171,7 +171,7 @@ nds_git_gh_register_deploy_key() {
     payload=$(printf '{"title":"%s","key":"%s","read_only":true}' "$title" "$key_body")
 
     nds_ui_i "Creating deploy key \"${title}\" on ${owner}/${repo}..."
-    err=$(_nds_git_gh_api_with_timeout 30 "${gh_cmd[@]}" api --method POST "repos/${owner}/${repo}/keys" \
+    err=$(_git_gh_api_with_timeout 30 "${gh_cmd[@]}" api --method POST "repos/${owner}/${repo}/keys" \
         -H "Accept: application/vnd.github+json" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         --input - <<< "$payload" 2>&1) || rc=$?

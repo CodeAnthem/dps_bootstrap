@@ -11,7 +11,7 @@
 # PARAM GENERATION (from arguments)
 # ----------------------------------------------------------------------------------
 
-_nds_partition_disko_generate_params() {
+_install_partition_disko_generate_params() {
     local out="$1" disk="$2" fs_type="$3" swap_mib="$4" separate_home="$5" home_size="$6" enc="$7" unlock="$8"
     [[ -n "$out" && -n "$disk" ]] || { error "Missing params"; return 1; }
 
@@ -31,7 +31,7 @@ EOF
 # ----------------------------------------------------------------------------------
 # TEMPLATE SELECTION
 # ----------------------------------------------------------------------------------
-_nds_partition_disko_pick_template() {
+_install_partition_disko_pick_template() {
     local install_dir
     install_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     echo "${install_dir}/templates/disko/default.nix"
@@ -40,7 +40,7 @@ _nds_partition_disko_pick_template() {
 # ----------------------------------------------------------------------------------
 # APPLY DISKO
 # ----------------------------------------------------------------------------------
-_nds_partition_disko_apply() {
+_install_partition_disko_apply() {
     local disk="$1" fs_type="$2" swap_mib="$3" separate_home="$4" home_size="$5" enc="$6" unlock="$7" user_file="$8"
     local tmpl tmpl_dir tmpl_base params_path rc=0
 
@@ -50,11 +50,11 @@ _nds_partition_disko_apply() {
         warn "Using user-provided disko file: $user_file"
         nix run github:nix-community/disko -- --mode disko "$user_file" || rc=$?
     else
-        tmpl=$(_nds_partition_disko_pick_template)
+        tmpl=$(_install_partition_disko_pick_template)
         tmpl_dir="$(dirname "$tmpl")"
         tmpl_base="$(basename "$tmpl")"
         params_path="${tmpl_dir}/params.nix"
-        _nds_partition_disko_generate_params "$params_path" "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" || return 1
+        _install_partition_disko_generate_params "$params_path" "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" || return 1
 
         (
             cd "$tmpl_dir" || exit 1

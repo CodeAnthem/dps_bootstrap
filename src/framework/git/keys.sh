@@ -4,7 +4,7 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-07-08
 # Description:   Registry file listing session private key paths (one per line).
-_nds_git_keys_registry_file() {
+_git_keys_registry_file() {
     printf '%s/git_session_keys\n' "${NDS_RUNTIME_DIR:-/tmp/nds}"
 }
 
@@ -16,7 +16,7 @@ nds_git_keys_register() {
     local reg
 
     [[ -f "$key_path" ]] || return 1
-    reg="$(_nds_git_keys_registry_file)"
+    reg="$(_git_keys_registry_file)"
     mkdir -p "$(dirname "$reg")"
     if [[ -f "$reg" ]] && grep -qxF "$key_path" "$reg" 2>/dev/null; then
         return 0
@@ -34,7 +34,7 @@ nds_git_keys_list() {
     local reg key_path
 
     {
-        reg="$(_nds_git_keys_registry_file)"
+        reg="$(_git_keys_registry_file)"
         if [[ -f "$reg" ]]; then
             while IFS= read -r key_path; do
                 [[ -f "$key_path" ]] && printf '%s\n' "$key_path"
@@ -82,7 +82,7 @@ nds_git_auth_mode() {
 # Returns:
 # - <String> title e.g. nds_control-toolkit (stdout)
 nds_git_deploy_key_title() {
-    nds_git_deploy_key_title_for "$(_nds_git_host_label_from_cfg)"
+    nds_git_deploy_key_title_for "$(_git_host_label_from_cfg)"
 }
 
 # Description: Session path for a per-repo deploy private key.
@@ -108,17 +108,17 @@ nds_git_deploy_key_target_rel() {
 }
 
 # Description: Absolute path of nds-git-ssh helper in this NDS tree.
-_nds_git_ssh_wrapper_src() {
+_git_ssh_wrapper_src() {
     printf '%s/runtime-tools/nds-git-ssh.sh\n' "${SCRIPT_DIR}"
 }
 
 # Description: Absolute path of nds-switch helper in this NDS tree.
-_nds_git_switch_src() {
+_git_switch_src() {
     printf '%s/runtime-tools/nds-switch.sh\n' "${SCRIPT_DIR}"
 }
 
 # Description: Absolute path of nds-clean helper in this NDS tree.
-_nds_git_clean_src() {
+_git_clean_src() {
     printf '%s/runtime-tools/nds-clean.sh\n' "${SCRIPT_DIR}"
 }
 
@@ -127,7 +127,7 @@ _nds_git_clean_src() {
 # - base: <String> Filename basename
 # Returns:
 # - <String> owner/repo (stdout) or empty
-_nds_git_owner_repo_from_deploy_basename() {
+_git_owner_repo_from_deploy_basename() {
     nds_git_owner_repo_from_deploy_basename "$1"
 }
 
@@ -162,7 +162,7 @@ nds_git_deploy_key_generate() {
 # Description: List deploy private key paths (session registry + nds_deploy_* on disk).
 # Returns:
 # - <String> paths (stdout, one per line)
-_nds_git_collect_deploy_key_paths() {
+_git_collect_deploy_key_paths() {
     local deploy_dir="${NDS_GIT_DEPLOY_KEYS_DIR:-/root/.ssh}"
     local key_path
 
@@ -184,7 +184,7 @@ _nds_git_collect_deploy_key_paths() {
 # Description: Install GitHub host key for non-interactive git on the target.
 # Arguments:
 # - mount_root: <String> Target mount (default /mnt)
-_nds_git_install_github_known_hosts() {
+_git_install_github_known_hosts() {
     local mount_root="${1:-/mnt}"
     local kh="${mount_root}/etc/ssh/ssh_known_hosts"
     local kh_root="${mount_root}/root/.ssh/known_hosts"
@@ -214,7 +214,7 @@ _nds_git_install_github_known_hosts() {
 # - flake_root: <String|optional> Flake checkout (adds lock/flake URLs)
 # Returns:
 # - <String> map lines on stdout; count on fd3 as digits when available
-_nds_git_write_deploy_map_lines() {
+_git_write_deploy_map_lines() {
     local mount_root="$1" flake_root="${2:-}"
     local ssh_dir="${mount_root}/root/.ssh"
     local url ssh_url parsed host owner repo base dest want
@@ -224,8 +224,8 @@ _nds_git_write_deploy_map_lines() {
 
     while IFS= read -r url; do
         [[ -n "$url" ]] || continue
-        ssh_url=$(_nds_git_ssh_url "$url")
-        parsed=$(_nds_git_parse "$ssh_url") || continue
+        ssh_url=$(_git_ssh_url "$url")
+        parsed=$(_git_parse "$ssh_url") || continue
         IFS=$'\t' read -r host owner repo <<< "$parsed"
         [[ -n "$owner" && -n "$repo" ]] || continue
         want="$(printf '%s/%s' "${owner,,}" "${repo,,}")"
@@ -237,9 +237,9 @@ _nds_git_write_deploy_map_lines() {
         printf '%s\t/root/.ssh/%s\n' "$want" "$base"
     done < <(
         if [[ -n "$flake_root" && -d "$flake_root" ]]; then
-            _nds_flake_collect_git_remote_urls "$flake_root" "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}"
+            _flake_collect_git_remote_urls "$flake_root" "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}"
         elif [[ -n "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}" ]]; then
-            _nds_git_ssh_url "${NDS_CTX_FLAKE_REPO_URL:-$NDS_FLAKE_REPO_URL}"
+            _git_ssh_url "${NDS_CTX_FLAKE_REPO_URL:-$NDS_FLAKE_REPO_URL}"
         fi
     )
 
@@ -248,7 +248,7 @@ _nds_git_write_deploy_map_lines() {
         [[ -f "$dest" ]] || continue
         [[ "$dest" == *.pub ]] && continue
         base="$(basename "$dest")"
-        want="$(_nds_git_owner_repo_from_deploy_basename "$base" 2>/dev/null || true)"
+        want="$(_git_owner_repo_from_deploy_basename "$base" 2>/dev/null || true)"
         [[ -n "$want" ]] || continue
         want="${want,,}"
         [[ -n "${seen[$want]:-}" ]] && continue
@@ -261,7 +261,7 @@ _nds_git_write_deploy_map_lines() {
 # Arguments:
 # - mount_root: <String> Target mount (default /mnt)
 # - flake_root: <String|optional> Flake checkout for URL→key map
-_nds_git_install_ssh_wrapper_to_target() {
+_git_install_ssh_wrapper_to_target() {
     local mount_root="${1:-/mnt}"
     local flake_root="${2:-}"
     local ssh_dir="${mount_root}/root/.ssh"
@@ -272,7 +272,7 @@ _nds_git_install_ssh_wrapper_to_target() {
     # NixOS: prefer /root/.nds/bin (survives self-update); keep profile.d PATH tip.
     mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d" \
         "${mount_root}/root/bin" "${mount_root}/root/.nds/bin" "${mount_root}/etc/profile.d"
-    wrap_src="$(_nds_git_ssh_wrapper_src)"
+    wrap_src="$(_git_ssh_wrapper_src)"
     [[ -f "$wrap_src" ]] || {
         error "nds-git-ssh source missing: ${wrap_src}"
         return 1
@@ -283,9 +283,9 @@ _nds_git_install_ssh_wrapper_to_target() {
         install -m 755 "$wrap_src" "$wrap_dst"
     fi
 
-    switch_src="$(_nds_git_switch_src)"
+    switch_src="$(_git_switch_src)"
     switch_dst="${mount_root}/root/.nds/bin/nds-switch"
-    clean_src="$(_nds_git_clean_src)"
+    clean_src="$(_git_clean_src)"
     clean_dst="${mount_root}/root/.nds/bin/nds-clean"
     if [[ -f "$switch_src" ]]; then
         if [[ "$(id -u)" -eq 0 ]]; then
@@ -311,7 +311,7 @@ _nds_git_install_ssh_wrapper_to_target() {
         printf 'export PATH="/root/.nds/bin:/root/bin:${PATH}"\n' \
             >"${mount_root}/etc/profile.d/nds-root-bin.sh"
         chmod 644 "${mount_root}/etc/profile.d/nds-root-bin.sh"
-        _nds_git_append_root_path_snippet() {
+        _git_append_root_path_snippet() {
             local dotfile="$1"
             local target="${mount_root}/root/${dotfile}"
             grep -q '/root/.nds/bin' "$target" 2>/dev/null \
@@ -324,16 +324,16 @@ _nds_git_install_ssh_wrapper_to_target() {
             chmod 644 "$target"
         }
         # SSH login reads .bash_profile first; tty login reads .profile
-        _nds_git_append_root_path_snippet .bash_profile
-        _nds_git_append_root_path_snippet .profile
-        _nds_git_append_root_path_snippet .bashrc
+        _git_append_root_path_snippet .bash_profile
+        _git_append_root_path_snippet .profile
+        _git_append_root_path_snippet .bashrc
         nds_install_log "git: nds-switch -> /root/.nds/bin/nds-switch"
         [[ -f "$clean_src" ]] && nds_install_log "git: nds-clean -> /root/.nds/bin/nds-clean"
     else
         warn "nds-switch source missing: ${switch_src}"
     fi
 
-    _nds_git_write_deploy_map_lines "$mount_root" "$flake_root" >"$map_file"
+    _git_write_deploy_map_lines "$mount_root" "$flake_root" >"$map_file"
     installed_map=$(grep -cvE '^(#|$)' "$map_file" 2>/dev/null || echo 0)
     # grep can print "0\n0" on some versions when file is empty-ish — take first integer
     installed_map="${installed_map%%$'\n'*}"
@@ -367,7 +367,7 @@ _nds_git_install_ssh_wrapper_to_target() {
     fi
 
     nds_install_log "git: nds-git-ssh + map (${installed_map} entries) -> /root/.ssh/"
-    _nds_git_install_github_known_hosts "$mount_root"
+    _git_install_github_known_hosts "$mount_root"
     [[ "$installed_map" -gt 0 ]]
 }
 
@@ -394,7 +394,7 @@ nds_git_verify_target_ro_access() {
 
     while IFS= read -r url; do
         [[ -n "$url" ]] || continue
-        ssh_url=$(_nds_git_ssh_url "$url")
+        ssh_url=$(_git_ssh_url "$url")
         if nds_git_probe_public "$ssh_url" 2>/dev/null; then
             debug "Target skip public: ${ssh_url}"
             continue
@@ -416,7 +416,7 @@ nds_git_verify_target_ro_access() {
             nds_install_log "git: target probe OK ${ssh_url}"
         fi
         rc=0
-    done < <(_nds_flake_collect_git_remote_urls "$flake_root" "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}")
+    done < <(_flake_collect_git_remote_urls "$flake_root" "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}")
 
     [[ "$fail" -eq 0 ]] || return 1
     [[ "$probed" -gt 0 ]] && nds_install_log "git: target RO probes OK (${probed} private)"
@@ -444,17 +444,17 @@ nds_git_install_keys_to_target() {
     if [[ -n "$flake_root" && -d "$flake_root" ]]; then
         while IFS= read -r url; do
             [[ -n "$url" ]] || continue
-            if ! nds_git_probe_public "$(_nds_git_ssh_url "$url")" 2>/dev/null; then
+            if ! nds_git_probe_public "$(_git_ssh_url "$url")" 2>/dev/null; then
                 need_private=true
                 break
             fi
-        done < <(_nds_flake_collect_git_remote_urls "$flake_root" "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}")
+        done < <(_flake_collect_git_remote_urls "$flake_root" "${NDS_CTX_FLAKE_REPO_URL:-${NDS_FLAKE_REPO_URL:-}}")
     else
         # No flake root yet — if deploy keys exist in session, still install them.
         need_private=true
     fi
 
-    mapfile -t keys < <(_nds_git_collect_deploy_key_paths)
+    mapfile -t keys < <(_git_collect_deploy_key_paths)
     # Prefer only nds_deploy_* files for target wiring
     local -a deploy_keys=()
     for key_path in "${keys[@]}"; do
@@ -494,7 +494,7 @@ nds_git_install_keys_to_target() {
         return 1
     }
 
-    _nds_git_install_ssh_wrapper_to_target "$mount_root" "$flake_root" || return 1
+    _git_install_ssh_wrapper_to_target "$mount_root" "$flake_root" || return 1
 
     if [[ "$need_private" == "true" && -n "$flake_root" && -d "$flake_root" ]]; then
         nds_git_verify_target_ro_access "$mount_root" "$flake_root" || return 1

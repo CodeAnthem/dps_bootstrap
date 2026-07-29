@@ -9,7 +9,7 @@
 
 # Description: Resolve the admin password and write runtime secrets (NDS adapter).
 # Run before writing configuration.nix.
-_nixinstall_generate_access_secrets() {
+_install_generate_access_secrets() {
     local runtime_secrets
 
     nds_install_ctx_ensure

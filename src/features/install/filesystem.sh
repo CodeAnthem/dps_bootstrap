@@ -12,8 +12,8 @@
 # =============================================================================
 
 # Mount filesystems for NixOS installation
-# Usage: _nixinstall_mount_filesystems "use_encryption"
-_nixinstall_mount_filesystems() {
+# Usage: _install_mount_filesystems "use_encryption"
+_install_mount_filesystems() {
     local use_encryption="${1:-false}"
     
     log "Mounting filesystems"

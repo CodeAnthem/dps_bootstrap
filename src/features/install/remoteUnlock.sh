@@ -13,8 +13,8 @@
 # server. The key is written to /mnt/etc/secrets/initrd/ on the target so the
 # NixOS config can embed it into the initrd via boot.initrd.secretPaths, and
 # copied to the runtime secrets bundle for the backup zip.
-# Usage: _nixinstall_setup_initrd_ssh_keys
-_nixinstall_setup_initrd_ssh_keys() {
+# Usage: _install_setup_initrd_ssh_keys
+_install_setup_initrd_ssh_keys() {
     local target_dir="/mnt/etc/secrets/initrd"
     local key_path="${target_dir}/ssh_host_ed25519_key"
     local runtime_secrets="${NDS_RUNTIME_DIR:-/tmp/nds_runtime_$$}/secrets"

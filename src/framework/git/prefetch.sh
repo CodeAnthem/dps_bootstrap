@@ -9,7 +9,7 @@
 # Description: List git lock nodes as url<TAB>rev<TAB>narHash (stdout).
 # Arguments:
 # - lock_file: <String> Path to flake.lock
-_nds_flake_lock_git_entries() {
+_flake_lock_git_entries() {
     local lock_file="$1"
     local lock_quoted entries
 
@@ -44,7 +44,7 @@ _nds_flake_lock_git_entries() {
 # Description: URL field for builtins.fetchTree (keep ssh:// from flake.lock).
 # Arguments:
 # - url: <String> Git URL from flake.lock
-_nds_git_fetchtree_url() {
+_git_fetchtree_url() {
     local url="$1"
 
     case "$url" in
@@ -55,7 +55,7 @@ _nds_git_fetchtree_url() {
             hostpath="${hostpath/:/\/}"
             printf 'ssh://git@%s\n' "$hostpath"
             ;;
-        *) printf '%s\n' "$(_nds_git_ssh_url "$url")" ;;
+        *) printf '%s\n' "$(_git_ssh_url "$url")" ;;
     esac
 }
 
@@ -78,10 +78,10 @@ nds_git_nix_prefetch_git_input() {
         return 1
     }
 
-    fetch_url="$(_nds_git_fetchtree_url "$url")"
-    probe_url="$(_nds_git_ssh_url "$url")"
-    while IFS= read -r line; do envv+=("$line"); done < <(_nds_git_ssh_env_for_url "$probe_url")
-    mapfile -t store_args < <(_nds_nix_install_store_args 2>/dev/null || true)
+    fetch_url="$(_git_fetchtree_url "$url")"
+    probe_url="$(_git_ssh_url "$url")"
+    while IFS= read -r line; do envv+=("$line"); done < <(_git_ssh_env_for_url "$probe_url")
+    mapfile -t store_args < <(_install_nix_install_store_args 2>/dev/null || true)
 
     expr="builtins.fetchTree { type = \"git\"; url = \"${fetch_url}\"; rev = \"${rev}\"; narHash = \"${narHash}\"; }"
 
@@ -117,7 +117,7 @@ nds_git_prefetch_flake_closure() {
 
     while IFS=$'\t' read -r url rev narHash; do
         [[ -n "$url" && -n "$rev" ]] || continue
-        probe_url="$(_nds_git_ssh_url "$url")"
+        probe_url="$(_git_ssh_url "$url")"
         if declare -f nds_step_exec &>/dev/null; then
             nds_step_exec "Prefetching ${probe_url}" \
                 nds_git_nix_prefetch_git_input "$url" "$rev" "$narHash" || return 1
@@ -125,7 +125,7 @@ nds_git_prefetch_flake_closure() {
             info "Prefetching ${probe_url}..."
             nds_git_nix_prefetch_git_input "$url" "$rev" "$narHash" || return 1
         fi
-    done < <(_nds_flake_lock_git_entries "$lock_file")
+    done < <(_flake_lock_git_entries "$lock_file")
 
     nds_install_log "git: flake lock git inputs prefetched"
     return 0

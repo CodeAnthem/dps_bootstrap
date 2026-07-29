@@ -6,7 +6,7 @@
 # ==================================================================================================
 
 # Description: Print device-login lines from captured gh output.
-_nds_git_wizard_gh_show_device_prompt() {
+_git_wizard_gh_show_device_prompt() {
     local log="$1" line
 
     section_header "GitHub device login"
@@ -25,7 +25,7 @@ _nds_git_wizard_gh_show_device_prompt() {
 }
 
 # Description: Run gh auth login via device code (spinner until code, then wait for auth).
-_nds_git_wizard_gh_auth_login() {
+_git_wizard_gh_auth_login() {
     local -a gh_cmd=()
     local rc=0 log pid shown=false delay=0.12 spinstr="|/-\\"
     local char logfile="${NDS_RUNTIME_DIR:-/tmp/nds}/gh_auth.log"
@@ -50,7 +50,7 @@ _nds_git_wizard_gh_auth_login() {
     while kill -0 "$pid" 2>/dev/null; do
         if ! $shown && grep -qiE 'one-time code|login/device' "$logfile" 2>/dev/null; then
             printf '\r\033[K' >&2
-            _nds_git_wizard_gh_show_device_prompt "$logfile"
+            _git_wizard_gh_show_device_prompt "$logfile"
             step_start "Waiting for GitHub authorization"
             shown=true
         fi
@@ -96,7 +96,7 @@ nds_git_wizard_gh_ensure_auth() {
     fi
 
     if ! nds_git_gh_session_active; then
-        _nds_git_wizard_gh_auth_login || return 1
+        _git_wizard_gh_auth_login || return 1
         nds_git_gh_session_mark_scopes_ok
         success "GitHub login successful"
         return 0

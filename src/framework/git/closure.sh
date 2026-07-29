@@ -7,7 +7,7 @@
 # ==================================================================================================
 
 # Description: Session directory for the root flake shallow clone.
-_nds_flake_probe_repo_dir() {
+_flake_probe_repo_dir() {
     printf '%s/flake_probe/repo\n' "${NDS_RUNTIME_DIR:-/tmp/nds}"
 }
 
@@ -20,8 +20,8 @@ nds_git_clone_flake_probe() {
     local root_url="$1"
     local clone_dir norm_url err rc=0
 
-    clone_dir="$(_nds_flake_probe_repo_dir)"
-    norm_url=$(_nds_git_ssh_url "$root_url")
+    clone_dir="$(_flake_probe_repo_dir)"
+    norm_url=$(_git_ssh_url "$root_url")
 
     if [[ -f "${NDS_FLAKE_PROBE_REPO:-}/flake.nix" \
         && "${NDS_FLAKE_PROBE_REPO_URL:-}" == "$norm_url" ]]; then
@@ -60,7 +60,7 @@ nds_git_clone_flake_probe() {
 # - lock_file: <String> Path to flake.lock
 # Returns:
 # - <String> URLs (stdout, one per line)
-_nds_flake_lock_ssh_urls() {
+_flake_lock_ssh_urls() {
     local lock_file="$1"
     [[ -f "$lock_file" ]] || return 0
     {
@@ -71,41 +71,41 @@ _nds_flake_lock_ssh_urls() {
 }
 
 # Description: Collect unique git remote URLs from a flake directory.
-_nds_flake_collect_git_remote_urls() {
+_flake_collect_git_remote_urls() {
     local flake_root="$1" root_url="${2:-}"
     local lock="${flake_root}/flake.lock"
     local flake_nix="${flake_root}/flake.nix"
     declare -A seen=()
     local url norm
 
-    _nds_flake_add_git_url() {
+    _flake_add_git_url() {
         local u="$1"
         [[ -n "$u" ]] || return 0
-        norm=$(_nds_git_ssh_url "$u")
+        norm=$(_git_ssh_url "$u")
         [[ -n "$norm" ]] || return 0
         [[ -n "${seen[$norm]:-}" ]] && return 0
         seen[$norm]=1
         printf '%s\n' "$norm"
     }
 
-    [[ -n "$root_url" ]] && _nds_flake_add_git_url "$root_url"
+    [[ -n "$root_url" ]] && _flake_add_git_url "$root_url"
 
     if [[ -f "$lock" ]]; then
         while IFS= read -r url; do
-            _nds_flake_add_git_url "$url"
-        done < <(_nds_flake_lock_ssh_urls "$lock")
+            _flake_add_git_url "$url"
+        done < <(_flake_lock_ssh_urls "$lock")
     fi
 
     if [[ -f "$flake_nix" ]]; then
         while IFS= read -r url; do
-            _nds_flake_add_git_url "$url"
+            _flake_add_git_url "$url"
         done < <(grep -oE 'git\+ssh://[^"[:space:]]+|git@[^"[:space:]]+\.git' "$flake_nix" 2>/dev/null \
             | sort -u || true)
     fi
 }
 
 # Description: Decode base64 from GitHub API content field into a file.
-_nds_git_b64_decode_to_file() {
+_git_b64_decode_to_file() {
     local b64="$1" dest="$2"
     if printf '%s' "$b64" | tr -d '\n' | base64 -d > "$dest" 2>/dev/null \
         && [[ -s "$dest" ]]; then
@@ -125,13 +125,13 @@ _nds_git_b64_decode_to_file() {
 # - lock_dest: <String> Destination file path
 # Returns:
 # - <Bool> 0 on success
-_nds_git_fetch_flake_lock_via_api() {
+_git_fetch_flake_lock_via_api() {
     local root_url="$1" lock_dest="$2"
     local ssh_url parsed host owner repo content
     local -a gh_cmd=()
 
-    ssh_url=$(_nds_git_ssh_url "$root_url")
-    parsed=$(_nds_git_parse "$ssh_url") || return 1
+    ssh_url=$(_git_ssh_url "$root_url")
+    parsed=$(_git_parse "$ssh_url") || return 1
     IFS=$'\t' read -r host owner repo <<< "$parsed"
     nds_git_host_is_github "$host" || return 1
     nds_git_gh_session_active 2>/dev/null || return 1
@@ -142,7 +142,7 @@ _nds_git_fetch_flake_lock_via_api() {
         --jq -r '.content // empty' 2>/dev/null) || content=""
     [[ -n "$content" ]] || return 1
     mkdir -p "$(dirname "$lock_dest")"
-    if _nds_git_b64_decode_to_file "$content" "$lock_dest"; then
+    if _git_b64_decode_to_file "$content" "$lock_dest"; then
         nds_install_log "git: flake.lock via gh API (${owner}/${repo})"
         return 0
     fi
@@ -150,42 +150,42 @@ _nds_git_fetch_flake_lock_via_api() {
 }
 
 # Description: Collect git input URLs from a remote root flake.
-_nds_flake_collect_git_remote_urls_from_root() {
+_flake_collect_git_remote_urls_from_root() {
     local root_url="$1"
     local probe_dir lock_file
     declare -A seen=()
     local url norm
 
-    _nds_flake_add_git_url() {
+    _flake_add_git_url() {
         local u="$1"
         [[ -n "$u" ]] || return 0
-        norm=$(_nds_git_ssh_url "$u")
+        norm=$(_git_ssh_url "$u")
         [[ -n "$norm" ]] || return 0
         [[ -n "${seen[$norm]:-}" ]] && return 0
         seen[$norm]=1
         printf '%s\n' "$norm"
     }
 
-    probe_dir="${NDS_FLAKE_PROBE_REPO:-$(_nds_flake_probe_repo_dir)}"
+    probe_dir="${NDS_FLAKE_PROBE_REPO:-$(_flake_probe_repo_dir)}"
     if [[ -f "${probe_dir}/flake.nix" ]]; then
         export NDS_GIT_FLAKE_LOCK_FILE="${probe_dir}/flake.lock"
-        _nds_flake_collect_git_remote_urls "$probe_dir" "$root_url"
+        _flake_collect_git_remote_urls "$probe_dir" "$root_url"
         return 0
     fi
 
     lock_file="${NDS_RUNTIME_DIR:-/tmp}/flake_probe/flake.lock.api"
-    if _nds_git_fetch_flake_lock_via_api "$root_url" "$lock_file"; then
+    if _git_fetch_flake_lock_via_api "$root_url" "$lock_file"; then
         export NDS_GIT_FLAKE_LOCK_FILE="$lock_file"
-        [[ -n "$root_url" ]] && _nds_flake_add_git_url "$root_url"
+        [[ -n "$root_url" ]] && _flake_add_git_url "$root_url"
         while IFS= read -r url; do
-            _nds_flake_add_git_url "$url"
-        done < <(_nds_flake_lock_ssh_urls "$lock_file")
+            _flake_add_git_url "$url"
+        done < <(_flake_lock_ssh_urls "$lock_file")
         return 0
     fi
 
     warn "Could not clone flake repository — only checking the root repository."
     nds_install_log "git: flake probe clone failed for closure scan"
-    [[ -n "$root_url" ]] && _nds_flake_add_git_url "$root_url"
+    [[ -n "$root_url" ]] && _flake_add_git_url "$root_url"
 }
 
 # Description: Probe SSH access to every git remote referenced by a flake closure.
@@ -196,7 +196,7 @@ nds_git_probe_flake_closure() {
 
     [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
 
-    mapfile -t urls < <(_nds_flake_collect_git_remote_urls "$flake_root" "$root_url")
+    mapfile -t urls < <(_flake_collect_git_remote_urls "$flake_root" "$root_url")
     [[ ${#urls[@]} -gt 0 ]] || return 0
 
     for url in "${urls[@]}"; do

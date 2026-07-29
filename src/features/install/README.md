@@ -11,8 +11,8 @@ install/
   load.sh              Explicit module order
   detect.sh            Read-only disk state
   nix-store.sh         Store free-space helpers
-  context.sh           _nixinstall_gather_context (single CONFIG_DATA read)
-  disk-prep.sh         nds_nixinstall_auto (partition/mount/hardware)
+  context.sh           _install_gather_context (single CONFIG_DATA read)
+  disk-prep.sh         nds_install_auto (partition/mount/hardware)
   disk.sh              Partition layout (NDS built-in)
   filesystem.sh        Mount /mnt
   encryption.sh        LUKS secrets + format

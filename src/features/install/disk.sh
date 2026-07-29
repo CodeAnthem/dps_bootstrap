@@ -8,14 +8,14 @@
 # ==================================================================================================
 
 # Compatibility alias for machineFacts and legacy call sites.
-_nixinstall_disk_part() {
+_install_disk_part() {
     nds_install_disk_part "$@"
 }
 
 # Description: Format root partition using install context (NDS adapter).
 # Arguments:
 # - partition: <String> Root block partition
-_nixinstall_format_luks_from_ctx() {
+_install_format_luks_from_ctx() {
     local partition="$1"
     local secrets
 
@@ -33,13 +33,13 @@ _nixinstall_format_luks_from_ctx() {
 # - disk:            <String> Target block device
 # - use_encryption:  <Bool> Encrypt root partition
 # - uefi_mode:       <Bool|optional> UEFI layout; auto-detect when empty
-_nixinstall_partition_disk() {
+_install_partition_disk() {
     local disk="$1"
     local use_encryption="${2:-false}"
     local uefi_mode="${3:-}"
 
     if [[ "$use_encryption" == "true" ]]; then
-        nds_install_partition_disk "$disk" "$use_encryption" "$uefi_mode" "_nixinstall_format_luks_from_ctx"
+        nds_install_partition_disk "$disk" "$use_encryption" "$uefi_mode" "_install_format_luks_from_ctx"
     else
         nds_install_partition_disk "$disk" "$use_encryption" "$uefi_mode"
     fi

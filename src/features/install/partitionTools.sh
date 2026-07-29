@@ -6,9 +6,11 @@
 # Description:   Disk partitioning via NDS layout or Disko (public API)
 # ==================================================================================================
 
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_DISK_FORMAT_CONFIRM_SKIP
+
 nds_partition_get_disk_state() {
     local disk="$1"
-    _nds_partition_check_disk_state "$disk"
+    _install_partition_check_disk_state "$disk"
 }
 
 nds_partition_is_disk_ready_to_format() {
@@ -16,10 +18,10 @@ nds_partition_is_disk_ready_to_format() {
     [[ -n "$disk" ]] || { error "No disk specified"; return 1; }
 
     local state
-    state=$(_nds_partition_check_disk_state "$disk") || state="unknown"
+    state=$(_install_partition_check_disk_state "$disk") || state="unknown"
 
     section_header "Current Disk Layout"
-    _nds_partition_summarize_disk "$disk"
+    _install_partition_summarize_disk "$disk"
 
     case "$state" in
         wiped|empty_parts) return 0 ;;
@@ -28,14 +30,14 @@ nds_partition_is_disk_ready_to_format() {
             if nds_skip_menu NDS_DISK_FORMAT_CONFIRM_SKIP; then
                 return 0
             fi
-            nds_askUserToProceed "Formatting will DESTROY ALL DATA on $disk. Continue?" && return 0
+            nds_ask_user_to_proceed "Formatting will DESTROY ALL DATA on $disk. Continue?" && return 0
             return 1
             ;;
         *)
             if nds_skip_menu NDS_DISK_FORMAT_CONFIRM_SKIP; then
                 return 0
             fi
-            nds_askUserToProceed "Proceed with formatting $disk?" && return 0
+            nds_ask_user_to_proceed "Proceed with formatting $disk?" && return 0
             return 1
             ;;
     esac
@@ -73,7 +75,7 @@ nds_partition_run_disko() {
     nds_partition_is_disk_ready_to_format "$disk" || return 1
 
     nds_step_exec "Disko partitioning" \
-        _nds_partition_disko_apply "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"
+        _install_partition_disko_apply "$disk" "$fs_type" "$swap_mib" "$separate_home" "$home_size" "$enc" "$unlock" "$disko_user"
 }
 
 # Run Disko from gathered NDS_CTX_* (DISK_STRATEGY=disko).
@@ -94,5 +96,5 @@ nds_partition_run_disko_from_config() {
 }
 
 nds_partition_disko() {
-    _nds_partition_disko_apply "$@"
+    _install_partition_disko_apply "$@"
 }

@@ -1,58 +1,12 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Core action workflow
+# NDS - Action handler (select, configure, execute)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
-# Description:   Discover, preview, configure presets, execute actions
+# Date:          Created: 2026-07-29 | Modified: 2026-07-29
+# Description:   Action selection menu, lifecycle loop, preset configuration, execution
 # ==================================================================================================
 
-declare -ga ACTION_NAMES=()
-declare -gA ACTION_DATA=()
 declare -g current_action=""
-declare -g ACTIONS_DIR=""
-
-_nds_validate_action() {
-    local action_name="$1"
-    local action_path="$2"
-    local setup_script="${action_path}/setup.sh"
-
-    [[ -f "$setup_script" ]] || { debug "Action '$action_name': Missing setup.sh"; return 1; }
-    grep -qE "^action_(config|presets)\(\)" "$setup_script" || {
-        debug "Action '$action_name': Missing action_presets() or action_config()"; return 1; }
-    grep -q "^action_preview()" "$setup_script" || {
-        debug "Action '$action_name': Missing action_preview()"; return 1; }
-    grep -q "^action_setup()" "$setup_script" || {
-        debug "Action '$action_name': Missing action_setup()"; return 1; }
-
-    local description
-    description=$(head -n 20 "$setup_script" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//' 2>/dev/null)
-    [[ -n "$description" ]] || { debug "Action '$action_name': Missing description"; return 1; }
-    return 0
-}
-
-nds_actions_discover() {
-    local actions_dir="${1:?actions dir}"
-    ACTIONS_DIR="$actions_dir"
-    ACTION_NAMES=()
-
-    [[ -d "$ACTIONS_DIR" ]] || { error "Actions directory not found: $ACTIONS_DIR"; return 1; }
-
-    local action_dir action_name description
-    for action_dir in "$ACTIONS_DIR"/*/; do
-        [[ -d "$action_dir" ]] || continue
-        action_name=$(basename "$action_dir")
-        [[ "$action_name" == "test" && "${NDS_TEST:-false}" != "true" ]] && continue
-        _nds_validate_action "$action_name" "$action_dir" || { warn "Skipping invalid action: $action_name"; continue; }
-        description=$(head -n 20 "${action_dir}setup.sh" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//')
-        ACTION_NAMES+=("$action_name")
-        ACTION_DATA["${action_name}_path"]="$action_dir"
-        ACTION_DATA["${action_name}_description"]="$description"
-    done
-
-    [[ ${#ACTION_NAMES[@]} -gt 0 ]] || { error "No valid actions in $ACTIONS_DIR"; return 1; }
-    debug "Discovered ${#ACTION_NAMES[@]} actions"
-    return 0
-}
 
 # Description: Select action from NDS_ACTION when set to a discovered action name.
 # Returns:
@@ -106,7 +60,7 @@ nds_actions_select() {
     done
 }
 
-_nds_action_configure_presets() {
+_app_action_configure_presets() {
     local _preset _path _bundled=()
 
     if declare -f action_presets &>/dev/null; then
@@ -145,27 +99,6 @@ _nds_action_configure_presets() {
     return 0
 }
 
-_nds_run_action_preview() {
-    declare -f action_preview &>/dev/null || { error "action_preview() not found"; return 1; }
-
-    if nds_skip_menu NDS_ACTION_PREVIEW_SKIP; then
-        log "Action preview skipped (NDS_ACTION_PREVIEW_SKIP)"
-        return 0
-    fi
-
-    section_header "Install preview"
-    action_preview
-    nds_ui_b "Press Y to continue, B to go back to the action menu."
-    nds_ui_b ""
-    nds_askUserContinue "Proceed with this action?"
-    local prc=$?
-    case "$prc" in
-        0) return 0 ;;
-        2) return "$NDS_ACTION_BACK" ;;
-        *) return 130 ;;
-    esac
-}
-
 nds_actions_execute() {
     local action_name="$1"
     local action_path="${ACTION_DATA[${action_name}_path]}"
@@ -187,9 +120,9 @@ nds_actions_execute() {
     }
 
     info "Configuring $action_name..."
-    _nds_action_configure_presets || return 1
+    _app_action_configure_presets || return 1
 
-    _nds_run_action_preview || rc=$?
+    nds_action_run_preview || rc=$?
     [[ "$rc" -ne 0 ]] && return "$rc"
 
     if declare -f action_on_accept &>/dev/null; then
