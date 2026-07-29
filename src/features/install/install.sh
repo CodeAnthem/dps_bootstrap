@@ -196,10 +196,12 @@ _install_generate_facter_report() {
 # - dest: <String> Absolute output path
 _install_generate_legacy_hardware() {
     local dest="$1"
+    local detail_log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
+
     mkdir -p "$(dirname "$dest")"
     log "Generating hardware configuration (legacy) -> ${dest}"
-    if ! nixos-generate-config --root /mnt --show-hardware-config > "$dest" \
-        >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
+    # stdout must go only to dest; do not also >> detail_log (that emptied dest).
+    if ! nixos-generate-config --root /mnt --show-hardware-config >"$dest" 2>>"$detail_log"; then
         error "Failed to generate hardware configuration"
         return 1
     fi

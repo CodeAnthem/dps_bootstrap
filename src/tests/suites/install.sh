@@ -41,6 +41,31 @@ suite_install() {
     fi
     unset NDS_CURRENT_ACTION NDS_HARDWARE_GEN
 
+    # Regression: stdout of --show-hardware-config must land in dest, not the detail log.
+    local hw_tmp detail_tmp
+    hw_tmp=$(mktemp)
+    detail_tmp=$(mktemp)
+    nixos-generate-config() {
+        echo "stderr noise" >&2
+        printf '%s\n' '{ boot.kernelModules = [ ]; }'
+    }
+    export NDS_INSTALL_DETAIL_LOG="$detail_tmp"
+    if _install_generate_legacy_hardware "$hw_tmp" \
+        && [[ -s "$hw_tmp" ]] \
+        && grep -q 'boot.kernelModules' "$hw_tmp" \
+        && ! grep -q 'boot.kernelModules' "$detail_tmp"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ legacy hardware: writes dest, stderr only to detail log"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ legacy hardware: dest/log redirect broken"
+        console "    dest=$(printf '%q' "$(cat "$hw_tmp" 2>/dev/null)")"
+        console "    log=$(printf '%q' "$(cat "$detail_tmp" 2>/dev/null)")"
+    fi
+    unset -f nixos-generate-config
+    unset NDS_INSTALL_DETAIL_LOG
+    rm -f "$hw_tmp" "$detail_tmp"
+
     _install_nix_store_free_mb() { echo 100; }
     out=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
     if [[ "$out" == "experimental-features = nix-command flakes" ]]; then
