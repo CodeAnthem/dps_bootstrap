@@ -6,11 +6,11 @@
 # Description:   Exit hooks, fatal handling, and trap-safe shutdown output
 # ==================================================================================================
 
-declare -g fatal_message=""
+declare -g _app_fatal_message=""
 
 # Description: Store a fatal message and terminate with the app fatal exit code.
 crash() {
-    fatal_message="$1"
+    _app_fatal_message="$1"
     exit 200
 }
 
@@ -38,7 +38,7 @@ _app_stop_handler() {
         case "${exit_code}" in
             0) success "Script completed successfully" ;;
             130) warn "Script aborted by user" ;;
-            200) fatal "Internal error! - ${fatal_message:-}" ;;
+            200) fatal "Internal error! - ${_app_fatal_message:-}" ;;
             *) warn "Script failed with exit code: $exit_code" ;;
         esac
     fi

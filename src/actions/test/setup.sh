@@ -38,7 +38,7 @@ action_setup() {
 
     TEST_PASSED=0
     TEST_FAILED=0
-    section_title "NDS self-tests"
+    nds_ui_section_title "NDS self-tests"
 
     run_named_suite "configurator" suite_configurator
     run_named_suite "inputs" suite_inputs

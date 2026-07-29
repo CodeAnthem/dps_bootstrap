@@ -34,6 +34,7 @@ nds_lifecycle_load_actions() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
 
     nds_import_file "${script_dir}/standalone/validators/load.sh" || return 1
+    nds_import_file "${script_dir}/app/state.sh" || return 1
     nds_import_file "${script_dir}/app/action-store.sh" || return 1
     nds_import_file "${script_dir}/app/action-preview.sh" || return 1
     nds_import_file "${script_dir}/app/action-handler.sh" || return 1

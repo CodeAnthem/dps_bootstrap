@@ -20,7 +20,7 @@ nds_ui_install_warning() {
 
     strategy_label=$(nds_disk_strategy_label "$strategy")
 
-    section_header "Ready to install"
+    nds_ui_section_header "Ready to install"
     nds_ui_b "Review the summary below. Installation does not start until you confirm at the end."
     nds_ui_b ""
 

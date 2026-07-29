@@ -15,7 +15,7 @@ nds_action_confirm_remote_install() {
     local target_ip="$1"
     local extra="${2:-}"
 
-    section_header "Ready to install (remote)"
+    nds_ui_section_header "Ready to install (remote)"
     nds_ui_b "Review the summary below. Installation does not start until you confirm at the end."
     nds_ui_b ""
 

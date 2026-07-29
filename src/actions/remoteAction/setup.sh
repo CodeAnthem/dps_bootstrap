@@ -54,9 +54,9 @@ action_setup() {
     local probe_dir remote_script injected=0
     local disk_strategy disk_target
 
-    step_start "Cloning flake repository"
+    nds_step_start "Cloning flake repository"
     probe_dir=$(nds_preflight_probe_flake "$repo_url") || exit 14
-    step_complete "Flake repository cloned"
+    nds_step_complete "Flake repository cloned"
     export NDS_FLAKE_PROBE_DIR="$probe_dir"
 
     nds_preset_inject_from_flake "$probe_dir" || true
@@ -67,9 +67,9 @@ action_setup() {
 
     nds_preflight_apply_disko_strategy "$probe_dir" "${NDS_FLAKE_HOST}" "$host_dir"
 
-    step_start "Verifying git input access"
+    nds_step_start "Verifying git input access"
     nds_git_ensure_flake_closure_access "$probe_dir" "$repo_url" || exit 14
-    step_complete "Git input access OK"
+    nds_step_complete "Git input access OK"
 
     if remote_script=$(nds_flake_find_action_script "$probe_dir"); then
         info "Found remote action: $remote_script"

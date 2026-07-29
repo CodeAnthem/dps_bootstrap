@@ -300,7 +300,7 @@ nds_configurator_reset_for_action() {
 
 nds_configurator_print_config_backup() {
     local line
-    section_header "Configuration export"
+    nds_ui_section_header "Configuration export"
     nds_ui_b "Paste the lines below before re-running NDS to replay this configuration."
     nds_ui_b "Each setting is on its own line. Menu SKIP flags default to false"
     nds_ui_b "(interactive). Set individual flags to true, or use --auto-confirm for full auto."

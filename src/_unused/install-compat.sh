@@ -13,12 +13,12 @@ nds_cfg_get_env() {
 run_step() {
     local title="$1"
     shift
-    step_start "$title"
+    nds_step_start "$title"
     if "$@"; then
-        step_complete "$title"
+        nds_step_complete "$title"
         return 0
     fi
-    step_fail "$title"
+    nds_step_fail "$title"
     return 1
 }
 

@@ -6,8 +6,6 @@
 # Description:   Action selection menu, lifecycle loop, preset configuration, execution
 # ==================================================================================================
 
-declare -g current_action=""
-
 # Description: Select action from NDS_ACTION when set to a discovered action name.
 # Returns:
 # - 0 when NDS_ACTION matched, 1 when unset or invalid
@@ -17,15 +15,15 @@ nds_actions_select_from_env() {
 
     [[ -n "$wanted" ]] || return 1
 
-    for name in "${ACTION_NAMES[@]}"; do
+    for name in "${NDS_ACTION_NAMES[@]}"; do
         if [[ "$name" == "$wanted" ]]; then
-            current_action="$name"
+            NDS_CURRENT_ACTION="$name"
             log "Action selected via NDS_ACTION=${wanted}"
             return 0
         fi
     done
 
-    error "NDS_ACTION=${wanted} is not valid (available: ${ACTION_NAMES[*]})"
+    error "NDS_ACTION=${wanted} is not valid (available: ${NDS_ACTION_NAMES[*]})"
     return 1
 }
 
@@ -35,25 +33,25 @@ nds_actions_select() {
     fi
     [[ -z "${NDS_ACTION:-}" ]] || return 1
 
-    section_header "Choose an action"
+    nds_ui_section_header "Choose an action"
     nds_ui_b ""
     nds_ui_choice_row "0" "Abort" "Exit the script"
     nds_ui_b ""
 
     local i=1 action_name
-    for action_name in "${ACTION_NAMES[@]}"; do
-        nds_ui_choice_row "$i" "$action_name" "${ACTION_DATA[${action_name}_description]}"
+    for action_name in "${NDS_ACTION_NAMES[@]}"; do
+        nds_ui_choice_row "$i" "$action_name" "${NDS_ACTION_DATA[${action_name}_description]}"
         ((i++))
     done
     nds_ui_b ""
 
-    local choice max_choice="${#ACTION_NAMES[@]}"
+    local choice max_choice="${#NDS_ACTION_NAMES[@]}"
     local prompt
     prompt="$(nds_ui_numbered_prompt 0 "$max_choice")"
     while true; do
         if choice=$(nds_ui_read_menu_digit "$prompt" 0 "$max_choice"); then
             [[ "$choice" == "0" ]] && { nds_ui_b "Operation aborted"; exit 130; }
-            current_action="${ACTION_NAMES[$((choice - 1))]}"
+            NDS_CURRENT_ACTION="${NDS_ACTION_NAMES[$((choice - 1))]}"
             return 0
         fi
         nds_ui_b "Invalid selection. Choose 0-${max_choice}"
@@ -101,7 +99,7 @@ _app_action_configure_presets() {
 
 nds_actions_execute() {
     local action_name="$1"
-    local action_path="${ACTION_DATA[${action_name}_path]}"
+    local action_path="${NDS_ACTION_DATA[${action_name}_path]}"
     local setup_script="${action_path}setup.sh"
     local rc=0
 
@@ -143,10 +141,10 @@ nds_actions_execute() {
 nds_actions_main() {
     local rc=0
     while true; do
-        current_action=""
+        NDS_CURRENT_ACTION=""
         nds_actions_select || return 1
         rc=0
-        nds_actions_execute "$current_action" || rc=$?
+        nds_actions_execute "$NDS_CURRENT_ACTION" || rc=$?
         [[ "$rc" -eq "$NDS_ACTION_BACK" ]] && {
             [[ -n "${NDS_ACTION:-}" ]] && {
                 error "Cannot go back — NDS_ACTION is set to ${NDS_ACTION}"

@@ -70,13 +70,13 @@ run_named_suite() {
     local suite_func="$1"
 
     TEST_SUITE="$suite_name"
-    section_header "Suite: $suite_name"
+    nds_ui_section_header "Suite: $suite_name"
     "$suite_func"
 }
 
 print_test_summary() {
     console ""
-    section_header "Test summary"
+    nds_ui_section_header "Test summary"
     console "  Passed: $TEST_PASSED"
     console "  Failed: $TEST_FAILED"
     console "  Total:  $((TEST_PASSED + TEST_FAILED))"

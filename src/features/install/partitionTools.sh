@@ -20,7 +20,7 @@ nds_partition_is_disk_ready_to_format() {
     local state
     state=$(_install_partition_check_disk_state "$disk") || state="unknown"
 
-    section_header "Current Disk Layout"
+    nds_ui_section_header "Current Disk Layout"
     _install_partition_summarize_disk "$disk"
 
     case "$state" in

@@ -34,7 +34,7 @@ nds_git_ui_ask_clear_gh_session() {
 
 # Description: Short intro — deploy keys and machine-user account keys.
 nds_git_wizard_screen_intro() {
-    section_header "Private repository access"
+    nds_ui_section_header "Private repository access"
     nds_ui_b "Private flakes need SSH git access. NDS checks your flake URL"
     nds_ui_b "and every locked git input in flake.lock."
     nds_ui_b ""

@@ -6,10 +6,6 @@
 # Description:   Discover, validate, and store available actions (data layer, no UI)
 # ==================================================================================================
 
-declare -ga ACTION_NAMES=()
-declare -gA ACTION_DATA=()
-declare -g ACTIONS_DIR=""
-
 _app_validate_action() {
     local action_name="$1"
     local action_path="$2"
@@ -29,31 +25,31 @@ _app_validate_action() {
     return 0
 }
 
-# Description: Scan the actions directory, validate each action, populate ACTION_NAMES and ACTION_DATA.
+# Description: Scan the actions directory, validate each action, populate NDS_ACTION_NAMES and NDS_ACTION_DATA.
 # Arguments:
 # - actions_dir: <String> Path to the actions directory
 # Returns:
 # - <Bool> 0 when at least one valid action is found
 nds_actions_discover() {
     local actions_dir="${1:?actions dir}"
-    ACTIONS_DIR="$actions_dir"
-    ACTION_NAMES=()
+    NDS_ACTIONS_DIR="$actions_dir"
+    NDS_ACTION_NAMES=()
 
-    [[ -d "$ACTIONS_DIR" ]] || { error "Actions directory not found: $ACTIONS_DIR"; return 1; }
+    [[ -d "$NDS_ACTIONS_DIR" ]] || { error "Actions directory not found: $NDS_ACTIONS_DIR"; return 1; }
 
     local action_dir action_name description
-    for action_dir in "$ACTIONS_DIR"/*/; do
+    for action_dir in "$NDS_ACTIONS_DIR"/*/; do
         [[ -d "$action_dir" ]] || continue
         action_name=$(basename "$action_dir")
         [[ "$action_name" == "test" && "${NDS_TEST:-false}" != "true" ]] && continue
         _app_validate_action "$action_name" "$action_dir" || { warn "Skipping invalid action: $action_name"; continue; }
         description=$(head -n 20 "${action_dir}setup.sh" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//')
-        ACTION_NAMES+=("$action_name")
-        ACTION_DATA["${action_name}_path"]="$action_dir"
-        ACTION_DATA["${action_name}_description"]="$description"
+        NDS_ACTION_NAMES+=("$action_name")
+        NDS_ACTION_DATA["${action_name}_path"]="$action_dir"
+        NDS_ACTION_DATA["${action_name}_description"]="$description"
     done
 
-    [[ ${#ACTION_NAMES[@]} -gt 0 ]] || { error "No valid actions in $ACTIONS_DIR"; return 1; }
-    debug "Discovered ${#ACTION_NAMES[@]} actions"
+    [[ ${#NDS_ACTION_NAMES[@]} -gt 0 ]] || { error "No valid actions in $NDS_ACTIONS_DIR"; return 1; }
+    debug "Discovered ${#NDS_ACTION_NAMES[@]} actions"
     return 0
 }

@@ -9,7 +9,7 @@
 _git_wizard_gh_show_device_prompt() {
     local log="$1" line
 
-    section_header "GitHub device login"
+    nds_ui_section_header "GitHub device login"
     nds_ui_b "gh stores a short-lived session on this ISO (plain text — no credential store on the live image)."
     nds_ui_b "Complete login on your phone using the code below."
     nds_ui_b ""
@@ -46,12 +46,12 @@ _git_wizard_gh_auth_login() {
     ) >>"$logfile" 2>&1 &
     pid=$!
 
-    step_start "GitHub device login"
+    nds_step_start "GitHub device login"
     while kill -0 "$pid" 2>/dev/null; do
         if ! $shown && grep -qiE 'one-time code|login/device' "$logfile" 2>/dev/null; then
             printf '\r\033[K' >&2
             _git_wizard_gh_show_device_prompt "$logfile"
-            step_start "Waiting for GitHub authorization"
+            nds_step_start "Waiting for GitHub authorization"
             shown=true
         fi
         char="${spinstr:0:1}"
@@ -70,14 +70,14 @@ _git_wizard_gh_auth_login() {
     if [[ "$rc" -eq 0 ]]; then
         printf '\r\033[K' >&2
         if $shown; then
-            step_complete "Waiting for GitHub authorization"
+            nds_step_complete "Waiting for GitHub authorization"
         else
-            step_complete "GitHub device login"
+            nds_step_complete "GitHub device login"
         fi
         return 0
     fi
     printf '\r\033[K' >&2
-    step_fail "GitHub device login"
+    nds_step_fail "GitHub device login"
     warn "GitHub login failed"
     nds_ui_i "Open https://github.com/login/device on your phone and enter the one-time code."
     nds_ui_i "If this keeps failing, unset GITHUB_TOKEN / GH_TOKEN in your shell and retry."
@@ -103,13 +103,13 @@ nds_git_wizard_gh_ensure_auth() {
     fi
 
     if ! nds_git_gh_has_key_scope; then
-        step_start "Extending GitHub session"
+        nds_step_start "Extending GitHub session"
         nds_git_gh_unset_blocking_tokens
         BROWSER=false "${gh_cmd[@]}" auth refresh -h github.com -s repo,admin:public_key || {
-            step_fail "Extending GitHub session"
+            nds_step_fail "Extending GitHub session"
             return 1
         }
-        step_complete "Extending GitHub session"
+        nds_step_complete "Extending GitHub session"
         nds_git_gh_session_mark_scopes_ok
     fi
     return 0
@@ -141,12 +141,12 @@ nds_git_wizard_menu_gh_deploy() {
     local label="Registering deploy key on ${owner}/${repo}"
 
     nds_git_wizard_gh_prepare || return 1
-    step_start "$label"
+    nds_step_start "$label"
     if ! nds_git_gh_register_deploy_for_repo "$owner" "$repo"; then
-        step_fail "$label"
+        nds_step_fail "$label"
         return 1
     fi
-    step_complete "$label"
+    nds_step_complete "$label"
     success "Read-only deploy key registered on ${owner}/${repo}"
     nds_ui_i "Private key: $(nds_git_deploy_key_path "$owner" "$repo")"
     nds_ui_i "Target: /$(nds_git_deploy_key_target_rel "$owner" "$repo")"

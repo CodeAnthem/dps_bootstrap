@@ -53,7 +53,7 @@ action_setup() {
     install_mode="$(nds_configurator_config_get INSTALL_MODE)"
     install_mode="${install_mode:-local}"
 
-    section_header "NixOS installation"
+    nds_ui_section_header "NixOS installation"
     nds_install_log "installFlake: action starting (mode=${install_mode})"
     nds_nixos_install_flake || exit 15
     export NDS_GIT_INSTALL_SUCCEEDED=true

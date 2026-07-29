@@ -23,7 +23,7 @@ nds_flow_flake_prepare_and_verify() {
     fi
 
     if [[ -n "${probe_dir:-}" ]]; then
-        section_header "Verifying flake access"
+        nds_ui_section_header "Verifying flake access"
         nds_git_ensure_flake_closure_access "$probe_dir" "$repo_url" || return 1
         nds_preflight_flake_buildable "$probe_dir" "$host" || return 1
     fi

@@ -29,7 +29,7 @@ nds_action_run_preview() {
         return 0
     fi
 
-    section_header "Install preview"
+    nds_ui_section_header "Install preview"
     action_preview
     nds_ui_b "Press Y to continue, B to go back to the action menu."
     nds_ui_b ""

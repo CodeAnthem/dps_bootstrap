@@ -20,7 +20,7 @@ nds_flake_install_prepare_and_verify() {
 
     nds_git_ensure_access "$repo_url" || return 1
 
-    section_header "Verifying flake access"
+    nds_ui_section_header "Verifying flake access"
     if [[ -n "$local_path" && -d "$local_path" ]]; then
         nds_git_ensure_flake_closure_access "$local_path" "$repo_url" || return 1
     elif [[ -n "$repo_url" ]]; then

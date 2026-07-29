@@ -46,7 +46,7 @@ action_setup() {
 
     nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13
 
-    section_header "NixOS installation"
+    nds_ui_section_header "NixOS installation"
     nds_install_log "classicInstall: action starting"
 
     NDS_UI_QUIET=true

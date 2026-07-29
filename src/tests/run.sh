@@ -58,7 +58,7 @@ nds_run_self_tests() {
     TEST_PASSED=0
     TEST_FAILED=0
 
-    section_title "NDS self-tests"
+    nds_ui_section_title "NDS self-tests"
 
     run_named_suite "settingsManager" suite_settings_manager
     run_named_suite "skip" suite_skip

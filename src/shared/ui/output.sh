@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - UI - Console output and logging
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2026-06-30
+# Date:          Created: 2025-10-21 | Modified: 2026-07-29
 # Description:   console(), log levels, and section headers
 # ==================================================================================================
 
@@ -31,29 +31,28 @@ debug() { [[ "${DEBUG:-0}" == "1" ]] && logDate "$(nds_ui_log_tag debug)" "$1" |
 warn() { logDate "$(nds_ui_log_tag warn)" "$1"; }
 validation_error() { logDate "$(nds_ui_log_tag validation)" "$1"; }
 
-declare -g NDS_CURRENT_ACTION=""
 declare -g NDS_UI_BANNER_SUBTITLE=""
 
 # Description: Clear the screen and redraw the persistent NDS banner.
-new_section() {
+nds_ui_new_section() {
     printf "\033[2J\033[H" >&2
     nds_ui_banner "${NDS_UI_BANNER_SUBTITLE:-}"
 }
 
 # Description: Show a screen with the banner and a raw subtitle.
-section_title() {
+nds_ui_section_title() {
     NDS_UI_BANNER_SUBTITLE="$1"
-    new_section
+    nds_ui_new_section
 }
 
 # Description: Show a screen with the banner and a subsection subtitle,
 # prefixed with the current action name when inside one.
-section_header() {
+nds_ui_section_header() {
     local label="$1"
     if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
         NDS_UI_BANNER_SUBTITLE="${NDS_CURRENT_ACTION} — ${label}"
     else
         NDS_UI_BANNER_SUBTITLE="$label"
     fi
-    new_section
+    nds_ui_new_section
 }

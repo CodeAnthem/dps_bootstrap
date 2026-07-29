@@ -21,7 +21,7 @@ nds_configurator_prompt_errors() {
     done
     [[ "$fixed" == true ]] || return 0
 
-    section_header "Required fields"
+    nds_ui_section_header "Required fields"
     for preset in "${presets[@]}"; do
         if ! nds_config_preset_validate "$preset" 2>/dev/null; then
             nds_config_preset_prompt_errors "$preset"
@@ -36,7 +36,7 @@ nds_configurator_menu() {
     fi
 
     while true; do
-        section_header "Configuration"
+        nds_ui_section_header "Configuration"
         [[ -n "$last_status" ]] && nds_ui_b "$last_status" && nds_ui_b ""
         nds_ui_b "Pick a category to fine-tune, or press X when ready to install."
         nds_ui_b ""
@@ -77,7 +77,7 @@ nds_configurator_menu() {
 
             if [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 ]] && [[ "$sel" -le "$i" ]]; then
                 preset="${presets[$((sel-1))]}"
-                section_header "$(nds_configurator_preset_get_display "$preset") Configuration"
+                nds_ui_section_header "$(nds_configurator_preset_get_display "$preset") Configuration"
                 nds_ui_b "Press ENTER to keep current value, or type a new value"
                 nds_ui_b ""
                 nds_config_preset_configure "$preset"

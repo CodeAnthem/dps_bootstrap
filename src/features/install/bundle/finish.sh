@@ -14,7 +14,7 @@ nds_install_bundle_finish() {
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
         _install_gather_context
-        section_header "Backup bundle"
+        nds_ui_section_header "Backup bundle"
         nds_ui_h "Save the restore package for future use"
         nds_ui_b "Copy this zip off the machine before you reboot."
         nds_ui_b "It includes your NDS configuration, install logs, and unlock material (if encrypted)."
@@ -73,7 +73,7 @@ nds_install_remote_finish() {
     local bundle_ok=1
     nds_install_bundle_create || bundle_ok=0
 
-    section_header "Remote install complete"
+    nds_ui_section_header "Remote install complete"
     nds_ui_h "Next steps"
     nds_ui_b "nixos-anywhere reboots the target host when finished."
     nds_ui_b "Commit the generated facter.json in your flake host directory."

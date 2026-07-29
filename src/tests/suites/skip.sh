@@ -46,8 +46,8 @@ suite_skip() {
 
     nds_actions_discover "${SCRIPT_DIR}/actions" || return 1
     export NDS_ACTION=installFlake
-    current_action=""
-    if nds_actions_select_from_env && [[ "$current_action" == "installFlake" ]]; then
+    NDS_CURRENT_ACTION=""
+    if nds_actions_select_from_env && [[ "$NDS_CURRENT_ACTION" == "installFlake" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ nds_actions_select_from_env: installFlake"
     else
@@ -56,7 +56,7 @@ suite_skip() {
     fi
 
     export NDS_ACTION=not_a_real_action
-    current_action=""
+    NDS_CURRENT_ACTION=""
     if ! nds_actions_select_from_env 2>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ nds_actions_select_from_env: rejects invalid action"
@@ -64,7 +64,7 @@ suite_skip() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ nds_actions_select_from_env: rejects invalid action"
     fi
-    unset NDS_ACTION current_action
+    unset NDS_ACTION NDS_CURRENT_ACTION
 
     if declare -f nds_settings_catalog_init &>/dev/null \
         && declare -f nds_framework_prepare_action_runtime &>/dev/null; then

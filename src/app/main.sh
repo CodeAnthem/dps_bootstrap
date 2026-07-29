@@ -36,15 +36,15 @@ _app_elevate_to_root() {
         [[ "$name" =~ ^NDS_ ]] && nds_vars+=("$name=$value")
     done < <(env)
     if [[ ${#nds_vars[@]} -gt 0 ]]; then
-        exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${ORIGINAL_ARGS[@]}"
+        exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${_app_original_args[@]}"
     fi
-    exec sudo DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${ORIGINAL_ARGS[@]}"
+    exec sudo DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${_app_original_args[@]}"
 }
 
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/shared/core/import.sh"
 
-declare -a ORIGINAL_ARGS=("$@")
+declare -a _app_original_args=("$@")
 
 nds_app_bootstrap() {
     nds_import_file "${SCRIPT_DIR}/app/lifecycle.sh" || return 1
@@ -55,8 +55,6 @@ nds_app_bootstrap() {
 }
 
 nds_app_run() {
-    declare -g RUNTIME_DIR
-
     if [[ "${_NDS_AUTO_CONFIRM_REQUESTED:-false}" == "true" ]]; then
         nds_skip_all
     fi
