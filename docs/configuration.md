@@ -178,13 +178,36 @@ export NDS_GIT_IMPORT_KEY_PATH="/tmp/nds-ssh-key"
 # Flip individual SKIP flags to true, or use --auto-confirm for all:
 export NDS_SKIP_MENU="false"
 export NDS_INSTALL_CONFIRM_SKIP="false"
-export NDS_GIT_SSH_KEY_USE_QR=true
 sudo -E bash src/app/main.sh --auto-confirm
 ```
 
-After interactive configuration, the **Configuration export** screen lists every
-setting on its own `export` line plus menu SKIP flags defaulting to `false`.
-Set `NDS_ACTION` and any `NDS_*_SKIP=true` you need before re-running.
+### Scoped arrays (preferred export)
+
+Configuration export emits `declare -A NDS_FLAKE=(...)` blocks plus legacy
+`export NDS_*=` lines. Associative arrays **cannot** cross `sudo` — save the
+export to a file and point NDS at it:
+
+```bash
+# /tmp/nds-config.env contains declare -A NDS_FLAKE=(...) etc.
+export NDS_SCOPED_CONFIG_FILE=/tmp/nds-config.env
+export NDS_ACTION=installFlake
+sudo -E bash src/app/main.sh
+```
+
+Per-repo git access (URL-keyed):
+
+```bash
+declare -A NDS_GIT_METHOD=(
+  ['git@github.com:ORG/dps_swarm.git']='account'
+)
+declare -A NDS_GIT_KEY_PATH=(
+  ['git@github.com:ORG/dps_swarm.git']='/tmp/nds-ssh-key'
+)
+```
+
+After interactive configuration, the **Configuration export** screen lists
+scoped blocks, legacy scalars, and menu SKIP flags. Private git auth has **no
+skip** — missing access fails hard.
 
 ## Operator prepare kit
 
@@ -198,13 +221,14 @@ Copy `ssh_key` to the live ISO and set `NDS_GIT_IMPORT_KEY_PATH` as above.
 
 ## Git auth wizard (interactive)
 
-When SSH access fails, NDS offers:
+installFlake runs an **early access gate** (URL → auth → host picker → target)
+before the settings manager. When SSH access fails, NDS offers (0 = back):
 
-| Option | Action |
-|--------|--------|
-| **import** | Scan cwd and `/root/.ssh`, or load key from path |
-| **new** | Generate key — gh auto-add (GitHub only) or manual account registration |
-| **retry** | Re-check `git ls-remote` |
-| **skip** | Continue (install may fail) |
+| Route | Options |
+|-------|---------|
+| GitHub | import / gh CLI / manual / retry |
+| Other forges | import / new (manual) / retry |
+
+QR codes load only on the **manual** register path (not gh).
 
 Non-GitHub hosts skip gh and go straight to manual registration. QR codes are offered only on the manual path. The gh session is cleared after a successful install; on abort you may choose to clear it.
