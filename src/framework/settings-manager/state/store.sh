@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-06
+# Date:          Created: 2026-07-01 | Modified: 2026-07-31
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -167,11 +167,13 @@ nds_configurator_config_export_modified() {
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 }
 
-# Concise export as grouped sections — one `export` per line. Portable settings,
-# machine-specific keys, then menu skip flags (default false).
+# Concise export as grouped sections — scoped declare -A blocks (preferred) plus
+# legacy scalar exports for simple re-runs. Git URL maps included when set.
+# Machine-specific keys, then menu skip flags (default false).
 nds_configurator_config_export_grouped() {
     local varname
     local -a portable=() hardware=()
+    local scope
 
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
@@ -183,22 +185,45 @@ nds_configurator_config_export_grouped() {
         fi
     done < <(printf '%s\n' "${!CONFIG_DATA[@]}" | sort)
 
+    echo "# Preferred: scoped arrays (save as a file, then:"
+    echo "#   export NDS_SCOPED_CONFIG_FILE=/path/to/this-file"
+    echo "#   # then start NDS — AAs cannot cross sudo without a file)"
+    echo "#"
+
+    if declare -f nds_cfg_export_scoped_block &>/dev/null; then
+        nds_cfg_sync_store_to_scoped 2>/dev/null || true
+        echo "# Configuration — portable (scoped):"
+        for scope in FLAKE ACCESS REGION SECURITY QUICK ENCRYPTION; do
+            nds_cfg_export_scoped_block "$scope"
+            echo ""
+        done
+        if [[ ${#hardware[@]} -gt 0 ]]; then
+            echo "# This machine only — disk / boot / VM / network:"
+            for scope in DISK BOOT NETWORK PLATFORM; do
+                nds_cfg_export_scoped_block "$scope"
+                echo ""
+            done
+        fi
+        if declare -f nds_cfg_export_git_maps &>/dev/null; then
+            echo "# Git per-repo access (URL-keyed):"
+            nds_cfg_export_git_maps
+        fi
+    fi
+
+    echo "# Legacy scalars (also accepted):"
     if [[ ${#portable[@]} -gt 0 ]]; then
-        echo "# Configuration — portable (reuse on any machine):"
         for varname in "${portable[@]}"; do
             echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
         done
     fi
-
     if [[ ${#hardware[@]} -gt 0 ]]; then
         [[ ${#portable[@]} -gt 0 ]] && echo ""
-        echo "# This machine only — disk / boot / VM / static addressing:"
         for varname in "${hardware[@]}"; do
             echo "export NDS_${varname}=\"${CONFIG_DATA[$varname]}\""
         done
     fi
 
-    [[ ${#portable[@]} -gt 0 || ${#hardware[@]} -gt 0 ]] && echo ""
+    echo ""
     echo "# Menu control — set any SKIP flag to true to skip that step (false = interactive):"
     if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
         echo "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
@@ -301,9 +326,9 @@ nds_configurator_reset_for_action() {
 nds_configurator_print_config_backup() {
     local line
     nds_ui_section_header "Configuration export"
-    nds_ui_b "Paste the lines below before re-running NDS to replay this configuration."
-    nds_ui_b "Each setting is on its own line. Menu SKIP flags default to false"
-    nds_ui_b "(interactive). Set individual flags to true, or use --auto-confirm for full auto."
+    nds_ui_b "Save as a file and: export NDS_SCOPED_CONFIG_FILE=/path/to/file"
+    nds_ui_b "(associative arrays cannot cross sudo without a file)."
+    nds_ui_b "Legacy export NDS_*= lines still work. Menu SKIP flags default to false."
     nds_ui_b ""
     while IFS= read -r line; do
         nds_ui_i "$line"

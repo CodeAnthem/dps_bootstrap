@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configurator smoke tests (read-only)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-02
+# Date:          Created: 2026-06-29 | Modified: 2026-07-31
 # ==================================================================================================
 
 suite_configurator() {
@@ -146,4 +146,43 @@ suite_configurator() {
         console "  ✗ menu_or_skip: should skip with NDS_SKIP_MENU + valid network preset"
     fi
     unset NDS_SKIP_MENU NDS_AUTO_CONFIRM
+
+    # Scoped array bridge
+    CONFIG_DATA=([FLAKE_HOST]="ctl" [DISK_TARGET]="/dev/sda" [ENCRYPTION]="false")
+    if mapped=$(nds_cfg_scope_for_key FLAKE_HOST) && [[ "$mapped" == $'FLAKE\tHOST' ]] \
+        && flat=$(nds_cfg_flat_key_for_scope FLAKE HOST) && [[ "$flat" == "FLAKE_HOST" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ scoped key map: FLAKE_HOST ↔ FLAKE/HOST"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ scoped key map: FLAKE_HOST"
+    fi
+
+    nds_cfg_sync_store_to_scoped
+    if [[ "${NDS_FLAKE[HOST]:-}" == "ctl" && "${NDS_DISK[TARGET]:-}" == "/dev/sda" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ sync store → scoped arrays"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ sync store → scoped arrays"
+    fi
+
+    NDS_FLAKE[HOST]="newhost"
+    nds_cfg_sync_scoped_to_store
+    if [[ "$(nds_cfg_get FLAKE_HOST)" == "newhost" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ sync scoped → store"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ sync scoped → store"
+    fi
+
+    block="$(nds_cfg_export_scoped_block FLAKE)"
+    if grep -q 'declare -A NDS_FLAKE' <<<"$block" && grep -q '\[HOST\]=' <<<"$block"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ export scoped declare -A block"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ export scoped declare -A block"
+    fi
 }

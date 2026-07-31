@@ -11,6 +11,7 @@ nds_settings_manager_load() {
 
     nds_validators_load "$validators_dir" || return 1
     nds_import_file "${sm_dir}/state/store.sh" || return 1
+    nds_import_file "${sm_dir}/state/scoped-arrays.sh" || return 1
     nds_import_file "${SCRIPT_DIR}/framework/system-vars/load.sh" || return 1
     nds_system_vars_load "${SCRIPT_DIR}/framework/system-vars" || return 1
     nds_import_file "${sm_dir}/reference/country.sh" || return 1

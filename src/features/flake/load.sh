@@ -9,5 +9,6 @@
 nds_flake_tools_load() {
     local tools_dir="${1:?flake tools dir}"
     nds_import_file "${tools_dir}/helpers.sh" || return 1
+    nds_import_file "${tools_dir}/hosts.sh" || return 1
     return 0
 }

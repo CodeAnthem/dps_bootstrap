@@ -2,11 +2,30 @@
 # ==================================================================================================
 # NDS - Git tools tests (read-only / temp dirs)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-07
+# Date:          Created: 2026-07-05 | Modified: 2026-07-31
 # ==================================================================================================
 
 suite_git() {
     local parsed host owner repo urls tmpdir key_src dest out perms repos register_url
+
+    out=$(nds_git_normalize_url "https://github.com/CodeAnthem/dps_swarm.git")
+    if [[ "$out" == "git@github.com:CodeAnthem/dps_swarm.git" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ normalize_url: HTTPS → SSH (underscore repo name)"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ normalize_url: got $out"
+    fi
+
+    NDS_GIT_METHOD=()
+    nds_git_access_set_method "https://github.com/CodeAnthem/dps_swarm.git" "account"
+    if [[ "$(nds_git_access_get_method "git@github.com:CodeAnthem/dps_swarm.git")" == "account" ]]; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ access map: same key for https and ssh forms"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ access map: URL key mismatch"
+    fi
 
     parsed=$(_git_parse "https://github.com/CodeAnthem/dps_swarm.git")
     IFS=$'\t' read -r host owner repo <<< "$parsed"

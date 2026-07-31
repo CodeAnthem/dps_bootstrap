@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git SSH auth gate (orchestrator)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-28
+# Date:          Created: 2026-07-05 | Modified: 2026-07-31
 # Description:   Access gates wiring git tools + auth wizard UI
 # ==================================================================================================
 
@@ -31,6 +31,15 @@ hook_exit_cleanup() {
         fi
     fi
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
+}
+
+# Description: Public entry — ensure SSH access to a git URL (and optional flags).
+# Private repos cannot be skipped; maps / discovery / wizard until probe succeeds.
+# Arguments:
+# - url: <String> Git URL
+nds_git_access_gate() {
+    local url="$1"
+    nds_git_ensure_access "$url"
 }
 
 nds_git_ensure_flake_closure_access() {
@@ -69,6 +78,8 @@ nds_git_ensure_flake_closure_access() {
         for url in "${urls[@]}"; do
             if nds_git_probe_public "$url" 2>/dev/null; then
                 debug "Public git input: $url"
+            elif declare -f nds_git_access_apply_map &>/dev/null && nds_git_access_apply_map "$url"; then
+                debug "Git access OK (map): $url"
             elif nds_git_probe_access "$url"; then
                 debug "Git access OK: $url"
             else
@@ -88,24 +99,23 @@ nds_git_ensure_flake_closure_access() {
             nds_install_log "git: no access — ${ssh_url}"
         done
 
+        # Soft env skip removed for private closure — fail hard if skip requested
         if nds_skip_menu NDS_GIT_AUTH_SKIP; then
-            error "Cannot verify SSH access to all flake git inputs"
+            error "Cannot verify SSH access to all flake git inputs (NDS_GIT_AUTH_SKIP set — unset it and configure keys)"
             return 1
         fi
 
-        nds_git_auth_wizard_step_closure "${failed[@]}" || continue
+        nds_git_auth_wizard_step_closure "${failed[@]}"
         rc=$?
-        [[ "$rc" -eq 2 ]] && {
-            warn "Continuing without SSH access to every flake input — install may fail."
-            return 0
-        }
+        [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
+        [[ "$rc" -ne 0 ]] && continue
         nds_git_keys_load_all || true
         nds_git_ssh_config_refresh || true
     done
 }
 
 nds_git_ensure_access() {
-    local url="$1" parsed host="" owner="" repo="" rc
+    local url="$1" parsed host="" owner="" repo="" rc norm
 
     [[ -n "$url" ]] || return 0
     case "$url" in
@@ -128,24 +138,31 @@ nds_git_ensure_access() {
         return 0
     fi
 
-    if _git_auth_try_existing_access "$url"; then
-        success "Git access confirmed for ${owner}/${repo} (existing key)."
+    if declare -f nds_git_access_apply_map &>/dev/null && nds_git_access_apply_map "$url"; then
+        success "Git access confirmed for ${owner}/${repo} (configured map)."
         nds_git_access_mark_verified
         return 0
     fi
 
-    if nds_skip_menu NDS_GIT_AUTH_SKIP; then
-        warn "Auto-skip on — continuing without interactive git auth (clone may fail)."
+    if _git_auth_try_existing_access "$url"; then
+        success "Git access confirmed for ${owner}/${repo} (existing key)."
+        nds_git_access_mark_verified
+        if declare -f nds_git_access_set_method &>/dev/null; then
+            nds_git_access_set_method "$url" "import"
+        fi
         return 0
     fi
 
+    if nds_skip_menu NDS_GIT_AUTH_SKIP; then
+        error "Private repo ${owner}/${repo} needs SSH access (unset NDS_GIT_AUTH_SKIP and configure a key)"
+        return 1
+    fi
+
     while true; do
-        nds_git_auth_wizard_step_repo "$host" "$owner" "$repo" || continue
+        nds_git_auth_wizard_step_repo "$host" "$owner" "$repo"
         rc=$?
-        [[ "$rc" -eq 2 ]] && {
-            warn "Continuing without configured git auth — the clone may fail."
-            return 0
-        }
+        [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
+        [[ "$rc" -ne 0 ]] && continue
 
         url="$(nds_cfg_get FLAKE_REPO_URL)"
         [[ -z "$url" ]] && url="$(_git_to_ssh "$host" "$owner" "$repo")"
@@ -154,9 +171,16 @@ nds_git_ensure_access() {
         if nds_git_probe_access "$url"; then
             success "Git access confirmed for ${owner}/${repo}."
             nds_git_access_mark_verified
+            if declare -f nds_git_access_set_method &>/dev/null; then
+                nds_git_access_set_method "$url" "$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
+                [[ -z "$(nds_git_access_get_method "$url")" ]] && \
+                    nds_git_access_set_method "$url" "$(nds_cfg_get GIT_SSH_KEY_TYPE)"
+            fi
             return 0
         fi
-        warn "Still no access — register a deploy key on ${owner}/${repo} or import a working key."
-        nds_ui_i "Deploy keys: github.com/${owner}/${repo}/settings/keys"
+        warn "Still no access — register a key on ${owner}/${repo} or import a working key."
+        if nds_git_host_is_github "$host" 2>/dev/null; then
+            nds_ui_i "Deploy keys: https://github.com/${owner}/${repo}/settings/keys"
+        fi
     done
 }

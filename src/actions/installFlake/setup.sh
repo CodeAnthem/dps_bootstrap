@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from flake action
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-07-08
+# Date:          Created: 2026-06-28 | Modified: 2026-07-31
 # Description:   Install a NixOS host from an existing flake via nixos-install --flake
 # ==================================================================================================
 
@@ -22,30 +22,27 @@ action_config() {
 action_preview() {
     nds_ui_h "Install NixOS from your flake"
     nds_ui_b ""
-    nds_ui_b "You will configure:"
-    nds_ui_i "install mode (local live ISO or remote nixos-anywhere)"
-    nds_ui_i "flake location (git URL or path, auto-detected), host name, host directory"
-    nds_ui_i "bootloader (UEFI mode + GRUB / systemd-boot / rEFInd), disk (local mode)"
-    nds_ui_b ""
-    nds_ui_b "VM guest tools come from facter / your flake modules (no NDS platform menu)."
-    nds_ui_b ""
-    nds_ui_b "For a private repo, NDS shallow-clones the root flake once, scans"
-    nds_ui_b "flake.lock for git inputs, and probes SSH access to each (no extra clones)."
-    nds_ui_b ""
     nds_ui_b "After confirmation, NDS will:"
-    nds_ui_i "local: partition via disko or NDS, generate facter.json, run nixos-install --flake"
-    nds_ui_i "remote: delegate to nixos-anywhere (disko + nixos-facter + install)"
-    nds_ui_i "offer an install backup zip; reboot when done (local only)"
+    nds_ui_i "ask for flake URL (or path) and prove git access (root + flake.lock inputs)"
+    nds_ui_i "list nixosConfigurations and let you pick a host"
+    nds_ui_i "ask install mode / target disk (or remote IP)"
+    nds_ui_i "open the settings manager for boot / disk / encryption"
+    nds_ui_i "local: partition, facter, flake install — or remote: nixos-anywhere"
     nds_ui_b ""
 }
 
 action_setup() {
+    # Early gate: URL → git → hosts → target (before full settings menu)
+    nds_flake_install_gate || exit 11
+
     if ! nds_configurator_validate_all; then
         nds_configurator_prompt_errors
         nds_configurator_validate_all || exit 11
     fi
 
     nds_configurator_menu_or_skip || exit 12
+
+    # Auth already done in gate — prepare exports + disko detect; re-verify access idempotently
     nds_flake_install_prepare_and_verify || exit 11
     nds_flake_install_confirm || exit 13
 

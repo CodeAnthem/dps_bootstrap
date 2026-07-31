@@ -35,6 +35,7 @@ nds_install_load() {
     nds_import_file "${install_dir}/disk-prep.sh" || return 1
     nds_import_file "${install_dir}/classic-pipeline.sh" || return 1
     nds_import_file "${install_dir}/flake-pipeline.sh" || return 1
+    nds_import_file "${install_dir}/flake-gate.sh" || return 1
     nds_import_file "${install_dir}/flake-install-pipeline.sh" || return 1
     return 0
 }

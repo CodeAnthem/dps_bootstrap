@@ -32,8 +32,21 @@ _app_elevate_to_root() {
         printf '[INFO] - NDS requires root — re-running via sudo.\n' >&2
     fi
     local nds_vars=()
+    local scoped_file="${NDS_SCOPED_CONFIG_FILE:-}"
+
+    # Associative arrays cannot cross sudo — dump to a file when helpers are loaded.
+    if [[ -z "$scoped_file" ]] && declare -f nds_cfg_dump_scoped_file &>/dev/null; then
+        scoped_file="$(mktemp /tmp/nds-scoped-XXXXXX.env)"
+        nds_cfg_dump_scoped_file "$scoped_file" 2>/dev/null || rm -f "$scoped_file"
+        [[ -f "$scoped_file" ]] && nds_vars+=("NDS_SCOPED_CONFIG_FILE=$scoped_file")
+    elif [[ -n "$scoped_file" ]]; then
+        nds_vars+=("NDS_SCOPED_CONFIG_FILE=$scoped_file")
+    fi
+
     while IFS='=' read -r name value; do
-        [[ "$name" =~ ^NDS_ ]] && nds_vars+=("$name=$value")
+        [[ "$name" =~ ^NDS_ ]] || continue
+        [[ "$name" == "NDS_SCOPED_CONFIG_FILE" ]] && continue
+        nds_vars+=("$name=$value")
     done < <(env)
     if [[ ${#nds_vars[@]} -gt 0 ]]; then
         exec sudo "${nds_vars[@]}" DEBUG="${DEBUG:-0}" bash "${BASH_SOURCE[0]}" "${_app_original_args[@]}"

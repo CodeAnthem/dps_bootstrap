@@ -78,7 +78,7 @@ nds_cfg_print_numbered_choice_options() {
 # - labels:  <String> key=description pairs separated by |
 # - default: <String|optional> Default option key (Enter accepts when set)
 nds_cfg_ask_numbered_choice() {
-    local var="$1" options="$2" labels="${3:-}" default="${4:-}"
+    local var="$1" options="$2" labels="${3:-}" default="${4:-}" allow_back="${5:-false}"
     local -a opts=()
     local count=0 digit current resolved prompt
 
@@ -88,10 +88,13 @@ nds_cfg_ask_numbered_choice() {
     current=$(nds_cfg_get "$var")
 
     [[ -n "$labels" ]] && nds_cfg_print_numbered_choice_options "$options" "$labels"
-    prompt="$(nds_ui_numbered_prompt 1 "$count" "$default")"
+    prompt="$(nds_ui_numbered_prompt 1 "$count" "$default" "Make your selection" "$allow_back")"
 
     while true; do
-        if digit=$(nds_ui_read_menu_digit "$prompt" 1 "$count"); then
+        if digit=$(nds_ui_read_menu_digit "$prompt" 1 "$count" "$allow_back"); then
+            if [[ "$allow_back" == "true" && "$digit" == "0" ]]; then
+                return "${NDS_ACTION_BACK:-10}"
+            fi
             resolved="${opts[$((digit - 1))]}"
             break
         elif [[ -n "$default" ]]; then

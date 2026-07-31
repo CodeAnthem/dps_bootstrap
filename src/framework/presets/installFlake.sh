@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from flake preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-08
+# Date:          Created: 2026-07-01 | Modified: 2026-07-31
 # ==================================================================================================
 
 installFlake_defaults() {
@@ -54,18 +54,30 @@ _installFlake_ask_location() {
 }
 
 installFlake_configure() {
+    # After early gate, URL/host/mode are usually set — allow review/edit.
     nds_cfg_section_title "Install mode"
     nds_cfg_ask_numbered_choice INSTALL_MODE \
         "local|remote" \
         "local=On target (live ISO)|remote=From operator (nixos-anywhere)" \
-        "local"
+        "$(nds_cfg_get INSTALL_MODE)"
     if nds_cfg_is INSTALL_MODE remote; then
-        nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
+        nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "$(nds_cfg_get REMOTE_TARGET_IP)" true
     fi
     nds_cfg_section_title "Your flake"
-    _installFlake_ask_location
+    if [[ -z "$(nds_cfg_get FLAKE_REPO_URL)" && -z "$(nds_cfg_get FLAKE_LOCAL_PATH)" ]]; then
+        _installFlake_ask_location
+    else
+        nds_ui_i "Location: $(nds_cfg_get FLAKE_LOCATION)"
+        nds_ui_i "Host: $(nds_cfg_get FLAKE_HOST)"
+        nds_ui_b ""
+        if nds_ask_user_to_proceed "Change flake location or host?"; then
+            _installFlake_ask_location
+            nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "$(nds_cfg_get FLAKE_HOST)" true
+        fi
+    fi
     nds_cfg_ask_path FLAKE_INSTALL_PATH "Flake path on installed disk" "/mnt/etc/nixos" true
-    nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+    [[ -z "$(nds_cfg_get FLAKE_HOST)" ]] && \
+        nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
     nds_cfg_ask_path FLAKE_HOST_DIR "Host directory inside flake" "hosts/x86_64-linux" false
     nds_cfg_ask_choice FLAKE_HARDWARE_PLACEMENT "Hardware configuration" "host-dir|etc-nixos|skip" \
         "host-dir=Copy into flake host dir|etc-nixos=Keep in /etc/nixos|skip=Flake handles hardware" "host-dir"

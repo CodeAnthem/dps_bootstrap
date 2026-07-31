@@ -149,10 +149,16 @@ nds_ui_choice_row() {
 # Returns:
 # - <String> Formatted prompt (stdout)
 nds_ui_numbered_prompt() {
-    local min="$1" max="$2" default_opt="${3:-}" text="${4:-Make your selection}"
+    local min="$1" max="$2" default_opt="${3:-}" text="${4:-Make your selection}" allow_back="${5:-false}"
 
     nds_ui_init
-    if [[ -n "$default_opt" ]]; then
+    if [[ "$allow_back" == "true" ]]; then
+        if [[ -n "$default_opt" ]]; then
+            printf '%s%s [%s] (%s-%s, 0=back): ' "$NDS_UI_INDENT_I" "$text" "$default_opt" "$min" "$max"
+        else
+            printf '%s%s (%s-%s, 0=back): ' "$NDS_UI_INDENT_I" "$text" "$min" "$max"
+        fi
+    elif [[ -n "$default_opt" ]]; then
         printf '%s%s [%s] (%s-%s): ' "$NDS_UI_INDENT_I" "$text" "$default_opt" "$min" "$max"
     else
         printf '%s%s (%s-%s): ' "$NDS_UI_INDENT_I" "$text" "$min" "$max"
@@ -161,13 +167,14 @@ nds_ui_numbered_prompt() {
 
 # Description: Read one menu digit without Enter (same UX as action select).
 # Arguments:
-# - prompt: <String> Prompt text
-# - min:    <Int>    Minimum valid digit
-# - max:    <Int>    Maximum valid digit
+# - prompt:     <String> Prompt text
+# - min:        <Int>    Minimum valid digit
+# - max:        <Int>    Maximum valid digit
+# - allow_back: <Bool|optional> When true, 0 or b returns special code via stdout "0"
 # Returns:
 # - <String> Selected digit on stdout; 1 when user presses Enter only
 nds_ui_read_menu_digit() {
-    local prompt="$1" min="$2" max="$3"
+    local prompt="$1" min="$2" max="$3" allow_back="${4:-false}"
     local choice
 
     nds_ui_init
@@ -175,11 +182,19 @@ nds_ui_read_menu_digit() {
         read -rsn1 -p "$prompt" choice < /dev/tty
         echo >&2
         [[ -n "$choice" ]] || return 1
+        if [[ "$allow_back" == "true" ]] && [[ "$choice" == "0" || "$choice" == "b" || "$choice" == "B" ]]; then
+            printf '0'
+            return 0
+        fi
         if [[ "$choice" =~ ^[0-9]$ ]] && (( choice >= min && choice <= max )); then
             printf '%s' "$choice"
             return 0
         fi
-        nds_ui_b "Invalid selection. Choose ${min}-${max}."
+        if [[ "$allow_back" == "true" ]]; then
+            nds_ui_b "Invalid selection. Choose ${min}-${max}, or 0 to go back."
+        else
+            nds_ui_b "Invalid selection. Choose ${min}-${max}."
+        fi
     done
 }
 

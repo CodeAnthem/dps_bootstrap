@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - System variables (NDS_* env bridge)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-28 | Modified: 2026-07-28
+# Date:          Created: 2026-07-28 | Modified: 2026-07-31
 # Description:   Map process env NDS_* into settings store; sync derived flake keys
 # ==================================================================================================
 
@@ -38,16 +38,40 @@ nds_cfg_sync_derived_flake() {
 }
 
 # Description: Apply every NDS_* environment variable to CONFIG_DATA, then sync derived keys.
+# Also loads NDS_SCOPED_CONFIG_FILE (declare -A blocks) — AAs cannot cross sudo without a file.
 nds_cfg_apply_env_all() {
     local env_name key
+    local loaded_scoped=false
+
+    if [[ -n "${NDS_SCOPED_CONFIG_FILE:-}" && -f "${NDS_SCOPED_CONFIG_FILE}" ]]; then
+        if declare -f nds_cfg_load_scoped_file &>/dev/null; then
+            nds_cfg_load_scoped_file
+            loaded_scoped=true
+        fi
+    fi
+
     while IFS= read -r env_name; do
         [[ "$env_name" == NDS_* ]] || continue
+        case "$env_name" in
+            NDS_SCOPED_CONFIG_FILE|NDS_RUNTIME_DIR|NDS_INSTALL_LOG|NDS_INSTALL_DETAIL_LOG|NDS_INSTALL_DIAG_LOG)
+                continue
+                ;;
+        esac
         key="${env_name#NDS_}"
         [[ -n "${!env_name:-}" ]] || continue
+        case "$key" in
+            FLAKE|DISK|BOOT|ENCRYPTION|NETWORK|PLATFORM|ACCESS|REGION|SECURITY|QUICK|GIT_METHOD|GIT_KEY_PATH|GIT_KEY_KIND)
+                continue
+                ;;
+        esac
         CONFIG_DATA["$key"]="${!env_name}"
         debug "Env: ${env_name}=${!env_name}"
     done < <(compgen -e | grep '^NDS_' || true)
+
     nds_cfg_sync_derived_flake
+    if declare -f nds_cfg_sync_store_to_scoped &>/dev/null; then
+        nds_cfg_sync_store_to_scoped
+    fi
 }
 
 nds_config_apply_env() {
