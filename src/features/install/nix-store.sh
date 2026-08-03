@@ -73,9 +73,9 @@ _install_nix_ensure_store_ready() {
     fi
 
     if [[ "$store_uri" == "$(_install_nix_target_root)" ]]; then
-        info "Seeding Nix tools into target store (${store_uri}/nix/store)"
+        debug "Seeding Nix tools into target store (${store_uri}/nix/store)"
     else
-        info "Initializing scratch Nix store at ${store_uri}"
+        debug "Initializing scratch Nix store at ${store_uri}"
     fi
     nix copy --to "$store_uri" "$(command -v nix)" "$(command -v nixos-install)" 2>/dev/null || true
 }
@@ -222,11 +222,16 @@ EOF
     uefi="${NDS_CTX_BOOT_UEFI_MODE:-}"
     loader="${NDS_CTX_BOOT_LOADER:-grub}"
     disk="${NDS_CTX_DISK:-}"
+    # switch-to-configuration boot usually installs GRUB already — only repair if missing.
     if [[ "$loader" == "grub" && "$uefi" != "true" && -n "$disk" ]] \
         && declare -f _install_grub_install_bios &>/dev/null; then
-        _install_grub_install_bios "$disk" || {
-            warn "GRUB BIOS boot code install failed — see verbose log"
-        }
+        if declare -f _install_grub_bios_boot_ok &>/dev/null && _install_grub_bios_boot_ok "$disk"; then
+            nds_install_log "grub: BIOS boot code already present on ${disk}"
+        else
+            _install_grub_install_bios "$disk" || {
+                warn "GRUB BIOS boot code install failed — see verbose log"
+            }
+        fi
     fi
     return 0
 }

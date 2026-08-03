@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Flake git closure access
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-07
+# Date:          Created: 2026-07-05 | Modified: 2026-08-03
 # Description:   Scan flake.lock / flake.nix and verify SSH access to every git input
 # ==================================================================================================
 
@@ -23,14 +23,22 @@ nds_git_clone_flake_probe() {
     clone_dir="$(_flake_probe_repo_dir)"
     norm_url=$(_git_ssh_url "$root_url")
 
-    if [[ -f "${NDS_FLAKE_PROBE_REPO:-}/flake.nix" \
-        && "${NDS_FLAKE_PROBE_REPO_URL:-}" == "$norm_url" ]]; then
-        return 0
+    # Reuse in-memory probe when URL matches (or URL unset from an earlier step).
+    if [[ -f "${NDS_FLAKE_PROBE_REPO:-}/flake.nix" ]]; then
+        if [[ -z "${NDS_FLAKE_PROBE_REPO_URL:-}" || "${NDS_FLAKE_PROBE_REPO_URL}" == "$norm_url" ]]; then
+            NDS_FLAKE_PROBE_REPO_URL="$norm_url"
+            export NDS_FLAKE_PROBE_REPO NDS_FLAKE_PROBE_REPO_URL
+            return 0
+        fi
     fi
-    if [[ -f "${clone_dir}/flake.nix" && "${NDS_FLAKE_PROBE_REPO_URL:-}" == "$norm_url" ]]; then
-        NDS_FLAKE_PROBE_REPO="$clone_dir"
-        export NDS_FLAKE_PROBE_REPO NDS_FLAKE_PROBE_REPO_URL
-        return 0
+    # Reuse session clone dir on disk without requiring the URL env to still be set.
+    if [[ -f "${clone_dir}/flake.nix" ]]; then
+        if [[ -z "${NDS_FLAKE_PROBE_REPO_URL:-}" || "${NDS_FLAKE_PROBE_REPO_URL}" == "$norm_url" ]]; then
+            NDS_FLAKE_PROBE_REPO="$clone_dir"
+            NDS_FLAKE_PROBE_REPO_URL="$norm_url"
+            export NDS_FLAKE_PROBE_REPO NDS_FLAKE_PROBE_REPO_URL
+            return 0
+        fi
     fi
 
     mkdir -p "$(dirname "$clone_dir")"

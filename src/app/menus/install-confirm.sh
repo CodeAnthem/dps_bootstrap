@@ -81,7 +81,7 @@ nds_action_confirm_install() {
 
     nds_ui_install_warning "$disk" "$strategy" "$extra"
     if nds_skip_menu NDS_INSTALL_CONFIRM_SKIP; then
-        log "Install confirmation skipped"
+        nds_install_log "Install confirmation skipped"
         return 0
     fi
     nds_ask_user_to_proceed "Start installation now" || return 1

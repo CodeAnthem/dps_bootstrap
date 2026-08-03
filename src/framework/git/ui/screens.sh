@@ -7,24 +7,6 @@
 
 declare -ga NDS_GIT_AUTH_REGISTER_URLS=()
 
-# Description: Print owner/repo lines for closure URLs (UI).
-# Arguments:
-# - urls: <String...> Git remote URLs
-nds_git_ui_log_closure_repo_list() {
-    local url ssh_url parsed host owner repo
-    nds_ui_h "Git repositories"
-    for url in "$@"; do
-        ssh_url=$(_git_ssh_url "$url")
-        if parsed=$(_git_parse "$ssh_url"); then
-            IFS=$'\t' read -r host owner repo <<< "$parsed"
-            nds_ui_i "  ${owner}/${repo}"
-        else
-            nds_ui_i "  ${ssh_url}"
-        fi
-    done
-    nds_ui_b ""
-}
-
 # Description: Ask whether to clear gh session on ISO after stop / failed run.
 # Returns:
 # - <Bool> 0 when user wants cleanup

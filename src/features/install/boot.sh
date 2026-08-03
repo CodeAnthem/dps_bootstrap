@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-08
+# Date:          Created: 2026-06-30 | Modified: 2026-08-03
 # Description:   Bootloader registration (EFI NVRAM entry)
 # Feature:       No keyfile is placed on the target — LUKS key (if used) lives on a USB stick
 # ==================================================================================================
@@ -90,8 +90,9 @@ _install_grub_install_bios() {
     _install_nix_system_profile_ok "$root" || return 1
 
     info "Installing GRUB boot code on ${disk} (BIOS)"
-    if ! nixos-enter --root "$root" -- \
-        /nix/var/nix/profiles/system/bin/grub-install --target=i386-pc --recheck "$disk" \
+    # Prefer store profile path; fall back to current-system PATH inside the enter.
+    if ! nixos-enter --root "$root" -- bash -c \
+        "grub-install --target=i386-pc --recheck \"$disk\"" \
         >>"$log" 2>&1; then
         return 1
     fi
