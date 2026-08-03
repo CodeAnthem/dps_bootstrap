@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard new-key and registration menus
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-08-03
 # ==================================================================================================
 
 # Description: Ask gh CLI vs manual registration.
@@ -24,10 +24,10 @@ nds_git_wizard_ask_register_method() {
         return 0
     fi
 
-    if ! nds_git_gh_available 2>/dev/null; then
+    if ! nds_git_gh_bin_ready 2>/dev/null; then
         nds_git_gh_ensure_prefetch 2>/dev/null || true
     fi
-    if ! nds_git_gh_available 2>/dev/null; then
+    if ! nds_git_gh_bin_ready 2>/dev/null && ! command -v nix &>/dev/null; then
         _choice=manual
         return 0
     fi
@@ -98,17 +98,17 @@ nds_git_wizard_register_deploy() {
     local owner="$1" repo="$2" host="${3:-github.com}"
     local method="" pub register_url
 
-    nds_git_deploy_key_generate "$owner" "$repo" || return 1
-    pub="$(nds_git_deploy_key_pubkey_path "$owner" "$repo")"
-    register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
-    NDS_GIT_AUTH_REGISTER_URLS=("$register_url")
-
     nds_git_wizard_ask_register_method method || return 1
     if [[ "$method" == "gh" ]]; then
+        # prepare (download + login) happens inside menu_gh_deploy before keygen
         nds_git_wizard_menu_gh_deploy "$owner" "$repo" || return 1
         return 0
     fi
 
+    nds_git_deploy_key_generate "$owner" "$repo" || return 1
+    pub="$(nds_git_deploy_key_pubkey_path "$owner" "$repo")"
+    register_url="$(nds_git_deploy_key_register_url "$host" "$owner" "$repo")"
+    NDS_GIT_AUTH_REGISTER_URLS=("$register_url")
     nds_git_wizard_menu_manual_deploy "$owner" "$repo" "$host" || return 1
     return 0
 }
@@ -127,17 +127,18 @@ nds_git_wizard_register_account() {
     nds_ui_b "The SSH key grants full account access; restrict repos via collaborators or teams."
     nds_ui_b ""
 
+    nds_git_wizard_ask_register_method method || return 1
+    if [[ "$method" == "gh" ]]; then
+        # Download + login before keygen (see menu_gh_account).
+        nds_git_wizard_menu_gh_account "${repos[@]}" || return 1
+        return 0
+    fi
+
     if [[ ! -f "$(nds_git_session_pubkey_path)" ]]; then
         nds_git_key_generate "$(nds_git_session_key_path)" || return 1
     fi
     nds_git_keys_register "$(nds_git_session_key_path)" || true
     nds_git_auth_set_mode account
-
-    nds_git_wizard_ask_register_method method || return 1
-    if [[ "$method" == "gh" ]]; then
-        nds_git_wizard_menu_gh_account "${repos[@]}" || return 1
-        return 0
-    fi
 
     nds_git_wizard_menu_manual_account || return 1
     return 0

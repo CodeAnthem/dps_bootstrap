@@ -385,5 +385,67 @@ LOCK
     fi
 
     unset NDS_GIT_SESSION_KEY_PATH
+
+    if declare -f nds_git_gh_bin_ready &>/dev/null; then
+        unset NDS_GIT_GH_BIN NDS_GIT_GH_PREFETCH_DONE
+        if ! nds_git_gh_bin_ready; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ gh_bin_ready: false without PATH/BIN"
+        else
+            # Host may have gh installed
+            if command -v gh &>/dev/null; then
+                TEST_PASSED=$((TEST_PASSED + 1))
+                console "  ✓ gh_bin_ready: host gh on PATH"
+            else
+                TEST_FAILED=$((TEST_FAILED + 1))
+                console "  ✗ gh_bin_ready: unexpected true"
+            fi
+        fi
+        fake_bin="${tmpdir}/fake-gh"
+        printf '#!/bin/sh\necho fake-gh\n' >"$fake_bin"
+        chmod +x "$fake_bin"
+        export NDS_GIT_GH_BIN="$fake_bin"
+        if nds_git_gh_bin_ready; then
+            local -a cmd=()
+            local saved_path="$PATH"
+            PATH="/var/empty:${tmpdir}"
+            nds_git_gh_cmd cmd
+            PATH="$saved_path"
+            if [[ "${cmd[0]}" == "$fake_bin" ]]; then
+                TEST_PASSED=$((TEST_PASSED + 1))
+                console "  ✓ gh_cmd: prefers NDS_GIT_GH_BIN over nix shell"
+            else
+                TEST_FAILED=$((TEST_FAILED + 1))
+                console "  ✗ gh_cmd: expected cached bin, got ${cmd[*]}"
+            fi
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ gh_bin_ready: false with NDS_GIT_GH_BIN set"
+        fi
+        # Stale PREFETCH_DONE alone must not imply a ready binary
+        unset NDS_GIT_GH_BIN
+        export NDS_GIT_GH_PREFETCH_DONE=true
+        if ! nds_git_gh_bin_ready; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ ensure_prefetch: stale PREFETCH_DONE does not imply bin ready"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ ensure_prefetch: bin ready without BIN after unset"
+        fi
+        unset NDS_GIT_GH_BIN NDS_GIT_GH_PREFETCH_DONE
+    fi
+
+    if declare -f _git_wizard_gh_print_device_line &>/dev/null; then
+        local out
+        out="$(_git_wizard_gh_print_device_line '! First copy your one-time code: 36A9-2670' 2>&1)"
+        if grep -q '36A9-2670' <<<"$out"; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ device login line: prints one-time code"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ device login line: missing code"
+        fi
+    fi
+
     rm -rf "$tmpdir"
 }

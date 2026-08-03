@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard flow (menu state machine)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-31
+# Date:          Created: 2026-07-07 | Modified: 2026-08-03
 # ==================================================================================================
 
 # Description: Top-level route menu for a private git URL (GitHub vs generic).
@@ -53,6 +53,11 @@ nds_git_wizard_route_menu() {
                 ;;
             gh)
                 nds_cfg_set GIT_SSH_KEY_REGISTER_METHOD gh
+                info "GitHub CLI route selected — caching gh binary if needed..."
+                nds_git_gh_ensure_prefetch || {
+                    error "Could not prepare gh CLI (nixpkgs#gh)"
+                    return 1
+                }
                 if [[ ${#repos[@]} -gt 0 ]]; then
                     nds_git_wizard_menu_new_key "${urls[@]}" --repos "${repos[@]}" || return 1
                 else

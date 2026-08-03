@@ -2,8 +2,49 @@
 # ==================================================================================================
 # NDS - Git auth wizard GitHub CLI menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-08
+# Date:          Created: 2026-07-07 | Modified: 2026-08-03
 # ==================================================================================================
+
+# Description: Print one device-login line with optional color on code/URL.
+# Arguments:
+# - line: <String> Raw gh auth login output line
+_git_wizard_gh_print_device_line() {
+    local line="$1"
+    local code url prefix
+
+    nds_ui_init
+    case "$line" in
+        *one-time\ code*|*First\ copy*)
+            if [[ "$line" =~ ([0-9A-Za-z]{4}-[0-9A-Za-z]{4}) ]]; then
+                code="${BASH_REMATCH[1]}"
+                prefix="${line%%"${code}"*}"
+                if [[ "$NDS_UI_COLOR" == true ]]; then
+                    printf '%s%s\033[1;93m%s\033[0m\n' "$NDS_UI_INDENT_I" "$prefix" "$code" >&2
+                else
+                    nds_ui_i "$line"
+                fi
+            else
+                nds_ui_i "$line"
+            fi
+            ;;
+        *login/device*|*Open\ this\ URL*)
+            if [[ "$line" =~ (https://[^[:space:]]+) ]]; then
+                url="${BASH_REMATCH[1]}"
+                prefix="${line%%"${url}"*}"
+                if [[ "$NDS_UI_COLOR" == true ]]; then
+                    printf '%s%s\033[1;96m%s\033[0m\n' "$NDS_UI_INDENT_I" "$prefix" "$url" >&2
+                else
+                    nds_ui_i "$line"
+                fi
+            else
+                nds_ui_i "$line"
+            fi
+            ;;
+        *)
+            nds_ui_i "$line"
+            ;;
+    esac
+}
 
 # Description: Print device-login lines from captured gh output.
 _git_wizard_gh_show_device_prompt() {
@@ -16,8 +57,8 @@ _git_wizard_gh_show_device_prompt() {
     while IFS= read -r line; do
         [[ -n "$line" ]] || continue
         case "$line" in
-            *one-time\ code*|*login/device*|*First\ copy*)
-                nds_ui_i "$line"
+            *one-time\ code*|*login/device*|*First\ copy*|*Open\ this\ URL*)
+                _git_wizard_gh_print_device_line "$line"
                 ;;
         esac
     done < "$log"
@@ -27,15 +68,17 @@ _git_wizard_gh_show_device_prompt() {
 # Description: Run gh auth login via device code (spinner until code, then wait for auth).
 _git_wizard_gh_auth_login() {
     local -a gh_cmd=()
-    local rc=0 log pid shown=false delay=0.12 spinstr="|/-\\"
+    local rc=0 pid shown=false delay=0.12 spinstr="|/-\\"
     local char logfile="${NDS_RUNTIME_DIR:-/tmp/nds}/gh_auth.log"
 
+    nds_git_gh_ensure_prefetch || return 1
     nds_git_gh_cmd gh_cmd || return 1
     nds_git_gh_unset_blocking_tokens
 
     mkdir -p "$(dirname "$logfile")"
     : >"$logfile"
 
+    info "Starting GitHub device login (waiting for one-time code)..."
     (
         BROWSER=false "${gh_cmd[@]}" auth login \
             --hostname github.com \
@@ -89,6 +132,7 @@ _git_wizard_gh_auth_login() {
 nds_git_wizard_gh_ensure_auth() {
     local -a gh_cmd=()
 
+    nds_git_gh_ensure_prefetch || return 1
     nds_git_gh_cmd gh_cmd || return 1
 
     if nds_git_gh_session_ready; then
@@ -119,6 +163,7 @@ nds_git_wizard_gh_ensure_auth() {
 # Returns:
 # - <Bool> 0 on success
 nds_git_wizard_gh_prepare() {
+    info "Preparing GitHub CLI (download once if needed, then authenticate)..."
     nds_git_gh_ensure_prefetch || {
         error "Could not install gh CLI"
         return 1
@@ -161,26 +206,31 @@ nds_git_wizard_menu_gh_deploy() {
 # - <Bool> 0 on success
 nds_git_wizard_menu_gh_account() {
     local -a repos=("$@")
-    local pub
+    local pub label="Registering SSH key on GitHub account"
 
     nds_ui_b "Log in to gh as your machine GitHub user — not your personal account."
     nds_ui_b ""
 
+    # Download + device login before keygen so the user is not waiting after
+    # "Git SSH key generated" with no status.
     nds_git_wizard_gh_prepare || return 1
 
     if [[ ! -f "$(nds_git_session_pubkey_path)" ]]; then
+        info "Generating session SSH key..."
         nds_git_key_generate "$(nds_git_session_key_path)" || return 1
     fi
     pub="$(nds_git_session_pubkey_path)"
     nds_git_keys_register "$(nds_git_session_key_path)" || true
     nds_git_auth_set_mode account
 
-    info "Registering SSH key on the logged-in GitHub account..."
+    nds_step_start "$label"
     if nds_git_gh_register_for_repos "$pub" "${repos[@]}"; then
+        nds_step_complete "$label"
         success "SSH key registered on GitHub account ($(nds_git_ssh_key_title))"
         nds_ui_i "Private key will be copied to $(nds_git_target_key_abs) on the target."
         return 0
     fi
+    nds_step_fail "$label"
     return 1
 }
 

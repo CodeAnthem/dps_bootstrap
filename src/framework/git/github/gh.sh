@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - GitHub CLI session helpers (logic)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-08-03
 # ==================================================================================================
 
 # Description: Nix CLI prefix for gh on live ISO (flakes required).
@@ -10,7 +10,17 @@ _git_gh_nix() {
     nix --extra-experimental-features "nix-command flakes" "$@"
 }
 
-# Description: Resolve gh command (host binary or nix build cache).
+# Description: True when a real gh binary is ready (PATH or NDS_GIT_GH_BIN).
+# Does not count nix shell fallback — that re-evals on every call.
+nds_git_gh_bin_ready() {
+    if command -v gh &>/dev/null; then
+        return 0
+    fi
+    [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]
+}
+
+# Description: Resolve gh command (host binary or cached nix store path).
+# Prefers PATH / NDS_GIT_GH_BIN. Auto-prefetches once when only nix is available.
 # Arguments:
 # - out: <Nameref> Command prefix array
 # Returns:
@@ -26,6 +36,11 @@ nds_git_gh_cmd() {
         return 0
     fi
     if command -v nix &>/dev/null; then
+        # One-time cache — never leave callers on perpetual `nix shell`.
+        if nds_git_gh_prefetch && [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+            _out=("${NDS_GIT_GH_BIN}")
+            return 0
+        fi
         _out=(_git_gh_nix shell nixpkgs#gh -c gh)
         return 0
     fi
@@ -97,10 +112,10 @@ nds_git_gh_session_cleanup() {
     fi
 }
 
-# Description: True when gh CLI is available on the live ISO.
+# Description: True when gh can be obtained (cached binary, PATH, or via nix).
 nds_git_gh_available() {
-    local -a gh_cmd=()
-    nds_git_gh_cmd gh_cmd
+    nds_git_gh_bin_ready && return 0
+    command -v nix &>/dev/null
 }
 
 # Description: Cache gh binary path from nix after build or shell probe.
@@ -117,7 +132,8 @@ _git_gh_cache_bin_from_nix() {
         export NDS_GIT_GH_BIN
         return 0
     fi
-    gh_path=$(_git_gh_nix shell nixpkgs#gh -c command -v gh 2>/dev/null) || gh_path=""
+    # Strip noise; last line should be the store path from `command -v`.
+    gh_path=$(_git_gh_nix shell nixpkgs#gh -c command -v gh 2>/dev/null | tail -1) || gh_path=""
     if [[ -n "$gh_path" && -x "$gh_path" ]]; then
         NDS_GIT_GH_BIN="$gh_path"
         export NDS_GIT_GH_BIN
@@ -135,17 +151,22 @@ nds_git_gh_prefetch() {
         export NDS_GIT_GH_PREFETCH_DONE
         return 0
     fi
-    if ! command -v nix &>/dev/null; then
-        return 1
-    fi
-    if [[ "${NDS_GIT_GH_PREFETCH_DONE:-}" == "true" ]]; then
-        return 0
-    fi
     if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
         NDS_GIT_GH_PREFETCH_DONE=true
         export NDS_GIT_GH_PREFETCH_DONE
         return 0
     fi
+    if ! command -v nix &>/dev/null; then
+        return 1
+    fi
+    # Stale "done" without a binary — clear and rebuild.
+    unset NDS_GIT_GH_PREFETCH_DONE 2>/dev/null || true
+
+    if [[ "${NDS_GIT_GH_PREFETCH_IN_PROGRESS:-}" == "true" ]]; then
+        return 1
+    fi
+    NDS_GIT_GH_PREFETCH_IN_PROGRESS=true
+
     local out_path build_out rc=0 logfile="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
     local prefetch_log="${NDS_RUNTIME_DIR:-/tmp/nds}/gh_prefetch.out"
     if declare -f nds_step_start &>/dev/null; then
@@ -174,27 +195,30 @@ nds_git_gh_prefetch() {
     fi
     out_path=$(printf '%s\n' "$build_out" | tail -1)
     if [[ "$rc" -ne 0 ]]; then
+        unset NDS_GIT_GH_PREFETCH_IN_PROGRESS 2>/dev/null || true
         declare -f nds_step_fail &>/dev/null && nds_step_fail "Downloading GitHub CLI (gh)"
         debug "gh prefetch failed"
         return 1
     fi
     if _git_gh_cache_bin_from_nix "$out_path"; then
+        unset NDS_GIT_GH_PREFETCH_IN_PROGRESS 2>/dev/null || true
         declare -f nds_step_complete &>/dev/null && nds_step_complete "Downloading GitHub CLI (gh)"
         NDS_GIT_GH_PREFETCH_DONE=true
         export NDS_GIT_GH_PREFETCH_DONE
         nds_install_log "git: gh CLI ready (${NDS_GIT_GH_BIN})"
         return 0
     fi
+    unset NDS_GIT_GH_PREFETCH_IN_PROGRESS 2>/dev/null || true
     declare -f nds_step_fail &>/dev/null && nds_step_fail "Downloading GitHub CLI (gh)"
     debug "gh prefetch failed"
     return 1
 }
 
-# Description: Ensure gh is on PATH or cached (idempotent).
+# Description: Ensure a real gh binary is ready (PATH or NDS_GIT_GH_BIN).
 # Returns:
-# - <Bool> 0 when gh can be invoked
+# - <Bool> 0 when gh can be invoked without nix shell
 nds_git_gh_ensure_prefetch() {
-    nds_git_gh_available 2>/dev/null && return 0
+    nds_git_gh_bin_ready && return 0
     nds_git_gh_prefetch
 }
 
