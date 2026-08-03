@@ -48,12 +48,28 @@ nds_git_gh_cmd() {
     return 1
 }
 
-# Description: True when gh is logged in to github.com.
+# Description: True when gh reports a logged-in github.com host (live check).
+# Does not trust NDS_GIT_GH_SESSION_ACTIVE alone — that flag can be stale.
+nds_git_gh_host_logged_in() {
+    local -a gh_cmd=()
+    local status_out
+
+    nds_git_gh_cmd gh_cmd || return 1
+    status_out=$("${gh_cmd[@]}" auth status -h github.com 2>&1) || status_out=""
+    if grep -qiE 'Logged in to github\.com|✓.*github\.com|github\.com account' <<<"$status_out"; then
+        return 0
+    fi
+    # Older gh: auth status exits 0 when logged in
+    if "${gh_cmd[@]}" auth status -h github.com &>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+# Description: True when gh is logged in to github.com (flag or live check).
 nds_git_gh_session_active() {
     [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]] && return 0
-    local -a gh_cmd=()
-    nds_git_gh_cmd gh_cmd || return 1
-    if "${gh_cmd[@]}" auth status &>/dev/null; then
+    if nds_git_gh_host_logged_in; then
         NDS_GIT_GH_SESSION_ACTIVE=true
         export NDS_GIT_GH_SESSION_ACTIVE
         nds_git_gh_probe_registration_scopes && nds_git_gh_session_mark_scopes_ok || true
@@ -100,16 +116,57 @@ nds_git_gh_has_key_scope() {
 }
 
 # Description: End temporary gh auth on the live ISO (SSH keys on GitHub are kept).
+# Uses non-interactive logout (--yes); falls back to wiping hosts.yml for insecure-storage.
+# Returns:
+# - <Bool> 0 when no session remains (or gh unavailable)
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
+    local hosts_yml="${GH_CONFIG_DIR:-${HOME:-/root}/.config/gh}/hosts.yml"
+    local rc=0 err=""
 
     unset NDS_GIT_GH_SESSION_ACTIVE 2>/dev/null || true
     unset NDS_GIT_GH_HAS_KEY_SCOPE 2>/dev/null || true
-    nds_git_gh_cmd gh_cmd || return 0
-    if "${gh_cmd[@]}" auth status &>/dev/null; then
-        "${gh_cmd[@]}" auth logout --hostname github.com 2>/dev/null || true
-        nds_install_log "git: gh session cleared from live ISO (SSH key left on GitHub)"
+
+    if ! nds_git_gh_cmd gh_cmd; then
+        return 0
     fi
+
+    if ! nds_git_gh_host_logged_in; then
+        return 0
+    fi
+
+    # gh auth logout prompts without --yes; older builds used -y.
+    err=$("${gh_cmd[@]}" auth logout --hostname github.com --yes 2>&1) || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        rc=0
+        err=$("${gh_cmd[@]}" auth logout --hostname github.com -y 2>&1) || rc=$?
+    fi
+    if [[ "$rc" -ne 0 ]]; then
+        # Last resort: pipe yes (some builds neither accept --yes nor -y).
+        err=$(printf 'y\n' | "${gh_cmd[@]}" auth logout --hostname github.com 2>&1) || rc=$?
+    fi
+
+    if nds_git_gh_host_logged_in; then
+        # insecure-storage / stuck token — drop gh host config on the live ISO
+        if [[ -f "$hosts_yml" ]]; then
+            debug "gh logout incomplete — removing ${hosts_yml}"
+            rm -f "$hosts_yml"
+        fi
+        # Also clear XDG config if HOME differs from /root during elevate
+        if [[ -f /root/.config/gh/hosts.yml ]]; then
+            rm -f /root/.config/gh/hosts.yml
+        fi
+    fi
+
+    if nds_git_gh_host_logged_in; then
+        warn "Could not clear gh session on this ISO"
+        debug "gh logout output: ${err}"
+        return 1
+    fi
+
+    success "Cleared gh session from this live ISO (SSH keys on GitHub were kept)"
+    nds_install_log "git: gh session cleared from live ISO (SSH key left on GitHub)"
+    return 0
 }
 
 # Description: True when gh can be obtained (cached binary, PATH, or via nix).

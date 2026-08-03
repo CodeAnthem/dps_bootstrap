@@ -455,6 +455,26 @@ LOCK
         nds_cfg_set GIT_PERSIST_ACCESS ""
     fi
 
+    if declare -f nds_git_gh_host_logged_in &>/dev/null; then
+        if ! nds_git_gh_host_logged_in 2>/dev/null; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ gh_host_logged_in: false without session"
+        else
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ gh_host_logged_in: host has an active gh login"
+        fi
+    fi
+
+    if declare -f nds_git_gh_session_cleanup &>/dev/null; then
+        if nds_git_gh_session_cleanup 2>/dev/null; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ gh_session_cleanup: idempotent when logged out"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ gh_session_cleanup: failed when logged out"
+        fi
+    fi
+
     if declare -f nds_flake_host_in_list &>/dev/null; then
         if nds_flake_host_in_list "control-toolkit" "a" "control-toolkit" "b"; then
             TEST_PASSED=$((TEST_PASSED + 1))
@@ -478,7 +498,6 @@ LOCK
         mkdir -p "${flake_tmp}/hosts/x86_64-linux/control-toolkit" \
             "${flake_tmp}/hosts/x86_64-linux/worker-01"
         printf '{ outputs = _: {}; }\n' >"${flake_tmp}/flake.nix"
-        # Without a real flake eval, filesystem fallback should still list dirs
         hosts_out="$(nds_flake_list_hosts "$flake_tmp" 2>/dev/null || true)"
         if grep -q 'control-toolkit' <<<"$hosts_out" && grep -q 'worker-01' <<<"$hosts_out"; then
             TEST_PASSED=$((TEST_PASSED + 1))

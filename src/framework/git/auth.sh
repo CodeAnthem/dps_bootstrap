@@ -2,11 +2,12 @@
 # ==================================================================================================
 # NDS - Git SSH auth gate (orchestrator)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-31
+# Date:          Created: 2026-07-05 | Modified: 2026-08-03
 # Description:   Access gates wiring git tools + auth wizard UI
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_AUTH_SKIP
+declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_GH_CLEAR_SKIP
 
 nds_git_access_cleanup_success() {
     nds_git_gh_session_cleanup 2>/dev/null || true
@@ -17,20 +18,40 @@ nds_git_access_cleanup() {
     nds_git_access_cleanup_success
 }
 
+# Description: On script stop — if gh is still logged in on this ISO, ask to clear it.
+# Runs for any exit path (success, failure, Ctrl+C). Install success already tries
+# a silent clear; if that left a session, we still ask.
 hook_exit_cleanup() {
     local exit_code="${1:-$?}"
+    local logged_in=false
 
+    unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
+
+    if declare -f nds_git_gh_host_logged_in &>/dev/null; then
+        nds_git_gh_host_logged_in && logged_in=true
+    elif [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
+        logged_in=true
+    fi
+
+    [[ "$logged_in" == "true" ]] || return 0
+
+    # Successful install already attempted silent clear — retry once without prompt.
     if [[ "${NDS_GIT_INSTALL_SUCCEEDED:-}" == "true" ]]; then
-        unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
+        nds_git_gh_session_cleanup 2>/dev/null || true
+        if declare -f nds_git_gh_host_logged_in &>/dev/null && nds_git_gh_host_logged_in; then
+            nds_git_ui_ask_clear_gh_session && nds_git_gh_session_cleanup || true
+        fi
         return 0
     fi
 
-    if [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
-        if [[ "$exit_code" -ne 0 ]]; then
-            nds_git_ui_ask_clear_gh_session && nds_git_gh_session_cleanup || true
-        fi
+    if nds_skip_menu NDS_GIT_GH_CLEAR_SKIP 2>/dev/null; then
+        nds_git_gh_session_cleanup 2>/dev/null || true
+        return 0
     fi
-    unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
+
+    nds_ui_b ""
+    nds_git_ui_ask_clear_gh_session && nds_git_gh_session_cleanup || true
+    return 0
 }
 
 # Description: Public entry — ensure SSH access to a git URL (and optional flags).

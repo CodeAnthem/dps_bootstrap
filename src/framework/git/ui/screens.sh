@@ -25,11 +25,14 @@ nds_git_ui_log_closure_repo_list() {
     nds_ui_b ""
 }
 
-# Description: Ask whether to clear gh session on ISO after a failed run.
+# Description: Ask whether to clear gh session on ISO after stop / failed run.
 # Returns:
 # - <Bool> 0 when user wants cleanup
 nds_git_ui_ask_clear_gh_session() {
-    nds_ask_user_to_proceed "Clear gh session on this ISO?"
+    nds_ui_b "A GitHub CLI (gh) login is still active on this live ISO."
+    nds_ui_b "SSH deploy/account keys on GitHub are kept either way."
+    nds_ui_b ""
+    nds_ask_user_to_proceed "Clear the gh session from this ISO?"
 }
 
 # Description: Short intro — private access gate.
