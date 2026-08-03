@@ -433,6 +433,45 @@ LOCK
             console "  ✗ ensure_prefetch: bin ready without BIN after unset"
         fi
         unset NDS_GIT_GH_BIN NDS_GIT_GH_PREFETCH_DONE
+
+        # cmd_nofetch must never invent a nix-shell fallback
+        local -a nofetch_cmd=()
+        local saved_path2="$PATH"
+        PATH="/var/empty:${tmpdir}"
+        unset NDS_GIT_GH_BIN
+        if ! nds_git_gh_cmd_nofetch nofetch_cmd; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ gh_cmd_nofetch: false without PATH/BIN"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ gh_cmd_nofetch: expected false without binary"
+        fi
+        PATH="$saved_path2"
+    fi
+
+    if declare -f nds_git_gh_hosts_yml_has_github &>/dev/null; then
+        local gh_cfg_dir hosts_file
+        gh_cfg_dir=$(mktemp -d)
+        hosts_file="${gh_cfg_dir}/hosts.yml"
+        printf 'github.com:\n    user: test\n' >"$hosts_file"
+        GH_CONFIG_DIR="$gh_cfg_dir"
+        if nds_git_gh_hosts_yml_has_github; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ hosts_yml_has_github: detects leftover session"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ hosts_yml_has_github: missed github.com entry"
+        fi
+        rm -f "$hosts_file"
+        if ! nds_git_gh_hosts_yml_has_github; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ hosts_yml_has_github: false when absent"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ hosts_yml_has_github: true without file"
+        fi
+        unset GH_CONFIG_DIR
+        rm -rf "$gh_cfg_dir"
     fi
 
     if declare -f nds_git_persist_access &>/dev/null; then

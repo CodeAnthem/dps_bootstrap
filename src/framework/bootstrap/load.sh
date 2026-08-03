@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Framework bootstrap loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-27 | Modified: 2026-07-28
+# Date:          Created: 2026-06-27 | Modified: 2026-08-03
 # ==================================================================================================
 
 declare -ga NDS_DEFAULT_PRESET_BUNDLE=(
@@ -89,6 +89,20 @@ nds_framework_load_remaining() {
 
     NDS_FRAMEWORK_REST_LOADED=true
     debug "Remaining framework modules loaded"
+    return 0
+}
+
+# Description: Load git tools and cache gh early (before action menu).
+# Lets exit cleanup detect/clear leftover gh sessions even if the user aborts
+# at the action picker. Safe to call repeatedly.
+nds_framework_warmup_git_gh() {
+    if [[ "${NDS_GIT_TOOLS_LOADED:-false}" != "true" ]]; then
+        nds_import_file "${SCRIPT_DIR}/framework/git/load.sh" || return 0
+        nds_git_tools_load "${SCRIPT_DIR}/framework/git" || return 0
+    fi
+    if declare -f nds_git_gh_ensure_prefetch &>/dev/null; then
+        nds_git_gh_ensure_prefetch || true
+    fi
     return 0
 }
 

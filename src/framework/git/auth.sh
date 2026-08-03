@@ -63,10 +63,34 @@ nds_git_access_gate() {
     nds_git_ensure_access "$url"
 }
 
+# Description: Probe one closure URL; 0 when accessible.
+_nds_git_closure_probe_one() {
+    local url="$1"
+    if nds_git_probe_public "$url" 2>/dev/null; then
+        return 0
+    fi
+    if declare -f nds_git_access_apply_map &>/dev/null && nds_git_access_apply_map "$url"; then
+        return 0
+    fi
+    nds_git_probe_access "$url"
+}
+
+# Description: owner/repo label for a git URL (fallback: ssh form).
+_nds_git_closure_repo_label() {
+    local url="$1" ssh_url parsed host owner repo
+    ssh_url=$(_git_ssh_url "$url")
+    if parsed=$(_git_parse "$ssh_url"); then
+        IFS=$'\t' read -r host owner repo <<< "$parsed"
+        printf '%s/%s' "$owner" "$repo"
+        return 0
+    fi
+    printf '%s' "$ssh_url"
+}
+
 nds_git_ensure_flake_closure_access() {
     local flake_root="${1:-}" root_url="${2:-}"
     local -a urls=() failed=()
-    local url ssh_url rc
+    local url ssh_url rc label pid probe_rc
 
     nds_git_keys_load_all || true
 
@@ -91,25 +115,38 @@ nds_git_ensure_flake_closure_access() {
     [[ ${#urls[@]} -gt 0 ]] || return 0
 
     NDS_GIT_CLOSURE_URLS="$(printf '%s\n' "${urls[@]}")"
-    nds_git_ui_log_closure_repo_list "${urls[@]}"
-    log "Checking SSH access to ${#urls[@]} git repository(ies)"
 
     while true; do
         failed=()
         for url in "${urls[@]}"; do
-            if nds_git_probe_public "$url" 2>/dev/null; then
-                debug "Public git input: $url"
-            elif declare -f nds_git_access_apply_map &>/dev/null && nds_git_access_apply_map "$url"; then
-                debug "Git access OK (map): $url"
-            elif nds_git_probe_access "$url"; then
-                debug "Git access OK: $url"
+            label="$(_nds_git_closure_repo_label "$url")"
+            if declare -f nds_step_start &>/dev/null; then
+                nds_step_start "Checking repository access: ${label}"
+                _nds_git_closure_probe_one "$url" &>/dev/null &
+                pid=$!
+                if declare -f nds_step_spinner &>/dev/null; then
+                    nds_step_spinner "$pid" "Checking repository access: ${label}"
+                fi
+                probe_rc=0
+                wait "$pid" || probe_rc=$?
+                if [[ "$probe_rc" -eq 0 ]]; then
+                    nds_step_complete "Access granted: ${label}"
+                    debug "Git access OK: $url"
+                else
+                    nds_step_fail "No access: ${label}"
+                    failed+=("$url")
+                fi
             else
-                failed+=("$url")
+                if _nds_git_closure_probe_one "$url"; then
+                    success "Access granted: ${label}"
+                    debug "Git access OK: $url"
+                else
+                    failed+=("$url")
+                fi
             fi
         done
 
         if [[ ${#failed[@]} -eq 0 ]]; then
-            success "SSH access confirmed for all ${#urls[@]} repository(ies)."
             nds_install_log "git: closure access OK (${#urls[@]} repos)"
             nds_git_access_mark_verified
             return 0

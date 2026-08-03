@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - App entry point
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2026-07-29
+# Date:          Created: 2025-10-12 | Modified: 2026-08-03
 # ==================================================================================================
 # shellcheck disable=SC2162
 set -euo pipefail
@@ -77,6 +77,11 @@ nds_app_run() {
 
     nds_runtime_init || crash "Failed to setup runtime directory"
     nds_install_log "NDS session started (v$SCRIPT_VERSION)"
+
+    # Cache gh before the action menu so aborting early can still clear a leftover session.
+    if declare -f nds_framework_warmup_git_gh &>/dev/null; then
+        nds_framework_warmup_git_gh || true
+    fi
 
     nds_actions_discover "${SCRIPT_DIR}/actions" || crash "Failed to discover actions"
     nds_actions_main || crash "Failed to execute action"

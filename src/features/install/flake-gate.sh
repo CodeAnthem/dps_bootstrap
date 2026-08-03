@@ -121,11 +121,6 @@ nds_flake_install_gate() {
         _flake_gate_ensure_access flake_root || return 1
 
         # Host + install target are configuration — not part of git access.
-        nds_ui_section_header "Configuration"
-        nds_ui_b "Repository access is ready. Next: pick the nixosConfigurations host"
-        nds_ui_b "and install target (disk or remote IP)."
-        nds_ui_b ""
-
         nds_flake_pick_host "$flake_root"
         rc=$?
         if [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]]; then

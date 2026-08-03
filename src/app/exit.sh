@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - App exit and trap helpers
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-29 | Modified: 2026-07-29
+# Date:          Created: 2026-07-29 | Modified: 2026-08-03
 # Description:   Exit hooks, fatal handling, and trap-safe shutdown output
 # ==================================================================================================
 
@@ -47,7 +47,6 @@ _app_stop_handler() {
 
     if [[ "$exit_code" -ne 0 ]]; then
         nds_ui_init
-        _app_call_hook "exit_cleanup" "$exit_code" || true
         if [[ "$NDS_UI_COLOR" == true ]]; then
             printf '%s\033[31;1mInstallation failed (exit code %s).\033[0m\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
         else
@@ -74,6 +73,8 @@ _app_stop_handler() {
             done < <(tail -n 24 "${NDS_INSTALL_DIAG_LOG}" 2>/dev/null)
             nds_ui_b ""
         fi
+        # Ask last so Ctrl+C / failure still offers clearing a leftover gh session.
+        _app_call_hook "exit_cleanup" "$exit_code" || true
         return 0
     fi
 

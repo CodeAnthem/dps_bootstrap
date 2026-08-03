@@ -3,6 +3,7 @@
 # NDS - GitHub CLI session helpers (logic)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-08-03
+# Description:   gh binary resolve, prefetch, session login/cleanup helpers
 # ==================================================================================================
 
 # Description: Nix CLI prefix for gh on live ISO (flakes required).
@@ -19,13 +20,12 @@ nds_git_gh_bin_ready() {
     [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]
 }
 
-# Description: Resolve gh command (host binary or cached nix store path).
-# Prefers PATH / NDS_GIT_GH_BIN. Auto-prefetches once when only nix is available.
+# Description: Resolve gh from PATH or NDS_GIT_GH_BIN only (never downloads).
 # Arguments:
 # - out: <Nameref> Command prefix array
 # Returns:
-# - <Bool> 0 when gh is available
-nds_git_gh_cmd() {
+# - <Bool> 0 when a real binary is ready
+nds_git_gh_cmd_nofetch() {
     local -n _out=$1
     if command -v gh &>/dev/null; then
         _out=(gh)
@@ -35,10 +35,27 @@ nds_git_gh_cmd() {
         _out=("${NDS_GIT_GH_BIN}")
         return 0
     fi
+    _out=()
+    return 1
+}
+
+# Description: Resolve gh command (host binary or cached nix store path).
+# Prefers PATH / NDS_GIT_GH_BIN. Auto-prefetches once when only nix is available.
+# Arguments:
+# - out: <Nameref> Command prefix array
+# Returns:
+# - <Bool> 0 when gh is available
+nds_git_gh_cmd() {
+    local -n _out=$1
+    local -a _resolved=()
+    if nds_git_gh_cmd_nofetch _resolved; then
+        _out=("${_resolved[@]}")
+        return 0
+    fi
     if command -v nix &>/dev/null; then
         # One-time cache — never leave callers on perpetual `nix shell`.
-        if nds_git_gh_prefetch && [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
-            _out=("${NDS_GIT_GH_BIN}")
+        if nds_git_gh_prefetch && nds_git_gh_cmd_nofetch _resolved; then
+            _out=("${_resolved[@]}")
             return 0
         fi
         _out=(_git_gh_nix shell nixpkgs#gh -c gh)
@@ -48,22 +65,49 @@ nds_git_gh_cmd() {
     return 1
 }
 
+# Description: True when gh hosts.yml still lists github.com (leftover ISO login).
+nds_git_gh_hosts_yml_has_github() {
+    local f
+    for f in \
+        "${GH_CONFIG_DIR:-${HOME:-/root}/.config/gh}/hosts.yml" \
+        "/root/.config/gh/hosts.yml"; do
+        [[ -f "$f" ]] || continue
+        grep -qE '^[[:space:]]*github\.com:' "$f" 2>/dev/null && return 0
+    done
+    return 1
+}
+
+# Description: Remove leftover gh host config files on the live ISO.
+_git_gh_wipe_hosts_yml() {
+    local f
+    for f in \
+        "${GH_CONFIG_DIR:-${HOME:-/root}/.config/gh}/hosts.yml" \
+        "/root/.config/gh/hosts.yml"; do
+        [[ -f "$f" ]] && rm -f "$f"
+    done
+}
+
 # Description: True when gh reports a logged-in github.com host (live check).
+# Never downloads gh — uses PATH/BIN, else leftover hosts.yml.
 # Does not trust NDS_GIT_GH_SESSION_ACTIVE alone — that flag can be stale.
 nds_git_gh_host_logged_in() {
     local -a gh_cmd=()
     local status_out
 
-    nds_git_gh_cmd gh_cmd || return 1
-    status_out=$("${gh_cmd[@]}" auth status -h github.com 2>&1) || status_out=""
-    if grep -qiE 'Logged in to github\.com|✓.*github\.com|github\.com account' <<<"$status_out"; then
-        return 0
+    if nds_git_gh_cmd_nofetch gh_cmd; then
+        status_out=$("${gh_cmd[@]}" auth status -h github.com 2>&1) || status_out=""
+        if grep -qiE 'Logged in to github\.com|✓.*github\.com|github\.com account' <<<"$status_out"; then
+            return 0
+        fi
+        # Older gh: auth status exits 0 when logged in
+        if "${gh_cmd[@]}" auth status -h github.com &>/dev/null; then
+            return 0
+        fi
+        return 1
     fi
-    # Older gh: auth status exits 0 when logged in
-    if "${gh_cmd[@]}" auth status -h github.com &>/dev/null; then
-        return 0
-    fi
-    return 1
+
+    # No binary yet — detect leftover session without triggering a download
+    nds_git_gh_hosts_yml_has_github
 }
 
 # Description: True when gh is logged in to github.com (flag or live check).
@@ -117,45 +161,47 @@ nds_git_gh_has_key_scope() {
 
 # Description: End temporary gh auth on the live ISO (SSH keys on GitHub are kept).
 # Uses non-interactive logout (--yes); falls back to wiping hosts.yml for insecure-storage.
+# Prefetches gh only when a leftover session exists and no binary is cached yet.
 # Returns:
-# - <Bool> 0 when no session remains (or gh unavailable)
+# - <Bool> 0 when no session remains (or nothing to clear)
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
-    local hosts_yml="${GH_CONFIG_DIR:-${HOME:-/root}/.config/gh}/hosts.yml"
     local rc=0 err=""
+    local had_session=false
 
     unset NDS_GIT_GH_SESSION_ACTIVE 2>/dev/null || true
     unset NDS_GIT_GH_HAS_KEY_SCOPE 2>/dev/null || true
 
-    if ! nds_git_gh_cmd gh_cmd; then
-        return 0
-    fi
-
-    if ! nds_git_gh_host_logged_in; then
-        return 0
-    fi
-
-    # gh auth logout prompts without --yes; older builds used -y.
-    err=$("${gh_cmd[@]}" auth logout --hostname github.com --yes 2>&1) || rc=$?
-    if [[ "$rc" -ne 0 ]]; then
-        rc=0
-        err=$("${gh_cmd[@]}" auth logout --hostname github.com -y 2>&1) || rc=$?
-    fi
-    if [[ "$rc" -ne 0 ]]; then
-        # Last resort: pipe yes (some builds neither accept --yes nor -y).
-        err=$(printf 'y\n' | "${gh_cmd[@]}" auth logout --hostname github.com 2>&1) || rc=$?
-    fi
-
     if nds_git_gh_host_logged_in; then
-        # insecure-storage / stuck token — drop gh host config on the live ISO
-        if [[ -f "$hosts_yml" ]]; then
-            debug "gh logout incomplete — removing ${hosts_yml}"
-            rm -f "$hosts_yml"
+        had_session=true
+    else
+        return 0
+    fi
+
+    # Prefer an already-cached binary; only download when clearing a real leftover session.
+    if ! nds_git_gh_cmd_nofetch gh_cmd; then
+        if nds_git_gh_ensure_prefetch; then
+            nds_git_gh_cmd_nofetch gh_cmd || true
         fi
-        # Also clear XDG config if HOME differs from /root during elevate
-        if [[ -f /root/.config/gh/hosts.yml ]]; then
-            rm -f /root/.config/gh/hosts.yml
+    fi
+
+    if [[ ${#gh_cmd[@]} -gt 0 ]]; then
+        # gh auth logout prompts without --yes; older builds used -y.
+        err=$("${gh_cmd[@]}" auth logout --hostname github.com --yes 2>&1) || rc=$?
+        if [[ "$rc" -ne 0 ]]; then
+            rc=0
+            err=$("${gh_cmd[@]}" auth logout --hostname github.com -y 2>&1) || rc=$?
         fi
+        if [[ "$rc" -ne 0 ]]; then
+            # Last resort: pipe yes (some builds neither accept --yes nor -y).
+            err=$(printf 'y\n' | "${gh_cmd[@]}" auth logout --hostname github.com 2>&1) || rc=$?
+        fi
+    fi
+
+    # insecure-storage / stuck token / no binary — drop host config on the live ISO
+    if nds_git_gh_hosts_yml_has_github || nds_git_gh_host_logged_in; then
+        debug "gh logout incomplete or no binary — wiping hosts.yml"
+        _git_gh_wipe_hosts_yml
     fi
 
     if nds_git_gh_host_logged_in; then
@@ -164,8 +210,10 @@ nds_git_gh_session_cleanup() {
         return 1
     fi
 
-    success "Cleared gh session from this live ISO (SSH keys on GitHub were kept)"
-    nds_install_log "git: gh session cleared from live ISO (SSH key left on GitHub)"
+    if [[ "$had_session" == "true" ]]; then
+        success "Cleared gh session from this live ISO (SSH keys on GitHub were kept)"
+        nds_install_log "git: gh session cleared from live ISO (SSH key left on GitHub)"
+    fi
     return 0
 }
 
