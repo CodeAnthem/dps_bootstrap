@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - UI - User prompts and confirmations
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2026-07-29
+# Date:          Created: 2025-10-21 | Modified: 2026-08-03
 # Description:   Interactive yes/no/back prompts and legacy password helpers
 # ==================================================================================================
 
@@ -22,27 +22,28 @@ nds_ask_user_continue() {
     local prompt="${1:-Do you want to proceed?}"
 
     if nds_skip_menu NDS_PROMPTS_SKIP; then
-        nds_ui_b "$prompt [y/n/b]: y (skipped)"
+        printf '%s%s [y/n/b]: y (skipped)\n' "$NDS_UI_INDENT_B" "$prompt" >&2
         return 0
     fi
 
     while true; do
+        # -s: no echo of key; print the word on the same line as the prompt.
         read -rsp "${NDS_UI_INDENT_B}${prompt} [y/n/b]: " -n 1 confirm < /dev/tty
-        echo >&2
         case "${confirm,,}" in
             y)
-                nds_ui_b "Yes"
+                printf 'Yes\n' >&2
                 return 0
                 ;;
             n)
-                nds_ui_b "No"
+                printf 'No\n' >&2
                 return 1
                 ;;
             b)
-                nds_ui_b "Back to action menu"
+                printf 'Back\n' >&2
                 return 2
                 ;;
             *)
+                printf '\n' >&2
                 nds_ui_b "Enter y (yes), n (no), or b (back)"
                 ;;
         esac
@@ -53,26 +54,27 @@ nds_ask_user_to_proceed() {
     local prompt="${1:-Do you want to proceed?}"
 
     if nds_skip_menu NDS_PROMPTS_SKIP; then
-        nds_ui_b "$prompt (y/n): y (skipped)"
+        printf '%s%s (y/n): y (skipped)\n' "$NDS_UI_INDENT_B" "$prompt" >&2
         return 0
     fi
 
     while true; do
         read -rsp "${NDS_UI_INDENT_B}${prompt} (y/n): " -n 1 confirm < /dev/tty
-        echo >&2
         case "${confirm,,}" in
             y)
-                nds_ui_b "Yes"
+                printf 'Yes\n' >&2
                 return 0
                 ;;
             n)
-                nds_ui_b "No"
+                printf 'No\n' >&2
                 return 1
                 ;;
             "")
+                printf '\n' >&2
                 continue
                 ;;
             *)
+                printf '\n' >&2
                 nds_ui_b "Press y (yes) or n (no)"
                 ;;
         esac

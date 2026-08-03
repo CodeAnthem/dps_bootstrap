@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Flake tools — prepare, scaffold, detect disko
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-06
+# Date:          Created: 2026-07-01 | Modified: 2026-08-03
 # Description:   Shared flake helpers for installFlake + remoteAction actions
 # ==================================================================================================
 
@@ -49,7 +49,8 @@ nds_flake_prepare() {
     export NDS_INSTALL_MODE="${install_mode:-local}"
     export NDS_REMOTE_TARGET_IP="$target_ip"
 
-    log "Flake target: ${install_path}#${host} (source: ${source}, mode: ${NDS_INSTALL_MODE})"
+    # Console copy lives on the Ready-to-install screen; keep a stamp in the log only.
+    nds_install_log "Flake target: ${install_path}#${host} (source: ${source}, mode: ${NDS_INSTALL_MODE})"
 }
 
 # Description: Inspect the flake (local path or remote clone) and apply a disko

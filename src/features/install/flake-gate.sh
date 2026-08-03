@@ -120,6 +120,20 @@ nds_flake_install_gate() {
         _flake_gate_ask_location || return 1
         _flake_gate_ensure_access flake_root || return 1
 
+        # Keep-access is asked here even when an existing key skipped the auth wizard.
+        if declare -f nds_git_wizard_ask_persist_access &>/dev/null; then
+            nds_git_wizard_ask_persist_access
+            rc=$?
+            [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
+            [[ "$rc" -ne 0 ]] && return 1
+            if declare -f nds_git_persist_access &>/dev/null && nds_git_persist_access; then
+                nds_git_wizard_ask_access_strategy
+                rc=$?
+                [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
+                [[ "$rc" -ne 0 ]] && return 1
+            fi
+        fi
+
         # Host + install target are configuration — not part of git access.
         nds_flake_pick_host "$flake_root"
         rc=$?

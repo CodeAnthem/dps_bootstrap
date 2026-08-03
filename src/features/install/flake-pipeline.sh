@@ -37,8 +37,18 @@ nds_flake_install_prepare_and_verify() {
 }
 
 # Description: Preflight + confirm screen before flake install runs.
+# Ensures keep-access was answered before the final install confirm.
 nds_flake_install_confirm() {
     local disk_strategy disk_target install_mode target_ip
+
+    # Safety net: existing-key path used to skip the auth wizard (and keep-access).
+    if declare -f nds_git_wizard_ask_persist_access &>/dev/null; then
+        nds_git_wizard_ask_persist_access || return 1
+        if declare -f nds_git_persist_access &>/dev/null && nds_git_persist_access; then
+            nds_git_wizard_ask_access_strategy || return 1
+        fi
+    fi
+
     _install_gather_flake_context
     disk_strategy="$(nds_install_ctx_get DISK_STRATEGY)"
     disk_strategy="${disk_strategy:-nds}"

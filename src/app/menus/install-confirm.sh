@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install confirmation screen
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-29
+# Date:          Created: 2026-07-06 | Modified: 2026-08-03
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_INSTALL_CONFIRM_SKIP
@@ -17,12 +17,25 @@ nds_ui_install_warning() {
     local strategy="${2:-nds}"
     local extra="${3:-}"
     local strategy_label
+    local flake_host flake_path flake_source install_mode
 
     strategy_label=$(nds_disk_strategy_label "$strategy")
 
     nds_ui_section_header "Ready to install"
     nds_ui_b "Review the summary below. Installation does not start until you confirm at the end."
     nds_ui_b ""
+
+    flake_host="${NDS_FLAKE_HOST:-$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)}"
+    flake_path="${NDS_FLAKE_INSTALL_PATH:-$(nds_cfg_get FLAKE_INSTALL_PATH 2>/dev/null || true)}"
+    flake_path="${flake_path:-/mnt/etc/nixos}"
+    flake_source="${NDS_FLAKE_SOURCE:-$(nds_cfg_get FLAKE_SOURCE 2>/dev/null || true)}"
+    install_mode="${NDS_INSTALL_MODE:-$(nds_cfg_get INSTALL_MODE 2>/dev/null || true)}"
+    install_mode="${install_mode:-local}"
+    if [[ -n "$flake_host" ]]; then
+        nds_ui_h "Flake target"
+        nds_ui_i "${flake_path}#${flake_host} (source: ${flake_source:-remote}, mode: ${install_mode})"
+        nds_ui_b ""
+    fi
 
     nds_ui_h "Target disk"
     if [[ "$NDS_UI_COLOR" == true ]]; then
