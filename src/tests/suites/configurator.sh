@@ -185,4 +185,24 @@ suite_configurator() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ export scoped declare -A block"
     fi
+
+    # Screen export: modified env only (no declare -A)
+    CONFIG_DATA=()
+    CONFIG_DEFAULTS=()
+    CONFIG_DATA[ENCRYPTION_ENABLED]="true"
+    CONFIG_DATA[DISK_TARGET]="/dev/sda"
+    nds_config_snapshot_defaults
+    CONFIG_DATA[ENCRYPTION_ENABLED]="false"
+    CONFIG_DATA[FLAKE_HOST]="control-toolkit"
+    local modified
+    modified="$(nds_configurator_config_export_modified)"
+    if grep -q 'NDS_ENCRYPTION_ENABLED="false"' <<<"$modified" \
+       && grep -q 'NDS_FLAKE_HOST="control-toolkit"' <<<"$modified" \
+       && ! grep -q 'declare -A' <<<"$modified"; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ export_modified: changed env only, no arrays"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ export_modified: expected changed env only"
+    fi
 }

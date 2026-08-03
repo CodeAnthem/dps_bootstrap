@@ -124,7 +124,7 @@ nds_git_gh_hosts_yml_has_github() {
     local f
     while IFS= read -r f; do
         [[ -f "$f" ]] || continue
-        grep -qE '^[[:space:]]*github\.com:' "$f" 2>/dev/null && return 0
+        grep -qE '^[[:space:]]*['\''"]?github\.com['\''"]?:' "$f" 2>/dev/null && return 0
     done < <(_git_gh_hosts_yml_candidates)
     return 1
 }
@@ -137,21 +137,39 @@ _git_gh_wipe_hosts_yml() {
     done < <(_git_gh_hosts_yml_candidates)
 }
 
-# Description: True when gh reports a logged-in github.com host, or leftover hosts.yml.
-# Never downloads gh. After warmup the binary exists — still check hosts.yml in all
-# homes (auth status only sees $HOME, often /root after sudo).
-nds_git_gh_host_logged_in() {
+# Description: True when gh auth status reports logged-in for a given HOME.
+# Arguments:
+# - home: <String> HOME directory to use for gh config lookup
+_git_gh_auth_status_home() {
+    local home="$1"
     local -a gh_cmd=()
     local status_out
 
+    nds_git_gh_cmd_nofetch gh_cmd || return 1
+    status_out="$(HOME="$home" "${gh_cmd[@]}" auth status -h github.com 2>&1)" || status_out=""
+    if grep -qiE 'Logged in to github\.com|✓.*github\.com|github\.com account' <<<"$status_out"; then
+        return 0
+    fi
+    HOME="$home" "${gh_cmd[@]}" auth status -h github.com &>/dev/null
+}
+
+# Description: True when gh reports a logged-in github.com host, or leftover hosts.yml.
+# Never downloads gh. Checks auth status under /root and /home/nixos (sudo HOME
+# often hides a live-ISO user session), then hosts.yml in all known homes.
+nds_git_gh_host_logged_in() {
+    local home h
+    local -a gh_cmd=()
+
     if nds_git_gh_cmd_nofetch gh_cmd; then
-        status_out=$("${gh_cmd[@]}" auth status -h github.com 2>&1) || status_out=""
-        if grep -qiE 'Logged in to github\.com|✓.*github\.com|github\.com account' <<<"$status_out"; then
-            return 0
-        fi
-        # Older gh: auth status exits 0 when logged in
-        if "${gh_cmd[@]}" auth status -h github.com &>/dev/null; then
-            return 0
+        for home in "${HOME:-/root}" /root /home/nixos; do
+            [[ -d "$home" ]] || continue
+            _git_gh_auth_status_home "$home" && return 0
+        done
+        if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+            h="$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6 || true)"
+            if [[ -n "$h" && -d "$h" ]]; then
+                _git_gh_auth_status_home "$h" && return 0
+            fi
         fi
     fi
 
@@ -175,6 +193,8 @@ nds_git_gh_session_active() {
 nds_git_gh_session_mark_active() {
     NDS_GIT_GH_SESSION_ACTIVE=true
     export NDS_GIT_GH_SESSION_ACTIVE
+    NDS_GIT_GH_LEFTOVER=true
+    export NDS_GIT_GH_LEFTOVER
 }
 
 # Description: Mark gh token scopes as sufficient for deploy/account key registration.
@@ -215,17 +235,19 @@ nds_git_gh_has_key_scope() {
 # - <Bool> 0 when no session remains (or nothing to clear)
 nds_git_gh_session_cleanup() {
     local -a gh_cmd=()
-    local rc=0 err=""
+    local home h
     local had_session=false
 
-    unset NDS_GIT_GH_SESSION_ACTIVE 2>/dev/null || true
-    unset NDS_GIT_GH_HAS_KEY_SCOPE 2>/dev/null || true
-
-    if nds_git_gh_host_logged_in; then
+    if nds_git_gh_host_logged_in || [[ "${NDS_GIT_GH_LEFTOVER:-}" == "true" ]] \
+        || [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
         had_session=true
     else
         return 0
     fi
+
+    unset NDS_GIT_GH_SESSION_ACTIVE 2>/dev/null || true
+    unset NDS_GIT_GH_HAS_KEY_SCOPE 2>/dev/null || true
+    unset NDS_GIT_GH_LEFTOVER 2>/dev/null || true
 
     # Prefer an already-cached binary; only download when clearing a real leftover session.
     if ! nds_git_gh_cmd_nofetch gh_cmd; then
@@ -235,27 +257,28 @@ nds_git_gh_session_cleanup() {
     fi
 
     if [[ ${#gh_cmd[@]} -gt 0 ]]; then
-        # gh auth logout prompts without --yes; older builds used -y.
-        err=$("${gh_cmd[@]}" auth logout --hostname github.com --yes 2>&1) || rc=$?
-        if [[ "$rc" -ne 0 ]]; then
-            rc=0
-            err=$("${gh_cmd[@]}" auth logout --hostname github.com -y 2>&1) || rc=$?
-        fi
-        if [[ "$rc" -ne 0 ]]; then
-            # Last resort: pipe yes (some builds neither accept --yes nor -y).
-            err=$(printf 'y\n' | "${gh_cmd[@]}" auth logout --hostname github.com 2>&1) || rc=$?
+        for home in "${HOME:-/root}" /root /home/nixos; do
+            [[ -d "$home" ]] || continue
+            HOME="$home" "${gh_cmd[@]}" auth logout --hostname github.com --yes &>/dev/null \
+                || HOME="$home" "${gh_cmd[@]}" auth logout --hostname github.com -y &>/dev/null \
+                || printf 'y\n' | HOME="$home" "${gh_cmd[@]}" auth logout --hostname github.com &>/dev/null \
+                || true
+        done
+        if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+            h="$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6 || true)"
+            if [[ -n "$h" && -d "$h" ]]; then
+                HOME="$h" "${gh_cmd[@]}" auth logout --hostname github.com --yes &>/dev/null \
+                    || HOME="$h" "${gh_cmd[@]}" auth logout --hostname github.com -y &>/dev/null \
+                    || true
+            fi
         fi
     fi
 
-    # insecure-storage / stuck token / no binary — drop host config on the live ISO
-    if nds_git_gh_hosts_yml_has_github || nds_git_gh_host_logged_in; then
-        debug "gh logout incomplete or no binary — wiping hosts.yml"
-        _git_gh_wipe_hosts_yml
-    fi
+    # Always wipe leftover host config across known homes on the live ISO
+    _git_gh_wipe_hosts_yml
 
     if nds_git_gh_host_logged_in; then
         warn "Could not clear gh session on this ISO"
-        debug "gh logout output: ${err}"
         return 1
     fi
 

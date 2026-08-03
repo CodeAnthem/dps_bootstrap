@@ -42,7 +42,7 @@ action_setup() {
 
     nds_configurator_menu_or_skip || exit 12
 
-    # Auth already done in gate — prepare exports + disko detect; re-verify access idempotently
+    # Auth already done in the early gate — export flake env + disko detect only
     nds_flake_install_prepare_and_verify || exit 11
     nds_flake_install_confirm || exit 13
 

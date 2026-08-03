@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-31
+# Date:          Created: 2026-07-01 | Modified: 2026-08-03
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -26,7 +26,7 @@ _NDS_EXPORT_HARDWARE="DISK_TARGET DISK_STRATEGY DISK_FS_TYPE DISK_SWAP_SIZE_MIB 
 
 # Derived keys never shown in the concise export — reconstructed from other keys
 # (FLAKE_LOCATION / FLAKE_SOURCE are inferred from FLAKE_REPO_URL / FLAKE_LOCAL_PATH).
-_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_ROUTE GIT_AUTH_MODE GIT_IMPORT_KEY_PATH GIT_SSH_KEY_TYPE GIT_SSH_KEY_REGISTER_METHOD GIT_CLOSURE_ROUTE GIT_SSH_KEY_USE_QR GIT_SSH_KEY_DISPLAY GIT_SSH_KEY_GH_AUTO GIT_SSH_KEY_TITLE_COLLISION CURRENT_ACTION RUNTIME_DIR INSTALL_DETAIL_LOG INSTALL_LOG ACTION ACTION_PREVIEW_SKIP SKIP_MENU CONFIG_CONFIRM_SKIP INSTALL_CONFIRM_SKIP REMOTE_CONFIRM_SKIP GIT_AUTH_SKIP DISK_FORMAT_CONFIRM_SKIP BACKUP_CONFIRM_SKIP REBOOT_SKIP SCAFFOLD_OVERWRITE_SKIP HARDWARE_OVERWRITE_SKIP PREFLIGHT_WARN_SKIP PROMPTS_SKIP AUTO_CONFIRM"
+_NDS_EXPORT_SKIP="FLAKE_LOCATION FLAKE_SOURCE GIT_AUTH_ROUTE GIT_AUTH_MODE GIT_IMPORT_KEY_PATH GIT_SSH_KEY_TYPE GIT_SSH_KEY_REGISTER_METHOD GIT_CLOSURE_ROUTE GIT_SSH_KEY_USE_QR GIT_SSH_KEY_DISPLAY GIT_SSH_KEY_GH_AUTO GIT_SSH_KEY_TITLE_COLLISION GIT_GH_BIN GIT_GH_PREFETCH_DONE GIT_ACCESS_VERIFIED CURRENT_ACTION RUNTIME_DIR INSTALL_DETAIL_LOG INSTALL_LOG ACTION ACTION_PREVIEW_SKIP SKIP_MENU CONFIG_CONFIRM_SKIP INSTALL_CONFIRM_SKIP REMOTE_CONFIRM_SKIP GIT_AUTH_SKIP DISK_FORMAT_CONFIRM_SKIP BACKUP_CONFIRM_SKIP REBOOT_SKIP SCAFFOLD_OVERWRITE_SKIP HARDWARE_OVERWRITE_SKIP PREFLIGHT_WARN_SKIP PROMPTS_SKIP AUTO_CONFIRM"
 
 # Menu skip flags — exported false by default so users can enable selective automation.
 _NDS_MENU_SKIP_FLAGS=(
@@ -324,15 +324,23 @@ nds_configurator_reset_for_action() {
 }
 
 nds_configurator_print_config_backup() {
-    local line
+    local line count=0
     nds_ui_section_header "Configuration export"
-    nds_ui_b "Save as a file and: export NDS_SCOPED_CONFIG_FILE=/path/to/file"
-    nds_ui_b "(associative arrays cannot cross sudo without a file)."
-    nds_ui_b "Legacy export NDS_*= lines still work. Menu SKIP flags default to false."
+    nds_ui_b "Only values changed from defaults (export NDS_*= lines)."
+    nds_ui_b "Full scoped arrays + complete env are written in the install backup bundle."
     nds_ui_b ""
     while IFS= read -r line; do
+        [[ -n "$line" ]] || continue
         nds_ui_i "$line"
-    done < <(nds_configurator_config_export_grouped)
+        count=$((count + 1))
+    done < <(nds_configurator_config_export_modified)
+    if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
+        nds_ui_i "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
+        count=$((count + 1))
+    fi
+    if [[ "$count" -eq 0 ]]; then
+        nds_ui_i "# (no changes from defaults)"
+    fi
     nds_ui_b ""
 }
 

@@ -103,6 +103,16 @@ nds_framework_warmup_git_gh() {
     if declare -f nds_git_gh_ensure_prefetch &>/dev/null; then
         nds_git_gh_ensure_prefetch || true
     fi
+    # Remember leftover login so abort-from-menu still offers to clear it.
+    if declare -f nds_git_gh_host_logged_in &>/dev/null && nds_git_gh_host_logged_in; then
+        NDS_GIT_GH_LEFTOVER=true
+        export NDS_GIT_GH_LEFTOVER
+        info "Leftover GitHub CLI login detected on this ISO (offered on exit)"
+        nds_install_log "git: leftover gh session detected at warmup"
+    else
+        unset NDS_GIT_GH_LEFTOVER 2>/dev/null || true
+        nds_install_log "git: no leftover gh session at warmup"
+    fi
     return 0
 }
 

@@ -27,13 +27,19 @@ hook_exit_cleanup() {
 
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 
-    if declare -f nds_git_gh_host_logged_in &>/dev/null; then
-        nds_git_gh_host_logged_in && logged_in=true
-    elif [[ "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
+    if [[ "${NDS_GIT_GH_LEFTOVER:-}" == "true" || "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
         logged_in=true
     fi
+    if declare -f nds_git_gh_host_logged_in &>/dev/null; then
+        nds_git_gh_host_logged_in && logged_in=true
+    elif declare -f nds_git_gh_hosts_yml_has_github &>/dev/null; then
+        nds_git_gh_hosts_yml_has_github && logged_in=true
+    fi
 
-    [[ "$logged_in" == "true" ]] || return 0
+    if [[ "$logged_in" != "true" ]]; then
+        nds_install_log "git: exit cleanup — no gh session to clear"
+        return 0
+    fi
 
     # Successful install already attempted silent clear — retry once without prompt.
     if [[ "${NDS_GIT_INSTALL_SUCCEEDED:-}" == "true" ]]; then
