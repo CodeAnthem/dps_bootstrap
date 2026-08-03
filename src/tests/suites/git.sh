@@ -455,9 +455,39 @@ LOCK
         nds_cfg_set GIT_PERSIST_ACCESS ""
     fi
 
-    if declare -f nds_git_wizard_menu_import_path &>/dev/null; then
-        TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ import_path helper loaded"
+    if declare -f nds_flake_host_in_list &>/dev/null; then
+        if nds_flake_host_in_list "control-toolkit" "a" "control-toolkit" "b"; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ flake_host_in_list: match"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ flake_host_in_list: match"
+        fi
+        if ! nds_flake_host_in_list "missing" "a" "b"; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ flake_host_in_list: miss"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ flake_host_in_list: miss"
+        fi
+    fi
+
+    if declare -f nds_flake_list_hosts &>/dev/null; then
+        local flake_tmp hosts_out
+        flake_tmp=$(mktemp -d)
+        mkdir -p "${flake_tmp}/hosts/x86_64-linux/control-toolkit" \
+            "${flake_tmp}/hosts/x86_64-linux/worker-01"
+        printf '{ outputs = _: {}; }\n' >"${flake_tmp}/flake.nix"
+        # Without a real flake eval, filesystem fallback should still list dirs
+        hosts_out="$(nds_flake_list_hosts "$flake_tmp" 2>/dev/null || true)"
+        if grep -q 'control-toolkit' <<<"$hosts_out" && grep -q 'worker-01' <<<"$hosts_out"; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ flake_list_hosts: host-dir filesystem fallback"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ flake_list_hosts: fallback got: ${hosts_out:-empty}"
+        fi
+        rm -rf "$flake_tmp"
     fi
 
     rm -rf "$tmpdir"

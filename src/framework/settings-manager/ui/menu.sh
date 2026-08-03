@@ -21,7 +21,11 @@ nds_configurator_prompt_errors() {
     done
     [[ "$fixed" == true ]] || return 0
 
-    nds_ui_section_header "Required fields"
+    # Presets may draw their own Configuration section (e.g. installFlake).
+    if ! declare -f installFlake_prompt_errors &>/dev/null \
+        || [[ " ${presets[*]} " != *" installFlake "* ]]; then
+        nds_ui_section_header "Configuration — required fields"
+    fi
     for preset in "${presets[@]}"; do
         if ! nds_config_preset_validate "$preset" 2>/dev/null; then
             nds_config_preset_prompt_errors "$preset"

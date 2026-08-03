@@ -120,12 +120,19 @@ nds_flake_install_gate() {
         _flake_gate_ask_location || return 1
         _flake_gate_ensure_access flake_root || return 1
 
+        # Host + install target are configuration — not part of git access.
+        nds_ui_section_header "Configuration"
+        nds_ui_b "Repository access is ready. Next: pick the nixosConfigurations host"
+        nds_ui_b "and install target (disk or remote IP)."
+        nds_ui_b ""
+
         nds_flake_pick_host "$flake_root"
         rc=$?
         if [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]]; then
             nds_cfg_set FLAKE_LOCATION ""
             nds_cfg_set FLAKE_REPO_URL ""
             nds_cfg_set FLAKE_LOCAL_PATH ""
+            nds_cfg_set FLAKE_HOST ""
             continue
         fi
         [[ "$rc" -ne 0 ]] && return 1
@@ -143,9 +150,6 @@ nds_flake_install_gate() {
         [[ -z "$(nds_cfg_get FLAKE_HARDWARE_PLACEMENT)" ]] && nds_cfg_set FLAKE_HARDWARE_PLACEMENT "host-dir"
 
         export NDS_FLAKE_GATE_ROOT="$flake_root"
-        nds_ui_section_header "Configuration"
-        nds_ui_b "Access gate complete. Next: review boot / disk / encryption in the settings manager."
-        nds_ui_b ""
         return 0
     done
 }

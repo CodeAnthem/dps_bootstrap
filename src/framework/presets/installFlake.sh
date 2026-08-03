@@ -77,12 +77,22 @@ installFlake_configure() {
         nds_ui_b ""
         if nds_ask_user_to_proceed "Change flake location or host?"; then
             _installFlake_ask_location
-            nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "$(nds_cfg_get FLAKE_HOST)" true
+            nds_cfg_set FLAKE_HOST ""
+            if declare -f nds_flake_pick_host &>/dev/null; then
+                nds_flake_pick_host || true
+            else
+                nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+            fi
         fi
     fi
     nds_cfg_ask_path FLAKE_INSTALL_PATH "Flake path on installed disk" "/mnt/etc/nixos" true
-    [[ -z "$(nds_cfg_get FLAKE_HOST)" ]] && \
-        nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+    if [[ -z "$(nds_cfg_get FLAKE_HOST)" ]]; then
+        if declare -f nds_flake_pick_host &>/dev/null; then
+            nds_flake_pick_host || true
+        else
+            nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+        fi
+    fi
     nds_cfg_ask_path FLAKE_HOST_DIR "Host directory inside flake" "hosts/x86_64-linux" false
     nds_cfg_ask_choice FLAKE_HARDWARE_PLACEMENT "Hardware configuration" "host-dir|etc-nixos|skip" \
         "host-dir=Copy into flake host dir|etc-nixos=Keep in /etc/nixos|skip=Flake handles hardware" "host-dir"
@@ -102,6 +112,10 @@ installFlake_summary() {
 }
 
 installFlake_prompt_errors() {
+    local root host
+    local -a hosts=()
+
+    nds_ui_section_header "Configuration — required fields"
     nds_cfg_section_title "Install mode"
     nds_cfg_ask_numbered_choice INSTALL_MODE \
         "local|remote" \
@@ -122,14 +136,35 @@ installFlake_prompt_errors() {
             continue
         fi
         if [[ -z "$(nds_cfg_get FLAKE_HOST)" ]] || ! validate_hostname "$(nds_cfg_get FLAKE_HOST)" 2>/dev/null; then
-            nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+            if declare -f nds_flake_pick_host &>/dev/null; then
+                nds_flake_pick_host || true
+            else
+                nds_cfg_ask_hostname FLAKE_HOST "nixosConfigurations host name" "" true
+            fi
             continue
+        fi
+        # Env/config host set but not in flake list — re-pick when we can list.
+        if declare -f nds_flake_resolve_root &>/dev/null && declare -f nds_flake_list_hosts &>/dev/null; then
+            root="$(nds_flake_resolve_root 2>/dev/null || true)"
+            if [[ -n "$root" ]]; then
+                mapfile -t hosts < <(nds_flake_list_hosts "$root" 2>/dev/null || true)
+                host="$(nds_cfg_get FLAKE_HOST)"
+                if [[ ${#hosts[@]} -gt 0 ]] && ! nds_flake_host_in_list "$host" "${hosts[@]}"; then
+                    warn "FLAKE_HOST='${host}' is not in nixosConfigurations — pick from the list."
+                    nds_cfg_set FLAKE_HOST ""
+                    nds_flake_pick_host "$root" || true
+                    continue
+                fi
+            fi
         fi
         break
     done
 }
 
 installFlake_validate() {
+    local root host
+    local -a hosts=()
+
     if nds_cfg_is INSTALL_MODE remote && [[ -z "$(nds_cfg_get REMOTE_TARGET_IP)" ]]; then
         validation_error "Target host IP is required for remote install"
         return 1
@@ -143,6 +178,17 @@ installFlake_validate() {
         validation_error "$(error_msg_hostname)"
         return 1
     }
+    if declare -f nds_flake_resolve_root &>/dev/null && declare -f nds_flake_list_hosts &>/dev/null; then
+        root="$(nds_flake_resolve_root 2>/dev/null || true)"
+        host="$(nds_cfg_get FLAKE_HOST)"
+        if [[ -n "$root" ]]; then
+            mapfile -t hosts < <(nds_flake_list_hosts "$root" 2>/dev/null || true)
+            if [[ ${#hosts[@]} -gt 0 ]] && ! nds_flake_host_in_list "$host" "${hosts[@]}"; then
+                validation_error "FLAKE_HOST '${host}' is not in nixosConfigurations"
+                return 1
+            fi
+        fi
+    fi
     return 0
 }
 
