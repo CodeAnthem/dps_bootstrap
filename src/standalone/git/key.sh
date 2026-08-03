@@ -72,7 +72,7 @@ nds_git_key_generate_at() {
     chmod 600 "$dest"
     nds_git_key_load_path "$dest"
     if declare -f log &>/dev/null; then
-        log "Git SSH key generated (${comment})"
+        debug "Git SSH key generated (${comment})"
     fi
 }
 

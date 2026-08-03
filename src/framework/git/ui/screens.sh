@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard screens (menu output)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-08-03
 # ==================================================================================================
 
 declare -ga NDS_GIT_AUTH_REGISTER_URLS=()
@@ -32,15 +32,11 @@ nds_git_ui_ask_clear_gh_session() {
     nds_ask_user_to_proceed "Clear gh session on this ISO?"
 }
 
-# Description: Short intro — deploy keys and machine-user account keys.
+# Description: Short intro — private access gate.
 nds_git_wizard_screen_intro() {
     nds_ui_section_header "Private repository access"
-    nds_ui_b "Private flakes need SSH git access. NDS checks your flake URL"
-    nds_ui_b "and every locked git input in flake.lock."
-    nds_ui_b ""
-    nds_ui_b "Deploy key (recommended): read-only, one key per repository."
-    nds_ui_b "Account key: one key on a dedicated GitHub user (full account SSH access;"
-    nds_ui_b "limit what that account can reach via repo permissions)."
+    nds_ui_b "Private flakes need SSH git access for the flake URL and flake.lock inputs."
+    nds_ui_b "NDS already probes keys in the current directory and /root/.ssh."
     nds_ui_b ""
 }
 

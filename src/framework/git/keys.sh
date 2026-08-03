@@ -434,12 +434,19 @@ nds_git_install_keys_to_target() {
     local flake_root="${2:-${NDS_CTX_FLAKE_INSTALL_PATH:-${NDS_FLAKE_INSTALL_PATH:-}}}"
     local -a keys=()
     local key_path base dest_rel dest installed=0
-    local need_private=false url
+    local need_private=false url persist=""
 
     [[ -d "$mount_root" ]] || {
         debug "Target mount missing — skip git SSH key install"
         return 0
     }
+
+    persist="$(nds_cfg_get GIT_PERSIST_ACCESS 2>/dev/null || true)"
+    if [[ "$persist" == "false" || "$persist" == "no" ]]; then
+        nds_install_log "git: GIT_PERSIST_ACCESS=false — skip copying SSH keys to target"
+        info "Install-time git access only — SSH keys will not be copied to the installed machine."
+        return 0
+    fi
 
     if [[ -n "$flake_root" && -d "$flake_root" ]]; then
         while IFS= read -r url; do

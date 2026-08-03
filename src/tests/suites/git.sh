@@ -435,16 +435,29 @@ LOCK
         unset NDS_GIT_GH_BIN NDS_GIT_GH_PREFETCH_DONE
     fi
 
-    if declare -f _git_wizard_gh_print_device_line &>/dev/null; then
-        local out
-        out="$(_git_wizard_gh_print_device_line '! First copy your one-time code: 36A9-2670' 2>&1)"
-        if grep -q '36A9-2670' <<<"$out"; then
+    if declare -f nds_git_persist_access &>/dev/null; then
+        nds_cfg_set GIT_PERSIST_ACCESS "false"
+        if ! nds_git_persist_access; then
             TEST_PASSED=$((TEST_PASSED + 1))
-            console "  ✓ device login line: prints one-time code"
+            console "  ✓ persist_access: false"
         else
             TEST_FAILED=$((TEST_FAILED + 1))
-            console "  ✗ device login line: missing code"
+            console "  ✗ persist_access: expected false"
         fi
+        nds_cfg_set GIT_PERSIST_ACCESS "true"
+        if nds_git_persist_access; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ persist_access: true"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ persist_access: expected true"
+        fi
+        nds_cfg_set GIT_PERSIST_ACCESS ""
+    fi
+
+    if declare -f nds_git_wizard_menu_import_path &>/dev/null; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ import_path helper loaded"
     fi
 
     rm -rf "$tmpdir"

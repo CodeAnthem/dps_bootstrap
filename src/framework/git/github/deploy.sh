@@ -142,12 +142,12 @@ nds_git_gh_register_deploy_key() {
     [[ -n "$owner" && -n "$repo" && -n "$title" ]] || return 1
     nds_git_gh_cmd gh_cmd || return 1
 
-    nds_ui_i "Checking existing deploy keys on ${owner}/${repo}..."
+    debug "Checking existing deploy keys on ${owner}/${repo}..."
     if [[ -n "$(_git_gh_deploy_key_ids_by_title "$owner" "$repo" "$title")" ]]; then
         _git_gh_deploy_resolve_title_collision "$owner" "$repo" title || return 1
     fi
 
-    nds_ui_i "Checking whether this public key is already registered..."
+    debug "Checking whether this public key is already registered..."
     if nds_git_gh_deploy_pubkey_on_repo "$owner" "$repo" "$pub_file"; then
         nds_install_log "git: deploy key already on ${owner}/${repo} (${title})"
         nds_git_gh_session_mark_scopes_ok
@@ -155,7 +155,7 @@ nds_git_gh_register_deploy_key() {
     fi
 
     if [[ "$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION 2>/dev/null)" == "overwrite" ]]; then
-        nds_ui_i "Removing existing deploy keys with title: ${title}"
+        debug "Removing existing deploy keys with title: ${title}"
         while IFS= read -r id; do
             [[ -n "$id" ]] || continue
             _git_gh_deploy_key_delete "$owner" "$repo" "$id" || true
@@ -170,7 +170,7 @@ nds_git_gh_register_deploy_key() {
     key_body="$(tr -d '\n' < "$pub_file")"
     payload=$(printf '{"title":"%s","key":"%s","read_only":true}' "$title" "$key_body")
 
-    nds_ui_i "Creating deploy key \"${title}\" on ${owner}/${repo}..."
+    debug "Creating deploy key \"${title}\" on ${owner}/${repo}..."
     err=$(_git_gh_api_with_timeout 30 "${gh_cmd[@]}" api --method POST "repos/${owner}/${repo}/keys" \
         -H "Accept: application/vnd.github+json" \
         -H "X-GitHub-Api-Version: 2022-11-28" \

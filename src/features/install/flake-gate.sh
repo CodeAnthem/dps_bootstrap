@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - installFlake early gate (URL → git → hosts → target)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-31 | Modified: 2026-07-31
+# Date:          Created: 2026-07-31 | Modified: 2026-08-03
 # Description:   Runs after action preview, before settings manager menu
 # ==================================================================================================
 
@@ -143,6 +143,9 @@ nds_flake_install_gate() {
         [[ -z "$(nds_cfg_get FLAKE_HARDWARE_PLACEMENT)" ]] && nds_cfg_set FLAKE_HARDWARE_PLACEMENT "host-dir"
 
         export NDS_FLAKE_GATE_ROOT="$flake_root"
+        nds_ui_section_header "Configuration"
+        nds_ui_b "Access gate complete. Next: review boot / disk / encryption in the settings manager."
+        nds_ui_b ""
         return 0
     done
 }

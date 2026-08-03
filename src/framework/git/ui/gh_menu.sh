@@ -163,7 +163,9 @@ nds_git_wizard_gh_ensure_auth() {
 # Returns:
 # - <Bool> 0 on success
 nds_git_wizard_gh_prepare() {
-    info "Preparing GitHub CLI (download once if needed, then authenticate)..."
+    if ! nds_git_gh_bin_ready 2>/dev/null; then
+        info "Preparing GitHub CLI (download once if needed)..."
+    fi
     nds_git_gh_ensure_prefetch || {
         error "Could not install gh CLI"
         return 1
@@ -193,8 +195,8 @@ nds_git_wizard_menu_gh_deploy() {
     fi
     nds_step_complete "$label"
     success "Read-only deploy key registered on ${owner}/${repo}"
-    nds_ui_i "Private key: $(nds_git_deploy_key_path "$owner" "$repo")"
-    nds_ui_i "Target: /$(nds_git_deploy_key_target_rel "$owner" "$repo")"
+    debug "Private key: $(nds_git_deploy_key_path "$owner" "$repo")"
+    debug "Target: /$(nds_git_deploy_key_target_rel "$owner" "$repo")"
     nds_git_ssh_config_refresh || true
     return 0
 }

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install from flake preset
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-31
+# Date:          Created: 2026-07-01 | Modified: 2026-08-03
 # ==================================================================================================
 
 installFlake_defaults() {
@@ -16,6 +16,8 @@ installFlake_defaults() {
     nds_cfg_set FLAKE_HOST ""
     nds_cfg_set FLAKE_HOST_DIR "hosts/x86_64-linux"
     nds_cfg_set FLAKE_HARDWARE_PLACEMENT "host-dir"
+    nds_cfg_set GIT_PERSIST_ACCESS ""
+    nds_cfg_set GIT_ACCESS_STRATEGY ""
 }
 
 # Description: Prompt for a single flake location and auto-classify it as a remote
@@ -48,7 +50,10 @@ _installFlake_ask_location() {
             nds_cfg_set FLAKE_LOCAL_PATH "$value"
             nds_cfg_set FLAKE_REPO_URL ""
         fi
-        [[ "$current" != "$value" ]] && nds_ui_b "  -> Set: $value (detected: $src)"
+        [[ "$current" != "$value" ]] && {
+            nds_ui_b "  -> Set: $value"
+            nds_ui_b "  -> Detected: $src"
+        }
         return 0
     done
 }
