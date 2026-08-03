@@ -462,6 +462,25 @@ LOCK
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ hosts_yml_has_github: missed github.com entry"
         fi
+        # Binary present but auth status fails — still detect via hosts.yml
+        if declare -f nds_git_gh_host_logged_in &>/dev/null; then
+            local fake_gh="${gh_cfg_dir}/gh"
+            printf '#!/bin/sh\necho "not logged in" >&2\nexit 1\n' >"$fake_gh"
+            chmod +x "$fake_gh"
+            local saved_bin="${NDS_GIT_GH_BIN:-}" saved_path3="$PATH"
+            unset NDS_GIT_GH_BIN
+            # Fake gh first; keep /usr/bin so grep/getent still work
+            PATH="${gh_cfg_dir}:/usr/bin:/bin"
+            if nds_git_gh_host_logged_in; then
+                TEST_PASSED=$((TEST_PASSED + 1))
+                console "  ✓ gh_host_logged_in: hosts.yml fallback when auth status fails"
+            else
+                TEST_FAILED=$((TEST_FAILED + 1))
+                console "  ✗ gh_host_logged_in: missed hosts.yml after failed auth status"
+            fi
+            PATH="$saved_path3"
+            if [[ -n "$saved_bin" ]]; then export NDS_GIT_GH_BIN="$saved_bin"; else unset NDS_GIT_GH_BIN; fi
+        fi
         rm -f "$hosts_file"
         if ! nds_git_gh_hosts_yml_has_github; then
             TEST_PASSED=$((TEST_PASSED + 1))
@@ -472,6 +491,29 @@ LOCK
         fi
         unset GH_CONFIG_DIR
         rm -rf "$gh_cfg_dir"
+    fi
+
+    if declare -f _git_gh_persist_bin_cache &>/dev/null; then
+        local cache_tmp bin_tmp saved_cache
+        cache_tmp=$(mktemp)
+        bin_tmp=$(mktemp)
+        printf '#!/bin/sh\necho ok\n' >"$bin_tmp"
+        chmod +x "$bin_tmp"
+        saved_cache="${NDS_GIT_GH_BIN_CACHE_FILE:-}"
+        NDS_GIT_GH_BIN_CACHE_FILE="$cache_tmp"
+        export NDS_GIT_GH_BIN="$bin_tmp"
+        _git_gh_persist_bin_cache
+        unset NDS_GIT_GH_BIN
+        if _git_gh_restore_bin_cache && [[ "$NDS_GIT_GH_BIN" == "$bin_tmp" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ gh bin cache: persist + restore"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ gh bin cache: persist + restore"
+        fi
+        unset NDS_GIT_GH_BIN
+        if [[ -n "$saved_cache" ]]; then NDS_GIT_GH_BIN_CACHE_FILE="$saved_cache"; else unset NDS_GIT_GH_BIN_CACHE_FILE; fi
+        rm -f "$cache_tmp" "$bin_tmp"
     fi
 
     if declare -f nds_git_persist_access &>/dev/null; then

@@ -4,11 +4,58 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-07 | Modified: 2026-08-03
 # Description:   gh binary resolve, prefetch, session login/cleanup helpers
+#                (boot cache + multi-home hosts.yml detection)
 # ==================================================================================================
 
 # Description: Nix CLI prefix for gh on live ISO (flakes required).
 _git_gh_nix() {
     nix --extra-experimental-features "nix-command flakes" "$@"
+}
+
+# Boot-persistent path to the last resolved gh binary (survives NDS restarts on the ISO).
+: "${NDS_GIT_GH_BIN_CACHE_FILE:=/tmp/nds-gh-bin}"
+
+# Description: Persist NDS_GIT_GH_BIN so the next NDS start can reuse it.
+_git_gh_persist_bin_cache() {
+    [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]] || return 1
+    printf '%s\n' "$NDS_GIT_GH_BIN" >"$NDS_GIT_GH_BIN_CACHE_FILE" 2>/dev/null || true
+}
+
+# Description: Restore NDS_GIT_GH_BIN from /tmp cache when the store path still exists.
+_git_gh_restore_bin_cache() {
+    local p
+    [[ -f "$NDS_GIT_GH_BIN_CACHE_FILE" ]] || return 1
+    p="$(<"$NDS_GIT_GH_BIN_CACHE_FILE")"
+    [[ -n "$p" && -x "$p" ]] || return 1
+    NDS_GIT_GH_BIN="$p"
+    export NDS_GIT_GH_BIN
+    return 0
+}
+
+# Description: Candidate gh hosts.yml paths (root + live-ISO user + sudo user).
+# Prints unique existing-or-likely paths (stdout), one per line.
+_git_gh_hosts_yml_candidates() {
+    local -A seen=()
+    local f h
+    local -a candidates=()
+
+    [[ -n "${GH_CONFIG_DIR:-}" ]] && candidates+=("${GH_CONFIG_DIR}/hosts.yml")
+    [[ -n "${XDG_CONFIG_HOME:-}" ]] && candidates+=("${XDG_CONFIG_HOME}/gh/hosts.yml")
+    candidates+=("${HOME:-/root}/.config/gh/hosts.yml")
+    candidates+=("/root/.config/gh/hosts.yml")
+    candidates+=("/home/nixos/.config/gh/hosts.yml")
+
+    if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+        h="$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6 || true)"
+        [[ -n "$h" ]] && candidates+=("${h}/.config/gh/hosts.yml")
+    fi
+
+    for f in "${candidates[@]}"; do
+        [[ -n "$f" ]] || continue
+        [[ -n "${seen[$f]:-}" ]] && continue
+        seen[$f]=1
+        printf '%s\n' "$f"
+    done
 }
 
 # Description: True when a real gh binary is ready (PATH or NDS_GIT_GH_BIN).
@@ -17,7 +64,10 @@ nds_git_gh_bin_ready() {
     if command -v gh &>/dev/null; then
         return 0
     fi
-    [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]
+    if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+        return 0
+    fi
+    _git_gh_restore_bin_cache
 }
 
 # Description: Resolve gh from PATH or NDS_GIT_GH_BIN only (never downloads).
@@ -30,6 +80,9 @@ nds_git_gh_cmd_nofetch() {
     if command -v gh &>/dev/null; then
         _out=(gh)
         return 0
+    fi
+    if [[ -z "${NDS_GIT_GH_BIN:-}" || ! -x "${NDS_GIT_GH_BIN}" ]]; then
+        _git_gh_restore_bin_cache || true
     fi
     if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
         _out=("${NDS_GIT_GH_BIN}")
@@ -66,30 +119,27 @@ nds_git_gh_cmd() {
 }
 
 # Description: True when gh hosts.yml still lists github.com (leftover ISO login).
+# Checks root, current HOME, live-ISO nixos user, and SUDO_USER home.
 nds_git_gh_hosts_yml_has_github() {
     local f
-    for f in \
-        "${GH_CONFIG_DIR:-${HOME:-/root}/.config/gh}/hosts.yml" \
-        "/root/.config/gh/hosts.yml"; do
+    while IFS= read -r f; do
         [[ -f "$f" ]] || continue
         grep -qE '^[[:space:]]*github\.com:' "$f" 2>/dev/null && return 0
-    done
+    done < <(_git_gh_hosts_yml_candidates)
     return 1
 }
 
-# Description: Remove leftover gh host config files on the live ISO.
+# Description: Remove leftover gh host config files on the live ISO (all known homes).
 _git_gh_wipe_hosts_yml() {
     local f
-    for f in \
-        "${GH_CONFIG_DIR:-${HOME:-/root}/.config/gh}/hosts.yml" \
-        "/root/.config/gh/hosts.yml"; do
+    while IFS= read -r f; do
         [[ -f "$f" ]] && rm -f "$f"
-    done
+    done < <(_git_gh_hosts_yml_candidates)
 }
 
-# Description: True when gh reports a logged-in github.com host (live check).
-# Never downloads gh — uses PATH/BIN, else leftover hosts.yml.
-# Does not trust NDS_GIT_GH_SESSION_ACTIVE alone — that flag can be stale.
+# Description: True when gh reports a logged-in github.com host, or leftover hosts.yml.
+# Never downloads gh. After warmup the binary exists — still check hosts.yml in all
+# homes (auth status only sees $HOME, often /root after sudo).
 nds_git_gh_host_logged_in() {
     local -a gh_cmd=()
     local status_out
@@ -103,10 +153,9 @@ nds_git_gh_host_logged_in() {
         if "${gh_cmd[@]}" auth status -h github.com &>/dev/null; then
             return 0
         fi
-        return 1
     fi
 
-    # No binary yet — detect leftover session without triggering a download
+    # Leftover config under /home/nixos or other homes (sudo HOME=/root misses these)
     nds_git_gh_hosts_yml_has_github
 }
 
@@ -248,6 +297,7 @@ _git_gh_cache_bin_from_nix() {
 }
 
 # Description: Build gh via nix once and cache the binary path (avoids nix shell per call).
+# Reuses /tmp/nds-gh-bin across NDS restarts on the same live ISO boot.
 # Returns:
 # - <Bool> 0 when gh can be invoked after prefetch
 nds_git_gh_prefetch() {
@@ -257,8 +307,20 @@ nds_git_gh_prefetch() {
         return 0
     fi
     if [[ -n "${NDS_GIT_GH_BIN:-}" && -x "${NDS_GIT_GH_BIN}" ]]; then
+        _git_gh_persist_bin_cache
         NDS_GIT_GH_PREFETCH_DONE=true
         export NDS_GIT_GH_PREFETCH_DONE
+        return 0
+    fi
+    # Reuse store path from a prior NDS run on this ISO (no re-download spinner).
+    if _git_gh_restore_bin_cache; then
+        NDS_GIT_GH_PREFETCH_DONE=true
+        export NDS_GIT_GH_PREFETCH_DONE
+        if declare -f nds_step_start &>/dev/null; then
+            nds_step_start "GitHub CLI (gh)"
+            nds_step_complete "GitHub CLI ready (cached)"
+        fi
+        nds_install_log "git: gh CLI restored from cache (${NDS_GIT_GH_BIN})"
         return 0
     fi
     if ! command -v nix &>/dev/null; then
@@ -307,6 +369,7 @@ nds_git_gh_prefetch() {
     fi
     if _git_gh_cache_bin_from_nix "$out_path"; then
         unset NDS_GIT_GH_PREFETCH_IN_PROGRESS 2>/dev/null || true
+        _git_gh_persist_bin_cache
         declare -f nds_step_complete &>/dev/null && nds_step_complete "Downloading GitHub CLI (gh)"
         NDS_GIT_GH_PREFETCH_DONE=true
         export NDS_GIT_GH_PREFETCH_DONE
