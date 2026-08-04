@@ -97,5 +97,14 @@ network_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=network_defaults \
+        configure=network_configure \
+        validate=network_validate \
+        summary=network_summary \
+        prompt_errors=network_prompt_errors
+fi
+
 NDS_PRESET_PRIORITY=10
 NDS_PRESET_DISPLAY="Network"

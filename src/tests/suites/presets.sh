@@ -22,12 +22,13 @@ suite_presets() {
         console "  ✗ inject_from_flake: expected 1 preset enabled"
     fi
 
-    if declare -f custom_defaults &>/dev/null && declare -f custom_configure &>/dev/null; then
+    if declare -f custom_defaults &>/dev/null && declare -f custom_configure &>/dev/null \
+        && [[ "${PRESET_HOOKS[custom__validate]:-}" == "custom_validate" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ inject_from_flake: hooks registered"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ inject_from_flake: missing custom_* hooks"
+        console "  ✗ inject_from_flake: missing custom_* hooks / PRESET_HOOKS"
     fi
 
     rm -rf "$tmpdir"

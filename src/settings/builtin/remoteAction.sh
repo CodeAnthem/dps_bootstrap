@@ -54,5 +54,14 @@ remoteAction_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=remoteAction_defaults \
+        configure=remoteAction_configure \
+        validate=remoteAction_validate \
+        summary=remoteAction_summary \
+        prompt_errors=remoteAction_prompt_errors
+fi
+
 NDS_PRESET_PRIORITY=20
 NDS_PRESET_DISPLAY="Remote flake action"

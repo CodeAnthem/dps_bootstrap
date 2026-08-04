@@ -2,17 +2,85 @@
 # ==================================================================================================
 # NDS - Settings manager: preset hooks and injection
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-08-04
+# Date:          Created: 2026-07-06 | Modified: 2026-08-05
 # Description:   Load preset files (builtin + injected), register hooks, enable bundles
 # ==================================================================================================
 
 declare -gA PRESET_LOADED=()
 declare -gA PRESET_SEEDED=()
+# Set while sourcing a preset so nds_preset_register_hooks can omit the name.
+declare -g NDS_PRESET_LOADING=""
 
 # Description: Builtin presets directory.
 nds_preset_dir() {
     local bootstrap_dir="${1:-${SCRIPT_DIR}}"
     echo "${bootstrap_dir}/settings/builtin"
+}
+
+# Description: Register hook function names for a preset (key=fn pairs).
+# Call from a preset file after defining its functions. When sourced via
+# nds_preset_load_file, the name may be omitted (uses NDS_PRESET_LOADING).
+# Arguments:
+# - name?: <String> Preset id (optional when NDS_PRESET_LOADING is set)
+# - pairs: <String...> hook=function_name
+#          hooks: defaults|configure|validate|summary|prompt_errors
+nds_preset_register_hooks() {
+    local name="" pair key fn
+    if [[ $# -gt 0 && "$1" != *=* ]]; then
+        name="$1"
+        shift
+    else
+        name="${NDS_PRESET_LOADING:-}"
+    fi
+    [[ -n "$name" ]] || {
+        echo "Error: nds_preset_register_hooks: preset name required" >&2
+        return 1
+    }
+    for pair in "$@"; do
+        [[ "$pair" == *=* ]] || {
+            echo "Error: nds_preset_register_hooks: expected hook=fn, got '$pair'" >&2
+            return 1
+        }
+        key="${pair%%=*}"
+        fn="${pair#*=}"
+        case "$key" in
+            defaults|configure|validate|summary|prompt_errors) ;;
+            *)
+                echo "Error: nds_preset_register_hooks: unknown hook '$key'" >&2
+                return 1
+                ;;
+        esac
+        [[ -n "$fn" ]] || continue
+        PRESET_HOOKS["${name}__${key}"]="$fn"
+    done
+    return 0
+}
+
+# Description: Resolve hook function name for a preset (registered, then name fallback).
+# Arguments:
+# - preset: <String> Preset id
+# - hook:   <String> defaults|configure|validate|summary|prompt_errors
+# Returns:
+# - <String> function name on stdout; non-zero when missing
+_nds_preset_hook_fn() {
+    local preset="$1" hook="$2"
+    local fn="${PRESET_HOOKS[${preset}__${hook}]:-}"
+    if [[ -n "$fn" ]]; then
+        declare -f "$fn" &>/dev/null || return 1
+        printf '%s\n' "$fn"
+        return 0
+    fi
+    # Compat: unmigrated presets still using ${name}_${hook}
+    fn="${preset}_${hook}"
+    declare -f "$fn" &>/dev/null || return 1
+    printf '%s\n' "$fn"
+    return 0
+}
+
+# Description: True when a preset has a callable hook (registered or name fallback).
+_nds_preset_has_hook() {
+    local preset="$1" hook="$2"
+    _nds_preset_hook_fn "$preset" "$hook" &>/dev/null
 }
 
 # Description: Import one preset file and register its hooks (defaults/configure/validate/…).
@@ -24,7 +92,12 @@ nds_preset_load_file() {
     preset_name="$(basename "$preset_file" .sh)"
     [[ "${PRESET_LOADED[$preset_name]:-}" == "1" ]] && return 0
 
-    nds_import_file "$preset_file" || return 1
+    NDS_PRESET_LOADING="$preset_name"
+    nds_import_file "$preset_file" || {
+        NDS_PRESET_LOADING=""
+        return 1
+    }
+    NDS_PRESET_LOADING=""
     priority="${NDS_PRESET_PRIORITY:-}"
     display="${NDS_PRESET_DISPLAY:-}"
     unset NDS_PRESET_PRIORITY NDS_PRESET_DISPLAY
@@ -156,12 +229,12 @@ nds_preset_enable_bundle() {
 
 # Description: Seed defaults for all enabled presets (first run per preset).
 nds_cfg_seed_defaults() {
-    local preset
+    local preset fn
     while IFS= read -r preset; do
         [[ -n "$preset" ]] || continue
         [[ "${PRESET_SEEDED[$preset]:-}" == "1" ]] && continue
-        if declare -f "${preset}_defaults" &>/dev/null; then
-            "${preset}_defaults"
+        if fn="$(_nds_preset_hook_fn "$preset" defaults)"; then
+            "$fn"
         fi
         PRESET_SEEDED["$preset"]=1
     done < <(nds_cfg_preset_get_all_enabled)
@@ -171,12 +244,12 @@ nds_cfg_seed_defaults() {
 
 # Description: Seed defaults only for presets not yet seeded (after injection).
 nds_cfg_seed_new_presets() {
-    local preset seeded_any=false
+    local preset fn seeded_any=false
     while IFS= read -r preset; do
         [[ -n "$preset" ]] || continue
         [[ "${PRESET_SEEDED[$preset]:-}" == "1" ]] && continue
-        if declare -f "${preset}_defaults" &>/dev/null; then
-            "${preset}_defaults"
+        if fn="$(_nds_preset_hook_fn "$preset" defaults)"; then
+            "$fn"
             seeded_any=true
         fi
         PRESET_SEEDED["$preset"]=1
@@ -221,27 +294,27 @@ nds_preset_activate_injected() {
 }
 
 nds_cfg_preset_validate() {
-    local preset="$1"
-    if declare -f "${preset}_validate" &>/dev/null; then
-        "${preset}_validate"
+    local preset="$1" fn
+    if fn="$(_nds_preset_hook_fn "$preset" validate)"; then
+        "$fn"
         return $?
     fi
     return 0
 }
 
 nds_cfg_preset_configure() {
-    local preset="$1"
-    if declare -f "${preset}_configure" &>/dev/null; then
-        "${preset}_configure"
+    local preset="$1" fn
+    if fn="$(_nds_preset_hook_fn "$preset" configure)"; then
+        "$fn"
         return $?
     fi
     return 0
 }
 
 nds_cfg_preset_prompt_errors() {
-    local preset="$1"
-    if declare -f "${preset}_prompt_errors" &>/dev/null; then
-        "${preset}_prompt_errors"
+    local preset="$1" fn
+    if fn="$(_nds_preset_hook_fn "$preset" prompt_errors)"; then
+        "$fn"
         return $?
     fi
     if ! nds_cfg_preset_validate "$preset" 2>/dev/null; then
@@ -252,13 +325,13 @@ nds_cfg_preset_prompt_errors() {
 
 nds_cfg_preset_summary() {
     local preset="$1" number="${2:-}"
-    local display header
+    local display header fn
     display=$(nds_cfg_preset_get_display "$preset")
     header="${display}:"
     [[ -n "$number" ]] && header="$number. $header"
     nds_ui_h "$header"
-    if declare -f "${preset}_summary" &>/dev/null; then
-        "${preset}_summary"
+    if fn="$(_nds_preset_hook_fn "$preset" summary)"; then
+        "$fn"
     fi
 }
 

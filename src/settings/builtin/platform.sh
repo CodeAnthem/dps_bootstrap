@@ -46,5 +46,13 @@ platform_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=platform_defaults \
+        configure=platform_configure \
+        validate=platform_validate \
+        summary=platform_summary
+fi
+
 NDS_PRESET_PRIORITY=25
 NDS_PRESET_DISPLAY="Platform"

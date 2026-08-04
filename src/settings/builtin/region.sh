@@ -39,5 +39,13 @@ region_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=region_defaults \
+        configure=region_configure \
+        validate=region_validate \
+        summary=region_summary
+fi
+
 NDS_PRESET_PRIORITY=50
 NDS_PRESET_DISPLAY="Region"

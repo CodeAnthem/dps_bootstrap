@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-08-04
+# Date:          Created: 2026-07-01 | Modified: 2026-08-05
 # Description:   Category menu — calls per-preset configure/summary/validate (no hook framework)
 # ==================================================================================================
 
@@ -22,7 +22,7 @@ nds_cfg_prompt_errors() {
     [[ "$fixed" == true ]] || return 0
 
     # Presets may draw their own Configuration section (e.g. installFlake).
-    if ! declare -f installFlake_prompt_errors &>/dev/null \
+    if ! _nds_preset_has_hook installFlake prompt_errors \
         || [[ " ${presets[*]} " != *" installFlake "* ]]; then
         nds_ui_section_header "Configuration — required fields"
     fi

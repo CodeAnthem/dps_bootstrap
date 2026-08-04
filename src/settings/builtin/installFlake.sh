@@ -192,5 +192,14 @@ installFlake_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=installFlake_defaults \
+        configure=installFlake_configure \
+        validate=installFlake_validate \
+        summary=installFlake_summary \
+        prompt_errors=installFlake_prompt_errors
+fi
+
 NDS_PRESET_PRIORITY=20
 NDS_PRESET_DISPLAY="Your flake"

@@ -140,5 +140,14 @@ encryption_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=encryption_defaults \
+        configure=encryption_configure \
+        validate=encryption_validate \
+        summary=encryption_summary \
+        prompt_errors=encryption_prompt_errors
+fi
+
 NDS_PRESET_PRIORITY=21
 NDS_PRESET_DISPLAY="Encryption"

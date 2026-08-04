@@ -25,5 +25,13 @@ custom_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=custom_defaults \
+        configure=custom_configure \
+        validate=custom_validate \
+        summary=custom_summary
+fi
+
 NDS_PRESET_PRIORITY=25
 NDS_PRESET_DISPLAY="Custom (flake)"

@@ -28,5 +28,13 @@ quick_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=quick_defaults \
+        configure=quick_configure \
+        validate=quick_validate \
+        summary=quick_summary
+fi
+
 NDS_PRESET_PRIORITY=1
 NDS_PRESET_DISPLAY="Quick Setup"

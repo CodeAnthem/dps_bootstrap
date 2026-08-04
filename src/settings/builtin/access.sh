@@ -79,5 +79,14 @@ access_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=access_defaults \
+        configure=access_configure \
+        validate=access_validate \
+        summary=access_summary \
+        prompt_errors=access_prompt_errors
+fi
+
 NDS_PRESET_PRIORITY=15
 NDS_PRESET_DISPLAY="Access"

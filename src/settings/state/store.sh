@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-08-04
+# Date:          Created: 2026-07-01 | Modified: 2026-08-05
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -12,6 +12,8 @@ declare -gA CONFIG_DATA=()
 declare -gA CONFIG_DEFAULTS=()
 declare -gA PRESET_REGISTRY=()
 declare -gA PRESET_META=()
+# Hook function names: PRESET_HOOKS["${preset}__validate"]="disk_validate" …
+declare -gA PRESET_HOOKS=()
 
 # Keys always shown in the concise export even when unchanged, because they are
 # auto-detected (not typed by the user) and useful to pin for a repeat install.

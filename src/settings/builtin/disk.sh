@@ -56,5 +56,14 @@ disk_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=disk_defaults \
+        configure=disk_configure \
+        validate=disk_validate \
+        summary=disk_summary \
+        prompt_errors=disk_prompt_errors
+fi
+
 NDS_PRESET_PRIORITY=20
 NDS_PRESET_DISPLAY="Disk"

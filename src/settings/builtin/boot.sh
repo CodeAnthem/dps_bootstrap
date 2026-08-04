@@ -50,5 +50,13 @@ boot_validate() {
     return 0
 }
 
+if declare -f nds_preset_register_hooks &>/dev/null; then
+    nds_preset_register_hooks \
+        defaults=boot_defaults \
+        configure=boot_configure \
+        validate=boot_validate \
+        summary=boot_summary
+fi
+
 NDS_PRESET_PRIORITY=30
 NDS_PRESET_DISPLAY="Boot"
