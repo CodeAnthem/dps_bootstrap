@@ -359,9 +359,9 @@ LOCK
         fi
     fi
 
-    if [[ -f "$(_git_switch_src 2>/dev/null || true)" ]]; then
+    if [[ -f "$(_git_tool_src nds-switch.sh 2>/dev/null || true)" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ nds-switch.sh present in runtime-tools"
+        console "  ✓ nds-switch.sh present in tools/"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ nds-switch.sh missing"

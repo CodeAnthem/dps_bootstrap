@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git SSH key registry (multi-key / deploy-key support)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-08
+# Date:          Created: 2026-07-07 | Modified: 2026-08-04
 # Description:   Registry file listing session private key paths (one per line).
 _git_keys_registry_file() {
     printf '%s/git_session_keys\n' "${NDS_RUNTIME_DIR:-/tmp/nds}"
@@ -107,28 +107,36 @@ nds_git_deploy_key_target_rel() {
     printf 'root/.ssh/%s\n' "$(nds_git_deploy_key_basename "$owner" "$repo")"
 }
 
-# Description: Absolute path of nds-git-ssh helper in this NDS tree.
-_git_ssh_wrapper_src() {
-    printf '%s/tools/nds-git-ssh.sh\n' "${SCRIPT_DIR}"
+# Description: Absolute path of a helper script in this NDS tools tree.
+_git_tool_src() {
+    printf '%s/tools/%s\n' "${SCRIPT_DIR}" "$1"
 }
 
-# Description: Absolute path of nds-switch helper in this NDS tree.
-_git_switch_src() {
-    printf '%s/tools/nds-switch.sh\n' "${SCRIPT_DIR}"
+# Description: install(1) with root:root when running as root.
+_git_install_exe() {
+    local src="$1" dst="$2" mode="${3:-755}"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        install -m "$mode" -o root -g root "$src" "$dst"
+    else
+        install -m "$mode" "$src" "$dst"
+    fi
 }
 
-# Description: Absolute path of nds-clean helper in this NDS tree.
-_git_clean_src() {
-    printf '%s/tools/nds-clean.sh\n' "${SCRIPT_DIR}"
-}
-
-# Description: owner/repo slug from a deploy key basename (nds_deploy_owner_repo).
-# Arguments:
-# - base: <String> Filename basename
-# Returns:
-# - <String> owner/repo (stdout) or empty
-_git_owner_repo_from_deploy_basename() {
-    nds_git_owner_repo_from_deploy_basename "$1"
+# Description: Append NDS bin PATH tip to a root home dotfile under mount_root.
+_git_append_root_path_snippet() {
+    local mount_root="$1" dotfile="$2"
+    local target="${mount_root}/root/${dotfile}"
+    local snippet='# NDS helpers
+export PATH="/root/.nds/bin:/root/bin:$PATH"
+[ -x /root/.nds/bin/nds-git-ssh ] && export GIT_SSH_COMMAND=/root/.nds/bin/nds-git-ssh
+'
+    grep -q '/root/.nds/bin' "$target" 2>/dev/null && return 0
+    if [[ -f "$target" ]]; then
+        printf '\n%s' "$snippet" >>"$target"
+    else
+        printf '%s' "$snippet" >"$target"
+    fi
+    chmod 644 "$target"
 }
 
 # Description: Public key path for a per-repo deploy key.
@@ -248,7 +256,7 @@ _git_write_deploy_map_lines() {
         [[ -f "$dest" ]] || continue
         [[ "$dest" == *.pub ]] && continue
         base="$(basename "$dest")"
-        want="$(_git_owner_repo_from_deploy_basename "$base" 2>/dev/null || true)"
+        want="$(nds_git_owner_repo_from_deploy_basename "$base" 2>/dev/null || true)"
         [[ -n "$want" ]] || continue
         want="${want,,}"
         [[ -n "${seen[$want]:-}" ]] && continue
@@ -267,40 +275,27 @@ _git_install_ssh_wrapper_to_target() {
     local ssh_dir="${mount_root}/root/.ssh"
     local map_file="${ssh_dir}/nds-git.map"
     local wrap_dst="${ssh_dir}/nds-git-ssh"
-    local switch_src switch_dst wrap_src env_dir env_file installed_map=0
+    local switch_src switch_dst wrap_src clean_src clean_dst env_file installed_map=0
 
     # NixOS: prefer /root/.nds/bin (survives self-update); keep profile.d PATH tip.
     mkdir -p "$ssh_dir" "${mount_root}/etc/environment.d" \
         "${mount_root}/root/bin" "${mount_root}/root/.nds/bin" "${mount_root}/etc/profile.d"
-    wrap_src="$(_git_ssh_wrapper_src)"
+    wrap_src="$(_git_tool_src nds-git-ssh.sh)"
     [[ -f "$wrap_src" ]] || {
         error "nds-git-ssh source missing: ${wrap_src}"
         return 1
     }
-    if [[ "$(id -u)" -eq 0 ]]; then
-        install -m 755 -o root -g root "$wrap_src" "$wrap_dst"
-    else
-        install -m 755 "$wrap_src" "$wrap_dst"
-    fi
+    _git_install_exe "$wrap_src" "$wrap_dst"
 
-    switch_src="$(_git_switch_src)"
+    switch_src="$(_git_tool_src nds-switch.sh)"
     switch_dst="${mount_root}/root/.nds/bin/nds-switch"
-    clean_src="$(_git_clean_src)"
+    clean_src="$(_git_tool_src nds-clean.sh)"
     clean_dst="${mount_root}/root/.nds/bin/nds-clean"
     if [[ -f "$switch_src" ]]; then
-        if [[ "$(id -u)" -eq 0 ]]; then
-            install -m 755 -o root -g root "$switch_src" "$switch_dst"
-            install -m 755 -o root -g root "$wrap_src" "${mount_root}/root/.nds/bin/nds-git-ssh"
-        else
-            install -m 755 "$switch_src" "$switch_dst"
-            install -m 755 "$wrap_src" "${mount_root}/root/.nds/bin/nds-git-ssh"
-        fi
+        _git_install_exe "$switch_src" "$switch_dst"
+        _git_install_exe "$wrap_src" "${mount_root}/root/.nds/bin/nds-git-ssh"
         if [[ -f "$clean_src" ]]; then
-            if [[ "$(id -u)" -eq 0 ]]; then
-                install -m 755 -o root -g root "$clean_src" "$clean_dst"
-            else
-                install -m 755 "$clean_src" "$clean_dst"
-            fi
+            _git_install_exe "$clean_src" "$clean_dst"
             cp -f "$clean_dst" "${mount_root}/root/bin/nds-clean"
             chmod 755 "${mount_root}/root/bin/nds-clean"
         fi
@@ -311,22 +306,10 @@ _git_install_ssh_wrapper_to_target() {
         printf 'export PATH="/root/.nds/bin:/root/bin:${PATH}"\n' \
             >"${mount_root}/etc/profile.d/nds-root-bin.sh"
         chmod 644 "${mount_root}/etc/profile.d/nds-root-bin.sh"
-        _git_append_root_path_snippet() {
-            local dotfile="$1"
-            local target="${mount_root}/root/${dotfile}"
-            grep -q '/root/.nds/bin' "$target" 2>/dev/null \
-                && return 0
-            if [[ -f "$target" ]]; then
-                printf '\n# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n[ -x /root/.nds/bin/nds-git-ssh ] && export GIT_SSH_COMMAND=/root/.nds/bin/nds-git-ssh\n' >>"$target"
-            else
-                printf '# NDS helpers\nexport PATH="/root/.nds/bin:/root/bin:$PATH"\n[ -x /root/.nds/bin/nds-git-ssh ] && export GIT_SSH_COMMAND=/root/.nds/bin/nds-git-ssh\n' >"$target"
-            fi
-            chmod 644 "$target"
-        }
         # SSH login reads .bash_profile first; tty login reads .profile
-        _git_append_root_path_snippet .bash_profile
-        _git_append_root_path_snippet .profile
-        _git_append_root_path_snippet .bashrc
+        _git_append_root_path_snippet "$mount_root" .bash_profile
+        _git_append_root_path_snippet "$mount_root" .profile
+        _git_append_root_path_snippet "$mount_root" .bashrc
         nds_install_log "git: nds-switch -> /root/.nds/bin/nds-switch"
         [[ -f "$clean_src" ]] && nds_install_log "git: nds-clean -> /root/.nds/bin/nds-clean"
     else
@@ -340,8 +323,7 @@ _git_install_ssh_wrapper_to_target() {
     installed_map="${installed_map:-0}"
     chmod 600 "$map_file"
 
-    env_dir="${mount_root}/etc/environment.d"
-    env_file="${env_dir}/50-nds-git-ssh.conf"
+    env_file="${mount_root}/etc/environment.d/50-nds-git-ssh.conf"
     printf 'GIT_SSH_COMMAND=/root/.ssh/nds-git-ssh\n' >"$env_file"
     chmod 644 "$env_file"
 
@@ -485,13 +467,8 @@ nds_git_install_keys_to_target() {
         base="$(basename "$key_path")"
         dest_rel="root/.ssh/${base}"
         dest="${mount_root}/${dest_rel}"
-        if [[ "$(id -u)" -eq 0 ]]; then
-            install -m 600 -o root -g root "$key_path" "$dest"
-            [[ -f "${key_path}.pub" ]] && install -m 644 -o root -g root "${key_path}.pub" "${dest}.pub"
-        else
-            install -m 600 "$key_path" "$dest"
-            [[ -f "${key_path}.pub" ]] && install -m 644 "${key_path}.pub" "${dest}.pub"
-        fi
+        _git_install_exe "$key_path" "$dest" 600
+        [[ -f "${key_path}.pub" ]] && _git_install_exe "${key_path}.pub" "${dest}.pub" 644
         nds_install_log "git: SSH key -> /${dest_rel}"
         installed=$((installed + 1))
     done
