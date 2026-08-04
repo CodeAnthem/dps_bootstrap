@@ -54,7 +54,7 @@ nds_preset_load_dir() {
 }
 
 # Description: Load all builtin preset hook files (register only — enable via bundle).
-nds_config_load_presets() {
+nds_cfg_load_presets() {
     local preset_dir
     preset_dir="$(nds_preset_dir "$SCRIPT_DIR")"
     nds_preset_load_dir "$preset_dir"
@@ -100,7 +100,7 @@ nds_preset_inject_from_flake() {
     if [[ -f "${nds_root}/preset.sh" ]]; then
         nds_preset_load_file "${nds_root}/preset.sh" || return 1
         name="$(basename "${nds_root}/preset.sh" .sh)"
-        nds_configurator_preset_enable "$name"
+        nds_cfg_preset_enable "$name"
         ((count++)) || true
     fi
 
@@ -109,13 +109,13 @@ nds_preset_inject_from_flake() {
             [[ -f "$preset_file" ]] || continue
             nds_preset_load_file "$preset_file" || return 1
             name="$(basename "$preset_file" .sh)"
-            nds_configurator_preset_enable "$name"
+            nds_cfg_preset_enable "$name"
             ((count++)) || true
         done
     fi
 
     if [[ "$count" -gt 0 ]]; then
-        nds_config_seed_new_presets
+        nds_cfg_seed_new_presets
         debug "Injected ${count} preset(s) from ${flake_root}/.nds"
     fi
     NDS_PRESET_INJECT_COUNT=$count
@@ -148,7 +148,7 @@ nds_preset_enable_bundle() {
     [[ -d "$preset_dir" ]] || preset_dir="$(nds_preset_dir "$bootstrap_dir")"
 
     for name in "${!PRESET_REGISTRY[@]}"; do
-        nds_configurator_preset_disable "$name"
+        nds_cfg_preset_disable "$name"
     done
 
     for name in "$@"; do
@@ -156,13 +156,13 @@ nds_preset_enable_bundle() {
         if [[ "${PRESET_LOADED[$name]:-}" != "1" ]]; then
             nds_preset_load_file "${preset_dir}/${name}.sh" || return 1
         fi
-        nds_configurator_preset_enable "$name"
+        nds_cfg_preset_enable "$name"
     done
     return 0
 }
 
 # Description: Seed defaults for all enabled presets (first run per preset).
-nds_config_seed_defaults() {
+nds_cfg_seed_defaults() {
     local preset
     while IFS= read -r preset; do
         [[ -n "$preset" ]] || continue
@@ -171,13 +171,13 @@ nds_config_seed_defaults() {
             "${preset}_defaults"
         fi
         PRESET_SEEDED["$preset"]=1
-    done < <(nds_configurator_preset_get_all_enabled)
-    nds_config_snapshot_defaults
+    done < <(nds_cfg_preset_get_all_enabled)
+    nds_cfg_snapshot_defaults
     nds_cfg_apply_env_all
 }
 
 # Description: Seed defaults only for presets not yet seeded (after injection).
-nds_config_seed_new_presets() {
+nds_cfg_seed_new_presets() {
     local preset seeded_any=false
     while IFS= read -r preset; do
         [[ -n "$preset" ]] || continue
@@ -187,9 +187,9 @@ nds_config_seed_new_presets() {
             seeded_any=true
         fi
         PRESET_SEEDED["$preset"]=1
-    done < <(nds_configurator_preset_get_all_enabled)
+    done < <(nds_cfg_preset_get_all_enabled)
     if [[ "$seeded_any" == true ]]; then
-        nds_config_snapshot_defaults
+        nds_cfg_snapshot_defaults
     fi
     nds_cfg_apply_env_all
 }
@@ -221,13 +221,13 @@ nds_preset_activate_injected() {
       error "Preset not loaded: $name"
       return 1
     }
-    nds_configurator_preset_enable "$name"
+    nds_cfg_preset_enable "$name"
   done
-  nds_config_seed_new_presets
+  nds_cfg_seed_new_presets
   return 0
 }
 
-nds_config_preset_validate() {
+nds_cfg_preset_validate() {
     local preset="$1"
     if declare -f "${preset}_validate" &>/dev/null; then
         "${preset}_validate"
@@ -236,7 +236,7 @@ nds_config_preset_validate() {
     return 0
 }
 
-nds_config_preset_configure() {
+nds_cfg_preset_configure() {
     local preset="$1"
     if declare -f "${preset}_configure" &>/dev/null; then
         "${preset}_configure"
@@ -245,22 +245,22 @@ nds_config_preset_configure() {
     return 0
 }
 
-nds_config_preset_prompt_errors() {
+nds_cfg_preset_prompt_errors() {
     local preset="$1"
     if declare -f "${preset}_prompt_errors" &>/dev/null; then
         "${preset}_prompt_errors"
         return $?
     fi
-    if ! nds_config_preset_validate "$preset" 2>/dev/null; then
-        nds_config_preset_configure "$preset"
+    if ! nds_cfg_preset_validate "$preset" 2>/dev/null; then
+        nds_cfg_preset_configure "$preset"
     fi
     return 0
 }
 
-nds_config_preset_summary() {
+nds_cfg_preset_summary() {
     local preset="$1" number="${2:-}"
     local display header
-    display=$(nds_configurator_preset_get_display "$preset")
+    display=$(nds_cfg_preset_get_display "$preset")
     header="${display}:"
     [[ -n "$number" ]] && header="$number. $header"
     nds_ui_h "$header"
@@ -269,21 +269,21 @@ nds_config_preset_summary() {
     fi
 }
 
-nds_configurator_validate_all() {
+nds_cfg_validate_all() {
     local presets=("$@") preset errors=0
     if [[ ${#presets[@]} -eq 0 ]]; then
-        readarray -t presets < <(nds_configurator_preset_get_all_enabled)
+        readarray -t presets < <(nds_cfg_preset_get_all_enabled)
     fi
     for preset in "${presets[@]}"; do
-        nds_config_preset_validate "$preset" 2>/dev/null || ((errors++))
+        nds_cfg_preset_validate "$preset" 2>/dev/null || ((errors++))
     done
     return $errors
 }
 
-nds_configurator_preset_validate() {
-    nds_config_preset_validate "$1"
+nds_cfg_preset_validate_one() {
+    nds_cfg_preset_validate "$1"
 }
 
-nds_configurator_preset_validate_all() {
-    nds_configurator_validate_all "$@"
+nds_cfg_preset_validate_all() {
+    nds_cfg_validate_all "$@"
 }

@@ -12,11 +12,11 @@ action_presets() {
 }
 
 action_config() {
-    nds_configurator_preset_set_display remoteAction "Remote flake action"
-    nds_configurator_preset_set_priority remoteAction 20
-    nds_configurator_preset_set_priority boot 21
-    nds_configurator_preset_set_priority disk 22
-    nds_configurator_preset_set_priority encryption 23
+    nds_cfg_preset_set_display remoteAction "Remote flake action"
+    nds_cfg_preset_set_priority remoteAction 20
+    nds_cfg_preset_set_priority boot 21
+    nds_cfg_preset_set_priority disk 22
+    nds_cfg_preset_set_priority encryption 23
 }
 
 # Optional: extra preset dirs from env (colon-separated paths).
@@ -40,14 +40,14 @@ action_preview() {
 }
 
 action_setup() {
-    if ! nds_configurator_validate_all; then
-        nds_configurator_prompt_errors
-        nds_configurator_validate_all || exit 11
+    if ! nds_cfg_validate_all; then
+        nds_cfg_prompt_errors
+        nds_cfg_validate_all || exit 11
     fi
 
-    nds_configurator_menu_or_skip || exit 12
+    nds_cfg_menu_or_skip || exit 12
     nds_flake_prepare remote
-    nds_git_ensure_access "$(nds_configurator_config_get FLAKE_REPO_URL)" || exit 14
+    nds_git_ensure_access "$(nds_cfg_get FLAKE_REPO_URL)" || exit 14
 
     local repo_url="${NDS_FLAKE_REPO_URL}"
     local host_dir="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"
@@ -77,7 +77,7 @@ action_setup() {
 
         if declare -f remote_action_config &>/dev/null; then
             remote_action_config
-            nds_configurator_menu_or_skip || exit 12
+            nds_cfg_menu_or_skip || exit 12
             nds_flake_prepare remote
         fi
     else
@@ -89,9 +89,9 @@ action_setup() {
         fi
     fi
 
-    disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
+    disk_strategy="$(nds_cfg_get "DISK_STRATEGY")"
     disk_strategy="${disk_strategy:-nds}"
-    disk_target="$(nds_config_get "disk" "DISK_TARGET")"
+    disk_target="$(nds_cfg_get "DISK_TARGET")"
 
     nds_preflight_install "$disk_target" || exit 11
     nds_action_confirm_install "$disk_target" "$disk_strategy" || exit 13

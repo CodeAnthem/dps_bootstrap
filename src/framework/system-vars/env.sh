@@ -77,6 +77,6 @@ nds_cfg_apply_env_all() {
     fi
 }
 
-nds_config_apply_env() {
+nds_cfg_apply_env() {
     nds_cfg_apply_env_all
 }

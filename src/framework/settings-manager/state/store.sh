@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration store
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-08-03
+# Date:          Created: 2026-07-01 | Modified: 2026-08-04
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
@@ -66,15 +66,7 @@ nds_cfg_true() {
     nds_cfg_is "$1" true
 }
 
-nds_configurator_config_get() { nds_cfg_get "$@"; }
-nds_configurator_config_set() { nds_cfg_set "$@"; }
-
-# Legacy — preset name ignored; values are flat in CONFIG_DATA.
-nds_config_get() {
-    nds_cfg_get "$2" "${3:-}"
-}
-
-nds_configurator_config_get_env() {
+nds_cfg_get_env() {
     local varname="$1"
     local default="${2:-}"
     local env_var="NDS_${varname}"
@@ -87,7 +79,7 @@ nds_configurator_config_get_env() {
 
 # Full export: every config value. Used for the install backup bundle so a
 # future run can reproduce the machine exactly.
-nds_configurator_config_export_script() {
+nds_cfg_export_script() {
     local varname
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
@@ -97,7 +89,7 @@ nds_configurator_config_export_script() {
 
 # Snapshot the seeded defaults so the concise export can tell what the user
 # actually changed. Call after presets seed defaults, before env/menu edits.
-nds_config_snapshot_defaults() {
+nds_cfg_snapshot_defaults() {
     CONFIG_DEFAULTS=()
     local k
     for k in "${!CONFIG_DATA[@]}"; do
@@ -158,7 +150,7 @@ _settings_export_should_include() {
 
 # Concise export, one `export` per line (plain listing). Only values the user
 # set, plus the auto-detected essentials.
-nds_configurator_config_export_modified() {
+nds_cfg_export_modified() {
     local varname
     while IFS= read -r varname; do
         [[ -n "$varname" ]] || continue
@@ -170,7 +162,7 @@ nds_configurator_config_export_modified() {
 # Concise export as grouped sections — scoped declare -A blocks (preferred) plus
 # legacy scalar exports for simple re-runs. Git URL maps included when set.
 # Machine-specific keys, then menu skip flags (default false).
-nds_configurator_config_export_grouped() {
+nds_cfg_export_grouped() {
     local varname
     local -a portable=() hardware=()
     local scope
@@ -257,28 +249,28 @@ nds_preset_register_catalog() {
     PRESET_META["${name}__display"]="$display"
 }
 
-nds_configurator_preset_enable() {
+nds_cfg_preset_enable() {
     PRESET_REGISTRY["$1"]="enabled"
 }
 
-nds_configurator_preset_disable() {
+nds_cfg_preset_disable() {
     [[ -n "${PRESET_REGISTRY[$1]:-}" ]] || return 0
     PRESET_REGISTRY["$1"]="disabled"
 }
 
-nds_configurator_preset_set_priority() {
+nds_cfg_preset_set_priority() {
     PRESET_META["${1}__priority"]="$2"
 }
 
-nds_configurator_preset_set_display() {
+nds_cfg_preset_set_display() {
     PRESET_META["${1}__display"]="$2"
 }
 
-nds_configurator_preset_get_priority() {
+nds_cfg_preset_get_priority() {
     echo "${PRESET_META[${1}__priority]:-50}"
 }
 
-nds_configurator_preset_get_display() {
+nds_cfg_preset_get_display() {
     local preset="$1"
     local display="${PRESET_META[${preset}__display]:-}"
     if [[ -z "$display" ]]; then
@@ -287,43 +279,43 @@ nds_configurator_preset_get_display() {
     echo "$display"
 }
 
-_settings_configurator_sort_presets() {
+_nds_cfg_sort_presets() {
     local presets=("$@")
     [[ ${#presets[@]} -eq 0 ]] && return 0
     local sorted=() preset priority
     for preset in "${presets[@]}"; do
-        priority=$(nds_configurator_preset_get_priority "$preset")
+        priority=$(nds_cfg_preset_get_priority "$preset")
         sorted+=("${priority}:${preset}")
     done
     printf '%s\n' "${sorted[@]}" | sort -t: -k1,1n -k2,2 | cut -d: -f2
 }
 
-nds_configurator_preset_get_all_enabled() {
+nds_cfg_preset_get_all_enabled() {
     local presets=() preset
     for preset in "${!PRESET_REGISTRY[@]}"; do
         [[ "${PRESET_REGISTRY[$preset]}" == "enabled" ]] && presets+=("$preset")
     done
-    _settings_configurator_sort_presets "${presets[@]}"
+    _nds_cfg_sort_presets "${presets[@]}"
 }
 
-nds_configurator_reset_for_action() {
+nds_cfg_reset_for_action() {
     local bootstrap_dir="${1:?bootstrap dir}"
     local preset preset_dir preset_file
     preset_dir="$(nds_preset_dir "$bootstrap_dir")"
     for preset_file in "${preset_dir}/"*.sh; do
         [[ -f "$preset_file" ]] || continue
         preset=$(basename "$preset_file" .sh)
-        nds_configurator_preset_enable "$preset"
+        nds_cfg_preset_enable "$preset"
         unset "PRESET_META[${preset}__display]"
     done
     for preset in installFlake remoteAction; do
-        nds_configurator_preset_disable "$preset"
+        nds_cfg_preset_disable "$preset"
         unset "PRESET_META[${preset}__display]"
         unset "PRESET_META[${preset}__priority]"
     done
 }
 
-nds_configurator_print_config_backup() {
+nds_cfg_print_backup() {
     local line count=0
     nds_ui_section_header "Configuration export"
     nds_ui_b "Only values changed from defaults (export NDS_*= lines)."
@@ -333,7 +325,7 @@ nds_configurator_print_config_backup() {
         [[ -n "$line" ]] || continue
         nds_ui_i "$line"
         count=$((count + 1))
-    done < <(nds_configurator_config_export_modified)
+    done < <(nds_cfg_export_modified)
     if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
         nds_ui_i "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
         count=$((count + 1))
@@ -344,7 +336,7 @@ nds_configurator_print_config_backup() {
     nds_ui_b ""
 }
 
-nds_configurator_confirm_config_saved() {
+nds_cfg_confirm_saved() {
     if nds_skip_menu NDS_CONFIG_CONFIRM_SKIP; then
         log "Configuration review confirmation skipped"
         return 0

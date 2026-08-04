@@ -30,17 +30,17 @@ action_preview() {
 }
 
 action_setup() {
-    if ! nds_configurator_validate_all; then
-        nds_configurator_prompt_errors
-        nds_configurator_validate_all || exit 11
+    if ! nds_cfg_validate_all; then
+        nds_cfg_prompt_errors
+        nds_cfg_validate_all || exit 11
     fi
 
-    nds_configurator_menu_or_skip || exit 12
+    nds_cfg_menu_or_skip || exit 12
 
     local disk_strategy disk_target
-    disk_strategy="$(nds_config_get "disk" "DISK_STRATEGY")"
+    disk_strategy="$(nds_cfg_get "DISK_STRATEGY")"
     disk_strategy="${disk_strategy:-nds}"
-    disk_target="$(nds_config_get "disk" "DISK_TARGET")"
+    disk_target="$(nds_cfg_get "DISK_TARGET")"
 
     nds_preflight_install "$disk_target" || exit 11
 

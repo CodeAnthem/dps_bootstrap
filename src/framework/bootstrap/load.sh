@@ -37,7 +37,7 @@ nds_settings_catalog_init() {
 }
 
 # Description: Catalog + enable default classic bundle + seed (tests / non-action use).
-nds_configurator_init() {
+nds_cfg_init() {
     debug "Initializing settings manager..."
 
     nds_framework_load_settings_manager || return 1
@@ -48,7 +48,7 @@ nds_configurator_init() {
         return 1
     }
 
-    nds_config_seed_defaults
+    nds_cfg_seed_defaults
 
     debug "Settings initialized (${#PRESET_REGISTRY[@]} cataloged, hooks loaded on demand)"
     return 0

@@ -23,7 +23,7 @@ nds_install_bundle_create() {
 
     mkdir -p "${staging}/config" "${staging}/secrets" "${staging}/logs"
 
-    nds_configurator_config_export_script > "${staging}/nds-config.env"
+    nds_cfg_export_script > "${staging}/nds-config.env"
 
     if [[ -f "${NDS_RUNTIME_DIR:-}/config/configuration.nix" ]]; then
         cp "${NDS_RUNTIME_DIR}/config/configuration.nix" "${staging}/config/"

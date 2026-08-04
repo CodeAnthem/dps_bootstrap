@@ -12,11 +12,11 @@ action_presets() {
 }
 
 action_config() {
-    nds_configurator_preset_set_display installFlake "Your flake"
-    nds_configurator_preset_set_priority installFlake 20
-    nds_configurator_preset_set_priority boot 21
-    nds_configurator_preset_set_priority disk 22
-    nds_configurator_preset_set_priority encryption 23
+    nds_cfg_preset_set_display installFlake "Your flake"
+    nds_cfg_preset_set_priority installFlake 20
+    nds_cfg_preset_set_priority boot 21
+    nds_cfg_preset_set_priority disk 22
+    nds_cfg_preset_set_priority encryption 23
 }
 
 action_preview() {
@@ -35,19 +35,19 @@ action_setup() {
     # Early gate: URL → git → hosts → target (before full settings menu)
     nds_flake_install_gate || exit 11
 
-    if ! nds_configurator_validate_all; then
-        nds_configurator_prompt_errors
-        nds_configurator_validate_all || exit 11
+    if ! nds_cfg_validate_all; then
+        nds_cfg_prompt_errors
+        nds_cfg_validate_all || exit 11
     fi
 
-    nds_configurator_menu_or_skip || exit 12
+    nds_cfg_menu_or_skip || exit 12
 
     # Auth already done in the early gate — export flake env + disko detect only
     nds_flake_install_prepare_and_verify || exit 11
     nds_flake_install_confirm || exit 13
 
     local install_mode
-    install_mode="$(nds_configurator_config_get INSTALL_MODE)"
+    install_mode="$(nds_cfg_get INSTALL_MODE)"
     install_mode="${install_mode:-local}"
 
     nds_ui_section_header "NixOS installation"

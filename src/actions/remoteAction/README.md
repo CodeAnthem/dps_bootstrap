@@ -20,12 +20,9 @@ Extra menu fields after the base disk + flake URL prompts:
 
 ```bash
 remote_action_config() {
-    PRESET_CONTEXT="myLeaf"
-    nds_configurator_var_declare MY_FIELD \
-        display="Example field" \
-        input=string \
-        default="value"
-    PRESET_CONTEXT=""
+    # Add extra keys via the settings API, then reopen the menu:
+    nds_cfg_set MY_FIELD "value"
+    # Or prompt: nds_cfg_ask_string MY_FIELD "Example field" "value" false
 }
 ```
 

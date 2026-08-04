@@ -9,8 +9,8 @@
 _git_host_label_from_cfg() {
     local name=""
 
-    if declare -f nds_configurator_config_get &>/dev/null; then
-        name="$(nds_configurator_config_get FLAKE_HOST 2>/dev/null || true)"
+    if declare -f nds_cfg_get &>/dev/null; then
+        name="$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)"
     fi
     [[ -z "$name" ]] && name="$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)"
     [[ -z "$name" ]] && name="$(nds_cfg_get NETWORK_HOSTNAME 2>/dev/null || true)"
@@ -23,8 +23,8 @@ _git_host_label_from_cfg() {
 # - <String> slug or "unknown"
 nds_git_cfg_owner_slug() {
     local url=""
-    if declare -f nds_configurator_config_get &>/dev/null; then
-        url="$(nds_configurator_config_get FLAKE_REPO_URL 2>/dev/null || true)"
+    if declare -f nds_cfg_get &>/dev/null; then
+        url="$(nds_cfg_get FLAKE_REPO_URL 2>/dev/null || true)"
     fi
     [[ -z "$url" ]] && url="$(nds_cfg_get FLAKE_REPO_URL 2>/dev/null || true)"
     nds_git_owner_slug "$url"

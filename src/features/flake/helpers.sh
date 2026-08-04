@@ -8,7 +8,7 @@
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_SCAFFOLD_OVERWRITE_SKIP
 
-# Description: Export NDS_FLAKE_* env vars from the configurator answers so the
+# Description: Export NDS_FLAKE_* env vars from settings answers so the
 # install pipeline (nds_nixos_install_flake) can read them. Also mirrors the
 # chosen host into NETWORK_HOSTNAME. Pass a source ("remote"|"local") to override
 # FLAKE_SOURCE — remoteAction always uses "remote".
@@ -18,26 +18,26 @@ nds_flake_prepare() {
     local source="${1:-}"
 
     local host repo_url local_path install_path host_dir hw_placement disk_strategy install_mode target_ip
-    host=$(nds_configurator_config_get "FLAKE_HOST")
-    repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
-    local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
+    host=$(nds_cfg_get "FLAKE_HOST")
+    repo_url=$(nds_cfg_get "FLAKE_REPO_URL")
+    local_path=$(nds_cfg_get "FLAKE_LOCAL_PATH")
 
     # Derive source from whichever location field is populated (robust to env
     # overrides and the auto-detecting single-location prompt).
     if [[ -z "$source" || "$source" == "none" ]]; then
         if [[ -n "$repo_url" ]]; then source="remote"
         elif [[ -n "$local_path" ]]; then source="local"
-        else source="$(nds_configurator_config_get "FLAKE_SOURCE")"; fi
+        else source="$(nds_cfg_get "FLAKE_SOURCE")"; fi
         [[ -z "$source" ]] && source="remote"
     fi
-    install_path=$(nds_configurator_config_get "FLAKE_INSTALL_PATH")
-    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
-    hw_placement=$(nds_configurator_config_get "FLAKE_HARDWARE_PLACEMENT")
-    disk_strategy=$(nds_config_get "disk" "DISK_STRATEGY")
-    install_mode=$(nds_configurator_config_get "INSTALL_MODE")
-    target_ip=$(nds_configurator_config_get "REMOTE_TARGET_IP")
+    install_path=$(nds_cfg_get "FLAKE_INSTALL_PATH")
+    host_dir=$(nds_cfg_get "FLAKE_HOST_DIR")
+    hw_placement=$(nds_cfg_get "FLAKE_HARDWARE_PLACEMENT")
+    disk_strategy=$(nds_cfg_get "DISK_STRATEGY")
+    install_mode=$(nds_cfg_get "INSTALL_MODE")
+    target_ip=$(nds_cfg_get "REMOTE_TARGET_IP")
 
-    nds_configurator_config_set "NETWORK_HOSTNAME" "$host"
+    nds_cfg_set "NETWORK_HOSTNAME" "$host"
     export NDS_FLAKE_HOST="$host"
     export NDS_FLAKE_SOURCE="$source"
     export NDS_FLAKE_REPO_URL="$repo_url"
@@ -58,11 +58,11 @@ nds_flake_prepare() {
 # disko config is found or the source is unavailable.
 nds_flake_detect_disko() {
     local host host_dir local_path repo_url probe_root
-    host=$(nds_configurator_config_get "FLAKE_HOST")
-    host_dir=$(nds_configurator_config_get "FLAKE_HOST_DIR")
+    host=$(nds_cfg_get "FLAKE_HOST")
+    host_dir=$(nds_cfg_get "FLAKE_HOST_DIR")
     host_dir="${host_dir:-hosts/x86_64-linux}"
-    local_path=$(nds_configurator_config_get "FLAKE_LOCAL_PATH")
-    repo_url=$(nds_configurator_config_get "FLAKE_REPO_URL")
+    local_path=$(nds_cfg_get "FLAKE_LOCAL_PATH")
+    repo_url=$(nds_cfg_get "FLAKE_REPO_URL")
 
     if [[ -n "$local_path" ]]; then
         [[ -d "$local_path" ]] && nds_preflight_apply_disko_strategy "$local_path" "$host" "$host_dir"
@@ -159,14 +159,14 @@ _flake_scaffold_host_folder() {
         "${tmpl_dir}/host-opts.nix.tmpl" > "${host_dir}/opts.nix" || return 1
 
     local ip gateway mask prefix interface dns1 dns2 nameservers state_version method
-    ip=$(nds_config_get "network" "NETWORK_IP")
-    gateway=$(nds_config_get "network" "NETWORK_GATEWAY")
-    mask=$(nds_config_get "network" "NETWORK_MASK")
-    method=$(nds_config_get "network" "NETWORK_METHOD")
-    interface=$(nds_config_get "network" "NETWORK_INTERFACE")
+    ip=$(nds_cfg_get "NETWORK_IP")
+    gateway=$(nds_cfg_get "NETWORK_GATEWAY")
+    mask=$(nds_cfg_get "NETWORK_MASK")
+    method=$(nds_cfg_get "NETWORK_METHOD")
+    interface=$(nds_cfg_get "NETWORK_INTERFACE")
     interface="${interface:-eth0}"
-    dns1=$(nds_config_get "network" "NETWORK_DNS_PRIMARY")
-    dns2=$(nds_config_get "network" "NETWORK_DNS_SECONDARY")
+    dns1=$(nds_cfg_get "NETWORK_DNS_PRIMARY")
+    dns2=$(nds_cfg_get "NETWORK_DNS_SECONDARY")
     state_version="24.11"
 
     prefix="24"
@@ -190,12 +190,12 @@ _flake_scaffold_host_folder() {
         "${tmpl_dir}/host-configuration.nix.tmpl" > "${host_dir}/configuration.nix" || return 1
 
     local disk disk_by_id fs_type swap_mib encryption enc_bool
-    disk=$(nds_config_get "disk" "DISK_TARGET")
-    fs_type=$(nds_config_get "disk" "DISK_FS_TYPE")
+    disk=$(nds_cfg_get "DISK_TARGET")
+    fs_type=$(nds_cfg_get "DISK_FS_TYPE")
     fs_type="${fs_type:-ext4}"
-    swap_mib=$(nds_config_get "disk" "DISK_SWAP_SIZE_MIB")
+    swap_mib=$(nds_cfg_get "DISK_SWAP_SIZE_MIB")
     swap_mib="${swap_mib:-0}"
-    encryption=$(nds_config_get "encryption" "ENCRYPTION")
+    encryption=$(nds_cfg_get "ENCRYPTION")
     enc_bool="false"
     [[ "$encryption" == "true" ]] && enc_bool="true"
     disk_by_id="$(_flake_disk_by_id "$disk")"
@@ -249,7 +249,7 @@ nds_flake_scaffold_interactive() {
         local first_host
         first_host="${existing%%|*}"
         nds_cfg_ask_choice FLAKE_HOST "Existing host" "$existing" "" "$first_host"
-        nds_configurator_config_set "NETWORK_HOSTNAME" "$(nds_cfg_get FLAKE_HOST)"
+        nds_cfg_set "NETWORK_HOSTNAME" "$(nds_cfg_get FLAKE_HOST)"
         NDS_FLAKE_HOST="$(nds_cfg_get FLAKE_HOST)"
         export NDS_FLAKE_HOST
         return 0
@@ -262,7 +262,7 @@ nds_flake_scaffold_interactive() {
     local host role
     host="$(nds_cfg_get FLAKE_HOST)"
     role="$(nds_cfg_get SCAFFOLD_ROLE)"
-    nds_configurator_config_set "NETWORK_HOSTNAME" "$host"
+    nds_cfg_set "NETWORK_HOSTNAME" "$host"
     export NDS_FLAKE_HOST="$host"
 
     _flake_scaffold_host_folder "$flake_root" "$host" "$role" "$system" || return 1
@@ -270,8 +270,8 @@ nds_flake_scaffold_interactive() {
     # Stage the updated checkout locally so the new host files are installed.
     export NDS_FLAKE_SOURCE="local"
     export NDS_FLAKE_LOCAL_PATH="$flake_root"
-    nds_configurator_config_set "FLAKE_SOURCE" "local"
-    nds_configurator_config_set "FLAKE_LOCAL_PATH" "$flake_root"
+    nds_cfg_set "FLAKE_SOURCE" "local"
+    nds_cfg_set "FLAKE_LOCAL_PATH" "$flake_root"
 
     log "New host '${host}' scaffolded — review and commit ${flake_root}/hosts/${system}/${host}"
     return 0

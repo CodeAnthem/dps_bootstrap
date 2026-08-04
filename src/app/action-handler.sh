@@ -67,7 +67,7 @@ _app_action_configure_presets() {
         done < <(action_presets)
         nds_preset_enable_bundle "$SCRIPT_DIR" "${_bundled[@]}" || return 1
     else
-        nds_configurator_reset_for_action "$SCRIPT_DIR" || return 1
+        nds_cfg_reset_for_action "$SCRIPT_DIR" || return 1
     fi
 
     if declare -f action_config &>/dev/null; then
@@ -93,7 +93,7 @@ _app_action_configure_presets() {
         action_presets_extend || return 1
     fi
 
-    nds_config_seed_defaults
+    nds_cfg_seed_defaults
     return 0
 }
 

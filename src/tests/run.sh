@@ -22,13 +22,13 @@ source "${SCRIPT_DIR}/standalone/git/load.sh"
 source "${SCRIPT_DIR}/standalone/install/load.sh"
 nds_standalone_git_load
 nds_standalone_install_load
-nds_configurator_init
+nds_cfg_init
 nds_framework_load_remaining
 
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/framework.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/configurator.sh"
+source "${TEST_ROOT}/suites/cfg.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/inputs.sh"
 # shellcheck disable=SC1091
@@ -62,7 +62,7 @@ nds_run_self_tests() {
 
     run_named_suite "settingsManager" suite_settings_manager
     run_named_suite "skip" suite_skip
-    run_named_suite "configurator" suite_configurator
+    run_named_suite "cfg" suite_cfg
     run_named_suite "presets" suite_presets
     run_named_suite "validators" suite_validators
     run_named_suite "nixWriter" suite_nixwriter

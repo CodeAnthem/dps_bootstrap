@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Configurator smoke tests (read-only)
+# NDS - Settings cfg smoke tests (read-only)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-31
+# # Date:          Created: 2026-06-29 | Modified: 2026-08-04
 # ==================================================================================================
 
-suite_configurator() {
+suite_cfg() {
     if [[ ${#PRESET_REGISTRY[@]} -eq 0 ]]; then
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ no presets registered"
@@ -45,11 +45,11 @@ suite_configurator() {
         console "  ✗ network_validate should accept valid hostname"
     fi
 
-    nds_config_snapshot_defaults
+    nds_cfg_snapshot_defaults
     CONFIG_DATA[DISK_TARGET]="/dev/testdisk"
     CONFIG_DATA[REGION_TIMEZONE]="Europe/Test"
     local grouped
-    grouped="$(nds_configurator_config_export_grouped)"
+    grouped="$(nds_cfg_export_grouped)"
     if [[ "$(grep -c '^export ' <<<"$grouped")" -ge 3 ]] \
        && grep -q 'NDS_REGION_TIMEZONE="Europe/Test"' <<<"$grouped"; then
         TEST_PASSED=$((TEST_PASSED + 1))
@@ -89,7 +89,7 @@ suite_configurator() {
     CONFIG_DATA[FLAKE_HOST]="control-toolkit"
     CONFIG_DATA[PLATFORM_RUN_ON_VM]="true"
     CONFIG_DATA[PLATFORM_VM_TYPE]="vmware"
-    grouped="$(nds_configurator_config_export_grouped)"
+    grouped="$(nds_cfg_export_grouped)"
     if awk '/^# This machine only/,/^# Menu control/' <<<"$grouped" | grep -q 'NDS_PLATFORM_RUN_ON_VM' \
        && awk '/^# This machine only/,/^# Menu control/' <<<"$grouped" | grep -q 'NDS_PLATFORM_VM_TYPE' \
        && ! awk '/^# Configuration — portable/,/^# This machine only/' <<<"$grouped" | grep -q 'NDS_PLATFORM_'; then
@@ -103,13 +103,13 @@ suite_configurator() {
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
     nds_preset_load_file "${SCRIPT_DIR}/framework/presets/installFlake.sh" || return 0
-    nds_configurator_preset_enable installFlake
+    nds_cfg_preset_enable installFlake
     installFlake_defaults
-    nds_config_snapshot_defaults
+    nds_cfg_snapshot_defaults
     export NDS_FLAKE_REPO_URL="git@github.com:org/flake.git"
     export NDS_INSTALL_MODE="remote"
     nds_cfg_apply_env_all
-    grouped="$(nds_configurator_config_export_grouped)"
+    grouped="$(nds_cfg_export_grouped)"
     if grep -q 'NDS_FLAKE_REPO_URL="git@github.com:org/flake.git"' <<<"$grouped" \
        && grep -q 'NDS_INSTALL_MODE="remote"' <<<"$grouped"; then
         TEST_PASSED=$((TEST_PASSED + 1))
@@ -122,9 +122,9 @@ suite_configurator() {
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
     nds_preset_load_file "${SCRIPT_DIR}/framework/presets/installFlake.sh" || return 0
-    nds_configurator_preset_enable installFlake
+    nds_cfg_preset_enable installFlake
     installFlake_defaults
-    nds_config_snapshot_defaults
+    nds_cfg_snapshot_defaults
     unset NDS_FLAKE_REPO_URL NDS_FLAKE_LOCAL_PATH NDS_FLAKE_SOURCE
     export NDS_FLAKE_LOCATION="git@github.com:org/via-location.git"
     nds_cfg_apply_env_all
@@ -138,7 +138,7 @@ suite_configurator() {
 
     CONFIG_DATA[NETWORK_HOSTNAME]="menu-skip-host"
     export NDS_SKIP_MENU=true NDS_AUTO_CONFIRM=true
-    if nds_configurator_menu_or_skip network </dev/null 2>/dev/null; then
+    if nds_cfg_menu_or_skip network </dev/null 2>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ menu_or_skip: skips when env flags set and preset valid"
     else
@@ -191,11 +191,11 @@ suite_configurator() {
     CONFIG_DEFAULTS=()
     CONFIG_DATA[ENCRYPTION_ENABLED]="true"
     CONFIG_DATA[DISK_TARGET]="/dev/sda"
-    nds_config_snapshot_defaults
+    nds_cfg_snapshot_defaults
     CONFIG_DATA[ENCRYPTION_ENABLED]="false"
     CONFIG_DATA[FLAKE_HOST]="control-toolkit"
     local modified
-    modified="$(nds_configurator_config_export_modified)"
+    modified="$(nds_cfg_export_modified)"
     if grep -q 'NDS_ENCRYPTION_ENABLED="false"' <<<"$modified" \
        && grep -q 'NDS_FLAKE_HOST="control-toolkit"' <<<"$modified" \
        && ! grep -q 'declare -A' <<<"$modified"; then

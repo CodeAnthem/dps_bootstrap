@@ -9,7 +9,7 @@
 #                hostKeys option (NixOS wires it into the initrd secrets).
 # ==================================================================================================
 
-# Auto-mode: reads from the disk configurator answers.
+# Auto-mode: reads from disk settings.
 # Emits initrd SSH server + systemd initrd networking so the user can SSH
 # into the initrd and unlock LUKS with `systemctl default`.
 _nixcfg_remoteUnlock_generate() {

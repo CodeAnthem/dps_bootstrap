@@ -33,7 +33,7 @@ suite_settings_manager() {
         console "  ✗ catalog: installFlake/remoteAction should be disabled"
     fi
 
-    nds_configurator_preset_disable "neverRegistered"
+    nds_cfg_preset_disable "neverRegistered"
     if [[ -z "${PRESET_REGISTRY[neverRegistered]:-}" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ disable: no ghost entry for unknown preset"
@@ -42,7 +42,7 @@ suite_settings_manager() {
         console "  ✗ disable: ghost entry for unknown preset"
     fi
 
-    nds_configurator_preset_disable disk
+    nds_cfg_preset_disable disk
     if [[ "${PRESET_REGISTRY[disk]:-}" == "disabled" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ disable: catalog preset can be disabled"
@@ -50,7 +50,7 @@ suite_settings_manager() {
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ disable: catalog preset should disable"
     fi
-    nds_configurator_preset_enable disk
+    nds_cfg_preset_enable disk
 
     tmpdir=$(mktemp -d)
     mkdir -p "${tmpdir}/.nds/presets"
