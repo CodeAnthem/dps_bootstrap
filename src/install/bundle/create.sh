@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install bundle archive creation
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-06
+# Date:          Created: 2026-06-30 | Modified: 2026-08-04
 # ==================================================================================================
 
 nds_install_bundle_create() {
@@ -71,5 +71,3 @@ nds_install_bundle_create() {
     nds_install_log "install backup bundle: $bundle_path"
     return 0
 }
-
-nds_secrets_create_bundle() { nds_install_bundle_create "$@"; }

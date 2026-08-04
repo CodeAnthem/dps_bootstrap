@@ -66,17 +66,6 @@ nds_cfg_true() {
     nds_cfg_is "$1" true
 }
 
-nds_cfg_get_env() {
-    local varname="$1"
-    local default="${2:-}"
-    local env_var="NDS_${varname}"
-    if [[ -n "${!env_var:-}" ]]; then
-        echo "${!env_var}"
-    else
-        nds_cfg_get "$varname" "$default"
-    fi
-}
-
 # Full export: every config value. Used for the install backup bundle so a
 # future run can reproduce the machine exactly.
 nds_cfg_export_script() {

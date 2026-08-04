@@ -2,11 +2,11 @@
 # ==================================================================================================
 # NDS - Framework bootstrap loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-27 | Modified: 2026-08-03
+# Date:          Created: 2026-06-27 | Modified: 2026-08-04
 # ==================================================================================================
 
 declare -ga NDS_DEFAULT_PRESET_BUNDLE=(
-    disk encryption region network boot access quick platform security
+    disk encryption region network boot access quick platform
 )
 
 declare -g NDS_FRAMEWORK_REST_LOADED=false

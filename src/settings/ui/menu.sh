@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Configuration menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-05
+# Date:          Created: 2026-07-01 | Modified: 2026-08-04
 # Description:   Category menu — calls per-preset configure/summary/validate (no hook framework)
 # ==================================================================================================
 
@@ -97,18 +97,6 @@ nds_cfg_menu() {
             warn "Invalid selection"
         done
     done
-}
-
-nds_cfg_run() {
-    local presets=("$@")
-    if ! nds_cfg_validate_all "${presets[@]}"; then
-        nds_cfg_prompt_errors "${presets[@]}"
-        if ! nds_cfg_validate_all "${presets[@]}"; then
-            error "Configuration validation failed"
-            return 1
-        fi
-    fi
-    nds_cfg_menu_or_skip "${presets[@]}"
 }
 
 # Description: Skip the category menu when NDS_SKIP_MENU or NDS_AUTO_CONFIRM is set

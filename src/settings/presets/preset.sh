@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Settings manager: preset hooks and injection
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-08-04
 # Description:   Load preset files (builtin + injected), register hooks, enable bundles
 # ==================================================================================================
 
@@ -51,13 +51,6 @@ nds_preset_load_dir() {
     done
     [[ "$loaded" -eq 1 ]] || return 0
     return 0
-}
-
-# Description: Load all builtin preset hook files (register only — enable via bundle).
-nds_cfg_load_presets() {
-    local preset_dir
-    preset_dir="$(nds_preset_dir "$SCRIPT_DIR")"
-    nds_preset_load_dir "$preset_dir"
 }
 
 # Description: Register builtin preset metadata from files without sourcing hooks.
@@ -278,12 +271,4 @@ nds_cfg_validate_all() {
         nds_cfg_preset_validate "$preset" 2>/dev/null || ((errors++))
     done
     return $errors
-}
-
-nds_cfg_preset_validate_one() {
-    nds_cfg_preset_validate "$1"
-}
-
-nds_cfg_preset_validate_all() {
-    nds_cfg_validate_all "$@"
 }

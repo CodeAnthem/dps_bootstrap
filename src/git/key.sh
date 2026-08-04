@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git SSH key management (framework adapters)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-28
+# Date:          Created: 2026-07-05 | Modified: 2026-08-04
 # Description:   NDS-aware paths and session wiring around standalone git key ops
 # ==================================================================================================
 
@@ -180,7 +180,3 @@ nds_git_auth_try_import_path() {
     debug "Loaded SSH key from import path"
     return 0
 }
-
-# Compatibility aliases (deprecated names).
-nds_git_install_deploy_key_to_target() { nds_git_install_key_to_target "$@"; }
-nds_git_auth_try_deploy_key_path() { nds_git_auth_try_import_path; }

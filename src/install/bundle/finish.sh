@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install bundle finish screens
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-07
+# Date:          Created: 2026-06-30 | Modified: 2026-08-04
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_BACKUP_CONFIRM_SKIP
@@ -87,5 +87,3 @@ nds_install_remote_finish() {
 
     return 0
 }
-
-nds_secrets_finish_install() { nds_install_bundle_finish "$@"; }

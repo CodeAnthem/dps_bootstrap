@@ -10,7 +10,6 @@ action_config() {
     nds_cfg_preset_disable region
     nds_cfg_preset_disable network
     nds_cfg_preset_disable boot
-    nds_cfg_preset_disable security
     nds_cfg_preset_disable installFlake
 }
 

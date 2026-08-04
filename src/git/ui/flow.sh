@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard flow (menu state machine)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-08-03
+# Date:          Created: 2026-07-07 | Modified: 2026-08-04
 # Description:   Persist-access + strategy menus; path/gh/generate (no retry)
 # ==================================================================================================
 
@@ -346,9 +346,3 @@ nds_git_auth_wizard_step_closure() {
     nds_git_wizard_route_menu_closure "${failed[@]}"
     return $?
 }
-
-# Compatibility aliases for tests and older callers.
-nds_git_auth_prompt_method() { nds_git_wizard_route_menu "$@"; }
-nds_git_auth_screen_single() { nds_git_wizard_screen_single "$@"; }
-nds_git_auth_screen_closure() { nds_git_wizard_screen_closure "$@"; }
-nds_git_auth_resolve_key_display() { nds_git_wizard_resolve_key_display; }
