@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-04
+# Date:          Created: 2025-10-28 | Modified: 2026-08-04
 # Description:   NixOS Configuration Builder - Registry and Merger
 # Feature:       Priority-based block assembly for NixOS configuration files
 # ==================================================================================================
@@ -97,7 +97,7 @@ nds_nixcfg_write() {
         
         # System state version
         echo "  # === system ==="
-        echo "  system.stateVersion = \"25.05\";"
+        echo "  system.stateVersion = \"25.11\";"
         echo ""
         
         echo "}"

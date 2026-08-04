@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-02
+# Date:          Created: 2026-06-29 | Modified: 2026-08-04
 # Description:   classicConfig builder tests (read-only — writes to temp dir only)
 # ==================================================================================================
 
@@ -18,6 +18,14 @@ _test_reset_encryption_vars() {
     done
 }
 
+# Seed runtime secrets dir so access_auto never falls through missing password.
+_test_seed_admin_password() {
+    local dir="$1"
+    mkdir -p "${dir}/secrets"
+    printf '%s' 'testpass0123456789' > "${dir}/secrets/admin_password.txt"
+    export NDS_RUNTIME_DIR="$dir"
+}
+
 suite_classic_config() {
     local tmp_dir output content
 
@@ -28,6 +36,7 @@ suite_classic_config() {
 
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     CONFIG_DATA[REGION_TIMEZONE]="Europe/Zurich"
     CONFIG_DATA[REGION_LOCALE_MAIN]="en_US.UTF-8"
@@ -43,11 +52,6 @@ suite_classic_config() {
     CONFIG_DATA[BOOT_LOADER]="systemd-boot"
     CONFIG_DATA[BOOT_UEFI_MODE]="true"
 
-    # Access block reads the resolved admin password from the runtime secrets dir.
-    mkdir -p "$tmp_dir/secrets"
-    printf '%s' 'testpass0123456789' > "$tmp_dir/secrets/admin_password.txt"
-    export NDS_RUNTIME_DIR="$tmp_dir"
-
     _test_reset_encryption_vars
     nds_nixcfg_build_classic_auto
     nds_nixcfg_write "$output"
@@ -57,6 +61,7 @@ suite_classic_config() {
     assert_contains "$content" 'Europe/Zurich' "configuration.nix"
     assert_contains "$content" 'testhost' "configuration.nix"
     assert_contains "$content" 'hardware-configuration.nix' "configuration.nix"
+    assert_contains "$content" 'system.stateVersion = "25.11"' "configuration.nix"
     # Plain DHCP (no remote unlock) uses NetworkManager.
     assert_contains "$content" 'networkmanager.enable = true' "configuration.nix"
 
@@ -65,6 +70,7 @@ suite_classic_config() {
     # BIOS + mismatched bootloader: must emit GRUB on the target disk, not systemd-boot
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     CONFIG_DATA[DISK_TARGET]="/dev/sda"
     CONFIG_DATA[BOOT_LOADER]="systemd-boot"
@@ -84,6 +90,7 @@ suite_classic_config() {
     # Password only: no keyFile block (NixOS prompts at boot)
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     _test_reset_encryption_vars
     CONFIG_DATA[ENCRYPTION]="true"
@@ -103,6 +110,7 @@ suite_classic_config() {
     # Key only (raw device): keyFile = device, keyFileSize, keyFileTimeout, no fallback
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     _test_reset_encryption_vars
     CONFIG_DATA[ENCRYPTION]="true"
@@ -129,6 +137,7 @@ suite_classic_config() {
     # Key only (file on filesystem): systemd mount + keyFile on mounted path
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     _test_reset_encryption_vars
     CONFIG_DATA[ENCRYPTION]="true"
@@ -154,6 +163,7 @@ suite_classic_config() {
     # Both (raw device + password): keyFile + fallbackToPassword + short timeout
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     _test_reset_encryption_vars
     CONFIG_DATA[ENCRYPTION]="true"
@@ -177,6 +187,7 @@ suite_classic_config() {
     # Remote unlock: initrd SSH + hostKeys + systemd network
     tmp_dir=$(mktemp -d)
     output="${tmp_dir}/configuration.nix"
+    _test_seed_admin_password "$tmp_dir"
 
     _test_reset_encryption_vars
     CONFIG_DATA[ENCRYPTION]="true"

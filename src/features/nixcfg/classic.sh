@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - nixWriter classic install orchestration
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-08-04
 # Description:   Reads configurator answers and calls pure nixWriter blocks
 # ==================================================================================================
 
@@ -24,8 +24,8 @@ nds_nixcfg_access_auto() {
     admin_password=""
     [[ -f "$pw_file" ]] && admin_password=$(<"$pw_file")
     if [[ -z "$admin_password" ]]; then
-        warn "Admin password file missing — falling back to 'changeme'. Run _install_generate_access_secrets first."
-        admin_password="changeme"
+        error "Admin password file missing at ${pw_file} — run access secret generation first"
+        return 1
     fi
     _nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_pw_auth" "$admin_ssh_key" "$admin_password"
 }
@@ -132,7 +132,7 @@ nds_nixcfg_build_classic_auto() {
     nds_nixcfg_luks_auto
     nds_nixcfg_remoteUnlock_auto
     nds_nixcfg_network_auto
-    nds_nixcfg_access_auto
+    nds_nixcfg_access_auto || return 1
     nds_nixcfg_region_auto
     nds_nixcfg_virtualisation_auto
     return 0
@@ -140,7 +140,7 @@ nds_nixcfg_build_classic_auto() {
 
 # Description: Build and write classic configuration.nix to the runtime config dir.
 nds_nixcfg_write_classic() {
-    nds_nixcfg_build_classic_auto
+    nds_nixcfg_build_classic_auto || return 1
     nds_nixcfg_write "${NDS_RUNTIME_DIR}/config/configuration.nix"
 }
 

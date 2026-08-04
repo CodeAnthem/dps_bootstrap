@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-02
+# Date:          Created: 2025-10-28 | Modified: 2026-08-04
 # Description:   NixOS Config Generation - Access Module
 # Feature:       Admin user, sudo, and SSH configuration for NixOS
 # ==================================================================================================
@@ -11,7 +11,7 @@
 # NIXOS CONFIG GENERATION - Public API
 # ==================================================================================================
 
-# Manual mode: explicit parameters (password required).
+# Manual mode: explicit parameters (password required — no default).
 nds_nixcfg_access() {
     local admin_user="${1:-admin}"
     local sudo_password="${2:-true}"
@@ -19,8 +19,12 @@ nds_nixcfg_access() {
     local ssh_port="${4:-22}"
     local ssh_pw_auth="${5:-true}"
     local admin_ssh_key="${6:-}"
-    local admin_password="${7:-changeme}"
+    local admin_password="${7:-}"
 
+    if [[ -z "$admin_password" ]]; then
+        error "Admin password is required (no default)"
+        return 1
+    fi
     _nixcfg_access_generate "$admin_user" "$sudo_password" "$ssh_enable" "$ssh_port" "$ssh_pw_auth" "$admin_ssh_key" "$admin_password"
 }
 
@@ -36,6 +40,11 @@ _nixcfg_access_generate() {
     local ssh_pw_auth="$5"
     local admin_ssh_key="$6"
     local admin_password="$7"
+
+    if [[ -z "$admin_password" ]]; then
+        error "Admin password is required (no default)"
+        return 1
+    fi
 
     local escaped_pw ssh_pw_nix
     escaped_pw=$(_nixcfg_nix_escape "$admin_password")
