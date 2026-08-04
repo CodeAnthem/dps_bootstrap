@@ -54,7 +54,7 @@ _install_find_luks_uuid() {
             fi
         done
 
-        part=$(_install_disk_part "$disk" 2)
+        part=$(nds_install_disk_part "$disk" 2)
         uuid=$(blkid -s UUID -o value "$part" 2>/dev/null || true)
         if [[ -n "$uuid" ]]; then
             echo "$uuid"

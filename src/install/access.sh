@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# DPS Project - Bootstrap NixOS - A NixOS Deployment System
+# NDS - Access secrets (admin password + runtime secret listing)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-28
-# Description:   Admin user credential generation adapters for NixOS installation
-# Feature:       Auto-generate or collect the admin password, save to runtime secrets
+# Date:          Created: 2026-07-01 | Modified: 2026-08-04
 # ==================================================================================================
 
 # Description: Resolve the admin password and write runtime secrets (NDS adapter).
@@ -23,4 +21,17 @@ _install_generate_access_secrets() {
 
     nds_install_log "Generated admin password (saved to secrets/admin_password.txt)"
     return 0
+}
+
+# Description: List secret files produced during this install run.
+# Returns:
+# - <String> One absolute path per line
+nds_secrets_list_runtime() {
+    local item
+
+    if [[ -d "${NDS_RUNTIME_DIR:-}/secrets" ]]; then
+        for item in "${NDS_RUNTIME_DIR}/secrets"/*; do
+            [[ -f "$item" ]] && echo "$item"
+        done
+    fi
 }

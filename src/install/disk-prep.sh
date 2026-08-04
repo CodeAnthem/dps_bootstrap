@@ -2,8 +2,54 @@
 # ==================================================================================================
 # NDS - Disk preparation (partition, mount, hardware gen)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-28 | Modified: 2026-07-06
+# Date:          Created: 2025-10-28 | Modified: 2026-08-04
 # ==================================================================================================
+
+# Description: Partition adapter — encrypt path uses _install_format_luks from encryption.sh.
+# Arguments:
+# - disk:           <String> Target block device
+# - use_encryption: <Bool> Encrypt root partition
+# - uefi_mode:      <Bool|optional> UEFI layout; auto-detect when empty
+_install_partition_disk() {
+    local disk="$1"
+    local use_encryption="${2:-false}"
+    local uefi_mode="${3:-}"
+
+    if [[ "$use_encryption" == "true" ]]; then
+        nds_install_partition_disk "$disk" "$use_encryption" "$uefi_mode" "_install_format_luks"
+    else
+        nds_install_partition_disk "$disk" "$use_encryption" "$uefi_mode"
+    fi
+}
+
+# Description: Mount root + boot for NixOS installation.
+# Arguments:
+# - use_encryption: <Bool> Mount cryptroot when true
+_install_mount_filesystems() {
+    local use_encryption="${1:-false}"
+
+    log "Mounting filesystems"
+    umount -R /mnt 2>/dev/null || true
+
+    if [[ "$use_encryption" == "true" ]]; then
+        log "Mounting encrypted root"
+        mount /dev/mapper/cryptroot /mnt || return 1
+    else
+        log "Mounting standard root"
+        mount /dev/disk/by-label/nixos /mnt || return 1
+    fi
+
+    log "Mounting boot partition"
+    mkdir -p /mnt/boot || return 1
+    mount /dev/disk/by-label/boot /mnt/boot || return 1
+    mkdir -p /mnt/nix/store
+
+    log "Filesystems mounted successfully"
+    if declare -f nds_install_diag_after_mount &>/dev/null; then
+        nds_install_diag_after_mount
+    fi
+    return 0
+}
 
 # Description: Partition and mount target disk from gathered NDS_CTX_* context.
 # Arguments:
