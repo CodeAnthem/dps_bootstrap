@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - System variables (NDS_* env bridge)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-28 | Modified: 2026-07-31
+# Date:          Created: 2026-07-28 | Modified: 2026-08-04
 # Description:   Map process env NDS_* into settings store; sync derived flake keys
 # ==================================================================================================
 
@@ -63,7 +63,7 @@ nds_cfg_apply_env_all() {
         key="${env_name#NDS_}"
         [[ -n "${!env_name:-}" ]] || continue
         case "$key" in
-            FLAKE|DISK|BOOT|ENCRYPTION|NETWORK|PLATFORM|ACCESS|REGION|SECURITY|QUICK|GIT_METHOD|GIT_KEY_PATH|GIT_KEY_KIND)
+            FLAKE|DISK|BOOT|ENCRYPTION|NETWORK|PLATFORM|ACCESS|REGION|QUICK|GIT_METHOD|GIT_KEY_PATH|GIT_KEY_KIND)
                 continue
                 ;;
         esac

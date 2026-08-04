@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git SSH environment
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-07
+# Date:          Created: 2026-07-05 | Modified: 2026-08-04
 # Description:   Per-repo SSH env for git probes and Nix prefetch (no wrapper, no multi-key SSH)
 # ==================================================================================================
 
@@ -75,15 +75,6 @@ _git_ssh_env() {
     fi
 
     nds_git_ssh_env_bare
-}
-
-# Description: Environment for nix/git fetches (prefetch uses per-url env directly).
-# Arguments:
-# - out: <Array> Nameref to receive VAR=value pairs for env(1)
-nds_git_export_nix_env() {
-    local -n _out=$1
-    _out=()
-    while IFS= read -r line; do _out+=("$line"); done < <(_git_ssh_env)
 }
 
 # Description: Mark git access as verified for this session (closure complete).

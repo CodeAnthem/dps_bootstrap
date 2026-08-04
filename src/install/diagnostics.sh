@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install diagnostics (compact log, separate from nixos-install output)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-29
+# Date:          Created: 2026-07-07 | Modified: 2026-08-04
 # Description:   Structured install state in NDS_INSTALL_DIAG_LOG (not install.log)
 # ==================================================================================================
 
@@ -161,13 +161,3 @@ nds_install_diag_step_failure() {
         done < <(tail -n 40 "$verbose" 2>/dev/null || true)
     fi
 }
-
-# Legacy section helpers — map to snapshot (avoid spam in install.log).
-nds_install_diag_section() { :; }
-nds_install_diag_run() { :; }
-nds_install_diag_lines() { :; }
-nds_install_diag_mounts() { nds_install_diag_snapshot "${1:-mounts}"; }
-nds_install_diag_boot_config() { :; }
-nds_install_diag_boot_artifacts() { :; }
-nds_install_diag_nix_store() { nds_install_diag_snapshot "${1:-nix store}"; }
-nds_install_diag_post_install() { nds_install_diag_snapshot "post-install"; }

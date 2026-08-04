@@ -174,7 +174,7 @@ nds_cfg_export_grouped() {
     if declare -f nds_cfg_export_scoped_block &>/dev/null; then
         nds_cfg_sync_store_to_scoped 2>/dev/null || true
         echo "# Configuration — portable (scoped):"
-        for scope in FLAKE ACCESS REGION SECURITY QUICK ENCRYPTION; do
+        for scope in FLAKE ACCESS REGION QUICK ENCRYPTION; do
             nds_cfg_export_scoped_block "$scope"
             echo ""
         done

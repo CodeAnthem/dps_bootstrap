@@ -18,8 +18,8 @@ suite_git() {
     fi
 
     NDS_GIT_METHOD=()
-    nds_git_access_set_method "https://github.com/CodeAnthem/dps_swarm.git" "account"
-    if [[ "$(nds_git_access_get_method "git@github.com:CodeAnthem/dps_swarm.git")" == "account" ]]; then
+    nds_git_access_set method "https://github.com/CodeAnthem/dps_swarm.git" "account"
+    if [[ "$(nds_git_access_get method "git@github.com:CodeAnthem/dps_swarm.git")" == "account" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ access map: same key for https and ssh forms"
     else

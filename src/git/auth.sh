@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git SSH auth gate (orchestrator)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-08-03
+# Date:          Created: 2026-07-05 | Modified: 2026-08-04
 # Description:   Access gates wiring git tools + auth wizard UI
 # ==================================================================================================
 
@@ -12,10 +12,6 @@ declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_GH_CLEAR_S
 nds_git_access_cleanup_success() {
     nds_git_gh_session_cleanup 2>/dev/null || true
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
-}
-
-nds_git_access_cleanup() {
-    nds_git_access_cleanup_success
 }
 
 # Description: On script stop — if gh is still logged in on this ISO, ask to clear it.
@@ -58,15 +54,6 @@ hook_exit_cleanup() {
     nds_ui_b ""
     nds_git_ui_ask_clear_gh_session && nds_git_gh_session_cleanup || true
     return 0
-}
-
-# Description: Public entry — ensure SSH access to a git URL (and optional flags).
-# Private repos cannot be skipped; maps / discovery / wizard until probe succeeds.
-# Arguments:
-# - url: <String> Git URL
-nds_git_access_gate() {
-    local url="$1"
-    nds_git_ensure_access "$url"
 }
 
 # Description: Probe one closure URL; 0 when accessible.
@@ -211,8 +198,8 @@ nds_git_ensure_access() {
     if _git_auth_try_existing_access "$url"; then
         success "Git access confirmed for ${owner}/${repo} (existing key)."
         nds_git_access_mark_verified
-        if declare -f nds_git_access_set_method &>/dev/null; then
-            nds_git_access_set_method "$url" "import"
+        if declare -f nds_git_access_set &>/dev/null; then
+            nds_git_access_set method "$url" "import"
         fi
         return 0
     fi
@@ -235,10 +222,10 @@ nds_git_ensure_access() {
         if nds_git_probe_access "$url"; then
             success "Git access confirmed for ${owner}/${repo}."
             nds_git_access_mark_verified
-            if declare -f nds_git_access_set_method &>/dev/null; then
-                nds_git_access_set_method "$url" "$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
-                [[ -z "$(nds_git_access_get_method "$url")" ]] && \
-                    nds_git_access_set_method "$url" "$(nds_cfg_get GIT_SSH_KEY_TYPE)"
+            if declare -f nds_git_access_set &>/dev/null; then
+                nds_git_access_set method "$url" "$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
+                [[ -z "$(nds_git_access_get method "$url")" ]] && \
+                    nds_git_access_set method "$url" "$(nds_cfg_get GIT_SSH_KEY_TYPE)"
             fi
             return 0
         fi

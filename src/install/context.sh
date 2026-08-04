@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install context (single config read per pipeline)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-28
+# Date:          Created: 2026-07-06 | Modified: 2026-08-04
 # Description:   Normalize CONFIG_DATA into NDS_CTX_* for install modules
 # ==================================================================================================
 
@@ -72,12 +72,6 @@ _install_gather_flake_context() {
 # Description: Ensure base install context is populated.
 nds_install_ctx_ensure() {
     [[ -n "${NDS_CTX_DISK+x}" ]] || _install_gather_context
-}
-
-# Description: Ensure flake install context is populated.
-nds_install_ctx_ensure_flake() {
-    [[ -n "${NDS_CTX_FLAKE_REPO_URL+x}" || -n "${NDS_CTX_FLAKE_LOCAL_PATH+x}" ]] \
-        || _install_gather_flake_context
 }
 
 # Description: Read one NDS_CTX_* field by short name (DISK → NDS_CTX_DISK).

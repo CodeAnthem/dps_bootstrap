@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Flake git closure access
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-08-03
+# Date:          Created: 2026-07-05 | Modified: 2026-08-04
 # Description:   Scan flake.lock / flake.nix and verify SSH access to every git input
 # ==================================================================================================
 
@@ -194,34 +194,4 @@ _flake_collect_git_remote_urls_from_root() {
     warn "Could not clone flake repository — only checking the root repository."
     nds_install_log "git: flake probe clone failed for closure scan"
     [[ -n "$root_url" ]] && _flake_add_git_url "$root_url"
-}
-
-# Description: Probe SSH access to every git remote referenced by a flake closure.
-nds_git_probe_flake_closure() {
-    local flake_root="$1" root_url="${2:-}"
-    local -a urls=() failed=()
-    local url
-
-    [[ -d "$flake_root" ]] || { error "Flake root not found: $flake_root"; return 1; }
-
-    mapfile -t urls < <(_flake_collect_git_remote_urls "$flake_root" "$root_url")
-    [[ ${#urls[@]} -gt 0 ]] || return 0
-
-    for url in "${urls[@]}"; do
-        if nds_git_probe_access "$url"; then
-            debug "Git access OK: $url"
-        else
-            failed+=("$url")
-        fi
-    done
-
-    [[ ${#failed[@]} -eq 0 ]]
-}
-
-# Compatibility alias — callers should use nds_git_clone_flake_probe.
-nds_git_fetch_flake_lock() {
-    local root_url="$1" lock_dest="$2"
-    nds_git_clone_flake_probe "$root_url" || return 1
-    [[ -f "${NDS_FLAKE_PROBE_REPO}/flake.lock" ]] || return 1
-    cp "${NDS_FLAKE_PROBE_REPO}/flake.lock" "$lock_dest"
 }

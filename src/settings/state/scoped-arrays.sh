@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Scoped configuration arrays (public contract)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-31 | Modified: 2026-07-31
+# Date:          Created: 2026-07-31 | Modified: 2026-08-04
 # Description:   declare -A NDS_FLAKE/DISK/... bridge to flat CONFIG_DATA; pasteable export
 # ==================================================================================================
 
@@ -15,7 +15,6 @@ declare -gA NDS_NETWORK=()
 declare -gA NDS_PLATFORM=()
 declare -gA NDS_ACCESS=()
 declare -gA NDS_REGION=()
-declare -gA NDS_SECURITY=()
 declare -gA NDS_QUICK=()
 
 # Git multi-repo maps (key = normalized SSH URL)
@@ -59,9 +58,6 @@ nds_cfg_scope_for_key() {
         REGION_*)
             printf 'REGION\t%s\n' "${key#REGION_}"
             ;;
-        SECURITY_*)
-            printf 'SECURITY\t%s\n' "${key#SECURITY_}"
-            ;;
         QUICK_*)
             printf 'QUICK\t%s\n' "${key#QUICK_}"
             ;;
@@ -94,7 +90,6 @@ nds_cfg_flat_key_for_scope() {
         PLATFORM) printf 'PLATFORM_%s\n' "$field" ;;
         ACCESS) printf 'ACCESS_%s\n' "$field" ;;
         REGION) printf 'REGION_%s\n' "$field" ;;
-        SECURITY) printf 'SECURITY_%s\n' "$field" ;;
         QUICK) printf 'QUICK_%s\n' "$field" ;;
         *) return 1 ;;
     esac
@@ -112,7 +107,6 @@ _nds_cfg_scope_array_nameref() {
         PLATFORM) _arr_ref=NDS_PLATFORM ;;
         ACCESS) _arr_ref=NDS_ACCESS ;;
         REGION) _arr_ref=NDS_REGION ;;
-        SECURITY) _arr_ref=NDS_SECURITY ;;
         QUICK) _arr_ref=NDS_QUICK ;;
         *) return 1 ;;
     esac
@@ -131,7 +125,6 @@ nds_cfg_sync_store_to_scoped() {
     NDS_PLATFORM=()
     NDS_ACCESS=()
     NDS_REGION=()
-    NDS_SECURITY=()
     NDS_QUICK=()
 
     for key in "${!CONFIG_DATA[@]}"; do
@@ -147,7 +140,7 @@ nds_cfg_sync_store_to_scoped() {
 # Description: Push scoped NDS_* array fields into CONFIG_DATA (scoped wins over empty).
 nds_cfg_sync_scoped_to_store() {
     local scope field flat arr_name
-    local -a scopes=(FLAKE DISK BOOT ENCRYPTION NETWORK PLATFORM ACCESS REGION SECURITY QUICK)
+    local -a scopes=(FLAKE DISK BOOT ENCRYPTION NETWORK PLATFORM ACCESS REGION QUICK)
 
     for scope in "${scopes[@]}"; do
         _nds_cfg_scope_array_nameref "$scope" arr_name || continue
@@ -241,7 +234,7 @@ nds_cfg_dump_scoped_file() {
         echo "# NDS scoped config — sourced after elevate / via NDS_SCOPED_CONFIG_FILE"
         nds_cfg_sync_store_to_scoped
         local scope
-        for scope in FLAKE DISK BOOT ENCRYPTION NETWORK PLATFORM ACCESS REGION SECURITY QUICK; do
+        for scope in FLAKE DISK BOOT ENCRYPTION NETWORK PLATFORM ACCESS REGION QUICK; do
             nds_cfg_export_scoped_block "$scope"
             echo ""
         done

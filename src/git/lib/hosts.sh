@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git host helpers (standalone)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-28
+# Date:          Created: 2026-07-07 | Modified: 2026-08-04
 # Description:   Host detection and registration URLs (argument-only)
 # ==================================================================================================
 
@@ -73,25 +73,6 @@ nds_git_deploy_key_register_url() {
             printf 'https://%s/%s/%s (deploy keys in repository settings)\n' "$host" "$owner" "$repo"
             ;;
     esac
-}
-
-# Description: Primary git host from the first parseable URL.
-# Arguments:
-# - urls: <String...> Git remote URLs
-# Returns:
-# - <String> host name (stdout), empty when unknown
-nds_git_primary_host_from_urls() {
-    local url ssh_url parsed host owner repo
-    for url in "$@"; do
-        [[ -n "$url" ]] || continue
-        ssh_url=$(_git_ssh_url "$url")
-        if parsed=$(_git_parse "$ssh_url"); then
-            IFS=$'\t' read -r host owner repo <<< "$parsed"
-            printf '%s\n' "$host"
-            return 0
-        fi
-    done
-    printf '\n'
 }
 
 # Description: Official GitHub SSH host key lines (docs.github.com fingerprints).
