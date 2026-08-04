@@ -120,5 +120,5 @@ nds_bootstrap_load_libs() {
     nds_lifecycle_load_core "$script_dir" || return 1
     nds_lifecycle_load_ui "$script_dir" || return 1
     nds_lifecycle_load_actions "$script_dir" || return 1
-    nds_import_file "${script_dir}/framework/bootstrap/load.sh" || return 1
+    nds_import_file "${script_dir}/app/bootstrap.sh" || return 1
 }

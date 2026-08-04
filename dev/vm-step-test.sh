@@ -21,15 +21,15 @@ SCRIPT_DIR="${ROOT}/src"
 export SCRIPT_DIR
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/shared/core/import.sh"
+source "${SCRIPT_DIR}/core/import.sh"
 nds_bootstrap_load_libs "$SCRIPT_DIR" || {
     echo "Failed to load NDS libs" >&2
     exit 1
 }
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/standalone/git/load.sh"
+source "${SCRIPT_DIR}/git/lib/load.sh"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/standalone/install/load.sh"
+source "${SCRIPT_DIR}/install/lib/load.sh"
 nds_standalone_git_load
 nds_standalone_install_load
 nds_framework_load_remaining || {

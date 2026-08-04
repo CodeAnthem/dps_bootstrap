@@ -7,7 +7,7 @@
 
 nds_git_github_load() {
     local github_dir="${1:?github dir}"
-    # Host URL helpers live in standalone/git/hosts.sh (loaded by nds_git_tools_load).
+    # Host URL helpers live in git/lib/hosts.sh (loaded by nds_git_tools_load).
     nds_import_file "${github_dir}/repos.sh" || return 1
     nds_import_file "${github_dir}/gh.sh" || return 1
     nds_import_file "${github_dir}/register.sh" || return 1

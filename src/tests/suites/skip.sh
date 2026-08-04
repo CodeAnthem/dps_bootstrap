@@ -80,18 +80,18 @@ suite_skip() {
         && declare -f nds_install_ctx_get &>/dev/null \
         && declare -f nds_cfg_apply_env_all &>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ module boundaries: standalone/framework/system-vars helpers loaded"
+        console "  ✓ module boundaries: validators/settings helpers loaded"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ module boundaries: expected helpers missing"
     fi
 
-    # Fresh process mimics main.sh: lifecycle only — no pre-sourced standalone/*.
+    # Fresh process mimics main.sh: lifecycle only — no pre-sourced git/lib|install/lib.
     # Catches loaders that call nds_standalone_*_load without importing load.sh.
     local prepare_out=""
     if prepare_out=$(
         env SCRIPT_DIR="$SCRIPT_DIR" bash -euo pipefail -c '
-            source "${SCRIPT_DIR}/shared/core/import.sh"
+            source "${SCRIPT_DIR}/core/import.sh"
             nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
             nds_framework_prepare_action_runtime || exit 1
             declare -f nds_standalone_git_load >/dev/null

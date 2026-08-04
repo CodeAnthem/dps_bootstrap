@@ -1,4 +1,4 @@
-# src/standalone/git
+# src/git/lib
 
 Argument-only git helpers. No `CONFIG_DATA`, no `nds_cfg_*`, no NDS UI.
 
@@ -8,4 +8,4 @@ Argument-only git helpers. No `CONFIG_DATA`, no `nds_cfg_*`, no NDS UI.
 | `hosts.sh` | Host detection, register URLs, GitHub host keys |
 | `probe.sh` | Public probe, bare/key SSH env, clone with explicit key |
 
-Framework code lives in `src/framework/git/` and may wrap these with settings/UI.
+Framework code lives in `src/git/` and may wrap these with settings/UI.

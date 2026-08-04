@@ -1,4 +1,4 @@
-# src/shared/ui
+# src/ui
 
 Console primitives only — no action logic, no confirm screens.
 

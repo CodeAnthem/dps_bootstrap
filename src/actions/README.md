@@ -33,5 +33,5 @@ Each subdirectory is one operator-facing flow (`setup.sh`).
 
 ## Flake naming
 
-- `nds_flake_prepare`, `nds_flake_detect_disko`, … — `src/features/flake/helpers.sh`
-- `nds_flake_install_prepare_and_verify`, `nds_flake_install_confirm` — `src/features/install/flake-pipeline.sh`
+- `nds_flake_prepare`, `nds_flake_detect_disko`, … — `src/install/flake/helpers.sh`
+- `nds_flake_install_prepare_and_verify`, `nds_flake_install_confirm` — `src/install/flake-pipeline.sh`

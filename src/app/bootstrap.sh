@@ -16,10 +16,10 @@ declare -g NDS_FRAMEWORK_SETTINGS_LOADED=false
 nds_framework_load_settings_manager() {
     [[ "${NDS_FRAMEWORK_SETTINGS_LOADED}" == "true" ]] && return 0
 
-    nds_import_file "${SCRIPT_DIR}/framework/settings-manager/load.sh" || return 1
+    nds_import_file "${SCRIPT_DIR}/settings/load.sh" || return 1
     nds_settings_manager_load \
-        "${SCRIPT_DIR}/framework/settings-manager" \
-        "${SCRIPT_DIR}/standalone/validators" || return 1
+        "${SCRIPT_DIR}/settings" \
+        "${SCRIPT_DIR}/validators" || return 1
 
     NDS_FRAMEWORK_SETTINGS_LOADED=true
     return 0
@@ -59,14 +59,14 @@ nds_framework_load_remaining() {
 
     debug "Loading remaining framework modules..."
 
-    nds_import_file "${SCRIPT_DIR}/framework/git/load.sh" || return 1
-    nds_git_tools_load "${SCRIPT_DIR}/framework/git" || {
+    nds_import_file "${SCRIPT_DIR}/git/load.sh" || return 1
+    nds_git_tools_load "${SCRIPT_DIR}/git" || {
         fatal "Failed to load git tools"
         return 1
     }
 
-    nds_import_file "${SCRIPT_DIR}/features/install/load.sh" || return 1
-    nds_install_load "${SCRIPT_DIR}/features/install" || {
+    nds_import_file "${SCRIPT_DIR}/install/load.sh" || return 1
+    nds_install_load "${SCRIPT_DIR}/install" || {
         fatal "Failed to load install modules"
         return 1
     }
@@ -75,14 +75,14 @@ nds_framework_load_remaining() {
         nds_install_logs_init || true
     fi
 
-    nds_import_file "${SCRIPT_DIR}/features/flake/load.sh" || return 1
-    nds_flake_tools_load "${SCRIPT_DIR}/features/flake" || {
+    nds_import_file "${SCRIPT_DIR}/install/flake/load.sh" || return 1
+    nds_flake_tools_load "${SCRIPT_DIR}/install/flake" || {
         fatal "Failed to load flake tools"
         return 1
     }
 
-    nds_import_file "${SCRIPT_DIR}/features/nixcfg/load.sh" || return 1
-    nds_nixwriter_load "${SCRIPT_DIR}/features/nixcfg" || {
+    nds_import_file "${SCRIPT_DIR}/install/nixcfg/load.sh" || return 1
+    nds_nixwriter_load "${SCRIPT_DIR}/install/nixcfg" || {
         fatal "Failed to load nixWriter"
         return 1
     }
@@ -97,8 +97,8 @@ nds_framework_load_remaining() {
 # at the action picker. Safe to call repeatedly.
 nds_framework_warmup_git_gh() {
     if [[ "${NDS_GIT_TOOLS_LOADED:-false}" != "true" ]]; then
-        nds_import_file "${SCRIPT_DIR}/framework/git/load.sh" || return 0
-        nds_git_tools_load "${SCRIPT_DIR}/framework/git" || return 0
+        nds_import_file "${SCRIPT_DIR}/git/load.sh" || return 0
+        nds_git_tools_load "${SCRIPT_DIR}/git" || return 0
     fi
     if declare -f nds_git_gh_ensure_prefetch &>/dev/null; then
         nds_git_gh_ensure_prefetch || true

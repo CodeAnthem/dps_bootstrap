@@ -1,4 +1,4 @@
-# src/framework/system-vars
+# src/settings/system-vars
 
 Owns the `NDS_*` process-environment bridge into the settings store.
 

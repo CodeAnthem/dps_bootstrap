@@ -8,7 +8,7 @@
 
 nds_standalone_git_load() {
     [[ "${NDS_STANDALONE_GIT_LOADED:-false}" == "true" ]] && return 0
-    local base="${SCRIPT_DIR}/standalone/git"
+    local base="${SCRIPT_DIR}/git/lib"
 
     nds_import_file "${base}/url.sh" || return 1
     nds_import_file "${base}/hosts.sh" || return 1

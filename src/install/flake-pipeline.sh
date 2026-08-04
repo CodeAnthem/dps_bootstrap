@@ -3,7 +3,7 @@
 # NDS - Flake install pipeline (action-level workflow)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-06 | Modified: 2026-08-03
-# Description:   installFlake action steps — uses features/flake + framework/git
+# Description:   installFlake action steps — uses install/flake + git
 # ==================================================================================================
 
 # Description: Prepare flake env and verify git access to all flake inputs.

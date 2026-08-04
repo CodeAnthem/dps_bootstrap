@@ -8,7 +8,7 @@
 
 nds_standalone_install_load() {
     [[ "${NDS_STANDALONE_INSTALL_LOADED:-false}" == "true" ]] && return 0
-    local base="${SCRIPT_DIR}/standalone/install"
+    local base="${SCRIPT_DIR}/install/lib"
 
     nds_import_file "${base}/disk-part.sh" || return 1
     nds_import_file "${base}/urandom.sh" || return 1

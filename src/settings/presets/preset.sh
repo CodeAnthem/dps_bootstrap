@@ -12,7 +12,7 @@ declare -gA PRESET_SEEDED=()
 # Description: Builtin presets directory.
 nds_preset_dir() {
     local bootstrap_dir="${1:-${SCRIPT_DIR}}"
-    echo "${bootstrap_dir}/framework/presets"
+    echo "${bootstrap_dir}/settings/builtin"
 }
 
 # Description: Import one preset file and register its hooks (defaults/configure/validate/…).
@@ -144,7 +144,7 @@ nds_preset_load_extra() {
 nds_preset_enable_bundle() {
     local bootstrap_dir="$1"
     shift
-    local name preset_dir="${bootstrap_dir}/framework/presets"
+    local name preset_dir="${bootstrap_dir}/settings/builtin"
     [[ -d "$preset_dir" ]] || preset_dir="$(nds_preset_dir "$bootstrap_dir")"
 
     for name in "${!PRESET_REGISTRY[@]}"; do

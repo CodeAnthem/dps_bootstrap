@@ -55,7 +55,7 @@ _app_elevate_to_root() {
 }
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/shared/core/import.sh"
+source "${SCRIPT_DIR}/core/import.sh"
 
 declare -a _app_original_args=("$@")
 

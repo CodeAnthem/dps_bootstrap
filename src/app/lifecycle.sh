@@ -11,7 +11,7 @@
 nds_lifecycle_load_core() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
 
-    nds_import_dir "${script_dir}/shared/core" false || return 1
+    nds_import_dir "${script_dir}/core" false || return 1
     return 0
 }
 
@@ -19,11 +19,11 @@ nds_lifecycle_load_core() {
 nds_lifecycle_load_ui() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
 
-    nds_import_file "${script_dir}/shared/ui/terminal.sh" || return 1
-    nds_import_file "${script_dir}/shared/ui/output.sh" || return 1
-    nds_import_file "${script_dir}/shared/ui/stepAnimation.sh" || return 1
-    nds_import_file "${script_dir}/shared/ui/skip.sh" || return 1
-    nds_import_file "${script_dir}/shared/ui/prompts.sh" || return 1
+    nds_import_file "${script_dir}/ui/terminal.sh" || return 1
+    nds_import_file "${script_dir}/ui/output.sh" || return 1
+    nds_import_file "${script_dir}/ui/stepAnimation.sh" || return 1
+    nds_import_file "${script_dir}/ui/skip.sh" || return 1
+    nds_import_file "${script_dir}/ui/prompts.sh" || return 1
     nds_ui_init
     return 0
 }
@@ -33,7 +33,7 @@ nds_lifecycle_load_ui() {
 nds_lifecycle_load_actions() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
 
-    nds_import_file "${script_dir}/standalone/validators/load.sh" || return 1
+    nds_import_file "${script_dir}/validators/load.sh" || return 1
     nds_import_file "${script_dir}/app/state.sh" || return 1
     nds_import_file "${script_dir}/app/action-store.sh" || return 1
     nds_import_file "${script_dir}/app/action-preview.sh" || return 1
@@ -42,6 +42,6 @@ nds_lifecycle_load_actions() {
     nds_import_file "${script_dir}/app/exit.sh" || return 1
     nds_import_file "${script_dir}/app/menus/install-confirm.sh" || return 1
     nds_import_file "${script_dir}/app/menus/remote-confirm.sh" || return 1
-    nds_import_file "${script_dir}/framework/bootstrap/load.sh" || return 1
+    nds_import_file "${script_dir}/app/bootstrap.sh" || return 1
     return 0
 }

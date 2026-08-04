@@ -1,8 +1,8 @@
-# src/features/install
+# src/install
 
 NixOS install pipeline — disk prep, secrets, `nixos-install`, backup bundle.
 
-Loaded by `nds_install_load` from `src/framework/bootstrap/load.sh` (after action extension + settings init).
+Loaded by `nds_install_load` from `src/app/bootstrap.sh` (after action extension + settings init).
 
 ## Layout
 
@@ -38,8 +38,8 @@ install/
 
 ## Related modules
 
-- `src/framework/git/` — SSH, clone, closure (framework-integrated)
-- `src/standalone/git/` — argument-driven URL helpers
-- `src/features/flake/` — flake prepare/scaffold
-- `src/features/nixcfg/` — configuration.nix generation
-- `src/runtime-tools/` — nds-switch / nds-clean / nds-git-ssh (target machine)
+- `src/git/` — SSH, clone, closure (framework-integrated)
+- `src/git/lib/` — argument-driven URL helpers
+- `src/install/flake/` — flake prepare/scaffold
+- `src/install/nixcfg/` — configuration.nix generation
+- `src/tools/` — nds-switch / nds-clean / nds-git-ssh (target machine)

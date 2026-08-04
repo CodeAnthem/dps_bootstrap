@@ -109,17 +109,17 @@ nds_git_deploy_key_target_rel() {
 
 # Description: Absolute path of nds-git-ssh helper in this NDS tree.
 _git_ssh_wrapper_src() {
-    printf '%s/runtime-tools/nds-git-ssh.sh\n' "${SCRIPT_DIR}"
+    printf '%s/tools/nds-git-ssh.sh\n' "${SCRIPT_DIR}"
 }
 
 # Description: Absolute path of nds-switch helper in this NDS tree.
 _git_switch_src() {
-    printf '%s/runtime-tools/nds-switch.sh\n' "${SCRIPT_DIR}"
+    printf '%s/tools/nds-switch.sh\n' "${SCRIPT_DIR}"
 }
 
 # Description: Absolute path of nds-clean helper in this NDS tree.
 _git_clean_src() {
-    printf '%s/runtime-tools/nds-clean.sh\n' "${SCRIPT_DIR}"
+    printf '%s/tools/nds-clean.sh\n' "${SCRIPT_DIR}"
 }
 
 # Description: owner/repo slug from a deploy key basename (nds_deploy_owner_repo).

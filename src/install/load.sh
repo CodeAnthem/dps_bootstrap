@@ -8,7 +8,7 @@
 nds_install_load() {
     local install_dir="${1:?install dir}"
 
-    nds_import_file "${SCRIPT_DIR}/standalone/install/load.sh" || return 1
+    nds_import_file "${SCRIPT_DIR}/install/lib/load.sh" || return 1
     nds_standalone_install_load || return 1
     nds_import_file "${install_dir}/detect.sh" || return 1
     nds_import_file "${install_dir}/nix-store.sh" || return 1
