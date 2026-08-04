@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - GitHub CLI session helpers (logic)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-08-03
+# Date:          Created: 2026-07-07 | Modified: 2026-08-04
 # Description:   gh binary resolve, prefetch, session login/cleanup helpers
 #                (boot cache + multi-home hosts.yml detection)
 # ==================================================================================================
@@ -427,23 +427,5 @@ nds_git_gh_unset_blocking_tokens() {
     if [[ -n "${GH_TOKEN:-}" ]]; then
         warn "GH_TOKEN is set — clearing for gh device login"
         unset GH_TOKEN
-    fi
-}
-
-# Description: Run a gh subcommand with optional install-step spinner.
-# Arguments:
-# - label: <String> Step label when nds_step_exec is available
-# - gh:    <String...> gh arguments (after gh binary)
-nds_git_gh_run_step() {
-    local label="$1"
-    shift
-    local -a gh_cmd=()
-
-    nds_git_gh_cmd gh_cmd || return 1
-    if declare -f nds_step_exec &>/dev/null; then
-        nds_step_exec "$label" "${gh_cmd[@]}" "$@"
-    else
-        info "$label..."
-        "${gh_cmd[@]}" "$@"
     fi
 }

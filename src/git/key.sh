@@ -8,12 +8,10 @@
 
 _git_host_label_from_cfg() {
     local name=""
-
     if declare -f nds_cfg_get &>/dev/null; then
         name="$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)"
+        [[ -z "$name" ]] && name="$(nds_cfg_get NETWORK_HOSTNAME 2>/dev/null || true)"
     fi
-    [[ -z "$name" ]] && name="$(nds_cfg_get FLAKE_HOST 2>/dev/null || true)"
-    [[ -z "$name" ]] && name="$(nds_cfg_get NETWORK_HOSTNAME 2>/dev/null || true)"
     [[ -z "$name" ]] && name="$(hostname -s 2>/dev/null || echo live)"
     printf '%s\n' "$name"
 }
@@ -26,7 +24,6 @@ nds_git_cfg_owner_slug() {
     if declare -f nds_cfg_get &>/dev/null; then
         url="$(nds_cfg_get FLAKE_REPO_URL 2>/dev/null || true)"
     fi
-    [[ -z "$url" ]] && url="$(nds_cfg_get FLAKE_REPO_URL 2>/dev/null || true)"
     nds_git_owner_slug "$url"
 }
 
@@ -117,38 +114,6 @@ nds_git_key_generate() {
     local dest="${1:-$(nds_git_session_key_path)}"
     local comment="${2:-$(nds_git_ssh_key_title)}"
     nds_git_key_generate_at "$dest" "$comment" "${NDS_GIT_KEY_FORCE_REGEN:-false}"
-}
-
-# Description: Install session git SSH private key onto the target root under /mnt.
-# Arguments:
-# - key_path:   <String|optional> Source private key
-# - mount_root: <String|optional> Target mount (default /mnt)
-# - dest_rel:   <String|optional> Path relative to mount
-# Returns:
-# - <Bool> 0 on success or when skipped
-nds_git_install_key_to_target() {
-    local key_path="${1:-$(nds_git_session_key_path)}"
-    local mount_root="${2:-/mnt}"
-    local dest_rel="${3:-$(nds_git_target_key_rel)}"
-    local dest_rel_out dest_abs_out
-
-    [[ -f "$key_path" ]] || {
-        debug "No session git SSH key — skip target install"
-        return 0
-    }
-    [[ -d "$mount_root" ]] || {
-        debug "Target mount missing — skip git SSH key install"
-        return 0
-    }
-
-    nds_git_key_install_to_mount "$key_path" "$mount_root" "$dest_rel" || return 1
-    dest_rel_out="$dest_rel"
-    dest_abs_out="/${dest_rel}"
-    export NDS_GIT_TARGET_KEY_REL="$dest_rel_out"
-    export NDS_GIT_TARGET_KEY_ABS="$dest_abs_out"
-    log "Git SSH key installed on target: ${NDS_GIT_TARGET_KEY_ABS} (mode 600, excluded from backup zip)"
-    nds_install_log "git: SSH key -> ${NDS_GIT_TARGET_KEY_ABS} (persists for flake/git fetches after reboot)"
-    return 0
 }
 
 # Description: Load persisted session key from /root/.ssh when NDS restarts on the live ISO.

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Validators: integer and port
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-08-04
 # ==================================================================================================
 
 validate_int() {
@@ -15,6 +15,7 @@ validate_int() {
     return 0
 }
 
+# Used by validator specs (type "port") and any VALIDATOR_OPTIONS-driven callers.
 validate_port() {
     local value="$1" min max
     min="${VALIDATOR_OPTIONS[min]:-1}"

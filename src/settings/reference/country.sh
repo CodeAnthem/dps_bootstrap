@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Country defaults
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-07-02
+# Date:          Created: 2026-07-01 | Modified: 2026-08-04
 # Description:   Country → timezone/locale/keyboard defaults for quick setup
 # ==================================================================================================
 
@@ -58,6 +58,3 @@ nds_country_apply() {
     nds_cfg_set REGION_KEYBOARD_VARIANT "$keyboard_variant"
     return 0
 }
-
-# Legacy name used by old input handler tests / callers.
-apply_country_defaults() { nds_country_apply "$1"; }

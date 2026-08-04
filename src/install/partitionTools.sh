@@ -2,16 +2,11 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - A NixOS Deployment System
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-11-04 | Modified: 2026-07-28
+# Date:          Created: 2025-11-04 | Modified: 2026-08-04
 # Description:   Disk partitioning via NDS layout or Disko (public API)
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_DISK_FORMAT_CONFIRM_SKIP
-
-nds_partition_get_disk_state() {
-    local disk="$1"
-    _install_partition_check_disk_state "$disk"
-}
 
 nds_partition_is_disk_ready_to_format() {
     local disk="$1"
@@ -93,8 +88,4 @@ nds_partition_run_disko_from_config() {
         "${NDS_CTX_ENCRYPTION_PASSWORD}" \
         "${NDS_CTX_ENCRYPTION_KEY}" \
         "${NDS_CTX_DISK_DISKO_CONFIG:-}"
-}
-
-nds_partition_disko() {
-    _install_partition_disko_apply "$@"
 }

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Nix store helpers (live ISO vs install disk)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-08
+# Date:          Created: 2026-07-07 | Modified: 2026-08-04
 # Description:   Chroot store on mounted /mnt during install; activate profile and bootloader
 # ==================================================================================================
 
@@ -441,9 +441,4 @@ nds_nix_ensure_install_artifacts() {
     }
 
     return 0
-}
-
-# Description: Legacy name — calls nds_nix_ensure_install_artifacts.
-nds_nix_finalize_install_store() {
-    nds_nix_ensure_install_artifacts "$@"
 }

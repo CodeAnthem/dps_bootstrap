@@ -2,15 +2,11 @@
 # ==================================================================================================
 # NDS - UI - Console output and logging
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-21 | Modified: 2026-08-03
+# Date:          Created: 2025-10-21 | Modified: 2026-08-04
 # Description:   console(), log levels, and section headers
 # ==================================================================================================
 
 console() { echo "${1:-}" >&2; }
-newline() { echo >&2; }
-
-# Description: Timestamped line to stderr (legacy; prefer leveled helpers for UI).
-logDate() { printf " %(%Y-%m-%d %H:%M:%S)T %s %s\n" -1 "${1:-"  "}" "$2" >&2; }
 
 declare -g NDS_UI_QUIET=false
 # NDS_INSTALL_DETAIL_LOG lives in core/runtime.sh next to NDS_INSTALL_LOG.
