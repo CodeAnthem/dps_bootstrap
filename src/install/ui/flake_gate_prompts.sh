@@ -24,8 +24,8 @@ nds_flake_gate_prompts_location() {
     fi
 
     nds_cfg_section_title "Your flake"
-    nds_cfg_ask_string FLAKE_LOCATION "Flake location (git URL or path)" "" true
-    loc="$(nds_cfg_get FLAKE_LOCATION)"
+    nds_aa_ask_string FLAKE_LOCATION "Flake location (git URL or path)" "" true
+    loc="$(nds_feat_cfg_get FLAKE_LOCATION)"
     nds_flake_gate_logic_normalize_location "$loc"
 }
 
@@ -39,7 +39,7 @@ nds_flake_gate_prompts_target() {
     fi
 
     nds_cfg_section_title "Install mode"
-    nds_cfg_ask_numbered_choice INSTALL_MODE \
+    nds_aa_ask_numbered_choice INSTALL_MODE \
         "local|remote" \
         "local=On target (live ISO)|remote=From operator (nixos-anywhere)" \
         "local" \
@@ -47,18 +47,18 @@ nds_flake_gate_prompts_target() {
     rc=$?
     [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && return "$rc"
 
-    mode="$(nds_cfg_get INSTALL_MODE)"
+    mode="$(nds_feat_cfg_get INSTALL_MODE)"
     if [[ "$mode" == "remote" ]]; then
-        nds_cfg_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
+        nds_aa_ask_ip REMOTE_TARGET_IP "Target host IP or hostname" "" true
     else
-        if [[ -z "$(nds_cfg_get DISK_TARGET)" ]]; then
-            if declare -f nds_cfg_ask_disk &>/dev/null; then
-                nds_cfg_ask_disk DISK_TARGET "Target disk" "" true
+        if [[ -z "$(nds_feat_cfg_get DISK_TARGET)" ]]; then
+            if declare -f nds_aa_ask_disk &>/dev/null; then
+                nds_aa_ask_disk DISK_TARGET "Target disk" "" true
             else
-                nds_cfg_ask_path DISK_TARGET "Target disk (e.g. /dev/sda)" "/dev/sda" true
+                nds_aa_ask_path DISK_TARGET "Target disk (e.g. /dev/sda)" "/dev/sda" true
             fi
         fi
-        [[ -z "$(nds_cfg_get DISK_STRATEGY)" ]] && nds_cfg_set DISK_STRATEGY "nds"
+        [[ -z "$(nds_feat_cfg_get DISK_STRATEGY)" ]] && nds_feat_cfg_set DISK_STRATEGY "nds"
     fi
     return 0
 }
@@ -69,7 +69,7 @@ nds_flake_gate_prompts_persist() {
     declare -f nds_git_wizard_ask_persist_access &>/dev/null || return 0
 
     if declare -f nds_mode_is_unattended &>/dev/null && nds_mode_is_unattended; then
-        [[ -z "$(nds_cfg_get GIT_PERSIST_ACCESS)" ]] && nds_cfg_set GIT_PERSIST_ACCESS "true"
+        [[ -z "$(nds_feat_cfg_get GIT_PERSIST_ACCESS)" ]] && nds_feat_cfg_set GIT_PERSIST_ACCESS "true"
         return 0
     fi
 

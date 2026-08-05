@@ -12,7 +12,7 @@ nds_git_wizard_ask_register_method() {
     local -n _choice=${1:?choice_nameref}
     local existing
 
-    existing="$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD 2>/dev/null || true)"
+    existing="$(nds_feat_cfg_get GIT_SSH_KEY_REGISTER_METHOD 2>/dev/null || true)"
     if [[ -n "$existing" ]]; then
         [[ "$existing" == "gh" ]] && _choice=gh || _choice=manual
         return 0
@@ -20,7 +20,7 @@ nds_git_wizard_ask_register_method() {
 
     if nds_git_gh_session_ready 2>/dev/null; then
         _choice=gh
-        nds_cfg_set GIT_SSH_KEY_REGISTER_METHOD gh
+        nds_feat_cfg_set GIT_SSH_KEY_REGISTER_METHOD gh
         return 0
     fi
 
@@ -32,11 +32,11 @@ nds_git_wizard_ask_register_method() {
         return 0
     fi
 
-    nds_cfg_ask_numbered_choice GIT_SSH_KEY_REGISTER_METHOD \
+    nds_aa_ask_numbered_choice GIT_SSH_KEY_REGISTER_METHOD \
         "gh|manual" \
         "gh=Use gh CLI (device login on this ISO)|manual=Show key and register on github.com yourself" \
         "gh"
-    existing="$(nds_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
+    existing="$(nds_feat_cfg_get GIT_SSH_KEY_REGISTER_METHOD)"
     [[ "$existing" == "gh" ]] && _choice=gh || _choice=manual
 }
 
@@ -79,11 +79,11 @@ nds_git_wizard_ask_key_type() {
     nds_ui_b "Account key: one key on a dedicated GitHub user (full account SSH access)."
     nds_ui_b "Limit what that account can do via org membership or repo collaborators."
     nds_ui_b ""
-    nds_cfg_ask_numbered_choice GIT_SSH_KEY_TYPE \
+    nds_aa_ask_numbered_choice GIT_SSH_KEY_TYPE \
         "deploy|account" \
         "deploy=Deploy key (read-only, per repository)|account=Account key (dedicated user, full account SSH access)" \
         "deploy"
-    resolved="$(nds_cfg_get GIT_SSH_KEY_TYPE)"
+    resolved="$(nds_feat_cfg_get GIT_SSH_KEY_TYPE)"
     [[ "$resolved" == "account" ]] && _choice=account || _choice=deploy
 }
 

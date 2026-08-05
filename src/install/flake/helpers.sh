@@ -2,8 +2,8 @@
 # ==================================================================================================
 # NDS - Flake tools — prepare, scaffold, detect disko
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-01 | Modified: 2026-08-03
-# Description:   Shared flake helpers for installFlake + remoteAction actions
+# Date:          Created: 2026-07-01 | Modified: 2026-08-05
+# Description:   Flake prepare, disko detect, host-folder scaffold (no interactive picker)
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_SCAFFOLD_OVERWRITE_SKIP
@@ -207,73 +207,6 @@ _flake_scaffold_host_folder() {
         "${tmpl_dir}/host-disko.nix.tmpl" > "${host_dir}/disko.nix" || return 1
 
     log "Scaffolded host folder: $host_dir (role=${role})"
-    return 0
-}
-
-# Description: Two-step host selection against a checked-out flake. Lets the
-# operator reuse an existing host or scaffold a new one (pick role -> name host).
-# On a new host, scaffolds the folder and switches the install to stage the
-# updated checkout locally so the new files are included.
-# Arguments:
-# - flake_root: <String> Path to the checked-out flake
-# - system:     <String|optional> Nix system (default: x86_64-linux)
-# Returns:
-# - <Int> 0 when a host is selected/scaffolded, 1 when no roles were found
-nds_flake_scaffold_interactive() {
-    local flake_root="$1"
-    local system="${2:-x86_64-linux}"
-    local roles hosts_dir existing default_role
-
-    roles="$(_flake_discover_roles "$flake_root")"
-    if [[ -z "$roles" ]]; then
-        return 1
-    fi
-
-    hosts_dir="${flake_root}/hosts/${system}"
-    existing=""
-    if [[ -d "$hosts_dir" ]]; then
-        existing="$(find "$hosts_dir" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null \
-            | sort | tr '\n' '|' | sed 's/|$//')"
-    fi
-
-    nds_cfg_section_title "Host selection"
-
-    if [[ -n "$existing" ]]; then
-        nds_cfg_ask_choice SCAFFOLD_MODE "Host" "existing|new" \
-            "existing=Use an existing host|new=Scaffold a new host" "existing"
-    else
-        nds_cfg_set SCAFFOLD_MODE "new"
-    fi
-
-    if nds_cfg_is SCAFFOLD_MODE existing; then
-        local first_host
-        first_host="${existing%%|*}"
-        nds_cfg_ask_choice FLAKE_HOST "Existing host" "$existing" "" "$first_host"
-        nds_cfg_set "NETWORK_HOSTNAME" "$(nds_cfg_get FLAKE_HOST)"
-        NDS_FLAKE_HOST="$(nds_cfg_get FLAKE_HOST)"
-        export NDS_FLAKE_HOST
-        return 0
-    fi
-
-    default_role="${roles%%|*}"
-    nds_cfg_ask_choice SCAFFOLD_ROLE "Role" "$roles" "" "$default_role"
-    nds_cfg_ask_hostname FLAKE_HOST "New host name" "" true
-
-    local host role
-    host="$(nds_cfg_get FLAKE_HOST)"
-    role="$(nds_cfg_get SCAFFOLD_ROLE)"
-    nds_cfg_set "NETWORK_HOSTNAME" "$host"
-    export NDS_FLAKE_HOST="$host"
-
-    _flake_scaffold_host_folder "$flake_root" "$host" "$role" "$system" || return 1
-
-    # Stage the updated checkout locally so the new host files are installed.
-    export NDS_FLAKE_SOURCE="local"
-    export NDS_FLAKE_LOCAL_PATH="$flake_root"
-    nds_cfg_set "FLAKE_SOURCE" "local"
-    nds_cfg_set "FLAKE_LOCAL_PATH" "$flake_root"
-
-    log "New host '${host}' scaffolded — review and commit ${flake_root}/hosts/${system}/${host}"
     return 0
 }
 

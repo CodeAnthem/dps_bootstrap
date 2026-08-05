@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Settings manager loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-07-06
+# Date:          Created: 2026-07-06 | Modified: 2026-08-05
 # ==================================================================================================
 
 nds_settings_manager_load() {
@@ -18,6 +18,7 @@ nds_settings_manager_load() {
     nds_import_file "${sm_dir}/reference/country.sh" || return 1
     nds_import_file "${sm_dir}/validation/country.sh" || return 1
     nds_import_file "${sm_dir}/ui/ask.sh" || return 1
+    nds_import_file "${sm_dir}/ui/aa-ask.sh" || return 1
     nds_import_file "${sm_dir}/presets/preset.sh" || return 1
     nds_import_file "${sm_dir}/ui/menu.sh" || return 1
     return 0

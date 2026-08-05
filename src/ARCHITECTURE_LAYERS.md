@@ -18,8 +18,9 @@ Lowercase; no spaces or special characters.
 ## Config AA
 
 - Main/action own the store; pass full config AA into feature entry; feature returns AA updates.
-- Logic: prefer nameref AA; prompts may use `nds_cfg_get`/`set` only under `nds_cfg_aa_bind` (redirect onto feature AA — no `CONFIG_DATA` writes).
-- Helpers: `nds_cfg_aa_from_store`, `nds_cfg_aa_to_store`, `nds_cfg_aa_bind`/`unbind`, `nds_feature_require_keys`, `nds_aa_get`/`set`.
+- Feature UI uses `nds_aa_ask_*` / `nds_feat_cfg_*` under `nds_cfg_aa_bind` (writes feature AA, not bare store).
+- Settings presets/menus keep `nds_cfg_ask_*` against `CONFIG_DATA`.
+- Helpers: `nds_cfg_aa_from_store`, `nds_cfg_aa_to_store`, `nds_cfg_aa_bind`/`unbind`, `nds_feature_require_keys`.
 
 ## Mode
 

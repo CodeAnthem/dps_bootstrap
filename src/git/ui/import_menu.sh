@@ -21,8 +21,8 @@ nds_git_wizard_menu_import_path() {
     elif [[ -n "${NDS_DEPLOY_KEY_PATH:-}" && -f "${NDS_DEPLOY_KEY_PATH}" ]]; then
         src="${NDS_DEPLOY_KEY_PATH}"
     else
-        nds_cfg_ask_path GIT_IMPORT_KEY_PATH "Private SSH key path" "" true || return 1
-        src="$(nds_cfg_get GIT_IMPORT_KEY_PATH)"
+        nds_aa_ask_path GIT_IMPORT_KEY_PATH "Private SSH key path" "" true || return 1
+        src="$(nds_feat_cfg_get GIT_IMPORT_KEY_PATH)"
     fi
 
     [[ -f "$src" ]] || {

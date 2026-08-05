@@ -113,6 +113,16 @@ suite_mode() {
         CONFIG_DATA[X]="$saved_cd"
     fi
 
+    if declare -f nds_aa_ask_string &>/dev/null; then
+        if ! nds_aa_ask_string X "x" 2>/dev/null; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ aa_ask: rejects when AA unbound"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ aa_ask: should reject when unbound"
+        fi
+    fi
+
     if declare -f nds_cfg_menu_or_skip &>/dev/null; then
         export NDS_MODE=unattended
         # Empty store + no presets → validate may fail; ensure it does not open menu (returns 1).

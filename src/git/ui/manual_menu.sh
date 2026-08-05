@@ -22,8 +22,8 @@ nds_git_wizard_resolve_key_display() {
         printf 'copy\n'
         return 0
     fi
-    nds_cfg_ask_toggle GIT_SSH_KEY_USE_QR "Generate QR codes for URL and public key?" false
-    if nds_cfg_true GIT_SSH_KEY_USE_QR; then
+    nds_aa_ask_toggle GIT_SSH_KEY_USE_QR "Generate QR codes for URL and public key?" false
+    if nds_feat_cfg_true GIT_SSH_KEY_USE_QR; then
         printf 'qr\n'
     else
         printf 'copy\n'
