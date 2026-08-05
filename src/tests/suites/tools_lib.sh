@@ -9,13 +9,23 @@ suite_tools_lib() {
     if declare -f nds_pkg_cmd &>/dev/null \
         && declare -f nds_qr_print &>/dev/null \
         && declare -f nds_gh_ensure &>/dev/null \
+        && declare -f nds_gh_session_cleanup &>/dev/null \
+        && declare -f nds_gh_register_deploy_key &>/dev/null \
         && declare -f nds_age_keygen &>/dev/null \
         && declare -f nds_facter_write &>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ tools/lib: pkg/qr/gh/age/facter loaded"
+        console "  ✓ tools/lib: pkg/qr/gh(+session/api)/age/facter loaded"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ tools/lib: helpers missing"
+    fi
+
+    if [[ -d "${SCRIPT_DIR}/git/github" ]]; then
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ git/github still present (should be tools/lib nds_gh_*)"
+    else
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ git/github removed (GH is tools/lib)"
     fi
 
     if declare -f nds_pkg_cmd &>/dev/null; then

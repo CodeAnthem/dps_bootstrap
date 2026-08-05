@@ -3,7 +3,7 @@
 # NDS - QR encode helper (decoupled)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-08-05 | Modified: 2026-08-05
-# Description:   Ensure qrencode (may animate on first nix install) + print payload as QR
+# Description:   Ensure qrencode + print payload — no labels/policy; callers own display
 # ==================================================================================================
 
 declare -g NDS_QR_READY=false
@@ -20,7 +20,7 @@ nds_qr_ensure() {
 }
 
 # Description: Print a QR code for arbitrary text to stdout.
-# Does not print labels or call UI. Caller decides when/whether to use QR.
+# Does not print labels or call domain UI. Caller decides when/whether to use QR.
 # Arguments:
 # - payload: <String> Text to encode
 # Returns:

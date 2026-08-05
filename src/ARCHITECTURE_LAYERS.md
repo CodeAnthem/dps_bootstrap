@@ -22,9 +22,13 @@ Lowercase; no spaces or special characters. Type is in the filename — no `ui/p
 | `tools/*.sh` | Target CLIs copied onto the installed machine |
 | `tools/lib/` | Sourcable capability helpers for any feature/action |
 
-`tools/lib` helpers: detect/ensure binary (PATH or nixpkgs#), run one job, **no domain policy** (no keys/secrets decisions). Ensure paths may show **step animation + logs on first nix install**; print/run helpers stay silent.
+`tools/lib` helpers: detect/ensure binary (PATH or nixpkgs#), run one job, **no domain policy** (no keys/secrets/git decisions). Ensure paths may show **step animation + logs on first nix install**; print/run helpers stay silent.
 
-Examples: `nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, `nds_age_keygen`, `nds_facter_write`.
+Examples: `nds_pkg_*`, `nds_qr_*`, `nds_gh_*` (ensure + session + API), `nds_age_keygen`, `nds_facter_write`.
+
+**GH vs git:** all `gh` CLI capability lives in `tools/lib` (`gh.sh`, `gh_session.sh`, `gh_api.sh`). Git only orchestrates (key paths, titles, collision prompts in `git/logic/gh_orch_logic.sh` + wizard UI). Callers decide when to register/show QR.
+
+**QR:** `nds_qr_print` / `nds_qr_ensure` in tools/lib — git UI labels and chooses when to display.
 
 ## Bundle (core feature)
 

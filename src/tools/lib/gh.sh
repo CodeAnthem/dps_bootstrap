@@ -4,7 +4,7 @@
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-08-05 | Modified: 2026-08-05
 # Description:   Prefetch + cache gh; may show step UI + logs on first download.
-#                Session/auth stays in git/github (nds_git_gh_session_*).
+#                Session → gh_session.sh; API → gh_api.sh; git only orchestrates.
 # ==================================================================================================
 
 : "${NDS_GH_BIN_CACHE_FILE:=/tmp/nds-gh-bin}"
@@ -210,13 +210,19 @@ nds_gh_cmd() {
     return 1
 }
 
-# Compat aliases used by git/github session code
+# Compat aliases used by older call sites / tests
 nds_git_gh_bin_ready() { nds_gh_bin_ready "$@"; }
 nds_git_gh_cmd_nofetch() { nds_gh_cmd_nofetch "$@"; }
 nds_git_gh_cmd() { nds_gh_cmd "$@"; }
 nds_git_gh_prefetch() { nds_gh_prefetch "$@"; }
 nds_git_gh_ensure_prefetch() { nds_gh_ensure "$@"; }
-nds_git_gh_available() {
+nds_git_gh_available() { nds_gh_available "$@"; }
+_git_gh_persist_bin_cache() { _nds_gh_persist_bin_cache "$@"; }
+_git_gh_restore_bin_cache() { _nds_gh_restore_bin_cache "$@"; }
+_git_gh_cache_bin_from_nix() { _nds_gh_cache_bin_from_nix "$@"; }
+_git_gh_nix() { _nds_gh_nix "$@"; }
+
+nds_gh_available() {
     nds_gh_bin_ready && return 0
     command -v nix &>/dev/null
 }

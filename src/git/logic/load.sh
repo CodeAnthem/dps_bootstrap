@@ -16,6 +16,7 @@ nds_git_logic_load() {
     nds_import_file "${logic_dir}/keys_logic.sh" || return 1
     nds_import_file "${logic_dir}/discover_logic.sh" || return 1
     nds_import_file "${logic_dir}/access_state_logic.sh" || return 1
+    nds_import_file "${logic_dir}/gh_orch_logic.sh" || return 1
     nds_import_file "${logic_dir}/auth-flow.sh" || return 1
     nds_import_file "${logic_dir}/git_access_logic.sh" || return 1
     nds_import_file "${logic_dir}/auth_logic.sh" || return 1

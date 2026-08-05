@@ -53,13 +53,12 @@ nds_git_wizard_show_manual_key_at() {
     nds_ui_b ""
 
     if [[ "$display" == "qr" ]]; then
-        if nds_qr_ensure; then
-            local pub
-            pub="$(tr -d '\n' < "$pub_path")"
-            nds_ui_b ""
-            nds_ui_h "SSH key registration page"
-            nds_ui_b ""
-            nds_qr_print "$register_url" || true
+        local pub
+        pub="$(tr -d '\n' < "$pub_path")"
+        nds_ui_b ""
+        nds_ui_h "SSH key registration page"
+        nds_ui_b ""
+        if nds_qr_print "$register_url"; then
             nds_ui_i "$register_url"
             nds_ui_b ""
             nds_ui_h "Public key (paste on registration page)"
@@ -79,6 +78,8 @@ nds_git_wizard_show_manual_key_at() {
 # Returns:
 # - <Bool> 0 when user confirms
 nds_git_wizard_confirm_manual_deploy() {
+    local owner="$1" repo="$2"
+
     nds_ui_b "Add this deploy key on GitHub — leave \"Allow write access\" unchecked."
     nds_ui_i "Repository: ${owner}/${repo}"
     nds_ui_i "Title: $(nds_git_deploy_key_title "$owner" "$repo")"
