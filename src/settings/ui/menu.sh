@@ -99,10 +99,22 @@ nds_cfg_menu() {
     done
 }
 
-# Description: Skip the category menu when NDS_SKIP_MENU or NDS_AUTO_CONFIRM is set
-# and validation passes; otherwise run the interactive menu.
+# Description: Skip category menu when NDS_SKIP_MENU / unattended and validation passes.
 nds_cfg_menu_or_skip() {
     local presets=("$@")
+
+    nds_mode_resolve || true
+
+    if declare -f nds_mode_is_unattended &>/dev/null && nds_mode_is_unattended; then
+        if ! nds_cfg_validate_all "${presets[@]}"; then
+            error "Unattended mode: configuration incomplete or invalid"
+            return 1
+        fi
+        log "Configuration complete (NDS_MODE=unattended)"
+        nds_cfg_print_backup
+        return 0
+    fi
+
     if nds_skip_menu NDS_SKIP_MENU; then
         if ! nds_cfg_validate_all "${presets[@]}"; then
             nds_cfg_prompt_errors "${presets[@]}"

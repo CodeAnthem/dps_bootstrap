@@ -8,6 +8,25 @@
 suite_settings_manager() {
     local tmpdir count
 
+    nds_mode_resolve || true
+    if [[ -n "${NDS_MODE:-}" ]] && declare -f nds_cfg_aa_from_store &>/dev/null; then
+        local -A cfg=()
+        nds_cfg_aa_from_store cfg
+        nds_aa_set cfg _NDS_MODE_PROBE "1"
+        nds_cfg_aa_to_store cfg
+        if [[ "$(nds_cfg_get _NDS_MODE_PROBE)" == "1" ]]; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ config AA bridge round-trip"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ config AA bridge round-trip"
+        fi
+        unset 'CONFIG_DATA[_NDS_MODE_PROBE]'
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ mode/AA bridge missing"
+    fi
+
     if [[ "${PRESET_LOADED[installFlake]:-}" == "1" ]]; then
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ lazy catalog: installFlake hooks loaded at init"

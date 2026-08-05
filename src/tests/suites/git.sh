@@ -8,6 +8,17 @@
 suite_git() {
     local parsed host owner repo urls tmpdir key_src dest out perms repos register_url
 
+    if declare -f nds_git_access_logic_selfcheck &>/dev/null || \
+        nds_import_file "${SCRIPT_DIR}/git/tests/git_access_test.sh" 2>/dev/null; then
+        if nds_git_access_logic_selfcheck; then
+            TEST_PASSED=$((TEST_PASSED + 1))
+            console "  ✓ git_access_logic: normalize + wants_gh"
+        else
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ git_access_logic: normalize + wants_gh"
+        fi
+    fi
+
     out=$(nds_git_normalize_url "https://github.com/CodeAnthem/dps_swarm.git")
     if [[ "$out" == "git@github.com:CodeAnthem/dps_swarm.git" ]]; then
         TEST_PASSED=$((TEST_PASSED + 1))

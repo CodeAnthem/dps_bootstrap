@@ -78,6 +78,9 @@ nds_app_run() {
     nds_runtime_init || crash "Failed to setup runtime directory"
     nds_install_log "NDS session started (v$SCRIPT_VERSION)"
 
+    nds_mode_resolve || crash "Failed to resolve NDS_MODE"
+    nds_install_log "NDS_MODE=${NDS_MODE}"
+
     # Cache gh before the action menu so aborting early can still clear a leftover session.
     if declare -f nds_framework_warmup_git_gh &>/dev/null; then
         nds_framework_warmup_git_gh || true

@@ -31,7 +31,17 @@ nds_actions_select() {
     if nds_actions_select_from_env; then
         return 0
     fi
-    [[ -z "${NDS_ACTION:-}" ]] || return 1
+
+    # Invalid NDS_ACTION already reported by select_from_env when set but unmatched.
+    if [[ -n "${NDS_ACTION:-}" ]]; then
+        return 1
+    fi
+
+    nds_mode_resolve || return 1
+    if nds_mode_is_unattended; then
+        error "Unattended mode requires a valid NDS_ACTION (available: ${NDS_ACTION_NAMES[*]})"
+        return 1
+    fi
 
     nds_ui_section_header "Choose an action"
     nds_ui_b ""

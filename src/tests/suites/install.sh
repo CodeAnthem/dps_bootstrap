@@ -8,6 +8,15 @@
 suite_install() {
     local out
 
+    if nds_import_file "${SCRIPT_DIR}/install/tests/install_aa_test.sh" 2>/dev/null \
+        && nds_install_aa_bridge_selfcheck; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ install AA bridge + mode helpers present"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ install AA bridge + mode helpers"
+    fi
+
     NDS_CURRENT_ACTION=classicInstall
     unset NDS_HARDWARE_GEN
     out=$(_install_hardware_artifact_name)

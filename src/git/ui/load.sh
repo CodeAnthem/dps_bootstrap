@@ -13,5 +13,6 @@ nds_git_wizard_load() {
     nds_import_file "${wizard_dir}/gh_menu.sh" || return 1
     nds_import_file "${wizard_dir}/new_key_menu.sh" || return 1
     nds_import_file "${wizard_dir}/flow.sh" || return 1
+    nds_import_file "${wizard_dir}/git_auth_prompts.sh" || return 1
     return 0
 }

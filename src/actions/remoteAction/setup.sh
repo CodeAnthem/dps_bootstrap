@@ -40,7 +40,13 @@ action_preview() {
 }
 
 action_setup() {
+    nds_mode_resolve || true
+
     if ! nds_cfg_validate_all; then
+        if nds_mode_is_unattended; then
+            error "Unattended mode: configuration incomplete"
+            exit 11
+        fi
         nds_cfg_prompt_errors
         nds_cfg_validate_all || exit 11
     fi

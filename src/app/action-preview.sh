@@ -29,6 +29,12 @@ nds_action_run_preview() {
         return 0
     fi
 
+    nds_mode_resolve || true
+    if declare -f nds_mode_is_unattended &>/dev/null && nds_mode_is_unattended; then
+        log "Action preview skipped (NDS_MODE=unattended)"
+        return 0
+    fi
+
     nds_ui_section_header "Install preview"
     action_preview
     nds_ui_b "Press Y to continue, B to go back to the action menu."

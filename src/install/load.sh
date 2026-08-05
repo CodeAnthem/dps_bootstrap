@@ -34,5 +34,9 @@ nds_install_load() {
     nds_import_file "${install_dir}/flake-pipeline.sh" || return 1
     nds_import_file "${install_dir}/flake-gate.sh" || return 1
     nds_import_file "${install_dir}/flake-install-pipeline.sh" || return 1
+    nds_import_file "${install_dir}/logic/load.sh" || return 1
+    nds_install_logic_load "${install_dir}/logic" || return 1
+    nds_import_file "${install_dir}/ui/load.sh" || return 1
+    nds_install_ui_load "${install_dir}/ui" || return 1
     return 0
 }

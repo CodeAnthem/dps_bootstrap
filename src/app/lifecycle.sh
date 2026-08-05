@@ -38,6 +38,7 @@ nds_lifecycle_load_actions() {
     nds_import_file "${script_dir}/app/action-store.sh" || return 1
     nds_import_file "${script_dir}/app/action-preview.sh" || return 1
     nds_import_file "${script_dir}/app/action-handler.sh" || return 1
+    nds_import_file "${script_dir}/app/feature-bridge.sh" || return 1
     nds_import_file "${script_dir}/app/cli.sh" || return 1
     nds_import_file "${script_dir}/app/exit.sh" || return 1
     nds_import_file "${script_dir}/app/menus/install-confirm.sh" || return 1
