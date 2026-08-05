@@ -22,9 +22,13 @@ Lowercase; no spaces or special characters. Type is in the filename — no `ui/p
 | `tools/*.sh` | Target CLIs copied onto the installed machine |
 | `tools/lib/` | Sourcable capability helpers for any feature/action |
 
-`tools/lib` helpers: detect/ensure binary (PATH or nixpkgs#), run one job, **no UI**, **no domain policy** (no keys/secrets decisions).
+`tools/lib` helpers: detect/ensure binary (PATH or nixpkgs#), run one job, **no domain policy** (no keys/secrets decisions). Ensure paths may show **step animation + logs on first nix install**; print/run helpers stay silent.
 
-Examples: `nds_pkg_*`, `nds_qr_print`, `nds_age_keygen`, `nds_facter_write`.
+Examples: `nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, `nds_age_keygen`, `nds_facter_write`.
+
+## Bundle (core feature)
+
+`src/bundle/` — install backup zip/tar. Features add payload via `nds_bundle_register_{file,dir,text,hook}`; `nds_bundle_create` runs hooks then packs. Compat aliases: `nds_install_bundle_*`.
 
 ## Config AA
 
@@ -42,8 +46,8 @@ Examples: `nds_pkg_*`, `nds_qr_print`, `nds_age_keygen`, `nds_facter_write`.
 
 ## Install / settings
 
-- `install/logic/` — flake gate logic (no TTY).
-- `install/ui/` — flake gate / host / scaffold / encryption prompts.
+- `install/logic/` — install pipelines, encryption, remote unlock, diagnostics (no TTY preferred).
+- `install/ui/` — flake gate / host / scaffold / encryption prompts + gate flow.
 - Confirm menus stay under `app/menus`.
 - `settings/state/` — store + AA bridge.
 - `settings/ui/` — menus / ask_* / aa-ask.

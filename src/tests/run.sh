@@ -41,6 +41,8 @@ source "${TEST_ROOT}/suites/git.sh"
 source "${TEST_ROOT}/suites/mode.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/tools_lib.sh"
+# shellcheck disable=SC1091
+source "${TEST_ROOT}/suites/bundle.sh"
 
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/presets.sh"
@@ -74,6 +76,7 @@ nds_run_self_tests() {
     run_named_suite "git" suite_git
     run_named_suite "mode" suite_mode
     run_named_suite "tools_lib" suite_tools_lib
+    run_named_suite "bundle" suite_bundle
     run_named_suite "inputs" suite_inputs
     run_named_suite "classicConfig" suite_classic_config
     run_named_suite "install" suite_install

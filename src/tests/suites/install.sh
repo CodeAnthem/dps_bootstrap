@@ -151,7 +151,7 @@ suite_install() {
     fi
 
     if declare -f _sops_run_age_keygen &>/dev/null; then
-        if grep -qE 'env NIX_CONFIG=.*_sops_run_age_keygen' "${SCRIPT_DIR}/install/sops.sh" 2>/dev/null; then
+        if grep -qE 'env NIX_CONFIG=.*_sops_run_age_keygen' "${SCRIPT_DIR}/install/logic/sops_logic.sh" 2>/dev/null; then
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ sops: age-keygen must not be invoked via env as external command"
         else

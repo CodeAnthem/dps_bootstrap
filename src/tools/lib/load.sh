@@ -11,6 +11,7 @@ nds_tools_lib_load() {
     [[ "${NDS_TOOLS_LIB_LOADED:-false}" == "true" ]] && return 0
     nds_import_file "${lib_dir}/pkg.sh" || return 1
     nds_import_file "${lib_dir}/qr.sh" || return 1
+    nds_import_file "${lib_dir}/gh.sh" || return 1
     nds_import_file "${lib_dir}/age.sh" || return 1
     nds_import_file "${lib_dir}/facter.sh" || return 1
     NDS_TOOLS_LIB_LOADED=true

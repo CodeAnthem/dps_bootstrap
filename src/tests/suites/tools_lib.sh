@@ -8,10 +8,11 @@
 suite_tools_lib() {
     if declare -f nds_pkg_cmd &>/dev/null \
         && declare -f nds_qr_print &>/dev/null \
+        && declare -f nds_gh_ensure &>/dev/null \
         && declare -f nds_age_keygen &>/dev/null \
         && declare -f nds_facter_write &>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ tools/lib: pkg/qr/age/facter loaded"
+        console "  ✓ tools/lib: pkg/qr/gh/age/facter loaded"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
         console "  ✗ tools/lib: helpers missing"

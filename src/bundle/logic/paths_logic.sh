@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Install bundle paths
+# NDS - Bundle path helpers (core feature)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-30 | Modified: 2026-07-06
+# Date:          Created: 2026-06-30 | Modified: 2026-08-05
 # ==================================================================================================
 
 nds_install_ssh_user() {
@@ -11,7 +11,7 @@ nds_install_ssh_user() {
     printf '%s' "$user"
 }
 
-nds_install_bundle_host_ip() {
+nds_bundle_host_ip() {
     local host=""
     if [[ -n "${SSH_CONNECTION:-}" ]]; then
         read -r _ _ host _ <<< "$SSH_CONNECTION"
@@ -22,16 +22,21 @@ nds_install_bundle_host_ip() {
     printf '%s' "$host"
 }
 
-nds_install_bundle_path() {
+nds_bundle_path() {
     local user
     user=$(nds_install_ssh_user)
     printf '/home/%s/nds_bundle.zip' "$user"
 }
 
-nds_install_bundle_local_name() {
+nds_bundle_local_name() {
     local hostname stamp
-    _install_gather_context
+    declare -f _install_gather_context &>/dev/null && _install_gather_context
     hostname="${NDS_CTX_HOSTNAME:-nixos}"
     printf -v stamp '%(%Y%m%d_%H%M%S)T' -1
     printf 'nds_install_backup_%s_%s.zip' "$stamp" "$hostname"
 }
+
+# Compat aliases
+nds_install_bundle_host_ip() { nds_bundle_host_ip "$@"; }
+nds_install_bundle_path() { nds_bundle_path "$@"; }
+nds_install_bundle_local_name() { nds_bundle_local_name "$@"; }

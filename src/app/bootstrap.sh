@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Framework bootstrap loader
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-27 | Modified: 2026-08-04
+# Date:          Created: 2026-06-27 | Modified: 2026-08-05
 # ==================================================================================================
 
 declare -ga NDS_DEFAULT_PRESET_BUNDLE=(
@@ -62,6 +62,12 @@ nds_framework_load_remaining() {
     nds_import_file "${SCRIPT_DIR}/git/load.sh" || return 1
     nds_git_tools_load "${SCRIPT_DIR}/git" || {
         fatal "Failed to load git tools"
+        return 1
+    }
+
+    nds_import_file "${SCRIPT_DIR}/bundle/load.sh" || return 1
+    nds_bundle_load "${SCRIPT_DIR}/bundle" || {
+        fatal "Failed to load bundle feature"
         return 1
     }
 

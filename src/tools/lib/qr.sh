@@ -3,12 +3,13 @@
 # NDS - QR encode helper (decoupled)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-08-05 | Modified: 2026-08-05
-# Description:   Ensure qrencode + print payload as QR to stdout — no UI, no keys
+# Description:   Ensure qrencode (may animate on first nix install) + print payload as QR
 # ==================================================================================================
 
 declare -g NDS_QR_READY=false
 
 # Description: Ensure qrencode is available (PATH or nixpkgs#qrencode).
+# First nix warm may show step UI and write install log lines via nds_pkg_ensure.
 # Returns:
 # - 0 when ready
 nds_qr_ensure() {
