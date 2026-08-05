@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Install stack loader (explicit order)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-06 | Modified: 2026-08-04
+# Date:          Created: 2026-07-06 | Modified: 2026-08-05
 # ==================================================================================================
 
 nds_install_load() {
@@ -34,9 +34,6 @@ nds_install_load() {
     nds_import_file "${install_dir}/flake-pipeline.sh" || return 1
     nds_import_file "${install_dir}/flake-gate.sh" || return 1
     nds_import_file "${install_dir}/flake-install-pipeline.sh" || return 1
-    nds_import_file "${install_dir}/logic/load.sh" || return 1
-    nds_install_logic_load "${install_dir}/logic" || return 1
-    nds_import_file "${install_dir}/ui/load.sh" || return 1
-    nds_install_ui_load "${install_dir}/ui" || return 1
+    nds_import_file "${install_dir}/logic/install_ctx_logic.sh" || return 1
     return 0
 }

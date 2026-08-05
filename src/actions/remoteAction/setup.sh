@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Remote action from target flake
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-07-06
+# Date:          Created: 2026-06-29 | Modified: 2026-08-05
 # Description:   Clone a flake and run its .nds/action.sh if present, else fall back to a flake install
 # ==================================================================================================
 
@@ -53,7 +53,8 @@ action_setup() {
 
     nds_cfg_menu_or_skip || exit 12
     nds_flake_prepare remote
-    nds_git_ensure_access "$(nds_cfg_get FLAKE_REPO_URL)" || exit 14
+    nds_action_call_feature nds_git_access_run \
+        "FLAKE_REPO_URL=$(nds_cfg_get FLAKE_REPO_URL)" || exit 14
 
     local repo_url="${NDS_FLAKE_REPO_URL}"
     local host_dir="${NDS_FLAKE_HOST_DIR:-hosts/x86_64-linux}"

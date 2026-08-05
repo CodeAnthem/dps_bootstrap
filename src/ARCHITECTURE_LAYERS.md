@@ -28,8 +28,9 @@ Lowercase; no spaces or special characters.
 - Preview: skip when unattended or preview-skip flag.
 - Features decide their own UI (e.g. git GH device) from their config; no global phase-type registry.
 
-## Settings layout
+## Install / settings notes
 
+- `install/logic/` — AA helpers (e.g. ctx fill); UI menus stay under `app/menus` until migrated.
 - `settings/state/` — store + AA bridge (logic)
 - `settings/ui/` — menus / ask_*
 - `settings/presets/` — hook registration + injection

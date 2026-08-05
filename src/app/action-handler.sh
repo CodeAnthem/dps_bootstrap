@@ -2,8 +2,8 @@
 # ==================================================================================================
 # NDS - Action handler (select, configure, execute)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-29 | Modified: 2026-07-29
-# Description:   Action selection menu, lifecycle loop, preset configuration, execution
+# Date:          Created: 2026-07-29 | Modified: 2026-08-05
+# Description:   Action selection, feature AA bridge, presets, execution
 # ==================================================================================================
 
 # Description: Select action from NDS_ACTION when set to a discovered action name.
@@ -104,6 +104,35 @@ _app_action_configure_presets() {
     fi
 
     nds_cfg_seed_defaults
+    return 0
+}
+
+# Description: Call feature entry as fn(mode, cfg_aa); merge AA back to store.
+# Optional extra args: KEY=value overrides into the AA before the call.
+nds_action_call_feature() {
+    local fn="$1"
+    shift
+    local -A cfg=()
+    local mode pair
+
+    declare -f "$fn" &>/dev/null || {
+        error "Feature entry not found: $fn"
+        return 1
+    }
+
+    nds_mode_resolve || true
+    mode="${NDS_MODE:-interactive}"
+    nds_cfg_aa_from_store cfg
+    for pair in "$@"; do
+        [[ "$pair" == *=* ]] || continue
+        cfg["${pair%%=*}"]="${pair#*=}"
+    done
+
+    "$fn" "$mode" cfg || return $?
+    nds_cfg_aa_to_store cfg
+    if declare -f nds_cfg_sync_store_to_scoped &>/dev/null; then
+        nds_cfg_sync_store_to_scoped || true
+    fi
     return 0
 }
 

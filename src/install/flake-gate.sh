@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - installFlake early gate (URL → git → hosts → target)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-31 | Modified: 2026-08-03
+# Date:          Created: 2026-07-31 | Modified: 2026-08-05
 # Description:   Runs after action preview, before settings manager menu
 # ==================================================================================================
 
@@ -25,6 +25,12 @@ _flake_gate_ask_location() {
             nds_cfg_set FLAKE_REPO_URL ""
         fi
         return 0
+    fi
+
+    nds_mode_resolve || true
+    if declare -f nds_mode_is_unattended &>/dev/null && nds_mode_is_unattended; then
+        error "Unattended mode requires FLAKE_REPO_URL or FLAKE_LOCAL_PATH"
+        return 1
     fi
 
     if declare -f _installFlake_ask_location &>/dev/null; then
@@ -63,7 +69,11 @@ _flake_gate_ensure_access() {
     fi
 
     if [[ -n "$repo_url" ]]; then
-        nds_git_ensure_access "$repo_url" || return 1
+        if declare -f nds_action_call_feature &>/dev/null; then
+            nds_action_call_feature nds_git_access_run "FLAKE_REPO_URL=$repo_url" || return 1
+        else
+            nds_git_ensure_access "$repo_url" || return 1
+        fi
         nds_ui_section_header "Verifying flake access"
         nds_git_ensure_flake_closure_access "" "$repo_url" || return 1
         probe="${NDS_FLAKE_PROBE_REPO:-}"
@@ -83,6 +93,23 @@ _flake_gate_ensure_access() {
 # Description: Ask install mode + disk or remote IP.
 _flake_gate_ask_target() {
     local mode rc
+
+    nds_mode_resolve || true
+    if declare -f nds_mode_is_unattended &>/dev/null && nds_mode_is_unattended; then
+        mode="$(nds_cfg_get INSTALL_MODE)"
+        mode="${mode:-local}"
+        nds_cfg_set INSTALL_MODE "$mode"
+        if [[ "$mode" == "remote" ]]; then
+            [[ -n "$(nds_cfg_get REMOTE_TARGET_IP)" ]] \
+                || { error "Unattended remote install requires REMOTE_TARGET_IP"; return 1; }
+        else
+            [[ -n "$(nds_cfg_get DISK_TARGET)" ]] \
+                || { error "Unattended local install requires DISK_TARGET"; return 1; }
+            [[ -z "$(nds_cfg_get DISK_STRATEGY)" ]] && nds_cfg_set DISK_STRATEGY "nds"
+        fi
+        return 0
+    fi
+
     nds_cfg_section_title "Install mode"
     nds_cfg_ask_numbered_choice INSTALL_MODE \
         "local|remote" \
@@ -120,17 +147,21 @@ nds_flake_install_gate() {
         _flake_gate_ask_location || return 1
         _flake_gate_ensure_access flake_root || return 1
 
-        # Keep-access is asked here even when an existing key skipped the auth wizard.
+        # Keep-access: skip interactive asks when unattended unless already set.
         if declare -f nds_git_wizard_ask_persist_access &>/dev/null; then
-            nds_git_wizard_ask_persist_access
-            rc=$?
-            [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
-            [[ "$rc" -ne 0 ]] && return 1
-            if declare -f nds_git_persist_access &>/dev/null && nds_git_persist_access; then
-                nds_git_wizard_ask_access_strategy
+            if declare -f nds_mode_is_unattended &>/dev/null && nds_mode_is_unattended; then
+                [[ -z "$(nds_cfg_get GIT_PERSIST_ACCESS)" ]] && nds_cfg_set GIT_PERSIST_ACCESS "true"
+            else
+                nds_git_wizard_ask_persist_access
                 rc=$?
                 [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
                 [[ "$rc" -ne 0 ]] && return 1
+                if declare -f nds_git_persist_access &>/dev/null && nds_git_persist_access; then
+                    nds_git_wizard_ask_access_strategy
+                    rc=$?
+                    [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
+                    [[ "$rc" -ne 0 ]] && return 1
+                fi
             fi
         fi
 

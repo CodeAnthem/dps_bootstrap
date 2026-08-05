@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Git SSH auth gate (orchestrator)
+# NDS - Git SSH auth gate + exit cleanup
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-08-04
-# Description:   Access gates wiring git tools + auth wizard UI
+# Date:          Created: 2026-07-05 | Modified: 2026-08-05
+# Description:   Compat entry + closure gate; access entry is nds_git_access_run
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_AUTH_SKIP
@@ -14,9 +14,6 @@ nds_git_access_cleanup_success() {
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 }
 
-# Description: On script stop — if gh is still logged in on this ISO, ask to clear it.
-# Runs for any exit path (success, failure, Ctrl+C). Install success already tries
-# a silent clear; if that left a session, we still ask.
 hook_exit_cleanup() {
     local exit_code="${1:-$?}"
     local logged_in=false
@@ -37,7 +34,6 @@ hook_exit_cleanup() {
         return 0
     fi
 
-    # Successful install already attempted silent clear — retry once without prompt.
     if [[ "${NDS_GIT_INSTALL_SUCCEEDED:-}" == "true" ]]; then
         nds_git_gh_session_cleanup 2>/dev/null || true
         if declare -f nds_git_gh_host_logged_in &>/dev/null && nds_git_gh_host_logged_in; then
@@ -56,7 +52,6 @@ hook_exit_cleanup() {
     return 0
 }
 
-# Description: Probe one closure URL; 0 when accessible.
 _nds_git_closure_probe_one() {
     local url="$1"
     if nds_git_probe_public "$url" 2>/dev/null; then
@@ -68,7 +63,6 @@ _nds_git_closure_probe_one() {
     nds_git_probe_access "$url"
 }
 
-# Description: owner/repo label for a git URL (fallback: ssh form).
 _nds_git_closure_repo_label() {
     local url="$1" ssh_url parsed host owner repo
     ssh_url=$(_git_ssh_url "$url")
@@ -84,6 +78,10 @@ nds_git_ensure_flake_closure_access() {
     local flake_root="${1:-}" root_url="${2:-}"
     local -a urls=() failed=()
     local url ssh_url rc label pid probe_rc
+    local mode="${NDS_MODE:-interactive}"
+
+    nds_mode_resolve || true
+    mode="${NDS_MODE:-interactive}"
 
     nds_git_keys_load_all || true
 
@@ -150,10 +148,18 @@ nds_git_ensure_flake_closure_access() {
             nds_install_log "git: no access — ${ssh_url}"
         done
 
-        # Soft env skip removed for private closure — fail hard if skip requested
         if nds_skip_menu NDS_GIT_AUTH_SKIP; then
             error "Cannot verify SSH access to all flake git inputs (NDS_GIT_AUTH_SKIP set — unset it and configure keys)"
             return 1
+        fi
+
+        if [[ "$mode" == "unattended" ]]; then
+            local -A _gh_cfg=()
+            nds_cfg_aa_from_store _gh_cfg 2>/dev/null || true
+            if ! nds_git_access_wants_gh_ui _gh_cfg; then
+                error "Unattended: missing SSH access to flake inputs — configure keys or allow GH auth UI"
+                return 1
+            fi
         fi
 
         nds_git_auth_wizard_step_closure "${failed[@]}"
@@ -165,10 +171,11 @@ nds_git_ensure_flake_closure_access() {
     done
 }
 
+# Description: Compat entry — prefer orchestrator bridge when loaded.
 nds_git_ensure_access() {
     local url="$1"
     local -A cfg=()
-    local mode="${NDS_MODE:-interactive}"
+    local mode
 
     [[ -n "$url" ]] || return 0
     case "$url" in
@@ -176,20 +183,16 @@ nds_git_ensure_access() {
         *) return 0 ;;
     esac
 
-    if declare -f nds_mode_resolve &>/dev/null; then
-        nds_mode_resolve || true
-        mode="${NDS_MODE:-interactive}"
+    if declare -f nds_action_call_feature &>/dev/null; then
+        nds_action_call_feature nds_git_access_run "FLAKE_REPO_URL=$url"
+        return $?
     fi
 
-    if declare -f nds_cfg_aa_from_store &>/dev/null; then
-        nds_cfg_aa_from_store cfg
-    fi
+    nds_mode_resolve || true
+    mode="${NDS_MODE:-interactive}"
+    nds_cfg_aa_from_store cfg
     cfg[FLAKE_REPO_URL]="$url"
-
     nds_git_access_run "$mode" cfg || return $?
-
-    if declare -f nds_cfg_aa_to_store &>/dev/null; then
-        nds_cfg_aa_to_store cfg
-    fi
+    nds_cfg_aa_to_store cfg
     return 0
 }

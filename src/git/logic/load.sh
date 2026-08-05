@@ -11,7 +11,6 @@ nds_git_logic_load() {
 
     nds_import_file "${logic_dir}/auth-flow.sh" || return 1
     nds_import_file "${logic_dir}/git_access_logic.sh" || return 1
-    nds_import_file "${logic_dir}/git_access_run.sh" || return 1
     NDS_GIT_LOGIC_LOADED=true
     return 0
 }

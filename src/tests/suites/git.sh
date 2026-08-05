@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git tools tests (read-only / temp dirs)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-05 | Modified: 2026-07-31
+# Date:          Created: 2026-07-05 | Modified: 2026-08-05
 # ==================================================================================================
 
 suite_git() {
@@ -17,6 +17,15 @@ suite_git() {
             TEST_FAILED=$((TEST_FAILED + 1))
             console "  ✗ git_access_logic: normalize + wants_gh"
         fi
+    fi
+
+    if nds_import_file "${SCRIPT_DIR}/git/tests/git_auth_prompts_test.sh" 2>/dev/null \
+        && nds_git_auth_prompts_selfcheck; then
+        TEST_PASSED=$((TEST_PASSED + 1))
+        console "  ✓ git_auth_prompts: AA keys + wizard dispatch"
+    else
+        TEST_FAILED=$((TEST_FAILED + 1))
+        console "  ✗ git_auth_prompts: AA keys + wizard dispatch"
     fi
 
     out=$(nds_git_normalize_url "https://github.com/CodeAnthem/dps_swarm.git")

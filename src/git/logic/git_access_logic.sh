@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Git access logic (no TTY)
+# NDS - Git access logic + feature entry (no TTY in logic_*)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-08-05 | Modified: 2026-08-05
-# Description:   Probe / map / existing-key access from config AA
+# Description:   Normalize/probe from config AA; entry may call prompts then verify
 # ==================================================================================================
 
 # Description: Normalize repo URL into cfg AA (SSH form when parseable).
-# Arguments:
-# - cfg: <Nameref> Config AA (FLAKE_REPO_URL)
-# Returns:
-# - 0 when URL is a git remote; 1 when empty/non-git
 nds_git_access_logic_normalize() {
     local -n _g_cfg=$1
     local url parsed host owner repo ssh_url
@@ -39,11 +35,7 @@ nds_git_access_logic_normalize() {
     return 0
 }
 
-# Description: Try public / map / existing keys for cfg FLAKE_REPO_URL.
-# Arguments:
-# - cfg: <Nameref> Config AA
-# Returns:
-# - 0 when access works without interactive auth
+# Description: Try public / map / existing keys (no prompts).
 nds_git_access_logic_try() {
     local -n _g_try=$1
     local url="${_g_try[FLAKE_REPO_URL]:-}"
@@ -80,7 +72,6 @@ nds_git_access_logic_try() {
     return 1
 }
 
-# Description: Probe access after keys were registered (post-prompts).
 nds_git_access_logic_verify() {
     local -n _g_ver=$1
     local url="${_g_ver[FLAKE_REPO_URL]:-}"
@@ -97,12 +88,65 @@ nds_git_access_logic_verify() {
     return 1
 }
 
-# Description: True when cfg requests a GH-driven interactive auth path.
 nds_git_access_wants_gh_ui() {
     local -n _g_gh=$1
-    local method kind
-    method="${_g_gh[GIT_SSH_KEY_REGISTER_METHOD]:-${_g_gh[GIT_SSH_KEY_TYPE]:-}}"
-    kind="${_g_gh[GIT_AUTH_MODE]:-}"
-    [[ "${method,,}" == *gh* || "${method,,}" == "account" || "${kind,,}" == "gh" \
-        || "${kind,,}" == "account" ]]
+    local method="${_g_gh[GIT_SSH_KEY_REGISTER_METHOD]:-${_g_gh[GIT_SSH_KEY_TYPE]:-}}"
+    local kind="${_g_gh[GIT_AUTH_MODE]:-}"
+    [[ "${method,,}" == *gh* || "${method,,}" == "account" \
+        || "${kind,,}" == "gh" || "${kind,,}" == "account" ]]
+}
+
+# Description: Feature entry — mode + config AA (mutates AA).
+# Transitional: syncs store around wizard UI which still uses nds_cfg_*.
+nds_git_access_run() {
+    local mode="${1:-interactive}"
+    local -n _g_run=$2
+    local owner repo rc
+
+    nds_git_access_logic_normalize _g_run || return 0
+    owner="${_g_run[GIT_ACCESS_OWNER]:-}"
+    repo="${_g_run[GIT_ACCESS_REPO]:-}"
+    export NDS_FLAKE_REPO_URL="${_g_run[FLAKE_REPO_URL]:-}"
+    export NDS_FLAKE_SOURCE="${_g_run[FLAKE_SOURCE]:-remote}"
+
+    if nds_git_access_logic_try _g_run; then
+        return 0
+    fi
+
+    if nds_skip_menu NDS_GIT_AUTH_SKIP 2>/dev/null; then
+        error "Private repo ${owner}/${repo} needs SSH access (unset NDS_GIT_AUTH_SKIP and configure a key)"
+        return 1
+    fi
+
+    if [[ "$mode" == "unattended" ]] && ! nds_git_access_wants_gh_ui _g_run; then
+        error "Unattended git access failed for ${owner}/${repo} — provide keys or set GIT method for GH UI"
+        return 1
+    fi
+
+    while true; do
+        # Wizard still binds to settings store — sync only around that UI call.
+        nds_cfg_aa_to_store _g_run
+        export NDS_FLAKE_REPO_URL="${_g_run[FLAKE_REPO_URL]:-}"
+        export NDS_FLAKE_SOURCE="${_g_run[FLAKE_SOURCE]:-remote}"
+        nds_git_auth_prompts _g_run
+        rc=$?
+        nds_cfg_aa_from_store _g_run
+        [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
+        [[ "$rc" -ne 0 ]] && continue
+
+        if nds_git_access_logic_verify _g_run; then
+            if declare -f nds_git_access_set &>/dev/null; then
+                nds_git_access_set method "${_g_run[FLAKE_REPO_URL]}" \
+                    "${_g_run[GIT_ACCESS_METHOD]:-${_g_run[GIT_SSH_KEY_REGISTER_METHOD]:-import}}"
+            fi
+            return 0
+        fi
+        warn "Still no access — register a key on ${owner}/${repo} or import a working key."
+        if nds_git_host_is_github "${_g_run[GIT_ACCESS_HOST]:-}" 2>/dev/null; then
+            nds_ui_i "Deploy keys: https://github.com/${owner}/${repo}/settings/keys"
+        fi
+        if [[ "$mode" == "unattended" ]] && ! nds_git_access_wants_gh_ui _g_run; then
+            return 1
+        fi
+    done
 }
