@@ -90,6 +90,29 @@ suite_mode() {
         console "  ✗ action_call_feature: missing"
     fi
 
+    if declare -f nds_cfg_aa_bind &>/dev/null; then
+        local -A live=([X]="from-aa")
+        local saved_cd="${CONFIG_DATA[X]:-}"
+        CONFIG_DATA[X]="from-store"
+        nds_cfg_aa_bind live
+        if [[ "$(nds_cfg_get X)" == "from-aa" ]]; then
+            nds_cfg_set X "updated"
+            nds_cfg_aa_unbind
+            if [[ "${live[X]}" == "updated" && "${CONFIG_DATA[X]}" == "from-store" ]]; then
+                TEST_PASSED=$((TEST_PASSED + 1))
+                console "  ✓ cfg_aa_bind: get/set redirect without store write"
+            else
+                TEST_FAILED=$((TEST_FAILED + 1))
+                console "  ✗ cfg_aa_bind: store pollution or miss"
+            fi
+        else
+            nds_cfg_aa_unbind
+            TEST_FAILED=$((TEST_FAILED + 1))
+            console "  ✗ cfg_aa_bind: get did not hit AA"
+        fi
+        CONFIG_DATA[X]="$saved_cd"
+    fi
+
     if declare -f nds_cfg_menu_or_skip &>/dev/null; then
         export NDS_MODE=unattended
         # Empty store + no presets → validate may fail; ensure it does not open menu (returns 1).

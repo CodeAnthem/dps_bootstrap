@@ -97,11 +97,12 @@ nds_git_access_wants_gh_ui() {
 }
 
 # Description: Feature entry — mode + config AA (mutates AA).
-# Transitional: syncs store around wizard UI which still uses nds_cfg_*.
+# UI uses nds_cfg_* while bound to this AA (no store write from wizard).
 nds_git_access_run() {
     local mode="${1:-interactive}"
     local -n _g_run=$2
     local owner repo rc
+    local prev_aa="${NDS_CFG_AA_NAME:-}"
 
     nds_git_access_logic_normalize _g_run || return 0
     owner="${_g_run[GIT_ACCESS_OWNER]:-}"
@@ -123,14 +124,12 @@ nds_git_access_run() {
         return 1
     fi
 
+    nds_cfg_aa_bind _g_run
     while true; do
-        # Wizard still binds to settings store — sync only around that UI call.
-        nds_cfg_aa_to_store _g_run
         export NDS_FLAKE_REPO_URL="${_g_run[FLAKE_REPO_URL]:-}"
         export NDS_FLAKE_SOURCE="${_g_run[FLAKE_SOURCE]:-remote}"
         nds_git_auth_prompts _g_run
         rc=$?
-        nds_cfg_aa_from_store _g_run
         [[ "$rc" -eq "${NDS_ACTION_BACK:-10}" ]] && continue
         [[ "$rc" -ne 0 ]] && continue
 
@@ -139,6 +138,7 @@ nds_git_access_run() {
                 nds_git_access_set method "${_g_run[FLAKE_REPO_URL]}" \
                     "${_g_run[GIT_ACCESS_METHOD]:-${_g_run[GIT_SSH_KEY_REGISTER_METHOD]:-import}}"
             fi
+            NDS_CFG_AA_NAME="$prev_aa"
             return 0
         fi
         warn "Still no access — register a key on ${owner}/${repo} or import a working key."
@@ -146,6 +146,7 @@ nds_git_access_run() {
             nds_ui_i "Deploy keys: https://github.com/${owner}/${repo}/settings/keys"
         fi
         if [[ "$mode" == "unattended" ]] && ! nds_git_access_wants_gh_ui _g_run; then
+            NDS_CFG_AA_NAME="$prev_aa"
             return 1
         fi
     done

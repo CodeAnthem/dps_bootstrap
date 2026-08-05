@@ -35,7 +35,7 @@ action_setup() {
     nds_mode_resolve || true
 
     # Early gate: URL → git → hosts → target (before full settings menu)
-    nds_flake_install_gate || exit 11
+    nds_action_call_feature nds_flake_install_gate || exit 11
 
     if ! nds_cfg_validate_all; then
         if nds_mode_is_unattended; then

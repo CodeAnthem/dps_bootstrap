@@ -2,19 +2,9 @@
 # ==================================================================================================
 # NDS - Git auth flow logic (framework)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-28 | Modified: 2026-07-28
+# Date:          Created: 2026-07-28 | Modified: 2026-08-05
 # Description:   NDS-aware auth gates without interactive UI
 # ==================================================================================================
-
-_git_update_repo_url() {
-    local new_url="$1"
-    nds_cfg_set FLAKE_REPO_URL "$new_url"
-    nds_cfg_set FLAKE_LOCATION "$new_url"
-    nds_cfg_set FLAKE_LOCAL_PATH ""
-    nds_cfg_set FLAKE_SOURCE "remote"
-    export NDS_FLAKE_REPO_URL="$new_url"
-    export NDS_FLAKE_SOURCE="remote"
-}
 
 # Description: Try import path, session keys, and discovered ~/.ssh keys.
 # Arguments:

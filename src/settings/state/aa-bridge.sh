@@ -29,6 +29,19 @@ nds_cfg_aa_to_store() {
     done
 }
 
+# Description: Redirect nds_cfg_get/set onto a live feature AA (name of nameref/AA).
+# Call from feature entry while nested UI still uses nds_cfg_*; unbind after.
+# Arguments:
+# - aa_name: <String> Variable name of the config AA (e.g. _g_run)
+nds_cfg_aa_bind() {
+    NDS_CFG_AA_NAME="${1:?config AA variable name}"
+}
+
+# Description: Restore nds_cfg_get/set to CONFIG_DATA.
+nds_cfg_aa_unbind() {
+    NDS_CFG_AA_NAME=""
+}
+
 # Description: Require non-empty keys in a config AA (feature unattended checks).
 # Arguments:
 # - cfg:  <Nameref> Config AA

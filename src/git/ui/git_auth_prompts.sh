@@ -3,7 +3,7 @@
 # NDS - Git auth prompts (interactive)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-08-05 | Modified: 2026-08-05
-# Description:   Wizard UI only — caller syncs config AA to/from store around this call
+# Description:   Wizard UI only — caller binds config AA via nds_cfg_aa_bind
 # ==================================================================================================
 
 # Description: Run repo auth wizard for host/owner/repo from cfg AA.

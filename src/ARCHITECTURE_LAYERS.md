@@ -18,8 +18,8 @@ Lowercase; no spaces or special characters.
 ## Config AA
 
 - Main/action own the store; pass full config AA into feature entry; feature returns AA updates.
-- Logic and prompts: no `nds_cfg_get` / `nds_cfg_set`.
-- Helpers: `nds_cfg_aa_from_store`, `nds_cfg_aa_to_store`, `nds_feature_require_keys`, `nds_aa_get` / `nds_aa_set`.
+- Logic: prefer nameref AA; prompts may use `nds_cfg_get`/`set` only under `nds_cfg_aa_bind` (redirect onto feature AA — no `CONFIG_DATA` writes).
+- Helpers: `nds_cfg_aa_from_store`, `nds_cfg_aa_to_store`, `nds_cfg_aa_bind`/`unbind`, `nds_feature_require_keys`, `nds_aa_get`/`set`.
 
 ## Mode
 
@@ -30,7 +30,10 @@ Lowercase; no spaces or special characters.
 
 ## Install / settings notes
 
-- `install/logic/` — AA helpers (e.g. ctx fill); UI menus stay under `app/menus` until migrated.
+- `install/logic/` — flake gate + ctx AA helpers (no TTY).
+- `install/ui/` — flake gate / host prompts (write via bound `nds_cfg_*`).
+- Feature UI may call `nds_cfg_get`/`set` only while `nds_cfg_aa_bind` redirects them onto the feature AA; orchestrators merge AA → store.
+- Confirm menus stay under `app/menus`.
 - `settings/state/` — store + AA bridge (logic)
 - `settings/ui/` — menus / ask_*
 - `settings/presets/` — hook registration + injection

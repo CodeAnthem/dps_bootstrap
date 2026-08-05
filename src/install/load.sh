@@ -32,8 +32,11 @@ nds_install_load() {
     nds_import_file "${install_dir}/disk-prep.sh" || return 1
     nds_import_file "${install_dir}/classic-pipeline.sh" || return 1
     nds_import_file "${install_dir}/flake-pipeline.sh" || return 1
+    nds_import_file "${install_dir}/logic/install_ctx_logic.sh" || return 1
+    nds_import_file "${install_dir}/logic/flake_gate_logic.sh" || return 1
+    nds_import_file "${install_dir}/ui/flake_gate_prompts.sh" || return 1
+    nds_import_file "${install_dir}/ui/flake_hosts_prompts.sh" || return 1
     nds_import_file "${install_dir}/flake-gate.sh" || return 1
     nds_import_file "${install_dir}/flake-install-pipeline.sh" || return 1
-    nds_import_file "${install_dir}/logic/install_ctx_logic.sh" || return 1
     return 0
 }
