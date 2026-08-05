@@ -3,7 +3,7 @@
 # NDS - Git SSH auth gate + exit cleanup
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-05 | Modified: 2026-08-05
-# Description:   Compat entry + closure gate; access entry is nds_git_access_run
+# Description:   Exit cleanup + flake-input closure access gate
 # ==================================================================================================
 
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_AUTH_SKIP
@@ -169,30 +169,4 @@ nds_git_ensure_flake_closure_access() {
         nds_git_keys_load_all || true
         nds_git_ssh_config_refresh || true
     done
-}
-
-# Description: Compat entry — prefer orchestrator bridge when loaded.
-nds_git_ensure_access() {
-    local url="$1"
-    local -A cfg=()
-    local mode
-
-    [[ -n "$url" ]] || return 0
-    case "$url" in
-        http://*|https://*|git://*|ssh://*|*@*:*) ;;
-        *) return 0 ;;
-    esac
-
-    if declare -f nds_action_call_feature &>/dev/null; then
-        nds_action_call_feature nds_git_access_run "FLAKE_REPO_URL=$url"
-        return $?
-    fi
-
-    nds_mode_resolve || true
-    mode="${NDS_MODE:-interactive}"
-    nds_cfg_aa_from_store cfg
-    cfg[FLAKE_REPO_URL]="$url"
-    nds_git_access_run "$mode" cfg || return $?
-    nds_cfg_aa_to_store cfg
-    return 0
 }

@@ -235,9 +235,3 @@ nds_git_wizard_menu_gh_account() {
     nds_step_fail "$label"
     return 1
 }
-
-# Compatibility alias (deprecated — use deploy or account menus).
-nds_git_wizard_menu_gh() {
-    local -a repos=("$@")
-    nds_git_wizard_menu_gh_account "${repos[@]}"
-}

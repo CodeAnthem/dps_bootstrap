@@ -9,7 +9,7 @@
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_PREFLIGHT_WARN_SKIP
 
 # Description: Verify nix tooling, target disk, and boot mode before install.
-# Git SSH access is verified earlier by nds_git_ensure_access / closure checks.
+# Git SSH access is verified earlier by flake gate / nds_git_access_run / closure checks.
 # Arguments:
 # - disk: <String|optional> Target block device
 nds_preflight_install() {
@@ -62,7 +62,7 @@ nds_preflight_install() {
 }
 
 # Description: Verify operator machine before remote nixos-anywhere install.
-# Git SSH access is verified earlier by nds_git_ensure_access / closure checks.
+# Git SSH access is verified earlier by flake gate / nds_git_access_run / closure checks.
 # Arguments:
 # - target_ip: <String> Target host IP or hostname
 nds_preflight_remote_install() {

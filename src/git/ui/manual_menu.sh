@@ -133,10 +133,3 @@ nds_git_wizard_menu_manual_account() {
     nds_git_wizard_confirm_manual_account || return 1
     return 0
 }
-
-# Description: Manual registration path (account key, legacy entry).
-# Returns:
-# - <Bool> 0 on success
-nds_git_wizard_menu_manual() {
-    nds_git_wizard_menu_manual_account
-}

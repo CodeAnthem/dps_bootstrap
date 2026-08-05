@@ -12,7 +12,7 @@ suite_settings_manager() {
     if [[ -n "${NDS_MODE:-}" ]] && declare -f nds_cfg_aa_from_store &>/dev/null; then
         local -A cfg=()
         nds_cfg_aa_from_store cfg
-        nds_aa_set cfg _NDS_MODE_PROBE "1"
+        cfg[_NDS_MODE_PROBE]="1"
         nds_cfg_aa_to_store cfg
         if [[ "$(nds_cfg_get _NDS_MODE_PROBE)" == "1" ]]; then
             TEST_PASSED=$((TEST_PASSED + 1))

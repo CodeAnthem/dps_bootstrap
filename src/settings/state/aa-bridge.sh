@@ -30,7 +30,7 @@ nds_cfg_aa_to_store() {
 }
 
 # Description: Redirect nds_cfg_get/set onto a live feature AA (name of nameref/AA).
-# Call from feature entry while nested UI still uses nds_cfg_*; unbind after.
+# Call from feature entry before nds_aa_ask_* / nds_feat_cfg_*; unbind after.
 # Arguments:
 # - aa_name: <String> Variable name of the config AA (e.g. _g_run)
 nds_cfg_aa_bind() {
@@ -60,18 +60,4 @@ nds_feature_require_keys() {
         return 1
     fi
     return 0
-}
-
-# Description: Read a key from a config AA with optional default.
-nds_aa_get() {
-    local -n _nds_aa_get=$1
-    local key="$2" default="${3:-}"
-    printf '%s\n' "${_nds_aa_get[$key]:-$default}"
-}
-
-# Description: Set a key on a config AA.
-nds_aa_set() {
-    local -n _nds_aa_set=$1
-    local key="$2" value="$3"
-    _nds_aa_set["$key"]="$value"
 }

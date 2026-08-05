@@ -97,7 +97,7 @@ nds_git_access_wants_gh_ui() {
 }
 
 # Description: Feature entry — mode + config AA (mutates AA).
-# UI uses nds_cfg_* while bound to this AA (no store write from wizard).
+# UI uses nds_aa_ask_* / nds_feat_cfg_* while bound to this AA.
 nds_git_access_run() {
     local mode="${1:-interactive}"
     local -n _g_run=$2

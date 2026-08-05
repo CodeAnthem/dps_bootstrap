@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard import menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-08-03
+# Date:          Created: 2026-07-07 | Modified: 2026-08-05
 # Description:   Path-based key import (cwd/.ssh auto-scan runs before the wizard)
 # ==================================================================================================
 
@@ -42,20 +42,4 @@ nds_git_wizard_menu_import_path() {
     fi
     success "SSH key loaded from ${src}"
     return 0
-}
-
-# Compatibility: older callers expected auto-scan + path fallback.
-nds_git_wizard_menu_import() {
-    local -a urls=("$@")
-    local found
-
-    info "Looking for existing SSH private keys in this directory and /root/.ssh ..."
-    if found="$(nds_git_discover_try_candidates "${urls[@]}")"; then
-        nds_git_auth_set_mode imported
-        success "SSH key works: ${found}"
-        return 0
-    fi
-
-    warn "No working key found automatically."
-    nds_git_wizard_menu_import_path "${urls[@]}"
 }
