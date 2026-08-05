@@ -2,16 +2,18 @@
 # ==================================================================================================
 # NDS - App lifecycle (staged loader)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-29 | Modified: 2026-07-29
+# Date:          Created: 2026-07-29 | Modified: 2026-08-05
 # Description:   Explicit staged load functions; settingsManager deferred to action runtime
 # ==================================================================================================
 
-# Description: Load primitive shared core (import, runtime, platform, strings).
-# No UI, no settings, no actions.
+# Description: Load primitive shared core (import, runtime, platform, strings)
+# and sourcable tools/lib helpers (pkg, qr, age, facter). No UI, no settings.
 nds_lifecycle_load_core() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
 
     nds_import_dir "${script_dir}/core" false || return 1
+    nds_import_file "${script_dir}/tools/lib/load.sh" || return 1
+    nds_tools_lib_load "${script_dir}/tools/lib" || return 1
     return 0
 }
 

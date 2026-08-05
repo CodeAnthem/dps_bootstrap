@@ -176,14 +176,9 @@ _install_generate_facter_report() {
     log "Generating hardware report via nixos-facter -> ${dest}"
     local nix_config
     nix_config=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
-    if ! env NIX_CONFIG="$nix_config" \
-        nix run nixpkgs#nixos-facter -- -o "$dest" \
+    if ! NDS_PKG_NIX_CONFIG="$nix_config" nds_facter_write "$dest" \
         >>"${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}" 2>&1; then
         error "nixos-facter failed — see install log for details"
-        return 1
-    fi
-    if [[ ! -s "$dest" ]]; then
-        error "nixos-facter did not write ${dest}"
         return 1
     fi
     _install_sanitize_facter_report "$dest" || return 1

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Git auth wizard manual registration menu
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-07 | Modified: 2026-07-07
+# Date:          Created: 2026-07-07 | Modified: 2026-08-05
 # ==================================================================================================
 
 # Description: Resolve QR vs printed copy (env or one-time prompt).
@@ -53,8 +53,18 @@ nds_git_wizard_show_manual_key_at() {
     nds_ui_b ""
 
     if [[ "$display" == "qr" ]]; then
-        if nds_git_qr_preinstall; then
-            nds_git_qr_show_manual_bundle "$register_url" "$pub_path" || true
+        if nds_qr_ensure; then
+            local pub
+            pub="$(tr -d '\n' < "$pub_path")"
+            nds_ui_b ""
+            nds_ui_h "SSH key registration page"
+            nds_ui_b ""
+            nds_qr_print "$register_url" || true
+            nds_ui_i "$register_url"
+            nds_ui_b ""
+            nds_ui_h "Public key (paste on registration page)"
+            nds_ui_b ""
+            nds_qr_print "$pub" || true
         else
             warn "QR unavailable — use printed copy above"
         fi

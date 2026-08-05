@@ -105,13 +105,13 @@ nds_git_gh_cmd() {
         _out=("${_resolved[@]}")
         return 0
     fi
-    if command -v nix &>/dev/null; then
-        # One-time cache — never leave callers on perpetual `nix shell`.
-        if nds_git_gh_prefetch && nds_git_gh_cmd_nofetch _resolved; then
-            _out=("${_resolved[@]}")
-            return 0
-        fi
-        _out=(_git_gh_nix shell nixpkgs#gh -c gh)
+    if nds_git_gh_prefetch && nds_git_gh_cmd_nofetch _resolved; then
+        _out=("${_resolved[@]}")
+        return 0
+    fi
+    # Last resort: shared PATH/nixpkgs resolver (no persistent cache).
+    if declare -f nds_pkg_cmd &>/dev/null && nds_pkg_cmd _resolved gh gh; then
+        _out=("${_resolved[@]}")
         return 0
     fi
     _out=()

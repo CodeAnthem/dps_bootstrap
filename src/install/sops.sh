@@ -6,18 +6,11 @@
 # Description:   Generate a machine age key, install it on the target, and guide sops enrollment
 # ==================================================================================================
 
-# Run age-keygen, resolving the binary via PATH or a transient nix shell.
-# Usage: _sops_run_age_keygen [args...]
+# Run age-keygen via shared tools helper (PATH or nixpkgs#age).
 _sops_run_age_keygen() {
-    if command -v age-keygen &>/dev/null; then
-        age-keygen "$@"
-    elif command -v nix &>/dev/null; then
-        local nix_config
-        nix_config=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
-        env NIX_CONFIG="$nix_config" nix shell nixpkgs#age -c age-keygen "$@"
-    else
-        return 127
-    fi
+    local nix_config
+    nix_config=$(_install_nix_combined_nix_config "experimental-features = nix-command flakes")
+    NDS_PKG_NIX_CONFIG="$nix_config" nds_age_keygen "$@"
 }
 
 # Description: Write an operator note describing how to enroll a machine pubkey.
