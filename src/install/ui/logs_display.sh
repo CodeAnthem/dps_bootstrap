@@ -11,7 +11,7 @@ nds_install_logs_fetch_hints() {
 
     declare -f nds_install_logs_publish &>/dev/null && nds_install_logs_publish
     user=$(nds_install_ssh_user)
-    host=$(nds_install_bundle_host_ip)
+    host=$(nds_bundle_host_ip)
     diag_home=$(nds_install_logs_home_diag)
     verbose_home=$(nds_install_logs_home_verbose)
     [[ -n "$host" ]] || return 0

@@ -40,12 +40,13 @@ suite_tools_lib() {
         fi
     fi
 
-    if declare -f nds_git_qr_show_payload &>/dev/null \
-        || declare -f nds_git_qr_show_manual_bundle &>/dev/null; then
+    if declare -f nds_git_gh_ensure &>/dev/null \
+        || declare -f nds_git_gh_cmd &>/dev/null \
+        || declare -f nds_git_gh_session_cleanup &>/dev/null; then
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ legacy git QR helpers still present"
+        console "  ✗ leftover nds_git_gh_* aliases (use nds_gh_*)"
     else
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ git QR helpers removed (use nds_qr_*)"
+        console "  ✓ no nds_git_gh_* aliases (nds_gh_* only)"
     fi
 }

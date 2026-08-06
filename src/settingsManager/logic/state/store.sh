@@ -6,8 +6,6 @@
 # Description:   Flat config storage, preset registry, env import/export
 # ==================================================================================================
 
-declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_CONFIG_CONFIRM_SKIP
-
 declare -gA CONFIG_DATA=()
 declare -gA CONFIG_DEFAULTS=()
 declare -gA PRESET_REGISTRY=()
@@ -319,34 +317,4 @@ nds_cfg_reset_for_action() {
         unset "PRESET_META[${preset}__display]"
         unset "PRESET_META[${preset}__priority]"
     done
-}
-
-nds_cfg_print_backup() {
-    local line count=0
-    nds_ui_section_header "Configuration export"
-    nds_ui_b "Only values changed from defaults (export NDS_*= lines)."
-    nds_ui_b "Full scoped arrays + complete env are written in the install backup bundle."
-    nds_ui_b ""
-    while IFS= read -r line; do
-        [[ -n "$line" ]] || continue
-        nds_ui_i "$line"
-        count=$((count + 1))
-    done < <(nds_cfg_export_modified)
-    if [[ -n "${NDS_CURRENT_ACTION:-}" ]]; then
-        nds_ui_i "export NDS_ACTION=\"${NDS_CURRENT_ACTION}\""
-        count=$((count + 1))
-    fi
-    if [[ "$count" -eq 0 ]]; then
-        nds_ui_i "# (no changes from defaults)"
-    fi
-    nds_ui_b ""
-}
-
-nds_cfg_confirm_saved() {
-    if nds_skip_menu NDS_CONFIG_CONFIRM_SKIP; then
-        log "Configuration review confirmation skipped"
-        return 0
-    fi
-    nds_ask_user_to_proceed "Continue to installation review" || return 1
-    return 0
 }

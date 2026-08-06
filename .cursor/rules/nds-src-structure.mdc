@@ -13,7 +13,7 @@ Audit like a reviewer: **one concern per file/folder**, no duplicate capability 
 
 | Area | Role |
 |------|------|
-| `app/` | Backbone only (entry, `core/`, `lifecycle/`, `runtime/`, menus) |
+| `app/` | Backbone only (entry, `core/`, `lifecycle/`, `runtime/`, `ui/`) |
 | `ui/` | Shared terminal UI (logger, sections, prompts, step animation) — no feature policy |
 | `settingsManager/` | Settings store + presets **data** + **logic/ui** + **validators** (SM-owned) |
 | `tools/` | Sourcable capability helpers (`nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, …) — no domain policy |

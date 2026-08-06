@@ -32,11 +32,11 @@ nds_lifecycle_load_ui() {
     return 0
 }
 
-# Description: Load action runtime + confirm menus. settingsManager deferred.
+# Description: Load action runtime + app UI (confirm / select / preview / exit).
 nds_lifecycle_load_actions() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
 
     nds_import_tree "${script_dir}/app/runtime" || return 1
-    nds_import_tree "${script_dir}/app/menus" || return 1
+    nds_import_tree "${script_dir}/app/ui" || return 1
     return 0
 }

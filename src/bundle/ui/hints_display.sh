@@ -16,15 +16,15 @@ _bundle_ui_colored() {
     fi
 }
 
-_install_bundle_remote_copy_hint() {
+_bundle_remote_copy_hint() {
     local bundle_path="$1"
     local ssh_user host local_name
 
     ssh_user=$(nds_install_ssh_user)
-    host=$(nds_install_bundle_host_ip)
+    host=$(nds_bundle_host_ip)
     [[ -z "$host" ]] && return 0
 
-    local_name=$(nds_install_bundle_local_name)
+    local_name=$(nds_bundle_local_name)
     [[ "$bundle_path" == *.tar.gz ]] && local_name="${local_name%.zip}.tar.gz"
 
     nds_ui_b "Backup it from your local machine:"
@@ -36,7 +36,7 @@ _install_bundle_remote_copy_hint() {
     nds_ui_b ""
 }
 
-_install_bundle_usbkey_instructions() {
+_bundle_usbkey_instructions() {
     _install_gather_context
     [[ "$NDS_CTX_ENCRYPTION" == "true" ]] || return 0
     [[ "$NDS_CTX_ENCRYPTION_KEY" == "true" ]] || return 0

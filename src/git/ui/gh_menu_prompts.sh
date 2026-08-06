@@ -189,7 +189,7 @@ nds_git_wizard_menu_gh_deploy() {
 
     nds_git_wizard_gh_prepare || return 1
     nds_step_start "$label"
-    if ! nds_git_gh_register_deploy_for_repo "$owner" "$repo"; then
+    if ! nds_git_register_deploy_for_repo "$owner" "$repo"; then
         nds_step_fail "$label"
         return 1
     fi
@@ -226,7 +226,7 @@ nds_git_wizard_menu_gh_account() {
     nds_git_auth_set_mode account
 
     nds_step_start "$label"
-    if nds_git_gh_register_for_repos "$pub" "${repos[@]}"; then
+    if nds_git_register_for_repos "$pub" "${repos[@]}"; then
         nds_step_complete "$label"
         success "SSH key registered on GitHub account ($(nds_git_ssh_key_title))"
         nds_ui_i "Private key will be copied to $(nds_git_target_key_abs) on the target."

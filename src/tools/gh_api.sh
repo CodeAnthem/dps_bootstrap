@@ -353,9 +353,3 @@ nds_gh_repo_file_content() {
     printf '%s' "$content" | tr -d '\n' | base64 -d
 }
 
-# Compat aliases (API check helpers — register_* wrappers live in git/logic/gh_orch_logic.sh)
-nds_git_gh_pubkey_on_user() { nds_gh_pubkey_on_user "$@"; }
-nds_git_gh_pubkey_is_readonly() { nds_gh_pubkey_is_readonly "$@"; }
-nds_git_gh_ssh_key_is_readonly() { nds_gh_ssh_key_is_readonly "$@"; }
-nds_git_gh_deploy_pubkey_on_repo() { nds_gh_deploy_pubkey_on_repo "$@"; }
-_git_gh_api_with_timeout() { nds_gh_api_with_timeout "$@"; }

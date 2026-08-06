@@ -7,7 +7,7 @@
 # ==================================================================================================
 
 # Description: Register deploy key via gh, prompting on title collision (rc 41).
-nds_git_gh_register_deploy_key() {
+nds_git_register_deploy_key() {
     local pub_file="$1" owner="$2" repo="$3" title="$4"
     local collision rc
 
@@ -29,7 +29,7 @@ nds_git_gh_register_deploy_key() {
 }
 
 # Description: Generate (if needed) deploy key path and register via gh API.
-nds_git_gh_register_deploy_for_repo() {
+nds_git_register_deploy_for_repo() {
     local owner="$1" repo="$2"
     local pub title key_path
 
@@ -41,12 +41,12 @@ nds_git_gh_register_deploy_for_repo() {
         nds_git_keys_register "$key_path" || true
     fi
     title="$(nds_git_deploy_key_title "$owner" "$repo")"
-    nds_git_gh_register_deploy_key "$pub" "$owner" "$repo" "$title" || return 1
+    nds_git_register_deploy_key "$pub" "$owner" "$repo" "$title" || return 1
     return 0
 }
 
 # Description: Register account SSH key via gh, prompting on title collision.
-nds_git_gh_register_account_key() {
+nds_git_register_account_key() {
     local pub_file="$1" title="$2"
     local collision rc
 
@@ -68,7 +68,7 @@ nds_git_gh_register_account_key() {
 }
 
 # Description: Register account SSH key for GitHub repos in scope (expands flake.lock).
-nds_git_gh_register_for_repos() {
+nds_git_register_for_repos() {
     local pub_file="$1"
     shift
     local -a repos=("$@")
@@ -81,10 +81,10 @@ nds_git_gh_register_for_repos() {
     key_title="$(nds_git_ssh_key_title)"
     nds_git_key_load "$(nds_git_session_key_path)" || true
 
-    mapfile -t repos < <(nds_git_gh_expand_github_repos "${repos[@]}")
+    mapfile -t repos < <(nds_git_expand_github_repos "${repos[@]}")
     nds_install_log "git: registering account SSH key for ${#repos[@]} repo(s)"
 
-    nds_git_gh_register_account_key "$pub_file" "$key_title" || return 1
+    nds_git_register_account_key "$pub_file" "$key_title" || return 1
     export NDS_GIT_SSH_KEY_READONLY=true
     return 0
 }
@@ -102,7 +102,7 @@ nds_git_urls_to_github_repos() {
 }
 
 # Description: Fetch flake.lock git URLs from GitHub via gh API.
-_nds_git_gh_lock_git_urls() {
+_nds_git_lock_git_urls() {
     local gh_repo="$1"
     local owner repo tmp
 
@@ -120,7 +120,7 @@ _nds_git_gh_lock_git_urls() {
 }
 
 # Description: Merge root repo(s) with GitHub repos referenced in their flake.lock.
-nds_git_gh_expand_github_repos() {
+nds_git_expand_github_repos() {
     local -a seeds=("$@")
     local -a out=()
     local -a gh_repos=()
@@ -135,7 +135,7 @@ nds_git_gh_expand_github_repos() {
             [[ -n "$url" ]] || continue
             mapfile -t gh_repos < <(nds_git_urls_to_github_repos "$url")
             mapfile -t out < <(printf '%s\n' "${out[@]}" "${gh_repos[@]}")
-        done < <(_nds_git_gh_lock_git_urls "$gh_repo")
+        done < <(_nds_git_lock_git_urls "$gh_repo")
     done
     printf '%s\n' "${out[@]}" | awk 'NF' | sort -u
 }

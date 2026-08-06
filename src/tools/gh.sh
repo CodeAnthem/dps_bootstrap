@@ -210,19 +210,3 @@ nds_gh_cmd() {
     return 1
 }
 
-# Compat aliases used by older call sites / tests
-nds_git_gh_bin_ready() { nds_gh_bin_ready "$@"; }
-nds_git_gh_cmd_nofetch() { nds_gh_cmd_nofetch "$@"; }
-nds_git_gh_cmd() { nds_gh_cmd "$@"; }
-nds_git_gh_prefetch() { nds_gh_prefetch "$@"; }
-nds_git_gh_ensure_prefetch() { nds_gh_ensure "$@"; }
-nds_git_gh_available() { nds_gh_available "$@"; }
-_git_gh_persist_bin_cache() { _nds_gh_persist_bin_cache "$@"; }
-_git_gh_restore_bin_cache() { _nds_gh_restore_bin_cache "$@"; }
-_git_gh_cache_bin_from_nix() { _nds_gh_cache_bin_from_nix "$@"; }
-_git_gh_nix() { _nds_gh_nix "$@"; }
-
-nds_gh_available() {
-    nds_gh_bin_ready && return 0
-    command -v nix &>/dev/null
-}

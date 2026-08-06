@@ -27,8 +27,8 @@ app/
   VERSION
   core/                   # import, mode/skip, runtime, platform, strings
   lifecycle/              # staged loaders
-  runtime/                # bootstrap, actions, cli, exit, state
-  menus/                  # install/remote confirm
+  runtime/                # bootstrap, actions, cli, exit, state (logic)
+  ui/                     # confirm / select / preview / exit display
   tests/                  # mode / skip / standalone suites
 ```
 

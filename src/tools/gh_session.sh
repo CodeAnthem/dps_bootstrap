@@ -202,16 +202,3 @@ nds_gh_unset_blocking_tokens() {
     fi
 }
 
-# Compat aliases (git call sites / tests)
-nds_git_gh_hosts_yml_has_github() { nds_gh_hosts_yml_has_github "$@"; }
-nds_git_gh_host_logged_in() { nds_gh_host_logged_in "$@"; }
-nds_git_gh_session_active() { nds_gh_session_active "$@"; }
-nds_git_gh_session_mark_active() { nds_gh_session_mark_active "$@"; }
-nds_git_gh_session_mark_scopes_ok() { nds_gh_session_mark_scopes_ok "$@"; }
-nds_git_gh_probe_registration_scopes() { nds_gh_probe_registration_scopes "$@"; }
-nds_git_gh_has_key_scope() { nds_gh_has_key_scope "$@"; }
-nds_git_gh_session_cleanup() { nds_gh_session_cleanup "$@"; }
-nds_git_gh_session_ready() { nds_gh_session_ready "$@"; }
-nds_git_gh_unset_blocking_tokens() { nds_gh_unset_blocking_tokens "$@"; }
-_git_gh_hosts_yml_candidates() { _nds_gh_hosts_yml_candidates "$@"; }
-_git_gh_wipe_hosts_yml() { _nds_gh_wipe_hosts_yml "$@"; }

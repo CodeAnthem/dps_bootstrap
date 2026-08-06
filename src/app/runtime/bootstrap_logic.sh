@@ -90,8 +90,6 @@ nds_framework_warmup_git_gh() {
     fi
     if declare -f nds_gh_ensure &>/dev/null; then
         nds_gh_ensure || true
-    elif declare -f nds_gh_ensure &>/dev/null; then
-        nds_gh_ensure || true
     fi
     # Remember leftover login so abort-from-menu still offers to clear it.
     if declare -f nds_gh_host_logged_in &>/dev/null && nds_gh_host_logged_in; then

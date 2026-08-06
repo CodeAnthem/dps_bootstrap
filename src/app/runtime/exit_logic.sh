@@ -46,33 +46,7 @@ _app_stop_handler() {
     [[ "$exit_code" -eq "$NDS_ACTION_BACK" ]] && return 0
 
     if [[ "$exit_code" -ne 0 ]]; then
-        nds_ui_init
-        if [[ "$NDS_UI_COLOR" == true ]]; then
-            printf '%s\033[31;1mInstallation failed (exit code %s).\033[0m\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
-        else
-            printf '%sInstallation failed (exit code %s).\n' "$NDS_UI_INDENT_B" "$exit_code" >&2
-        fi
-        nds_ui_b ""
-        if declare -f nds_install_logs_fetch_hints &>/dev/null; then
-            nds_install_logs_fetch_hints
-        else
-            local log="${NDS_INSTALL_DETAIL_LOG:-/tmp/nds_install.log}"
-            if [[ -f "$log" ]]; then
-                nds_ui_i "Full log: ${log}"
-                nds_ui_b "Last lines:"
-                while IFS= read -r _line; do
-                    printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
-                done < <(tail -n 12 "$log" 2>/dev/null)
-                nds_ui_b ""
-            fi
-        fi
-        if [[ -f "${NDS_INSTALL_DIAG_LOG:-}" ]]; then
-            nds_ui_b "Diagnostics (last lines):"
-            while IFS= read -r _line; do
-                printf '%s  %s\n' "${NDS_UI_INDENT_I:-}" "$_line" >&2
-            done < <(tail -n 24 "${NDS_INSTALL_DIAG_LOG}" 2>/dev/null)
-            nds_ui_b ""
-        fi
+        nds_app_ui_show_failure "$exit_code"
         # Ask last so Ctrl+C / failure still offers clearing a leftover gh session.
         _app_call_hook "exit_cleanup" "$exit_code" || true
         return 0

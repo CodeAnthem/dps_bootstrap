@@ -323,18 +323,6 @@ nds_cfg_preset_prompt_errors() {
     return 0
 }
 
-nds_cfg_preset_summary() {
-    local preset="$1" number="${2:-}"
-    local display header fn
-    display=$(nds_cfg_preset_get_display "$preset")
-    header="${display}:"
-    [[ -n "$number" ]] && header="$number. $header"
-    nds_ui_h "$header"
-    if fn="$(_nds_preset_hook_fn "$preset" summary)"; then
-        "$fn"
-    fi
-}
-
 nds_cfg_validate_all() {
     local presets=("$@") preset errors=0
     if [[ ${#presets[@]} -eq 0 ]]; then

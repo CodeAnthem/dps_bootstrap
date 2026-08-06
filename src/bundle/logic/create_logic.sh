@@ -66,8 +66,8 @@ nds_bundle_create() {
         return 1
     }
 
-    if declare -f _install_bundle_quickstart &>/dev/null; then
-        _install_bundle_quickstart "${staging}/NDS_QUICK_START.md"
+    if declare -f _bundle_quickstart &>/dev/null; then
+        _bundle_quickstart "${staging}/NDS_QUICK_START.md"
     fi
 
     dest_dir="/home/${user}"
@@ -95,9 +95,4 @@ nds_bundle_create() {
     export NDS_SECRETS_BUNDLE="$bundle_path"
     nds_install_log "install backup bundle: $bundle_path"
     return 0
-}
-
-# Compat alias — prefer nds_bundle_create for new code.
-nds_install_bundle_create() {
-    nds_bundle_create "$@"
 }

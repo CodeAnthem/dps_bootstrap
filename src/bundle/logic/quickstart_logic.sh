@@ -7,7 +7,7 @@
 
 # Description: Write personalized quick-start markdown from NDS_CTX_* snapshot.
 # Mentions secrets/admin_password.txt only when NDS actually wrote that file.
-_install_bundle_quickstart() {
+_bundle_quickstart() {
     local dest="$1"
     local hostname admin_user ssh_port ssh_pw_auth admin_ssh_key port_opt host_ip
     local encryption use_password use_key key_device key_file
@@ -37,7 +37,7 @@ _install_bundle_quickstart() {
 
     # The address this install was reached on - the booted machine gets the same
     # DHCP lease (MAC-based client id), so this is the address to connect to.
-    host_ip=$(nds_install_bundle_host_ip 2>/dev/null || true)
+    host_ip=$(nds_bundle_host_ip 2>/dev/null || true)
     [[ -z "$host_ip" ]] && host_ip="<machine-ip>"
 
     port_opt=""

@@ -8,9 +8,9 @@
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_BACKUP_CONFIRM_SKIP
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_REBOOT_SKIP
 
-nds_install_bundle_finish() {
+nds_bundle_finish() {
     local bundle_ok=1
-    nds_install_bundle_create || bundle_ok=0
+    nds_bundle_create || bundle_ok=0
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
         _install_gather_context
@@ -26,8 +26,8 @@ nds_install_bundle_finish() {
             nds_ui_b ""
         fi
 
-        _install_bundle_usbkey_instructions
-        _install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+        _bundle_usbkey_instructions
+        _bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
 
         if nds_skip_menu NDS_BACKUP_CONFIRM_SKIP; then
             log "Backup copy confirmation skipped"
@@ -65,13 +65,13 @@ nds_install_bundle_finish() {
 }
 
 nds_install_finish() {
-    nds_install_bundle_finish || return 1
+    nds_bundle_finish || return 1
     return 0
 }
 
 nds_install_remote_finish() {
     local bundle_ok=1
-    nds_install_bundle_create || bundle_ok=0
+    nds_bundle_create || bundle_ok=0
 
     nds_ui_section_header "Remote install complete"
     nds_ui_h "Next steps"
@@ -82,7 +82,7 @@ nds_install_remote_finish() {
 
     if [[ "$bundle_ok" -ne 0 && -n "${NDS_INSTALL_BUNDLE:-}" && -f "$NDS_INSTALL_BUNDLE" ]]; then
         nds_ui_i "Install backup: ${NDS_INSTALL_BUNDLE}"
-        _install_bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
+        _bundle_remote_copy_hint "$NDS_INSTALL_BUNDLE"
     fi
 
     return 0

@@ -35,8 +35,3 @@ nds_bundle_local_name() {
     printf -v stamp '%(%Y%m%d_%H%M%S)T' -1
     printf 'nds_install_backup_%s_%s.zip' "$stamp" "$hostname"
 }
-
-# Compat aliases
-nds_install_bundle_host_ip() { nds_bundle_host_ip "$@"; }
-nds_install_bundle_path() { nds_bundle_path "$@"; }
-nds_install_bundle_local_name() { nds_bundle_local_name "$@"; }
