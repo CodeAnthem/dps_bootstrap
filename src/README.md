@@ -14,7 +14,7 @@ Entry: `app/main.sh`. Shared UI: `ui/`. Settings: `settingsManager/`. Target hel
 | `git/` | SSH keys, probe/clone, wizard UI; calls `nds_gh_*` / `nds_qr_*` |
 | `install/` | Install pipelines (`logic/` + `ui/`); remote unlock stays install-domain |
 | `bundle/` | Install backup archive; contrib via `nds_bundle_register_*` |
-| `actions/` | Per-action modules |
+| `actions/` | Per-action `setup.sh` + `logic/` + `ui/` |
 | `tests/` | Cross-feature runner + framework only — suites live under features |
 
 Feature folders use `logic/` + `ui/` (+ colocated `tests/`). Pure **data** under `data/` is not auto-sourced.

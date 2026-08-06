@@ -121,7 +121,7 @@ nds_git_wizard_execute_auth_choice() {
             ;;
         gh)
             nds_feat_cfg_set GIT_SSH_KEY_REGISTER_METHOD gh
-            nds_git_gh_ensure_prefetch || {
+            nds_gh_ensure || {
                 error "Could not prepare gh CLI (nixpkgs#gh)"
                 return 1
             }
@@ -278,7 +278,7 @@ nds_git_wizard_route_menu_closure() {
                     info "Applying deploy keys for ${#same_owner[@]} related repositories..."
                     nds_feat_cfg_set GIT_SSH_KEY_TYPE deploy
                     if [[ "$(nds_feat_cfg_get GIT_SSH_KEY_REGISTER_METHOD)" == "gh" ]]; then
-                        nds_git_gh_ensure_prefetch || true
+                        nds_gh_ensure || true
                     fi
                     nds_git_wizard_register_deploy_for_urls "${same_owner[@]}" || return 1
                     ;;

@@ -19,6 +19,7 @@ Audit like a reviewer: **one concern per file/folder**, no duplicate capability 
 | `tools/` | Sourcable capability helpers (`nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, …) — no domain policy |
 | `scripts/` | Scripts installed onto the target machine (`nds-*.sh`) |
 | feature dirs (`git/`, `install/`, `bundle/`, …) | `logic/` + `ui/` (+ colocated `tests/`); thin root if needed |
+| `actions/<name>/` | `setup.sh` (thin entry) + `logic/` + `ui/` — discovery still loads `setup.sh` |
 | `tests/` (src root) | Cross-feature / integration only — not per-feature unit suites |
 
 **Docs:** one `src/README.md` for structure. No dual ARCHITECTURE chat dumps.

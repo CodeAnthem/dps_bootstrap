@@ -142,8 +142,8 @@ _git_fetch_flake_lock_via_api() {
     parsed=$(_git_parse "$ssh_url") || return 1
     IFS=$'\t' read -r host owner repo <<< "$parsed"
     nds_git_host_is_github "$host" || return 1
-    nds_git_gh_session_active 2>/dev/null || return 1
-    nds_git_gh_cmd gh_cmd || return 1
+    nds_gh_session_active 2>/dev/null || return 1
+    nds_gh_cmd gh_cmd || return 1
     [[ ${#gh_cmd[@]} -gt 0 ]] || return 1
 
     content=$("${gh_cmd[@]}" api "repos/${owner}/${repo}/contents/flake.lock" \

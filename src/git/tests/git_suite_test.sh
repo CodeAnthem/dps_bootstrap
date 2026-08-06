@@ -406,9 +406,9 @@ LOCK
 
     unset NDS_GIT_SESSION_KEY_PATH
 
-    if declare -f nds_git_gh_bin_ready &>/dev/null; then
+    if declare -f nds_gh_bin_ready &>/dev/null; then
         unset NDS_GIT_GH_BIN NDS_GIT_GH_PREFETCH_DONE
-        if ! nds_git_gh_bin_ready; then
+        if ! nds_gh_bin_ready; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ gh_bin_ready: false without PATH/BIN"
         else
@@ -425,11 +425,11 @@ LOCK
         printf '#!/bin/sh\necho fake-gh\n' >"$fake_bin"
         chmod +x "$fake_bin"
         export NDS_GIT_GH_BIN="$fake_bin"
-        if nds_git_gh_bin_ready; then
+        if nds_gh_bin_ready; then
             local -a cmd=()
             local saved_path="$PATH"
             PATH="/var/empty:${tmpdir}"
-            nds_git_gh_cmd cmd
+            nds_gh_cmd cmd
             PATH="$saved_path"
             if [[ "${cmd[0]}" == "$fake_bin" ]]; then
                 TEST_PASSED=$((TEST_PASSED + 1))
@@ -445,7 +445,7 @@ LOCK
         # Stale PREFETCH_DONE alone must not imply a ready binary
         unset NDS_GIT_GH_BIN
         export NDS_GIT_GH_PREFETCH_DONE=true
-        if ! nds_git_gh_bin_ready; then
+        if ! nds_gh_bin_ready; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ ensure_prefetch: stale PREFETCH_DONE does not imply bin ready"
         else
@@ -459,7 +459,7 @@ LOCK
         local saved_path2="$PATH"
         PATH="/var/empty:${tmpdir}"
         unset NDS_GIT_GH_BIN
-        if ! nds_git_gh_cmd_nofetch nofetch_cmd; then
+        if ! nds_gh_cmd_nofetch nofetch_cmd; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ gh_cmd_nofetch: false without PATH/BIN"
         else
@@ -469,13 +469,13 @@ LOCK
         PATH="$saved_path2"
     fi
 
-    if declare -f nds_git_gh_hosts_yml_has_github &>/dev/null; then
+    if declare -f nds_gh_hosts_yml_has_github &>/dev/null; then
         local gh_cfg_dir hosts_file
         gh_cfg_dir=$(mktemp -d)
         hosts_file="${gh_cfg_dir}/hosts.yml"
         printf 'github.com:\n    user: test\n' >"$hosts_file"
         GH_CONFIG_DIR="$gh_cfg_dir"
-        if nds_git_gh_hosts_yml_has_github; then
+        if nds_gh_hosts_yml_has_github; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ hosts_yml_has_github: detects leftover session"
         else
@@ -483,7 +483,7 @@ LOCK
             console "  ✗ hosts_yml_has_github: missed github.com entry"
         fi
         # Binary present but auth status fails — still detect via hosts.yml
-        if declare -f nds_git_gh_host_logged_in &>/dev/null; then
+        if declare -f nds_gh_host_logged_in &>/dev/null; then
             local fake_gh="${gh_cfg_dir}/gh"
             printf '#!/bin/sh\necho "not logged in" >&2\nexit 1\n' >"$fake_gh"
             chmod +x "$fake_gh"
@@ -491,7 +491,7 @@ LOCK
             unset NDS_GIT_GH_BIN
             # Fake gh first; keep /usr/bin so grep/getent still work
             PATH="${gh_cfg_dir}:/usr/bin:/bin"
-            if nds_git_gh_host_logged_in; then
+            if nds_gh_host_logged_in; then
                 TEST_PASSED=$((TEST_PASSED + 1))
                 console "  ✓ gh_host_logged_in: hosts.yml fallback when auth status fails"
             else
@@ -502,7 +502,7 @@ LOCK
             if [[ -n "$saved_bin" ]]; then export NDS_GIT_GH_BIN="$saved_bin"; else unset NDS_GIT_GH_BIN; fi
         fi
         rm -f "$hosts_file"
-        if ! nds_git_gh_hosts_yml_has_github; then
+        if ! nds_gh_hosts_yml_has_github; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ hosts_yml_has_github: false when absent"
         else
@@ -556,8 +556,8 @@ LOCK
         nds_cfg_set GIT_PERSIST_ACCESS ""
     fi
 
-    if declare -f nds_git_gh_host_logged_in &>/dev/null; then
-        if ! nds_git_gh_host_logged_in 2>/dev/null; then
+    if declare -f nds_gh_host_logged_in &>/dev/null; then
+        if ! nds_gh_host_logged_in 2>/dev/null; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ gh_host_logged_in: false without session"
         else
@@ -566,8 +566,8 @@ LOCK
         fi
     fi
 
-    if declare -f nds_git_gh_session_cleanup &>/dev/null; then
-        if nds_git_gh_session_cleanup 2>/dev/null; then
+    if declare -f nds_gh_session_cleanup &>/dev/null; then
+        if nds_gh_session_cleanup 2>/dev/null; then
             TEST_PASSED=$((TEST_PASSED + 1))
             console "  ✓ gh_session_cleanup: idempotent when logged out"
         else

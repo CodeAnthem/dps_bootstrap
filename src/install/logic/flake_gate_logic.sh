@@ -79,7 +79,7 @@ nds_flake_gate_logic_ensure_access() {
 
     if [[ -n "$repo_url" ]]; then
         nds_git_access_run "$mode" _fg_cfg || return 1
-        nds_ui_section_header "Verifying flake access"
+        nds_install_ui_section_flake_access
         nds_git_ensure_flake_closure_access "" "$repo_url" || return 1
         probe="${NDS_FLAKE_PROBE_REPO:-}"
         if [[ -n "$probe" && -d "$probe" ]]; then

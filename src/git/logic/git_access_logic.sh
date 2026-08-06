@@ -143,7 +143,7 @@ nds_git_access_run() {
         fi
         warn "Still no access — register a key on ${owner}/${repo} or import a working key."
         if nds_git_host_is_github "${_g_run[GIT_ACCESS_HOST]:-}" 2>/dev/null; then
-            nds_ui_i "Deploy keys: https://github.com/${owner}/${repo}/settings/keys"
+            nds_git_ui_deploy_key_hint "$owner" "$repo"
         fi
         if [[ "$mode" == "unattended" ]] && ! nds_git_access_wants_gh_ui _g_run; then
             NDS_CFG_AA_NAME="$prev_aa"

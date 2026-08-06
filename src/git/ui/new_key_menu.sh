@@ -18,16 +18,16 @@ nds_git_wizard_ask_register_method() {
         return 0
     fi
 
-    if nds_git_gh_session_ready 2>/dev/null; then
+    if nds_gh_session_ready 2>/dev/null; then
         _choice=gh
         nds_feat_cfg_set GIT_SSH_KEY_REGISTER_METHOD gh
         return 0
     fi
 
-    if ! nds_git_gh_bin_ready 2>/dev/null; then
-        nds_git_gh_ensure_prefetch 2>/dev/null || true
+    if ! nds_gh_bin_ready 2>/dev/null; then
+        nds_gh_ensure 2>/dev/null || true
     fi
-    if ! nds_git_gh_bin_ready 2>/dev/null && ! command -v nix &>/dev/null; then
+    if ! nds_gh_bin_ready 2>/dev/null && ! command -v nix &>/dev/null; then
         _choice=manual
         return 0
     fi

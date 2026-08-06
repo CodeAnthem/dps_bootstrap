@@ -3,7 +3,7 @@
 # NDS - Flake install pipeline (action-level workflow)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-07-06 | Modified: 2026-08-05
-# Description:   installFlake action steps — uses install/flake + git
+# Description:   installFlake action steps — uses install/logic flake helpers + git
 # ==================================================================================================
 
 # Description: Prepare flake env and verify git access to all flake inputs.
@@ -26,7 +26,7 @@ nds_flake_install_prepare_and_verify() {
             nds_action_call_feature nds_git_access_run "FLAKE_REPO_URL=$repo_url" || return 1
         fi
 
-        nds_ui_section_header "Verifying flake access"
+        nds_install_ui_section_flake_access
         if [[ -n "$local_path" && -d "$local_path" ]]; then
             nds_git_ensure_flake_closure_access "$local_path" "$repo_url" || return 1
         elif [[ -n "$repo_url" ]]; then

@@ -90,11 +90,11 @@ nds_framework_warmup_git_gh() {
     fi
     if declare -f nds_gh_ensure &>/dev/null; then
         nds_gh_ensure || true
-    elif declare -f nds_git_gh_ensure_prefetch &>/dev/null; then
-        nds_git_gh_ensure_prefetch || true
+    elif declare -f nds_gh_ensure &>/dev/null; then
+        nds_gh_ensure || true
     fi
     # Remember leftover login so abort-from-menu still offers to clear it.
-    if declare -f nds_git_gh_host_logged_in &>/dev/null && nds_git_gh_host_logged_in; then
+    if declare -f nds_gh_host_logged_in &>/dev/null && nds_gh_host_logged_in; then
         NDS_GIT_GH_LEFTOVER=true
         export NDS_GIT_GH_LEFTOVER
         info "Leftover GitHub CLI login detected on this ISO (offered on exit)"

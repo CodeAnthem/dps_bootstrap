@@ -10,7 +10,7 @@ declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_AUTH_SKIP
 declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_GIT_GH_CLEAR_SKIP
 
 nds_git_access_cleanup_success() {
-    nds_git_gh_session_cleanup 2>/dev/null || true
+    nds_gh_session_cleanup 2>/dev/null || true
     unset NDS_GIT_CLOSURE_URLS 2>/dev/null || true
 }
 
@@ -23,10 +23,10 @@ hook_exit_cleanup() {
     if [[ "${NDS_GIT_GH_LEFTOVER:-}" == "true" || "${NDS_GIT_GH_SESSION_ACTIVE:-}" == "true" ]]; then
         logged_in=true
     fi
-    if declare -f nds_git_gh_host_logged_in &>/dev/null; then
-        nds_git_gh_host_logged_in && logged_in=true
-    elif declare -f nds_git_gh_hosts_yml_has_github &>/dev/null; then
-        nds_git_gh_hosts_yml_has_github && logged_in=true
+    if declare -f nds_gh_host_logged_in &>/dev/null; then
+        nds_gh_host_logged_in && logged_in=true
+    elif declare -f nds_gh_hosts_yml_has_github &>/dev/null; then
+        nds_gh_hosts_yml_has_github && logged_in=true
     fi
 
     if [[ "$logged_in" != "true" ]]; then
@@ -35,20 +35,19 @@ hook_exit_cleanup() {
     fi
 
     if [[ "${NDS_GIT_INSTALL_SUCCEEDED:-}" == "true" ]]; then
-        nds_git_gh_session_cleanup 2>/dev/null || true
-        if declare -f nds_git_gh_host_logged_in &>/dev/null && nds_git_gh_host_logged_in; then
-            nds_git_ui_ask_clear_gh_session && nds_git_gh_session_cleanup || true
+        nds_gh_session_cleanup 2>/dev/null || true
+        if declare -f nds_gh_host_logged_in &>/dev/null && nds_gh_host_logged_in; then
+            nds_git_ui_offer_clear_gh_session && nds_gh_session_cleanup || true
         fi
         return 0
     fi
 
     if nds_skip_menu NDS_GIT_GH_CLEAR_SKIP 2>/dev/null; then
-        nds_git_gh_session_cleanup 2>/dev/null || true
+        nds_gh_session_cleanup 2>/dev/null || true
         return 0
     fi
 
-    nds_ui_b ""
-    nds_git_ui_ask_clear_gh_session && nds_git_gh_session_cleanup || true
+    nds_git_ui_offer_clear_gh_session && nds_gh_session_cleanup || true
     return 0
 }
 

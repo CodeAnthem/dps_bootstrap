@@ -71,9 +71,9 @@ _git_wizard_gh_auth_login() {
     local rc=0 pid shown=false delay=0.12 spinstr="|/-\\"
     local char logfile="${NDS_RUNTIME_DIR:-/tmp/nds}/gh_auth.log"
 
-    nds_git_gh_ensure_prefetch || return 1
-    nds_git_gh_cmd gh_cmd || return 1
-    nds_git_gh_unset_blocking_tokens
+    nds_gh_ensure || return 1
+    nds_gh_cmd gh_cmd || return 1
+    nds_gh_unset_blocking_tokens
 
     mkdir -p "$(dirname "$logfile")"
     : >"$logfile"
@@ -132,29 +132,29 @@ _git_wizard_gh_auth_login() {
 nds_git_wizard_gh_ensure_auth() {
     local -a gh_cmd=()
 
-    nds_git_gh_ensure_prefetch || return 1
-    nds_git_gh_cmd gh_cmd || return 1
+    nds_gh_ensure || return 1
+    nds_gh_cmd gh_cmd || return 1
 
-    if nds_git_gh_session_ready; then
+    if nds_gh_session_ready; then
         return 0
     fi
 
-    if ! nds_git_gh_session_active; then
+    if ! nds_gh_session_active; then
         _git_wizard_gh_auth_login || return 1
-        nds_git_gh_session_mark_scopes_ok
+        nds_gh_session_mark_scopes_ok
         success "GitHub login successful"
         return 0
     fi
 
-    if ! nds_git_gh_has_key_scope; then
+    if ! nds_gh_has_key_scope; then
         nds_step_start "Extending GitHub session"
-        nds_git_gh_unset_blocking_tokens
+        nds_gh_unset_blocking_tokens
         BROWSER=false "${gh_cmd[@]}" auth refresh -h github.com -s repo,admin:public_key || {
             nds_step_fail "Extending GitHub session"
             return 1
         }
         nds_step_complete "Extending GitHub session"
-        nds_git_gh_session_mark_scopes_ok
+        nds_gh_session_mark_scopes_ok
     fi
     return 0
 }
@@ -163,14 +163,14 @@ nds_git_wizard_gh_ensure_auth() {
 # Returns:
 # - <Bool> 0 on success
 nds_git_wizard_gh_prepare() {
-    if ! nds_git_gh_bin_ready 2>/dev/null; then
+    if ! nds_gh_bin_ready 2>/dev/null; then
         info "Preparing GitHub CLI (download once if needed)..."
     fi
-    nds_git_gh_ensure_prefetch || {
+    nds_gh_ensure || {
         error "Could not install gh CLI"
         return 1
     }
-    if nds_git_gh_session_ready; then
+    if nds_gh_session_ready; then
         return 0
     fi
     nds_git_wizard_gh_ensure_auth || return 1

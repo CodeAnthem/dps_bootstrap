@@ -235,13 +235,11 @@ _install_place_hardware_artifact() {
             if [[ -f "$dest" ]]; then
                 NDS_UI_QUIET=false
                 warn "${hw_artifact} already exists: $dest"
-                if ! nds_skip_menu NDS_HARDWARE_OVERWRITE_SKIP; then
-                    if ! nds_ask_user_to_proceed "Overwrite existing ${hw_artifact}?"; then
-                        log "Keeping existing ${hw_artifact}"
-                        NDS_UI_QUIET=true
-                        [[ "$runtime_copy" == true ]] && cp "$dest" "${NDS_RUNTIME_DIR}/config/" 2>/dev/null || true
-                        return 0
-                    fi
+                if ! nds_install_ui_confirm_hardware_overwrite "$hw_artifact"; then
+                    log "Keeping existing ${hw_artifact}"
+                    NDS_UI_QUIET=true
+                    [[ "$runtime_copy" == true ]] && cp "$dest" "${NDS_RUNTIME_DIR}/config/" 2>/dev/null || true
+                    return 0
                 fi
                 NDS_UI_QUIET=true
             fi

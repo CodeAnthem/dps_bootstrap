@@ -6,8 +6,6 @@
 # Description:   Flake prepare, disko detect, host-folder scaffold (no interactive picker)
 # ==================================================================================================
 
-declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_SCAFFOLD_OVERWRITE_SKIP
-
 # Description: Export NDS_FLAKE_* env vars from settings answers so the
 # install pipeline (nds_nixos_install_flake) can read them. Also mirrors the
 # chosen host into NETWORK_HOSTNAME. Pass a source ("remote"|"local") to override
@@ -148,9 +146,7 @@ _flake_scaffold_host_folder() {
 
     if [[ -d "$host_dir" ]]; then
         warn "Host folder already exists: $host_dir"
-        if ! nds_skip_menu NDS_SCAFFOLD_OVERWRITE_SKIP; then
-            nds_ask_user_to_proceed "Overwrite files in $host_dir?" || return 1
-        fi
+        nds_install_ui_confirm_scaffold_overwrite "$host_dir" || return 1
     fi
 
     mkdir -p "$host_dir" || { error "Cannot create $host_dir"; return 1; }

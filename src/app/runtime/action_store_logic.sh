@@ -2,9 +2,24 @@
 # ==================================================================================================
 # NDS - Action store (discovery and registry)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-07-29 | Modified: 2026-07-29
+# Date:          Created: 2026-07-29 | Modified: 2026-08-06
 # Description:   Discover, validate, and store available actions (data layer, no UI)
 # ==================================================================================================
+
+# Description: Grep action sources (setup.sh + logic/ + ui/) for a function definition.
+_app_action_has_fn() {
+    local action_path="$1" fn="$2"
+    local f
+    for f in \
+        "${action_path}/setup.sh" \
+        "${action_path}/logic/"*.sh \
+        "${action_path}/ui/"*.sh
+    do
+        [[ -f "$f" ]] || continue
+        grep -qE "^${fn}\(\)" "$f" && return 0
+    done
+    return 1
+}
 
 _app_validate_action() {
     local action_name="$1"
@@ -12,11 +27,11 @@ _app_validate_action() {
     local setup_script="${action_path}/setup.sh"
 
     [[ -f "$setup_script" ]] || { debug "Action '$action_name': Missing setup.sh"; return 1; }
-    grep -qE "^action_(config|presets)\(\)" "$setup_script" || {
+    _app_action_has_fn "$action_path" 'action_(config|presets)' || {
         debug "Action '$action_name': Missing action_presets() or action_config()"; return 1; }
-    grep -q "^action_preview()" "$setup_script" || {
+    _app_action_has_fn "$action_path" 'action_preview' || {
         debug "Action '$action_name': Missing action_preview()"; return 1; }
-    grep -q "^action_setup()" "$setup_script" || {
+    _app_action_has_fn "$action_path" 'action_setup' || {
         debug "Action '$action_name': Missing action_setup()"; return 1; }
 
     local description
