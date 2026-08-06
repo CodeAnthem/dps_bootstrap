@@ -1,0 +1,54 @@
+---
+description: NDS src structure, UI, validators, loaders — catch boundary and layout smells
+alwaysApply: true
+---
+
+# NDS `src` conventions (dps_bootstrap)
+
+## Before any src change
+
+Audit like a reviewer: **one concern per file/folder**, no duplicate capability (two loggers, prompts in terminal, GH under git, etc.). Prefer MCP graph, then fix structure — do not paper over with aliases forever.
+
+## Layout
+
+| Area | Role |
+|------|------|
+| `app/` | Backbone only (entry, lifecycle, core primitives, mode/skip, action runtime, menus) |
+| `ui/` | Shared terminal UI (logger, sections, prompts, step animation) — no feature policy |
+| `settingsManager/` | Settings store + presets **data** + **logic/ui** + **validators** (SM-owned) |
+| `tools/` | Sourcable capability helpers (`nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, …) — no domain policy |
+| `scripts/` | Scripts installed onto the target machine (`nds-*.sh`) |
+| feature dirs (`git/`, `install/`, `bundle/`, …) | `logic/` + `ui/` (+ colocated `tests/`); thin root if needed |
+| `tests/` (src root) | Cross-feature / integration only — not per-feature unit suites |
+
+**Docs:** one `src/README.md` for structure. No dual ARCHITECTURE chat dumps.
+
+## Logic vs UI
+
+Every feature: prompts/TTY in `ui/`, pure work in `logic/`. Do not leave dual loggers, prompt templates, or banners scattered across unrelated files.
+
+## UI package
+
+- `logger.sh` — **one** leveled logger (`destination`: console|log|both); thin `info`/`warn`/… wrappers OK
+- `section.sh` — banner + section screens
+- `prompts.sh` — all interactive prompts (yes/no, numbered menu read)
+- `terminal.sh` — terminal capability / indentation / layout helpers only — **no** logging, **no** prompts, **no** banners
+- Mode/skip (`nds_skip_*`, auto-confirm) lives in **backbone**, not `ui/`
+
+## Validators
+
+Owned by **settingsManager**. Public names: `validate_<type>_<action>` (e.g. `validate_git_url`). No separate top-level `validators/` feature. No name-magic registries for “discover by pattern” without an explicit map if mapping is needed.
+
+## Loading
+
+Prefer **recursive feature-tree load** (deterministic order: `lib` → `logic` → `ui`, then other dirs; alpha within; skip `tests/`, `data/`, `_*`). Avoid nested `load.sh` sprawl. Backbone lists feature roots.
+
+## Capability vs domain
+
+- `tools/` = reusable CLI/capability (ensure may animate + log on first nix warm)
+- Feature code **calls** tools; does not own the tool (`gh` ≠ under `git/`, QR print ≠ under `git/`)
+- Domain orchestration (key paths, titles, “when to show”) stays in the feature
+
+## Tests
+
+Colocate `tests/` under the feature; root `tests/` only for NDS-wide suites. Feature exposes something like `nds_<feature>_run_tests` or suite is discovered from feature tests.

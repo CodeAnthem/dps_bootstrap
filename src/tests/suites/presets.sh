@@ -34,7 +34,7 @@ suite_presets() {
     rm -rf "$tmpdir"
 
     if validate_git_remote "git@github.com:org/repo.git" \
-       && classify_git_url "https://github.com/a/b" | grep -q https; then
+       && validate_git_url_classify "https://github.com/a/b" | grep -q https; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ validators/git: remote URL helpers"
     else
@@ -42,7 +42,7 @@ suite_presets() {
         console "  ✗ validators/git: remote URL helpers"
     fi
 
-    if normalize_toggle "yes" | grep -q true && normalize_toggle "no" | grep -q false; then
+    if validate_toggle_normalize "yes" | grep -q true && validate_toggle_normalize "no" | grep -q false; then
         TEST_PASSED=$((TEST_PASSED + 1))
         console "  ✓ validators/toggle: normalize yes/no"
     else

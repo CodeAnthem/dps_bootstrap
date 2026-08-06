@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Shared tools/lib selfchecks
+# NDS - Shared tools selfchecks
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2026-08-05 | Modified: 2026-08-05
 # ==================================================================================================
@@ -14,18 +14,18 @@ suite_tools_lib() {
         && declare -f nds_age_keygen &>/dev/null \
         && declare -f nds_facter_write &>/dev/null; then
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ tools/lib: pkg/qr/gh(+session/api)/age/facter loaded"
+        console "  ✓ tools: pkg/qr/gh(+session/api)/age/facter loaded"
     else
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ tools/lib: helpers missing"
+        console "  ✗ tools: helpers missing"
     fi
 
     if [[ -d "${SCRIPT_DIR}/git/github" ]]; then
         TEST_FAILED=$((TEST_FAILED + 1))
-        console "  ✗ git/github still present (should be tools/lib nds_gh_*)"
+        console "  ✗ git/github still present (should be tools nds_gh_*)"
     else
         TEST_PASSED=$((TEST_PASSED + 1))
-        console "  ✓ git/github removed (GH is tools/lib)"
+        console "  ✓ git/github removed (GH is tools)"
     fi
 
     if declare -f nds_pkg_cmd &>/dev/null; then

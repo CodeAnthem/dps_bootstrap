@@ -2,8 +2,8 @@
 # ==================================================================================================
 # NDS - UI - Terminal capabilities and layout
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-29 | Modified: 2026-06-30
-# Description:   Terminal mode detection, indentation, boxes, columns, boolean display
+# Date:          Created: 2026-06-29 | Modified: 2026-08-06
+# Description:   Terminal mode, indentation, columns — no logging, prompts, or banners
 # ==================================================================================================
 
 declare -g NDS_UI_MODE=""
@@ -58,34 +58,6 @@ nds_ui_init() {
     NDS_UI_MODE="$mode"
 }
 
-nds_ui_log_tag() {
-    local level="$1"
-    nds_ui_init
-    if [[ "$NDS_UI_MODE" == "unicode" ]]; then
-        case "$level" in
-            info) echo "ℹ️  [INFO] -" ;;
-            success) echo "✅ [PASS] -" ;;
-            warn) echo "⚠️  [WARN] -" ;;
-            error) echo "❌ [FAIL] -" ;;
-            fatal) echo "❌ [FATAL] -" ;;
-            debug) echo "🐛 [DEBUG] -" ;;
-            validation) echo "❌ [VALIDATION] - " ;;
-            *) echo "[LOG] -" ;;
-        esac
-        return 0
-    fi
-    case "$level" in
-        info) echo "[INFO] -" ;;
-        success) echo "[OK] -" ;;
-        warn) echo "[WARN] -" ;;
-        error) echo "[FAIL] -" ;;
-        fatal) echo "[FATAL] -" ;;
-        debug) echo "[DEBUG] -" ;;
-        validation) echo "[VALIDATION] - " ;;
-        *) echo "[LOG] -" ;;
-    esac
-}
-
 nds_ui_format_bool() {
     local value="$1"
     local text
@@ -138,89 +110,4 @@ nds_ui_choice_row() {
     local width="${4:-26}"
 
     nds_ui_kv_row "${number}) ${name}" "$detail" "$width"
-}
-
-# Description: Build a standardized numbered-menu prompt line.
-# Arguments:
-# - min:         <Int>    Minimum valid digit
-# - max:         <Int>    Maximum valid digit
-# - default_opt: <String|optional> Default option key shown in brackets (Enter accepts)
-# - text:        <String|optional> Prompt text (default: Make your selection)
-# Returns:
-# - <String> Formatted prompt (stdout)
-nds_ui_numbered_prompt() {
-    local min="$1" max="$2" default_opt="${3:-}" text="${4:-Make your selection}" allow_back="${5:-false}"
-
-    nds_ui_init
-    if [[ "$allow_back" == "true" ]]; then
-        if [[ -n "$default_opt" ]]; then
-            printf '%s%s [%s] (%s-%s, 0=back): ' "$NDS_UI_INDENT_I" "$text" "$default_opt" "$min" "$max"
-        else
-            printf '%s%s (%s-%s, 0=back): ' "$NDS_UI_INDENT_I" "$text" "$min" "$max"
-        fi
-    elif [[ -n "$default_opt" ]]; then
-        printf '%s%s [%s] (%s-%s): ' "$NDS_UI_INDENT_I" "$text" "$default_opt" "$min" "$max"
-    else
-        printf '%s%s (%s-%s): ' "$NDS_UI_INDENT_I" "$text" "$min" "$max"
-    fi
-}
-
-# Description: Read one menu digit without Enter (same UX as action select).
-# Arguments:
-# - prompt:     <String> Prompt text
-# - min:        <Int>    Minimum valid digit
-# - max:        <Int>    Maximum valid digit
-# - allow_back: <Bool|optional> When true, 0 or b returns special code via stdout "0"
-# Returns:
-# - <String> Selected digit on stdout; 1 when user presses Enter only
-nds_ui_read_menu_digit() {
-    local prompt="$1" min="$2" max="$3" allow_back="${4:-false}"
-    local choice
-
-    nds_ui_init
-    while true; do
-        read -rsn1 -p "$prompt" choice < /dev/tty
-        echo >&2
-        [[ -n "$choice" ]] || return 1
-        if [[ "$allow_back" == "true" ]] && [[ "$choice" == "0" || "$choice" == "b" || "$choice" == "B" ]]; then
-            printf '0'
-            return 0
-        fi
-        if [[ "$choice" =~ ^[0-9]$ ]] && (( choice >= min && choice <= max )); then
-            printf '%s' "$choice"
-            return 0
-        fi
-        if [[ "$allow_back" == "true" ]]; then
-            nds_ui_b "Invalid selection. Choose ${min}-${max}, or 0 to go back."
-        else
-            nds_ui_b "Invalid selection. Choose ${min}-${max}."
-        fi
-    done
-}
-
-# Description: Render the persistent NDS banner as a single box containing the
-# fixed script title line (name + version) and an optional section subtitle.
-# The box width expands to fit the longest line, with a sane minimum. All lines
-# share one left margin so corners and pipes align, and content is padded by
-# character count (not bytes) so multibyte glyphs like the em dash stay square.
-# Arguments:
-# - subtitle: <String> Current section/screen name (may be empty)
-nds_ui_banner() {
-    local subtitle="${1:-}"
-    local title_line=" === ${SCRIPT_NAME:-Nix Deploy System} v${SCRIPT_VERSION:-} === "
-    local sub_line="  ${subtitle}"
-    local inner=${#title_line}
-    (( ${#sub_line} > inner )) && inner=${#sub_line}
-    (( inner < 56 )) && inner=56
-
-    nds_ui_init
-
-    local margin='  '
-    local border
-    border=$(printf -- '-%.0s' $(seq 1 "$inner"))
-
-    printf "%s+%s+\n" "$margin" "$border" >&2
-    printf "%s|%s%*s|\n" "$margin" "$title_line" "$(( inner - ${#title_line} ))" '' >&2
-    [[ -n "$subtitle" ]] && printf "%s|%s%*s|\n" "$margin" "$sub_line" "$(( inner - ${#sub_line} ))" '' >&2
-    printf "%s+%s+\n" "$margin" "$border" >&2
 }

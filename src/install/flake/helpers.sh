@@ -170,7 +170,7 @@ _flake_scaffold_host_folder() {
     state_version="24.11"
 
     prefix="24"
-    [[ -n "$mask" ]] && prefix="$(nds_validate_mask_to_prefix "$mask")"
+    [[ -n "$mask" ]] && prefix="$(validate_mask_to_prefix "$mask")"
 
     nameservers=""
     [[ -n "$dns1" ]] && nameservers="\"${dns1}\""

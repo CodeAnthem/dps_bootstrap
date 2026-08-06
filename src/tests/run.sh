@@ -2,8 +2,8 @@
 # ==================================================================================================
 # NDS - Self-test runner
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2026-08-05
-# Description:   Run all NDS self-test suites (read-only — no system changes)
+# Date:          Created: 2025-10-24 | Modified: 2026-08-06
+# Description:   Cross-feature suites (feature unit tests live under each feature)
 # ==================================================================================================
 
 set -euo pipefail
@@ -16,16 +16,9 @@ readonly SCRIPT_DIR
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/core/import.sh"
 nds_bootstrap_load_libs "$SCRIPT_DIR"
-# shellcheck disable=SC1091
-source "${SCRIPT_DIR}/git/lib/load.sh"
-# shellcheck disable=SC1091
-source "${SCRIPT_DIR}/install/lib/load.sh"
-nds_standalone_git_load
-nds_standalone_install_load
 nds_cfg_init
 nds_framework_load_remaining
 
-# shellcheck disable=SC1091
 source "${TEST_ROOT}/framework.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/cfg.sh"
@@ -47,7 +40,7 @@ source "${TEST_ROOT}/suites/bundle.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/presets.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/validators.sh"
+source "${TEST_ROOT}/../settingsManager/tests/validators_test.sh"
 # shellcheck disable=SC1091
 source "${TEST_ROOT}/suites/settingsManager.sh"
 # shellcheck disable=SC1091

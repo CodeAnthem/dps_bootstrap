@@ -94,8 +94,8 @@ suite_skip() {
             source "${SCRIPT_DIR}/core/import.sh"
             nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
             nds_framework_prepare_action_runtime || exit 1
-            declare -f nds_standalone_git_load >/dev/null
-            declare -f nds_standalone_install_load >/dev/null
+            declare -f nds_git_owner_slug >/dev/null
+            declare -f nds_install_disk_part >/dev/null
             declare -f nds_nixos_install >/dev/null
         ' 2>&1
     ); then

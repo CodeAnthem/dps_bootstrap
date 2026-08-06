@@ -109,7 +109,7 @@ nds_git_deploy_key_target_rel() {
 
 # Description: Absolute path of a helper script in this NDS tools tree.
 _git_tool_src() {
-    printf '%s/tools/%s\n' "${SCRIPT_DIR}" "$1"
+    printf '%s/scripts/%s\n' "${SCRIPT_DIR}" "$1"
 }
 
 # Description: install(1) with root:root when running as root.

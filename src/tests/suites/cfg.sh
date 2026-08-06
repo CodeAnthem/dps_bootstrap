@@ -102,7 +102,7 @@ suite_cfg() {
 
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
-    nds_preset_load_file "${SCRIPT_DIR}/settings/builtin/installFlake.sh" || return 0
+    nds_preset_load_file "${SCRIPT_DIR}/settingsManager/data/builtin/installFlake.sh" || return 0
     nds_cfg_preset_enable installFlake
     installFlake_defaults
     nds_cfg_snapshot_defaults
@@ -121,7 +121,7 @@ suite_cfg() {
 
     CONFIG_DATA=()
     CONFIG_DEFAULTS=()
-    nds_preset_load_file "${SCRIPT_DIR}/settings/builtin/installFlake.sh" || return 0
+    nds_preset_load_file "${SCRIPT_DIR}/settingsManager/data/builtin/installFlake.sh" || return 0
     nds_cfg_preset_enable installFlake
     installFlake_defaults
     nds_cfg_snapshot_defaults

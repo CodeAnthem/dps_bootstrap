@@ -141,7 +141,7 @@ flake eval always sees root/boot mounts and the bootloader device.
 
 ## region / quick / platform / security
 
-See preset defaults in `src/settings/builtin/`. Keys follow the same `NDS_<KEY>` pattern.
+See preset defaults in `src/settingsManager/data/builtin/`. Keys follow the same `NDS_<KEY>` pattern.
 
 ---
 
