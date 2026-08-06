@@ -53,9 +53,7 @@ nds_preflight_install() {
     if [[ "$uefi" == "true" && ! -d /sys/firmware/efi/efivars ]]; then
         warn "UEFI mode is on but the live ISO is BIOS-booted."
         warn "Reboot the ISO in UEFI mode, or disable UEFI mode and use GRUB."
-        if ! nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
-            nds_ask_user_to_proceed "Continue anyway?" || return 1
-        fi
+        nds_install_ui_preflight_continue "Continue anyway?" || return 1
     fi
 
     return 0
@@ -83,9 +81,7 @@ nds_preflight_remote_install() {
         debug "SSH reachable: root@${target_ip}"
     else
         warn "Cannot reach root@${target_ip} via SSH (passwordless root login required)"
-        if ! nds_skip_menu NDS_PREFLIGHT_WARN_SKIP; then
-            nds_ask_user_to_proceed "Continue without verified SSH access?" || return 1
-        fi
+        nds_install_ui_preflight_continue "Continue without verified SSH access?" || return 1
     fi
 
     return 0

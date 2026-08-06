@@ -6,7 +6,7 @@
 # ==================================================================================================
 
 suite_inputs() {
-    local test_root="${TEST_ROOT}/specs"
+    local test_root="${SCRIPT_DIR}/settingsManager/tests/specs"
     local test_file
 
     for test_file in "$test_root"/inputs/**/*.sh; do

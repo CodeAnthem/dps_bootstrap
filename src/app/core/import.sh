@@ -206,10 +206,9 @@ nds_import_tree() {
 # Load core + feature libraries without running the interactive bootstrap.
 nds_bootstrap_load_libs() {
     local script_dir="${1:-${SCRIPT_DIR:-}}"
-    nds_import_file "${script_dir}/app/lifecycle.sh" || return 1
+    nds_import_file "${script_dir}/app/lifecycle/lifecycle_logic.sh" || return 1
     nds_lifecycle_load_core "$script_dir" || return 1
     nds_lifecycle_load_ui "$script_dir" || return 1
     nds_lifecycle_load_actions "$script_dir" || return 1
-    nds_import_file "${script_dir}/app/bootstrap.sh" || return 1
 }
 

@@ -2,7 +2,7 @@
 
 NixOS install pipeline — disk prep, secrets, `nixos-install`, backup bundle.
 
-Loaded by `nds_install_load` from `src/app/bootstrap.sh` (after action extension + settings init).
+Loaded after action extension + settings init via framework bootstrap (`app/runtime/bootstrap_logic.sh`).
 
 ## Layout
 

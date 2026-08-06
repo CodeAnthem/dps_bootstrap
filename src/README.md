@@ -6,61 +6,62 @@ Entry: `app/main.sh`. Shared UI: `ui/`. Settings: `settingsManager/`. Target hel
 
 | Path | Purpose |
 |------|---------|
-| `app/` | Backbone — entry, lifecycle, action runtime, confirm menus, VERSION |
-| `core/` | Small shared primitives (import, mode/skip, runtime, platform, strings) |
+| `app/` | Backbone — entry, core, lifecycle, runtime, menus, VERSION |
 | `ui/` | Shared terminal UI only |
 | `settingsManager/` | Config store, preset **data**, SM **logic/ui**, validators |
-| `tools/` | Sourcable capabilities (`nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, …) — no domain policy |
-| `scripts/` | Scripts copied onto the installed machine (`nds-switch`, `nds-git-ssh`, `nds-clean`) |
+| `tools/` | Sourcable capabilities (`nds_pkg_*`, `nds_qr_*`, `nds_gh_*`, …) |
+| `scripts/` | Scripts copied onto the installed machine |
 | `git/` | SSH keys, probe/clone, wizard UI; calls `nds_gh_*` / `nds_qr_*` |
-| `install/` | Install pipelines (logic/ui); remote unlock stays install-domain |
-| `bundle/` | Install backup archive; features contribute via `nds_bundle_register_*` |
-| `actions/` | Per-action `setup` / run modules |
-| `tests/` | Cross-feature / integration suites only |
+| `install/` | Install pipelines (`logic/` + `ui/`); remote unlock stays install-domain |
+| `bundle/` | Install backup archive; contrib via `nds_bundle_register_*` |
+| `actions/` | Per-action modules |
+| `tests/` | Cross-feature runner + framework only — suites live under features |
 
-Feature folders use `logic/` + `ui/` (+ colocated `tests/` when present). Pure **data** lives under `data/` and is not auto-sourced.
+Feature folders use `logic/` + `ui/` (+ colocated `tests/`). Pure **data** under `data/` is not auto-sourced.
+
+## Backbone (`app/`)
+
+```
+app/
+  main.sh                 # entry
+  VERSION
+  core/                   # import, mode/skip, runtime, platform, strings
+  lifecycle/              # staged loaders
+  runtime/                # bootstrap, actions, cli, exit, state
+  menus/                  # install/remote confirm
+  tests/                  # mode / skip / standalone suites
+```
 
 ## UI package
 
 | File | Owns |
 |------|------|
-| `terminal.sh` | Terminal capability, indentation, layout rows |
-| `logger.sh` | Single leveled logger (`nds_log` + `info`/`warn`/…) |
+| `terminal.sh` | Capability, indentation, layout |
+| `logger.sh` | Single leveled logger |
 | `section.sh` | Banner + section screens |
-| `prompts.sh` | Yes/no and numbered-menu input |
-| `stepAnimation.sh` | Step spinner / `nds_step_*` |
-
-Skip / auto-confirm registry lives in **core mode**, not UI.
+| `prompts.sh` | Yes/no + numbered menu input |
+| `stepAnimation.sh` | Step spinner |
 
 ## settingsManager
 
 ```
 settingsManager/
-  data/builtin/     # preset files (loaded on demand)
-  logic/
-    state/          # CONFIG_DATA store, AA bridge
-    presets/        # catalog / enable / inject
-    validators/     # validate_<type>_<action>
-    reference/      # country defaults, etc.
-  ui/               # ask_* menus
+  data/builtin/
+  logic/{state,presets,validators,reference}/
+  ui/
+  tests/
 ```
 
-Validators are owned by settingsManager. Public names: `validate_git_url`, `validate_ip`, `validate_toggle_normalize`, …
+Validators: `validate_<type>_<action>` (e.g. `validate_git_url`).
 
 ## Loading
 
-`nds_import_tree` recursively sources `.sh` under a feature root.
-
-- Order: `lib` → `logic` → `state` → `ui`, then other dirs alphabetically; files alphabetically within each dir
-- Skips: `tests/`, `data/`, `fixtures/`, `specs/`, `load.sh`, `_`-prefixed names
-
-Backbone stages: `nds_lifecycle_load_core` → `…_ui` → `…_actions`; settingsManager and heavy features load on action runtime.
+`nds_import_tree` — order `lib` → `logic` → `state` → `ui`, then other dirs; skips `tests/`, `data/`, `load.sh`, `_`*.
 
 ## Capability vs domain
 
-- `tools/` ensures binaries (may animate + log on first nix warm) and exposes APIs
-- Features decide *when* to call them (git UI shows QR; SM does not own `gh`)
+`tools/` = ensure/APIs. Features decide when to call them.
 
 ## Docs rule
 
-This file is the single structural overview for `src/`. Prefer updating it when layout changes.
+This file is the single structural overview for `src/`.

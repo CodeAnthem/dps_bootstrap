@@ -29,11 +29,11 @@ action_setup() {
     # shellcheck disable=SC1091
     source "${SCRIPT_DIR}/tests/framework.sh"
     # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/tests/suites/cfg.sh"
+    source "${SCRIPT_DIR}/settingsManager/tests/cfg_suite_test.sh"
     # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/tests/suites/inputs.sh"
+    source "${SCRIPT_DIR}/settingsManager/tests/inputs_suite_test.sh"
     # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/tests/suites/classicConfig.sh"
+    source "${SCRIPT_DIR}/install/tests/classic_config_suite_test.sh"
 
     TEST_PASSED=0
     TEST_FAILED=0

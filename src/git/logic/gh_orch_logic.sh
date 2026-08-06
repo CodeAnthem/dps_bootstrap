@@ -1,48 +1,10 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Git ↔ GitHub orchestration (uses tools/lib nds_gh_*)
+# NDS - Git ↔ GitHub orchestration (uses tools nds_gh_*)
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-08-05 | Modified: 2026-08-05
-# Description:   Git owns key paths / titles / prompts; GH capability is tools/lib
+# Date:          Created: 2026-08-05 | Modified: 2026-08-06
+# Description:   Git owns key paths / titles; collision UI in git/ui; GH API in tools/
 # ==================================================================================================
-
-# Description: Ask overwrite|alternate|cancel for a GH title collision (git UI).
-# Sets NDS_GH_KEY_TITLE_COLLISION and NDS_GIT_SSH_KEY_TITLE_COLLISION.
-# Arguments:
-# - prompt: <String> User-facing message
-_nds_git_ask_gh_title_collision() {
-    local prompt="${1:?prompt}"
-    local choice
-
-    choice="${NDS_GH_KEY_TITLE_COLLISION:-${NDS_GIT_SSH_KEY_TITLE_COLLISION:-}}"
-    if [[ -n "$choice" ]]; then
-        return 0
-    fi
-    if declare -f nds_cfg_ask_numbered_choice &>/dev/null; then
-        nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION ""
-        nds_ui_b ""
-        nds_ui_b "$prompt"
-        nds_ui_b ""
-        nds_cfg_ask_numbered_choice GIT_SSH_KEY_TITLE_COLLISION \
-            "overwrite|alternate|cancel" \
-            "overwrite=Remove the old key and register this one|alternate=Use an alternate title|cancel=Cancel — choose a different approach"
-        choice="$(nds_cfg_get GIT_SSH_KEY_TITLE_COLLISION)"
-    else
-        return 1
-    fi
-    case "$choice" in
-        overwrite|alternate|cancel)
-            NDS_GH_KEY_TITLE_COLLISION="$choice"
-            NDS_GIT_SSH_KEY_TITLE_COLLISION="$choice"
-            export NDS_GH_KEY_TITLE_COLLISION NDS_GIT_SSH_KEY_TITLE_COLLISION
-            nds_cfg_set GIT_SSH_KEY_TITLE_COLLISION "$choice"
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
 
 # Description: Register deploy key via gh, prompting on title collision (rc 41).
 nds_git_gh_register_deploy_key() {
@@ -54,7 +16,7 @@ nds_git_gh_register_deploy_key() {
         nds_gh_register_deploy_key "$pub_file" "$owner" "$repo" "$title" "$collision"
         rc=$?
         if [[ "$rc" -eq "${NDS_GH_RC_TITLE_COLLISION:-41}" ]]; then
-            _nds_git_ask_gh_title_collision \
+            nds_git_ui_ask_gh_title_collision \
                 "Deploy key title \"${title}\" already exists on ${owner}/${repo} with a different public key." \
                 || {
                     error "Deploy key registration cancelled for ${owner}/${repo} (title collision)."
@@ -93,7 +55,7 @@ nds_git_gh_register_account_key() {
         nds_gh_register_account_key "$pub_file" "$title" "$collision"
         rc=$?
         if [[ "$rc" -eq "${NDS_GH_RC_TITLE_COLLISION:-41}" ]]; then
-            _nds_git_ask_gh_title_collision \
+            nds_git_ui_ask_gh_title_collision \
                 "SSH key title \"${title}\" already exists on GitHub with a different public key" \
                 || {
                     error "SSH key registration cancelled (title collision)."

@@ -2,7 +2,7 @@
 # ==================================================================================================
 # DPS Project - Bootstrap NixOS - App entry point
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-12 | Modified: 2026-08-03
+# Date:          Created: 2025-10-12 | Modified: 2026-08-06
 # ==================================================================================================
 # shellcheck disable=SC2162
 set -euo pipefail
@@ -55,12 +55,12 @@ _app_elevate_to_root() {
 }
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/core/import.sh"
+source "${SCRIPT_DIR}/app/core/import.sh"
 
 declare -a _app_original_args=("$@")
 
 nds_app_bootstrap() {
-    nds_import_file "${SCRIPT_DIR}/app/lifecycle.sh" || return 1
+    nds_import_file "${SCRIPT_DIR}/app/lifecycle/lifecycle_logic.sh" || return 1
     nds_lifecycle_load_core "$SCRIPT_DIR" || return 1
     nds_lifecycle_load_ui "$SCRIPT_DIR" || return 1
     nds_lifecycle_load_actions "$SCRIPT_DIR" || return 1

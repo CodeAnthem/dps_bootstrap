@@ -21,7 +21,7 @@ SCRIPT_DIR="${ROOT}/src"
 export SCRIPT_DIR
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/core/import.sh"
+source "${SCRIPT_DIR}/app/core/import.sh"
 nds_bootstrap_load_libs "$SCRIPT_DIR" || {
     echo "Failed to load NDS libs" >&2
     exit 1

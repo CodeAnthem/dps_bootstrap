@@ -14,7 +14,7 @@ nds_app_show_help() {
     local script_dir="${app_path%/app}"
     local skip_var
 
-    nds_import_file "${script_dir}/app/lifecycle.sh" || return 1
+    nds_import_file "${script_dir}/app/lifecycle/lifecycle_logic.sh" || return 1
     nds_lifecycle_load_core "$script_dir" || return 1
     nds_lifecycle_load_ui "$script_dir" || return 1
     nds_lifecycle_load_actions "$script_dir" || return 1

@@ -91,7 +91,7 @@ suite_skip() {
     local prepare_out=""
     if prepare_out=$(
         env SCRIPT_DIR="$SCRIPT_DIR" bash -euo pipefail -c '
-            source "${SCRIPT_DIR}/core/import.sh"
+            source "${SCRIPT_DIR}/app/core/import.sh"
             nds_bootstrap_load_libs "$SCRIPT_DIR" || exit 1
             nds_framework_prepare_action_runtime || exit 1
             declare -f nds_git_owner_slug >/dev/null

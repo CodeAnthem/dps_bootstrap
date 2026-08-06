@@ -14,28 +14,7 @@ nds_partition_is_disk_ready_to_format() {
 
     local state
     state=$(_install_partition_check_disk_state "$disk") || state="unknown"
-
-    nds_ui_section_header "Current Disk Layout"
-    _install_partition_summarize_disk "$disk"
-
-    case "$state" in
-        wiped|empty_parts) return 0 ;;
-        has_fs|in_use)
-            warn "Detected existing filesystems or mounted partitions on $disk"
-            if nds_skip_menu NDS_DISK_FORMAT_CONFIRM_SKIP; then
-                return 0
-            fi
-            nds_ask_user_to_proceed "Formatting will DESTROY ALL DATA on $disk. Continue?" && return 0
-            return 1
-            ;;
-        *)
-            if nds_skip_menu NDS_DISK_FORMAT_CONFIRM_SKIP; then
-                return 0
-            fi
-            nds_ask_user_to_proceed "Proceed with formatting $disk?" && return 0
-            return 1
-            ;;
-    esac
+    nds_install_ui_confirm_disk_format "$disk" "$state"
 }
 
 # Description: Run Disko with explicit partition parameters.

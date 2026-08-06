@@ -3,7 +3,7 @@
 # NDS - Self-test runner
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Date:          Created: 2025-10-24 | Modified: 2026-08-06
-# Description:   Cross-feature suites (feature unit tests live under each feature)
+# Description:   Cross-feature entry — sources feature-colocated suites
 # ==================================================================================================
 
 set -euo pipefail
@@ -14,44 +14,45 @@ SCRIPT_DIR="$(cd "${TEST_ROOT}/.." && pwd)"
 readonly SCRIPT_DIR
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/core/import.sh"
+source "${SCRIPT_DIR}/app/core/import.sh"
 nds_bootstrap_load_libs "$SCRIPT_DIR"
 nds_cfg_init
 nds_framework_load_remaining
 
+# shellcheck disable=SC1091
 source "${TEST_ROOT}/framework.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/cfg.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/inputs.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/classicConfig.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/standalone.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/git.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/mode.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/tools_lib.sh"
-# shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/bundle.sh"
 
+# Feature-colocated suites
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/presets.sh"
+source "${SCRIPT_DIR}/settingsManager/tests/settings_manager_suite_test.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/../settingsManager/tests/validators_test.sh"
+source "${SCRIPT_DIR}/settingsManager/tests/cfg_suite_test.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/settingsManager.sh"
+source "${SCRIPT_DIR}/settingsManager/tests/presets_suite_test.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/nixWriter.sh"
-
+source "${SCRIPT_DIR}/settingsManager/tests/validators_test.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/skip.sh"
+source "${SCRIPT_DIR}/settingsManager/tests/inputs_suite_test.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/install.sh"
+source "${SCRIPT_DIR}/app/tests/skip_suite_test.sh"
 # shellcheck disable=SC1091
-source "${TEST_ROOT}/suites/facter.sh"
+source "${SCRIPT_DIR}/app/tests/mode_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/app/tests/standalone_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/git/tests/git_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/tools/tests/tools_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/tools/tests/facter_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/bundle/tests/bundle_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/install/tests/nixwriter_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/install/tests/classic_config_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/install/tests/install_suite_test.sh"
 
 nds_run_self_tests() {
     TEST_PASSED=0
