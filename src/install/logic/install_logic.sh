@@ -7,8 +7,6 @@
 # Feature:       Hardware config generation and nixos-install execution
 # ==================================================================================================
 
-declare -f nds_skip_register &>/dev/null && nds_skip_register NDS_HARDWARE_OVERWRITE_SKIP
-
 # =============================================================================
 # NIXOS INSTALLATION
 # =============================================================================
