@@ -1,19 +1,22 @@
 # Test action
 
-Runs NDS self-tests from the live menu when `NDS_TEST=true`.
+Runs the **full** NDS selftest suite (same as CI / `bash src/tests/run.sh`) from
+the live menu. Read-only — no system changes.
 
-## Suites (read-only — no system changes)
-
-| Suite | What it checks |
-|-------|----------------|
-| `cfg` | Presets registered and enabled |
-| `inputs` | Field validators (`src/tests/specs/inputs/`) |
-| `classicConfig` | `configuration.nix` generation to a temp dir |
-
-## Run without the menu
+Shown only when:
 
 ```bash
-bash src/tests/run.sh
+export NDS_TEST=true
+sudo -E bash src/app/main.sh
+# pick action: test
 ```
 
-CI runs the same command on every push.
+## Suites
+
+Everything CI runs: structure, actions discover, settingsManager, validators,
+inputs, git, tools, bundle, nixWriter, classicConfig, install helpers, facter, …
+
+## Prompt walking
+
+Use **`uiSmoke`** (also `NDS_TEST=true`) — interactive human click-through of prompts.
+Interactive menus are not automated; that was an explicit design choice.

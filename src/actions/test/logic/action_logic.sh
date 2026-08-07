@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ==================================================================================================
-# NDS - Test action (logic)
+# NDS - Test action (logic) — full selftest suite
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2026-06-28 | Modified: 2026-08-06
-# Description:   Run NDS self-tests (cfg, inputs, classicConfig) — no system changes
+# Date:          Created: 2026-06-28 | Modified: 2026-08-07
+# Description:   Run the same self-tests CI runs (read-only — no system changes)
 # ==================================================================================================
 
 action_config() {
@@ -16,23 +16,6 @@ action_config() {
 }
 
 action_setup() {
-    console "Running NDS self-tests (read-only)."
-    # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/tests/framework.sh"
-    # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/settingsManager/tests/cfg_suite_test.sh"
-    # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/settingsManager/tests/inputs_suite_test.sh"
-    # shellcheck disable=SC1091
-    source "${SCRIPT_DIR}/install/tests/classic_config_suite_test.sh"
-
-    TEST_PASSED=0
-    TEST_FAILED=0
-    nds_ui_section_title "NDS self-tests"
-
-    run_named_suite "cfg" suite_cfg
-    run_named_suite "inputs" suite_inputs
-    run_named_suite "classicConfig" suite_classic_config
-
-    print_test_summary || exit 1
+    console "Running full NDS self-tests (same as CI / bash src/tests/run.sh)."
+    bash "${SCRIPT_DIR}/tests/run.sh" || exit 1
 }

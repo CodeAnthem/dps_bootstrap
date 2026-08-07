@@ -2,7 +2,7 @@
 # ==================================================================================================
 # NDS - Self-test runner
 # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Date:          Created: 2025-10-24 | Modified: 2026-08-06
+# Date:          Created: 2025-10-24 | Modified: 2026-08-07
 # Description:   Cross-feature entry — sources feature-colocated suites
 # ==================================================================================================
 
@@ -40,6 +40,10 @@ source "${SCRIPT_DIR}/app/tests/mode_suite_test.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/app/tests/standalone_suite_test.sh"
 # shellcheck disable=SC1091
+source "${SCRIPT_DIR}/app/tests/structure_suite_test.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/app/tests/actions_suite_test.sh"
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/git/tests/git_suite_test.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/tools/tests/tools_suite_test.sh"
@@ -67,6 +71,8 @@ nds_run_self_tests() {
     run_named_suite "validators" suite_validators
     run_named_suite "nixWriter" suite_nixwriter
     run_named_suite "standalone" suite_standalone
+    run_named_suite "structure" suite_structure
+    run_named_suite "actions" suite_actions
     run_named_suite "git" suite_git
     run_named_suite "mode" suite_mode
     run_named_suite "tools_lib" suite_tools_lib
@@ -79,4 +85,8 @@ nds_run_self_tests() {
     print_test_summary
 }
 
-nds_run_self_tests
+# Only auto-run when executed as a script (CI / bash src/tests/run.sh).
+# Sourced by the live `test` action — caller invokes nds_run_self_tests.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    nds_run_self_tests
+fi

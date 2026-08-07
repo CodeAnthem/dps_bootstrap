@@ -56,7 +56,12 @@ nds_actions_discover() {
     for action_dir in "$NDS_ACTIONS_DIR"/*/; do
         [[ -d "$action_dir" ]] || continue
         action_name=$(basename "$action_dir")
-        [[ "$action_name" == "test" && "${NDS_TEST:-false}" != "true" ]] && continue
+        # Debug-only actions (read-only selftest / interactive UI smoke)
+        case "$action_name" in
+            test|uiSmoke)
+                [[ "${NDS_TEST:-false}" == "true" ]] || continue
+                ;;
+        esac
         _app_validate_action "$action_name" "$action_dir" || { warn "Skipping invalid action: $action_name"; continue; }
         description=$(head -n 20 "${action_dir}setup.sh" | grep -m1 "^# Description:" | sed 's/^# Description:[[:space:]]*//')
         NDS_ACTION_NAMES+=("$action_name")
